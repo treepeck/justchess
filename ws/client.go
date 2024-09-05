@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"chess-api/models"
 	"encoding/json"
 	"log"
 	"time"
@@ -15,14 +16,16 @@ const (
 )
 
 type client struct {
+	user             models.User
 	conn             *websocket.Conn
 	manager          *Manager
 	writeEventBuffer chan event
 	currentRoom      *room
 }
 
-func newClient(conn *websocket.Conn, m *Manager) *client {
+func newClient(conn *websocket.Conn, m *Manager, user models.User) *client {
 	return &client{
+		user:             user,
 		conn:             conn,
 		manager:          m,
 		writeEventBuffer: make(chan event),
@@ -97,7 +100,7 @@ func (c *client) pongHandler(_ string) error {
 }
 
 func (c *client) handleEvent(e event) {
-	e.Sender = c
+	// e.Sender = c
 
 	switch e.Action {
 

@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"chess-api/repository"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -36,13 +37,22 @@ func NewManager() *Manager {
 // If the connection cannot be upgraded, sends a header with status code 500
 // back to the client.
 func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
+	// TODO: replace with the Authorization and take AccessToken From Authorization Header
+	idStr := r.URL.Query().Get("id")
+	userId, err := uuid.Parse(idStr)
+	if err != nil {
+		log.Println("HandleConnection: cannot parse uuid", err)
+		return
+	}
+	u := repository.FindById(userId)
+
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		log.Println("HandleConnection: error while upgrading the connection: ", err)
 		return
 	}
 
-	c := newClient(conn, m)
+	c := newClient(conn, m, *u)
 	m.addClient(c)
 
 }
@@ -64,7 +74,7 @@ func (m *Manager) addClient(c *client) {
 	m.broadcast(UPDATE_CLIENTS_COUNTER)
 }
 
-// Removes client from the clients map. Closes a connection with the front-ent.
+// Removes client from the clients map. Closes a connection with the front-end.
 func (m *Manager) removeClient(c *client) {
 	m.Lock()
 	defer m.Unlock()
