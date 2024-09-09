@@ -3,15 +3,11 @@ package ws
 import (
 	"encoding/json"
 	"log"
-
-	"github.com/google/uuid"
 )
 
 type event struct {
 	Action  string          `json:"action"`
 	Payload json.RawMessage `json:"payload"`
-	Sender  *client         `json:"sender"`
-	Target  uuid.UUID       `json:"target"`
 }
 
 func (e *event) marshal() []byte {
@@ -25,6 +21,7 @@ func (e *event) marshal() []byte {
 
 // client events
 const (
+	GET_ROOMS   = "GET_ROOMS"
 	CREATE_ROOM = "CREATE_ROOM"
 	JOIN_ROOM   = "JOIN_ROOM"
 	LEAVE_ROOM  = "LEAVE_ROOM"
@@ -34,4 +31,5 @@ const (
 const (
 	UPDATE_CLIENTS_COUNTER = "UPDATE_CLIENTS_COUNTER"
 	UPDATE_ROOMS           = "UPDATE_ROOMS"
+	CHANGE_ROOM            = "CHANGE_ROOM"
 )

@@ -3,7 +3,7 @@ package ws
 import (
 	"chess-api/models"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,12 +35,14 @@ func newClient(conn *websocket.Conn, m *Manager, user models.User) *client {
 
 // Reads all incoming messages from the connection.
 func (c *client) readEvents() {
+	fn := slog.String("func", "readEvents")
+
 	defer c.manager.removeClient(c)
 
 	// set the read deadline to limit inactive connections
 	c.conn.SetReadLimit(10000)
 	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		log.Println("readEvents: error while setting the read deadline: ", err)
+		slog.Warn("error while setting the read deadline", fn, "err", err)
 		return
 	}
 	c.conn.SetPongHandler(c.pongHandler)
@@ -49,8 +51,8 @@ func (c *client) readEvents() {
 		_, data, err := c.conn.ReadMessage()
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway,
 			websocket.CloseAbnormalClosure) {
-			log.Println("readEvents: error while reading "+
-				"messages from a connection: ", err,
+			slog.Warn("error while reading "+
+				"messages from a connection", fn, "err", err,
 			)
 			return
 		}
@@ -58,7 +60,7 @@ func (c *client) readEvents() {
 		var e event
 		err = json.Unmarshal(data, &e)
 		if err != nil {
-			log.Println("readEvents: cannot Unmarshal event", err)
+			slog.Warn("cannot Unmarshal event", fn, "err", err)
 			return
 		}
 		c.handleEvent(e)
@@ -67,6 +69,8 @@ func (c *client) readEvents() {
 }
 
 func (c *client) writeEvents() {
+	fn := slog.String("func", "writeEvents")
+
 	defer c.manager.removeClient(c)
 
 	ticker := time.NewTicker(pingInterval)
@@ -76,13 +80,13 @@ func (c *client) writeEvents() {
 		case e, ok := <-c.writeEventBuffer:
 			c.conn.SetWriteDeadline(time.Now().Add(pingInterval))
 			if !ok {
-				log.Println("writeEvents: connection closed")
+				slog.Info("connection closed", fn)
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, e.marshal()); err != nil {
-				log.Println("writeEvents: failed to write event: ", err)
+				slog.Warn("failed to write event", fn, "err", err)
 				return
 			}
 
@@ -100,22 +104,37 @@ func (c *client) pongHandler(_ string) error {
 }
 
 func (c *client) handleEvent(e event) {
-	// e.Sender = c
+	fn := slog.String("func", "handleEvent")
 
 	switch e.Action {
+	case GET_ROOMS:
+		rooms, err := json.Marshal(c.manager.getAllRooms())
+		if err != nil {
+			slog.Warn("cannot Marshal rooms", fn, "err", err)
+			return
+		}
+		e.Action = UPDATE_ROOMS
+		e.Payload = rooms
+		c.writeEventBuffer <- e
 
 	case CREATE_ROOM:
 		if c.currentRoom != nil {
-			log.Println("handleEvent: cannot create room, already joined")
+			slog.Warn("cannot create room, already joined", fn)
 			return
 		}
 
-		r := c.manager.createRoom()
-		c.joinRoom(r)
+		var cr CreateRoomDTO
+		err := json.Unmarshal(e.Payload, &cr)
+		if err != nil {
+			slog.Debug("canot unmarshal CreateRoomDTO", fn, "err", err)
+			return
+		}
+
+		c.manager.createRoom(cr)
 
 	case JOIN_ROOM:
 		if c.currentRoom != nil {
-			log.Println("handleEvent: cannot joint room, already joined")
+			slog.Debug("cannot join room, already joined", fn)
 			return
 		}
 
@@ -125,7 +144,7 @@ func (c *client) handleEvent(e event) {
 
 	case LEAVE_ROOM:
 		if c.currentRoom == nil {
-			log.Println("handleEvent: doesnt connected to a room")
+			slog.Debug("doesnt connected to a room", fn)
 			return
 		}
 
@@ -134,16 +153,19 @@ func (c *client) handleEvent(e event) {
 }
 
 func (c *client) findRoomByPayload(payload json.RawMessage) *room {
-	var roomId uuid.UUID
-	err := json.Unmarshal(payload, &roomId)
+	fn := slog.String("func", "findRoomByPayload")
+
+	var idStr string
+	json.Unmarshal(payload, &idStr)
+	roomId, err := uuid.Parse(idStr)
 	if err != nil {
-		log.Println("handleEvent: cannot Unmarshal roomId", err)
+		slog.Warn("cannot parse roomId ", fn, "err", err)
 		return nil
 	}
 	if r := c.manager.findRoomById(roomId); r != nil {
 		return r
 	} else {
-		log.Println("handleEvent: room not found")
+		slog.Debug("room not found", fn)
 		return nil
 	}
 }
@@ -151,10 +173,23 @@ func (c *client) findRoomByPayload(payload json.RawMessage) *room {
 func (c *client) leaveRoom() {
 	if c.currentRoom != nil {
 		c.currentRoom.remove <- c
+
+		if len(c.currentRoom.clients) < 1 {
+			c.manager.removeRoom(c.currentRoom)
+		}
+
+		c.currentRoom = nil
 	}
 }
 
 func (c *client) joinRoom(r *room) {
 	r.add <- c
 	c.currentRoom = r
+
+	p, _ := json.Marshal(r.Id)
+	e := event{
+		Action:  CHANGE_ROOM,
+		Payload: p,
+	}
+	c.writeEventBuffer <- e
 }

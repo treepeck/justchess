@@ -38,6 +38,6 @@ func (u *User) GetPassword() string {
 type UserRepository interface {
 	AddGuest(id uuid.UUID) *User
 	Remove(u User)
-	FindById(id uuid.UUID) User
+	FindUserById(id uuid.UUID) User
 	FindAll() []User
 }

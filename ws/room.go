@@ -1,13 +1,16 @@
 package ws
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
 
 type room struct {
 	Id        uuid.UUID `json:"id"`
+	Control   string    `json:"control"`
+	Bonus     uint      `json:"bonus"`
+	Rating    uint      `json:"rating"`
 	clients   map[*client]bool
 	add       chan *client
 	remove    chan *client
@@ -15,10 +18,19 @@ type room struct {
 	isClosed  bool
 }
 
+type CreateRoomDTO struct {
+	Control string `json:"control"`
+	Bonus   uint   `json:"bonus"`
+	Rating  uint   `json:"rating"`
+}
+
 // Creates a new room.
-func newRoom() *room {
+func newRoom(cr CreateRoomDTO) *room {
 	return &room{
 		Id:        uuid.New(),
+		Rating:    cr.Rating,
+		Control:   cr.Control,
+		Bonus:     cr.Bonus,
 		clients:   make(map[*client]bool),
 		add:       make(chan *client),
 		remove:    make(chan *client),
@@ -43,13 +55,22 @@ func (r *room) run() {
 }
 
 func (r *room) addClient(c *client) {
-	r.clients[c] = true
-	log.Println("roomAddClient: clients count: ", len(r.clients))
+	if !r.isClosed {
+		fn := slog.String("func", "room.addClient")
+
+		r.clients[c] = true
+		slog.Info("client added", fn, slog.Int("counter", len(r.clients)))
+
+		if len(r.clients) > 1 {
+			r.isClosed = true
+		}
+	}
 }
 
 func (r *room) removeClient(c *client) {
+	fn := slog.String("func", "room.removeClient")
 	delete(r.clients, c)
-	log.Println("roomRemoveClient: clients count: ", len(r.clients))
+	slog.Info("client removed", fn, slog.Int("counter", len(r.clients)))
 }
 
 func (r *room) broadcastEvent(e event) {
