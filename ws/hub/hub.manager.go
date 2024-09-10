@@ -1,7 +1,8 @@
-package ws
+package hub
 
 import (
 	"chess-api/repository"
+	"chess-api/ws/event"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -15,28 +16,29 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	ReadBufferSize:  1024,
 	CheckOrigin: func(req *http.Request) bool {
+		// TODO: change to the client (front-end) domain later
 		return true
 	},
 }
 
-type Manager struct {
+type HubManager struct {
 	sync.Mutex
-	Clients map[*client]bool
-	Rooms   map[*room]bool
+	Clients map[*hubClient]bool
+	Rooms   map[*hubRoom]bool
 }
 
-// Creates a new Manager.
-func NewManager() *Manager {
-	return &Manager{
-		Clients: make(map[*client]bool),
-		Rooms:   make(map[*room]bool),
+// Creates a new HubManager.
+func NewManager() *HubManager {
+	return &HubManager{
+		Clients: make(map[*hubClient]bool),
+		Rooms:   make(map[*hubRoom]bool),
 	}
 }
 
 // Upgrades the incoming HTTP connection to the WebSocket Protocol.
 // If the connection cannot be upgraded, sends a header with status code 500
 // back to the client.
-func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
+func (m *HubManager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 	fn := slog.String("func", "HandleConnection")
 	// TODO: replace with the Authorization and take AccessToken From Authorization Header
 	idStr := r.URL.Query().Get("id")
@@ -67,7 +69,7 @@ func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 //  1. readEvents goroutine handles the incomming events from the client;
 //  2. writeEvent goroutine grabs the events from the evBuf channel and sends those
 //     events to the client.
-func (m *Manager) addClient(c *client) {
+func (m *HubManager) addClient(c *hubClient) {
 	fn := slog.String("func", "addClient")
 
 	m.Lock()
@@ -79,11 +81,11 @@ func (m *Manager) addClient(c *client) {
 	go c.readEvents()
 	go c.writeEvents()
 
-	m.broadcast(UPDATE_CLIENTS_COUNTER)
+	m.broadcast(event.UPDATE_CLIENTS_COUNTER)
 }
 
 // Removes client from the clients map. Closes a connection with the front-end.
-func (m *Manager) removeClient(c *client) {
+func (m *HubManager) removeClient(c *hubClient) {
 	fn := slog.String("func", "removeClient")
 
 	m.Lock()
@@ -91,23 +93,28 @@ func (m *Manager) removeClient(c *client) {
 
 	if _, ok := m.Clients[c]; ok {
 		c.conn.Close()
-		c.leaveRoom()
 		delete(m.Clients, c)
+
 		slog.Info("client "+c.user.GetName()+" removed", fn)
-		m.broadcast(UPDATE_CLIENTS_COUNTER)
+		m.broadcast(event.UPDATE_CLIENTS_COUNTER)
+
+		// if r := m.findRoomByOwnerId(c.user.Id); r != nil {
+		// 	m.removeRoom(r)
+		// }
 	}
 }
 
-func (m *Manager) broadcast(action string) {
+func (m *HubManager) broadcast(action string) {
 	fn := slog.String("func", "broadcast")
 
-	var e event
+	var e event.HubEvent
 	switch action {
-	case UPDATE_CLIENTS_COUNTER:
+
+	case event.UPDATE_CLIENTS_COUNTER:
 		cc, _ := json.Marshal(len(m.Clients))
 		e.Payload = cc
 
-	case UPDATE_ROOMS:
+	case event.UPDATE_ROOMS:
 		rooms, err := json.Marshal(m.getAllRooms())
 		if err != nil {
 			slog.Warn("cannot Marshal rooms", fn, "err", err)
@@ -126,28 +133,30 @@ func (m *Manager) broadcast(action string) {
 	}
 }
 
-func (m *Manager) createRoom(cr CreateRoomDTO) *room {
+func (m *HubManager) createRoom(cr createRoomDTO) *hubRoom {
+	fn := slog.String("func", "createRoom")
+
 	m.Lock()
 	defer m.Unlock()
 
 	r := newRoom(cr)
-	go r.run()
 	m.Rooms[r] = true
-	m.broadcast(UPDATE_ROOMS)
+	slog.Info("room created", fn, slog.Int("counter", len(m.Rooms)))
+	m.broadcast(event.UPDATE_ROOMS)
 	return r
 }
 
-func (m *Manager) removeRoom(r *room) {
-	m.Lock()
-	defer m.Unlock()
+func (m *HubManager) removeRoom(r *hubRoom) {
+	fn := slog.String("func", "removeRoom")
 
 	if _, ok := m.Rooms[r]; ok {
 		delete(m.Rooms, r)
-		m.broadcast(UPDATE_ROOMS)
+		slog.Info("room removed", fn, slog.Int("counter", len(m.Rooms)))
+		m.broadcast(event.UPDATE_ROOMS)
 	}
 }
 
-func (m *Manager) findRoomById(id uuid.UUID) *room {
+func (m *HubManager) findRoomById(id uuid.UUID) *hubRoom {
 	for r := range m.Rooms {
 		if r.Id == id {
 			return r
@@ -156,7 +165,16 @@ func (m *Manager) findRoomById(id uuid.UUID) *room {
 	return nil
 }
 
-func (m *Manager) getAllRooms() (rooms []*room) {
+func (m *HubManager) findRoomByOwnerId(ownerId uuid.UUID) *hubRoom {
+	for r := range m.Rooms {
+		if r.Owner.Id == ownerId {
+			return r
+		}
+	}
+	return nil
+}
+
+func (m *HubManager) getAllRooms() (rooms []*hubRoom) {
 	for r := range m.Rooms {
 		rooms = append(rooms, r)
 	}

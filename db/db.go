@@ -3,7 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -30,25 +30,15 @@ func OpenDatabase() error {
 	}
 
 	// create tables
-	queryText := `
-		CREATE TABLE IF NOT EXISTS users(
-			id VARCHAR(36) NOT NULL PRIMARY KEY,
-			name VARCHAR(36) NOT NULL,
-			password VARCHAR(36) NOT NULL,
-			blitz_rating INT DEFAULT 400,
-			rapid_rating INT DEFAULT 400,
-			bullet_rating INT DEFAULT 400,
-			games_count INT DEFAULT 0,
-			likes INT DEFAULT 0,
-			is_deleted BOOLEAN DEFAULT FALSE,
-			registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			last_visit TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		);
-	`
-	_, err = DB.Query(queryText)
+	schema, err := os.ReadFile("./db/schema.sql")
 	if err != nil {
-		log.Fatalln(err)
+		slog.Error("database schema not found", "err", err)
+		return err
+	}
+
+	_, err = DB.Query(string(schema))
+	if err != nil {
+		slog.Error("query cannot be executed", "err", err)
 	}
 
 	return err

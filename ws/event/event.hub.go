@@ -1,16 +1,16 @@
-package ws
+package event
 
 import (
 	"encoding/json"
 	"log"
 )
 
-type event struct {
+type HubEvent struct {
 	Action  string          `json:"action"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-func (e *event) marshal() []byte {
+func (e *HubEvent) Marshal() []byte {
 	json, err := json.Marshal(e)
 	if err != nil {
 		log.Println("event marshal: ", err)
@@ -24,7 +24,6 @@ const (
 	GET_ROOMS   = "GET_ROOMS"
 	CREATE_ROOM = "CREATE_ROOM"
 	JOIN_ROOM   = "JOIN_ROOM"
-	LEAVE_ROOM  = "LEAVE_ROOM"
 )
 
 // server events

@@ -4,7 +4,8 @@ import (
 	"chess-api/auth"
 	"chess-api/db"
 	"chess-api/middleware"
-	"chess-api/ws"
+	"chess-api/ws/game"
+	"chess-api/ws/hub"
 	"log/slog"
 	"net/http"
 	"os"
@@ -36,7 +37,7 @@ func main() {
 	// connect to the database
 	err = db.OpenDatabase()
 	if err != nil {
-		slog.Error("cannot open db", fn, "err", err)
+		return
 	}
 	slog.Info("Database connected successfully", fn)
 	defer db.CloseDatabase()
@@ -48,9 +49,10 @@ func main() {
 		middleware.AllowCors,
 	)
 
-	// create a manager (basically same as router)
+	// instantiate managers (basically same as router)
 	// to handle websocket connections
-	m := ws.NewManager()
+	hm := hub.NewManager()
+	gm := game.NewManager()
 
 	// load routes
 	router := http.NewServeMux()
@@ -58,7 +60,8 @@ func main() {
 		"/auth",
 		middlewareStack(auth.AuthRouter()),
 	))
-	router.HandleFunc("/ws", m.HandleConnection)
+	router.HandleFunc("/ws", hm.HandleConnection)
+	router.HandleFunc("/play-ws", gm.HandleConnection)
 
 	// start server
 	HOST := os.Getenv("SERVER_HOST")
