@@ -23,8 +23,8 @@ END $$;
 
 DO $$ BEGIN
 	 CREATE TYPE GAME_STATUS AS ENUM (
-      'canceled', 'waiting', 'white_won',
-      'black_won', 'draw', 'continues'
+      'white_won', 'black_won',
+      'draw', 'continues'
     );
 EXCEPTION
 	WHEN duplicate_object THEN 
@@ -42,8 +42,8 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS games(
   id VARCHAR(36) NOT NULL PRIMARY KEY,
-  black_id VARCHAR(36) NOT NULL,
-  white_id VARCHAR(36) NOT NULL,
+  black_id VARCHAR(36),
+  white_id VARCHAR(36),
   control TIME_CONTROL NOT NULL,
   bonus TIME_BONUS NOT NULL,
   status GAME_STATUS NOT NULL DEFAULT 'waiting',

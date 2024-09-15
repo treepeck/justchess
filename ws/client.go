@@ -1,8 +1,7 @@
-package hub
+package ws
 
 import (
 	"chess-api/models"
-	"chess-api/ws/event"
 	"encoding/json"
 	"log/slog"
 	"time"
@@ -16,27 +15,27 @@ const (
 	pingInterval = (pongWait * 9) / 10
 )
 
-type hubClient struct {
-	user             models.User
+type Client struct {
+	User             models.User `json:"user"`
 	conn             *websocket.Conn
-	manager          *HubManager
-	writeEventBuffer chan event.HubEvent
+	manager          *Manager
+	writeEventBuffer chan Event
+	isInLobby        bool
 }
 
-func newClient(conn *websocket.Conn, m *HubManager, user models.User) *hubClient {
-	return &hubClient{
-		user:             user,
+func newClient(conn *websocket.Conn, m *Manager, user models.User) *Client {
+	return &Client{
+		User:             user,
 		conn:             conn,
 		manager:          m,
-		writeEventBuffer: make(chan event.HubEvent),
+		writeEventBuffer: make(chan Event),
+		isInLobby:        true,
 	}
 }
 
 // Reads all incoming messages from the connection.
-func (c *hubClient) readEvents() {
-	fn := slog.String("func", "readEvents")
-
-	defer c.manager.removeClient(c)
+func (c *Client) readEvents() {
+	fn := slog.String("func", "hub.readEvents")
 
 	// set the read deadline to limit inactive connections
 	c.conn.SetReadLimit(10000)
@@ -49,26 +48,27 @@ func (c *hubClient) readEvents() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				slog.Warn("abnormal websocket closure", fn, "err", err)
+			if e, ok := err.(*websocket.CloseError); ok {
+				c.manager.removeClient(c, e.Code)
 			}
 			return
 		}
 
-		var e event.HubEvent
+		var e Event
 		err = json.Unmarshal(data, &e)
 		if err != nil {
 			slog.Warn("cannot Unmarshal event", fn, "err", err)
+			c.manager.removeClient(c, websocket.CloseInternalServerErr)
 			return
 		}
 		c.handleEvent(e)
 	}
 }
 
-func (c *hubClient) writeEvents() {
-	fn := slog.String("func", "writeEvents")
+func (c *Client) writeEvents() {
+	fn := slog.String("func", "hub.writeEvents")
 
-	defer c.manager.removeClient(c)
+	defer c.manager.removeClient(c, websocket.CloseGoingAway)
 
 	ticker := time.NewTicker(pingInterval)
 
@@ -96,61 +96,63 @@ func (c *hubClient) writeEvents() {
 	}
 }
 
-func (c *hubClient) pongHandler(_ string) error {
+func (c *Client) pongHandler(_ string) error {
 	return c.conn.SetReadDeadline(time.Now().Add(pongWait))
 }
 
-func (c *hubClient) handleEvent(e event.HubEvent) {
+func (c *Client) handleEvent(e Event) {
 	fn := slog.String("func", "handleEvent")
 
 	switch e.Action {
 
-	case event.GET_ROOMS:
-		rooms, err := json.Marshal(c.manager.getAllRooms())
+	case GET_ROOMS:
+		rooms, err := json.Marshal(c.manager.roomController.FindAvailible())
 		if err != nil {
 			slog.Warn("cannot Marshal rooms", fn, "err", err)
 			return
 		}
-		e.Action = event.UPDATE_ROOMS
+		e.Action = UPDATE_ROOMS
 		e.Payload = rooms
 		c.writeEventBuffer <- e
 
-	case event.CREATE_ROOM:
-		// TODO: add a check to block multiple rooms creating by a single user
-		var cr createRoomDTO
+	case CREATE_ROOM:
+		var cr CreateRoomDTO
 		err := json.Unmarshal(e.Payload, &cr)
 		if err != nil {
-			slog.Warn("canot Unmarshal CreateRoomDTO", fn, "err", err)
+			slog.Warn("cannot Unmarshal CreateRoomDTO", fn, "err", err)
 			return
 		}
 
-		r := c.manager.createRoom(cr)
-		p, _ := json.Marshal(r.Id.String())
-
-		e := event.HubEvent{
-			Action:  event.CHANGE_ROOM,
-			Payload: p,
+		if r := c.manager.roomController.FindByOwnerId(cr.Owner.Id); r != nil {
+			slog.Info("cannot create multiple rooms", fn)
+			return
 		}
-		c.writeEventBuffer <- e
+		c.manager.createRoom(cr, c)
 
-	case event.JOIN_ROOM:
+	case JOIN_ROOM:
 		var idStr string
 		json.Unmarshal(e.Payload, &idStr)
 		roomId, err := uuid.Parse(idStr)
 		if err != nil {
-			slog.Warn("cannot parse roomId ", fn, "err", err)
+			slog.Warn("cannot parse roomId", fn, "err", err)
 			return
 		}
-
-		if r := c.manager.findRoomById(roomId); r != nil {
-			e := event.HubEvent{
-				Action:  event.CHANGE_ROOM,
-				Payload: e.Payload,
-			}
-			c.writeEventBuffer <- e
+		if r := c.manager.roomController.FindById(roomId); r != nil {
+			r.AddPlayer(c)
 		}
 
 	default:
 		slog.Warn("event have unknown action", fn, "action", e.Action)
+	}
+}
+
+func (c *Client) changeRoom(roomId uuid.UUID) {
+	if r := c.manager.roomController.FindById(roomId); r != nil {
+		payload, _ := json.Marshal(roomId.String())
+		e := Event{
+			Action:  CHANGE_ROOM,
+			Payload: payload,
+		}
+		c.writeEventBuffer <- e
 	}
 }

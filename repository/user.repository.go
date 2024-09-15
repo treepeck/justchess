@@ -12,7 +12,7 @@ import (
 func AddGuest(id uuid.UUID) *models.User {
 	fn := slog.String("func", "AddGuest")
 
-	const queryText string = `
+	const queryText = `
 		INSERT INTO users (id, name, password)
 		VALUES ($1, $2, $3)
 		RETURNING id, name, is_deleted,

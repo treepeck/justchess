@@ -4,8 +4,8 @@ import (
 	"chess-api/auth"
 	"chess-api/db"
 	"chess-api/middleware"
-	"chess-api/ws/game"
-	"chess-api/ws/hub"
+	"chess-api/user"
+	"chess-api/ws"
 	"log/slog"
 	"net/http"
 	"os"
@@ -49,10 +49,9 @@ func main() {
 		middleware.AllowCors,
 	)
 
-	// instantiate managers (basically same as router)
+	// instantiate manager (basically same as router)
 	// to handle websocket connections
-	hm := hub.NewManager()
-	gm := game.NewManager()
+	m := ws.NewManager()
 
 	// load routes
 	router := http.NewServeMux()
@@ -60,8 +59,11 @@ func main() {
 		"/auth",
 		middlewareStack(auth.AuthRouter()),
 	))
-	router.HandleFunc("/ws", hm.HandleConnection)
-	router.HandleFunc("/play-ws", gm.HandleConnection)
+	router.Handle("/user/", http.StripPrefix(
+		"/user",
+		middlewareStack(user.UserRouter()),
+	))
+	router.HandleFunc("/ws", m.HandleConnection)
 
 	// start server
 	HOST := os.Getenv("SERVER_HOST")
