@@ -22,10 +22,10 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-	 CREATE TYPE GAME_STATUS AS ENUM (
-      'white_won', 'black_won',
-      'draw', 'continues'
-    );
+	CREATE TYPE GAME_STATUS AS ENUM (
+    'white_won', 'black_won',
+    'draw', 'continues', 'waiting'
+  );
 EXCEPTION
 	WHEN duplicate_object THEN 
 	RAISE NOTICE 'game_status already created, skipping innitialization';

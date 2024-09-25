@@ -84,7 +84,7 @@ func (m *Manager) addClient(c *Client) {
 }
 
 // Removes client from the clients map. Closes a connection with the front-end.
-func (m *Manager) removeClient(c *Client, closeCode int) {
+func (m *Manager) removeClient(c *Client) {
 	m.Lock()
 	defer m.Unlock()
 
@@ -96,10 +96,8 @@ func (m *Manager) removeClient(c *Client, closeCode int) {
 
 		slog.Info("client "+c.User.Name+" removed", fn)
 		m.broadcast(UPDATE_CLIENTS_COUNTER)
-
-		if closeCode != 1000 {
-			m.deleteRoom(c.User.Id)
-		}
+		m.deleteRoom(c.User.Id)
+		c = nil
 	}
 }
 
@@ -128,7 +126,7 @@ func (m *Manager) broadcast(action string) {
 
 	e.Action = action
 	for c := range m.Clients {
-		if c.isInLobby {
+		if c.currentRoomId == uuid.Nil {
 			c.writeEventBuffer <- e
 		}
 	}
@@ -137,8 +135,6 @@ func (m *Manager) broadcast(action string) {
 func (m *Manager) createRoom(cr CreateRoomDTO, owner *Client) *Room {
 	r := NewRoom(cr, owner)
 	m.roomController.AddRoom(r)
-	owner.isInLobby = false
-	owner.changeRoom(r.Id)
 	m.broadcast(UPDATE_ROOMS)
 	return r
 }

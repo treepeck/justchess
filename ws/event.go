@@ -19,18 +19,13 @@ func (e *Event) Marshal() []byte {
 	return json
 }
 
-type StartGameDTO struct {
-	WhiteId string `json:"whiteId"`
-	BlackId string `json:"blackId"`
-	Control string `json:"control"`
-}
-
 // client events
 const (
-	GET_ROOMS   = "GET_ROOMS"
-	CREATE_ROOM = "CREATE_ROOM"
-	JOIN_ROOM   = "JOIN_ROOM"
-	GAME_ID     = "GAME_ID"
+	GET_ROOMS           = "GET_ROOMS"
+	CREATE_ROOM         = "CREATE_ROOM"
+	JOIN_ROOM           = "JOIN_ROOM"
+	GET_AVAILIBLE_MOVES = "GET_AVAILIBLE_MOVES"
+	MOVE                = "MOVE"
 )
 
 // server events
@@ -38,8 +33,6 @@ const (
 	UPDATE_CLIENTS_COUNTER = "UPDATE_CLIENTS_COUNTER"
 	UPDATE_ROOMS           = "UPDATE_ROOMS"
 	CHANGE_ROOM            = "CHANGE_ROOM"
-	WAITING_OPPONENT       = "WAITING_OPPONENT"
-	START_GAME             = "START_GAME"
-	OPPONENT_LEFT          = "OPPONENT_LEFT"
 	UPDATE_GAME            = "UPDATE_GAME"
+	UPDATE_AVAILIBLE_MOVES = "UPDATE_AVAILIBLE_MOVES"
 )

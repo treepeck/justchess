@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"chess-api/enums"
 	"log/slog"
 	"sync"
 
@@ -47,7 +48,7 @@ func (rc *RoomController) GetAll() (rooms []*Room) {
 
 func (rc *RoomController) FindAvailible() (rooms []*Room) {
 	for r := range rc.Rooms {
-		if r.IsAvailible {
+		if r.Game.Status == enums.Waiting {
 			rooms = append(rooms, r)
 		}
 	}
@@ -70,12 +71,4 @@ func (rc *RoomController) FindByOwnerId(id uuid.UUID) *Room {
 		}
 	}
 	return nil
-}
-
-func (rc *RoomController) CloseRoom(id uuid.UUID) {
-	for r := range rc.Rooms {
-		if r.Id == id {
-			r.IsAvailible = false
-		}
-	}
 }

@@ -2,6 +2,7 @@ package ws
 
 import (
 	"chess-api/models"
+	"chess-api/models/helpers"
 	"encoding/json"
 	"log/slog"
 	"time"
@@ -20,7 +21,7 @@ type Client struct {
 	conn             *websocket.Conn
 	manager          *Manager
 	writeEventBuffer chan Event
-	isInLobby        bool
+	currentRoomId    uuid.UUID
 }
 
 func newClient(conn *websocket.Conn, m *Manager, user models.User) *Client {
@@ -29,13 +30,14 @@ func newClient(conn *websocket.Conn, m *Manager, user models.User) *Client {
 		conn:             conn,
 		manager:          m,
 		writeEventBuffer: make(chan Event),
-		isInLobby:        true,
+		currentRoomId:    uuid.Nil,
 	}
 }
 
 // Reads all incoming messages from the connection.
 func (c *Client) readEvents() {
 	fn := slog.String("func", "hub.readEvents")
+	defer c.manager.removeClient(c)
 
 	// set the read deadline to limit inactive connections
 	c.conn.SetReadLimit(10000)
@@ -48,9 +50,6 @@ func (c *Client) readEvents() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			if e, ok := err.(*websocket.CloseError); ok {
-				c.manager.removeClient(c, e.Code)
-			}
 			return
 		}
 
@@ -58,7 +57,6 @@ func (c *Client) readEvents() {
 		err = json.Unmarshal(data, &e)
 		if err != nil {
 			slog.Warn("cannot Unmarshal event", fn, "err", err)
-			c.manager.removeClient(c, websocket.CloseInternalServerErr)
 			return
 		}
 		c.handleEvent(e)
@@ -67,8 +65,7 @@ func (c *Client) readEvents() {
 
 func (c *Client) writeEvents() {
 	fn := slog.String("func", "hub.writeEvents")
-
-	defer c.manager.removeClient(c, websocket.CloseGoingAway)
+	defer c.manager.removeClient(c)
 
 	ticker := time.NewTicker(pingInterval)
 
@@ -137,8 +134,23 @@ func (c *Client) handleEvent(e Event) {
 			slog.Warn("cannot parse roomId", fn, "err", err)
 			return
 		}
-		if r := c.manager.roomController.FindById(roomId); r != nil {
+		if r := c.manager.roomController.FindById(roomId); r != nil &&
+			c.currentRoomId == uuid.Nil {
 			r.AddPlayer(c)
+			c.changeRoom(r.Id)
+		}
+
+	case MOVE:
+		if c.currentRoomId != uuid.Nil {
+			if r := c.manager.roomController.FindById(c.currentRoomId); r != nil {
+				var pos helpers.Position
+				err := json.Unmarshal(e.Payload, &pos)
+				if err != nil {
+					slog.Warn("cannot Unmsrshal position", fn, "err", err)
+					return
+				}
+				r.HandleTakeMove(pos, c)
+			}
 		}
 
 	default:
@@ -147,12 +159,13 @@ func (c *Client) handleEvent(e Event) {
 }
 
 func (c *Client) changeRoom(roomId uuid.UUID) {
-	if r := c.manager.roomController.FindById(roomId); r != nil {
-		payload, _ := json.Marshal(roomId.String())
+	if c.currentRoomId == uuid.Nil {
+		p, _ := json.Marshal(roomId.String())
 		e := Event{
 			Action:  CHANGE_ROOM,
-			Payload: payload,
+			Payload: p,
 		}
+		c.currentRoomId = roomId
 		c.writeEventBuffer <- e
 	}
 }
