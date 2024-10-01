@@ -1,14 +1,14 @@
 package pieces
 
 import (
-	"chess-api/enums"
+	"chess-api/models/enums"
 	"chess-api/models/helpers"
 )
 
 type Piece interface {
-	Move()
+	Move(pieces map[helpers.Pos]Piece, to helpers.Pos) bool
 	GetName() enums.Piece
 	GetColor() enums.Color
-	GetPosition() helpers.Position
-	// GetAvailibleMoves(map[string]Piece) []helpers.Position
+	GetPosition() helpers.Pos
+	GetAvailibleMoves(pieces map[helpers.Pos]Piece) []helpers.Pos
 }

@@ -103,12 +103,26 @@ func (c *Client) handleEvent(e Event) {
 	switch e.Action {
 
 	case GET_ROOMS:
-		rooms, err := json.Marshal(c.manager.roomController.FindAvailible())
+		var gr GetRoomDTO
+		err := json.Unmarshal(e.Payload, &gr)
+		if err != nil {
+			slog.Warn("cannot Unmarshal GetRoomDTO", fn, "err", err)
+			return
+		}
+
+		e := Event{
+			Action: UPDATE_ROOMS,
+		}
+		var rooms []byte
+		if gr.Bonus == "All" && gr.Control == "All" {
+			rooms, err = json.Marshal(c.manager.roomController.FindAvailible())
+		} else {
+			rooms, err = json.Marshal(c.manager.roomController.FilterRooms(gr))
+		}
 		if err != nil {
 			slog.Warn("cannot Marshal rooms", fn, "err", err)
 			return
 		}
-		e.Action = UPDATE_ROOMS
 		e.Payload = rooms
 		c.writeEventBuffer <- e
 
@@ -140,16 +154,26 @@ func (c *Client) handleEvent(e Event) {
 			c.changeRoom(r.Id)
 		}
 
+	case GET_GAME:
+		var idStr string
+		json.Unmarshal(e.Payload, &idStr)
+		roomId, err := uuid.Parse(idStr)
+		if err == nil && c.currentRoomId == roomId {
+			if r := c.manager.roomController.FindById(roomId); r != nil {
+				r.HandleGetGame(c)
+			}
+		}
+
 	case MOVE:
 		if c.currentRoomId != uuid.Nil {
 			if r := c.manager.roomController.FindById(c.currentRoomId); r != nil {
-				var pos helpers.Position
-				err := json.Unmarshal(e.Payload, &pos)
+				var move helpers.MoveDTO
+				err := json.Unmarshal(e.Payload, &move)
 				if err != nil {
 					slog.Warn("cannot Unmsrshal position", fn, "err", err)
 					return
 				}
-				r.HandleTakeMove(pos, c)
+				r.HandleTakeMove(move, c)
 			}
 		}
 

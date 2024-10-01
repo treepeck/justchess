@@ -21,11 +21,11 @@ func (e *Event) Marshal() []byte {
 
 // client events
 const (
-	GET_ROOMS           = "GET_ROOMS"
-	CREATE_ROOM         = "CREATE_ROOM"
-	JOIN_ROOM           = "JOIN_ROOM"
-	GET_AVAILIBLE_MOVES = "GET_AVAILIBLE_MOVES"
-	MOVE                = "MOVE"
+	GET_ROOMS   = "GET_ROOMS"
+	CREATE_ROOM = "CREATE_ROOM"
+	JOIN_ROOM   = "JOIN_ROOM"
+	GET_GAME    = "GET_GAME"
+	MOVE        = "MOVE"
 )
 
 // server events
@@ -34,5 +34,4 @@ const (
 	UPDATE_ROOMS           = "UPDATE_ROOMS"
 	CHANGE_ROOM            = "CHANGE_ROOM"
 	UPDATE_GAME            = "UPDATE_GAME"
-	UPDATE_AVAILIBLE_MOVES = "UPDATE_AVAILIBLE_MOVES"
 )

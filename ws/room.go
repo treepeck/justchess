@@ -1,8 +1,8 @@
 package ws
 
 import (
-	"chess-api/enums"
 	"chess-api/models"
+	"chess-api/models/enums"
 	"chess-api/models/helpers"
 	"encoding/json"
 	"log/slog"
@@ -25,6 +25,11 @@ type CreateRoomDTO struct {
 	Control enums.Control `json:"control"`
 	Bonus   uint          `json:"bonus"`
 	Owner   models.User   `json:"owner"`
+}
+
+type GetRoomDTO struct {
+	Control string `json:"control"`
+	Bonus   string `json:"bonus"`
 }
 
 func NewRoom(cr CreateRoomDTO, owner *Client) *Room {
@@ -70,6 +75,7 @@ func (r *Room) AddPlayer(c *Client) {
 			r.Game.BlackId = c.User.Id
 			c.changeRoom(r.Id)
 		}
+		r.Game.Status = enums.Continues
 	} else {
 		// handle reconnection
 		if r.Game.WhiteId == c.User.Id {
@@ -114,34 +120,32 @@ func (r *Room) Broadcast(action string) {
 	}
 }
 
-// func (r *Room) HandleGetAvailibleMoves(pos helpers.Position, c *Client) {
-// 	fn := slog.String("func", "HandleGetAvailibleMoves")
+func (r *Room) HandleTakeMove(move helpers.MoveDTO, c *Client) {
+	index := r.Game.Moves.Depth() + 1
+	isEven := index%2 == 0
+	// for the white player the current move number must be odd
+	if !isEven && c.User.Id == r.Game.WhiteId {
+		if r.Game.TakeMove(move) {
+			r.Broadcast(UPDATE_GAME)
+		}
+	} else if isEven && c.User.Id == r.Game.BlackId {
+		if r.Game.TakeMove(move) {
+			r.Broadcast(UPDATE_GAME)
+		}
+	}
+}
 
-// 	// check if player is availible to move
-// 	if len(r.Game.Moves.Moves)%2 == 0 && r.Game.WhiteId == c.User.Id {
-// 		return
-// 	} else if len(r.Game.Moves.Moves)%2 != 0 && r.Game.BlackId == c.User.Id {
-// 		return
-// 	}
-
-// 	if moves := r.Game.GetAvailibleMoves(pos); moves != nil {
-// 		p, err := json.Marshal(moves)
-// 		if err != nil {
-// 			slog.Warn("cannot Marshal availible moves", fn, "err", err)
-// 			return
-// 		}
-
-// 		e := Event{
-// 			Action:  UPDATE_AVAILIBLE_MOVES,
-// 			Payload: p,
-// 		}
-// 		c.writeEventBuffer <- e
-// 	}
-// }
-
-func (r *Room) HandleTakeMove(pos helpers.Position, c *Client) {
-	// check if the player is availible to move
-	// if r.Game.WhiteId == c.User.Id && r.Game.Moves {
-
-	// }
+func (r *Room) HandleGetGame(c *Client) {
+	fn := slog.String("func", "HandleGetName")
+	// send updated game info back to the client
+	p, err := json.Marshal(r.Game)
+	if err != nil {
+		slog.Warn("cannot Marshal game", fn, "err", err)
+		return
+	}
+	e := Event{
+		Action:  UPDATE_GAME,
+		Payload: p,
+	}
+	c.writeEventBuffer <- e
 }

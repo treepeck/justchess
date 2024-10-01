@@ -1,25 +1,25 @@
 package models
 
 import (
-	"chess-api/enums"
+	"chess-api/models/enums"
 	"chess-api/models/helpers"
 	"chess-api/models/pieces"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type Game struct {
-	Id       uuid.UUID          `json:"id"`
-	Control  enums.Control      `json:"control"`
-	Bonus    uint               `json:"bonus"` // 0 | 1 | 2 | 10
-	Status   enums.Status       `json:"status"`
-	WhiteId  uuid.UUID          `json:"whiteId"`
-	BlackId  uuid.UUID          `json:"blackId"`
-	PlayedAt time.Time          `json:"playedAt"`
-	Moves    helpers.MovesStack `json:"moves"`
-	// string is a Position type presented as string
-	Pieces map[string]pieces.Piece `json:"pieces"`
+	Id       uuid.UUID                    `json:"id"`
+	Control  enums.Control                `json:"control"`
+	Bonus    uint                         `json:"bonus"` // 0 | 1 | 2 | 10
+	Status   enums.Status                 `json:"status"`
+	WhiteId  uuid.UUID                    `json:"whiteId"`
+	BlackId  uuid.UUID                    `json:"blackId"`
+	PlayedAt time.Time                    `json:"playedAt"`
+	Moves    helpers.MovesStack           `json:"moves"`
+	Pieces   map[helpers.Pos]pieces.Piece `json:"pieces"`
 }
 
 type CreateGameDTO struct {
@@ -42,11 +42,41 @@ func NewGame(id uuid.UUID, control enums.Control,
 		BlackId:  blackId,
 		PlayedAt: time.Now(),
 		Moves:    *helpers.NewMovesStack(),
-		Pieces:   make(map[string]pieces.Piece),
+		Pieces:   make(map[helpers.Pos]pieces.Piece),
 	}
 
 	g.initPieces()
 	return g
+}
+
+func (g *Game) MarshalJSON() ([]byte, error) {
+	gameDTO := struct {
+		Id       uuid.UUID               `json:"id"`
+		Control  enums.Control           `json:"control"`
+		Bonus    uint                    `json:"bonus"` // 0 | 1 | 2 | 10
+		Status   enums.Status            `json:"status"`
+		WhiteId  uuid.UUID               `json:"whiteId"`
+		BlackId  uuid.UUID               `json:"blackId"`
+		PlayedAt time.Time               `json:"playedAt"`
+		Moves    helpers.MovesStack      `json:"moves"`
+		Pieces   map[string]pieces.Piece `json:"pieces"`
+	}{
+		Id:       g.Id,
+		Control:  g.Control,
+		Bonus:    g.Bonus,
+		Status:   g.Status,
+		WhiteId:  g.WhiteId,
+		BlackId:  g.BlackId,
+		PlayedAt: g.PlayedAt,
+		Moves:    g.Moves,
+		Pieces:   make(map[string]pieces.Piece),
+	}
+
+	for pos, piece := range g.Pieces {
+		gameDTO.Pieces[pos.String()] = piece
+	}
+
+	return json.Marshal(gameDTO)
 }
 
 func (g *Game) initPieces() {
@@ -59,79 +89,79 @@ func (g *Game) initPieces() {
 }
 
 func (g *Game) initPawns() {
-	for i := 0; i < 8; i++ {
+	for i := 1; i <= 8; i++ {
 		pos := helpers.PosFromInd(1, i)
-		g.Pieces[pos.String()] = pieces.NewPawn(enums.Black, pos)
+		g.Pieces[pos] = pieces.NewPawn(enums.Black, pos)
 
 		pos = helpers.PosFromInd(6, i)
-		g.Pieces[pos.String()] = pieces.NewPawn(enums.White, pos)
+		g.Pieces[pos] = pieces.NewPawn(enums.White, pos)
 	}
 }
 
 func (g *Game) initRooks() {
-	positions := []int{0, 7}
+	positions := []int{1, 8}
 
 	for i := 0; i < 2; i++ {
 		pos := helpers.PosFromInd(0, positions[i])
-		g.Pieces[pos.String()] = pieces.NewRook(enums.Black, pos)
+		g.Pieces[pos] = pieces.NewRook(enums.Black, pos)
 
 		pos = helpers.PosFromInd(7, positions[i])
-		g.Pieces[pos.String()] = pieces.NewRook(enums.White, pos)
+		g.Pieces[pos] = pieces.NewRook(enums.White, pos)
 	}
 }
 
 func (g *Game) initKnights() {
-	positions := []int{1, 6}
+	positions := []int{2, 7}
 
 	for i := 0; i < 2; i++ {
 		pos := helpers.PosFromInd(0, positions[i])
-		g.Pieces[pos.String()] = pieces.NewKnight(enums.Black, pos)
+		g.Pieces[pos] = pieces.NewKnight(enums.Black, pos)
 
 		pos = helpers.PosFromInd(7, positions[i])
-		g.Pieces[pos.String()] = pieces.NewKnight(enums.White, pos)
+		g.Pieces[pos] = pieces.NewKnight(enums.White, pos)
 	}
 }
 
 func (g *Game) initBishops() {
-	positions := []int{2, 5}
+	positions := []int{3, 6}
 
 	for i := 0; i < 2; i++ {
 		pos := helpers.PosFromInd(0, positions[i])
-		g.Pieces[pos.String()] = pieces.NewBishop(enums.Black, pos)
+		g.Pieces[pos] = pieces.NewBishop(enums.Black, pos)
 
 		pos = helpers.PosFromInd(7, positions[i])
-		g.Pieces[pos.String()] = pieces.NewBishop(enums.White, pos)
+		g.Pieces[pos] = pieces.NewBishop(enums.White, pos)
 	}
 }
 
 func (g *Game) initQueens() {
-	pos := helpers.PosFromInd(0, 3)
-	g.Pieces[pos.String()] = pieces.NewQueen(enums.Black, pos)
+	pos := helpers.PosFromInd(0, 4)
+	g.Pieces[pos] = pieces.NewQueen(enums.Black, pos)
 
-	pos = helpers.PosFromInd(7, 3)
-	g.Pieces[pos.String()] = pieces.NewQueen(enums.White, pos)
+	pos = helpers.PosFromInd(7, 4)
+	g.Pieces[pos] = pieces.NewQueen(enums.White, pos)
 }
 
 func (g *Game) initKings() {
-	pos := helpers.PosFromInd(0, 4)
-	g.Pieces[pos.String()] = pieces.NewKing(enums.Black, pos)
+	pos := helpers.PosFromInd(0, 5)
+	g.Pieces[pos] = pieces.NewKing(enums.Black, pos)
 
-	pos = helpers.PosFromInd(7, 4)
-	g.Pieces[pos.String()] = pieces.NewKing(enums.White, pos)
+	pos = helpers.PosFromInd(7, 5)
+	g.Pieces[pos] = pieces.NewKing(enums.White, pos)
 }
 
-func (g *Game) TakeMove(startPos, endPos helpers.Position) {
-	// the user can only take a move if they previously select a square
-	// if g.selectedSquare.Rank != 0 && g.selectedSquare.File != 0 {
-	// 	for _, pos := range g.availibleMoves {
-	// 		// check if the move is availible
-	// 		if pos.File == endPos.File && pos.Rank == endPos.Rank {
-	// 			// remove piece from previous position
-	// 			piece := g.Pieces[g.selectedSquare.String()]
-	// 			g.Pieces[g.selectedSquare.String()] = nil
-	// 			// move piece to a new position
-	// 			g.Pieces[endPos.String()] = piece
-	// 		}
-	// 	}
-	// }
+func (g *Game) TakeMove(move helpers.MoveDTO) bool {
+	// check is there a piece at a beginning position
+	piece := g.Pieces[move.BeginPos]
+	if piece != nil {
+		if piece.Move(g.Pieces, move.EndPos) {
+			g.Moves.Push(helpers.Move{
+				Index:             uint(g.Moves.Depth()) + 1,
+				SecondsLeft:       0,
+				AlgebraicNotation: " ",
+			})
+			return true
+		}
+	}
+	return false
 }

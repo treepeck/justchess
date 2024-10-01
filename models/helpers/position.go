@@ -1,47 +1,48 @@
 package helpers
 
 import (
-	"chess-api/enums"
 	"fmt"
 )
 
-type Position struct {
-	File enums.File `json:"file"`
-	Rank int        `json:"rank"` // 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+type Pos struct {
+	File int `json:"file"` // 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+	Rank int `json:"rank"` // 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
 }
 
-func PosFromInd(i, j int) Position {
-	var file enums.File
-	switch j {
-	case 0:
-		file = enums.A
-	case 1:
-		file = enums.B
-	case 2:
-		file = enums.C
-	case 3:
-		file = enums.D
-	case 4:
-		file = enums.E
-	case 5:
-		file = enums.F
-	case 6:
-		file = enums.G
-	case 7:
-		file = enums.H
-	default:
-		panic("unknown file")
-	}
-	return Position{
-		File: file,
+func NewPos(file, rank int) Pos {
+	return Pos{File: file, Rank: rank}
+}
+
+func PosFromInd(i, j int) Pos {
+	return Pos{
+		File: j,
 		Rank: 8 - i,
 	}
 }
 
-func (p Position) IsInBoard() bool {
-	return (p.File >= 0 && p.File <= 7) && (p.Rank >= 1 && p.Rank <= 8)
+func (p Pos) IsInBoard() bool {
+	return (p.File >= 1 && p.File <= 8) && (p.Rank >= 1 && p.Rank <= 8)
 }
 
-func (p Position) String() string {
-	return fmt.Sprintf("%s%d", p.File.String(), p.Rank)
+func (p Pos) String() string {
+	file := ""
+	switch p.File {
+	case 1:
+		file = "a"
+	case 2:
+		file = "b"
+	case 3:
+		file = "c"
+	case 4:
+		file = "d"
+	case 5:
+		file = "e"
+	case 6:
+		file = "f"
+	case 7:
+		file = "g"
+	case 8:
+		file = "h"
+	}
+	return fmt.Sprintf("%s%d", file, p.Rank)
 }
