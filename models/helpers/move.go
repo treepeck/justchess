@@ -1,15 +1,23 @@
 package helpers
 
+import "chess-api/models/enums"
+
 type Move struct {
-	Index             uint   `json:"index"`
-	SecondsLeft       uint   `json:"secondsLeft"`
-	AlgebraicNotation string `json:"algebraicNotation"`
+	To          Pos            `json:"to"`
+	From        Pos            `json:"from"`
+	MoveType    enums.MoveType `json:"moveType"`
+	IsCheck     bool           `json:"isCheck"`
+	IsCheckmate bool           `json:"isCheckmate"`
+	IsCapture   bool           `json:"isCapture"`
+	SecondsLeft uint           `json:"secondsLeft"`
+	// determines the selected piece that the pawn will be promoted to
+	PromotionPayload enums.Piece `json:"promotionPayload"`
 }
 
 type MoveDTO struct {
-	BeginPos      Pos  `json:"beginPos"`
-	EndPos        Pos  `json:"endPos"`
-	IsSpecialMove bool `json:"isSpecialMove"`
+	To               Pos         `json:"to"`
+	From             Pos         `json:"from"`
+	PromotionPayload enums.Piece `json:"promotionPayload"`
 }
 
 type MovesStack struct {

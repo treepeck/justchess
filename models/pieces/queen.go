@@ -3,7 +3,6 @@ package pieces
 import (
 	"chess-api/models/enums"
 	"chess-api/models/helpers"
-	"log/slog"
 )
 
 type Queen struct {
@@ -22,8 +21,18 @@ func NewQueen(color enums.Color, pos helpers.Pos) *Queen {
 	}
 }
 
-func (q *Queen) Move(pieces map[helpers.Pos]Piece, to helpers.Pos) bool {
-	slog.Debug("Queen Move")
+func (q *Queen) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
+	// possibleMoves := q.GetPossibleMoves(pieces)
+	// for _, pm := range possibleMoves {
+	// 	if pm.To.IsEqual(move.To) && pm.MoveType != enums.Defend {
+	// 		pieces[q.Pos] = nil
+	// 		pieces[pm.To] = q
+	// 		q.Pos = pm.To
+
+	// 		return true
+	// 	}
+	// }
+
 	return false
 }
 
@@ -39,6 +48,20 @@ func (q *Queen) GetPosition() helpers.Pos {
 	return q.Pos
 }
 
-func (q *Queen) GetAvailibleMoves(map[helpers.Pos]Piece) []helpers.Pos {
-	return make([]helpers.Pos, 0)
+func (q *Queen) GetPossibleMoves(pieces map[helpers.Pos]Piece,
+) map[helpers.Pos]enums.MoveType {
+	possibleMoves := make(map[helpers.Pos]enums.MoveType)
+
+	// queen moves is just a concatenation of the rook and the bishop moves
+	rook := NewRook(q.Color, q.Pos)
+	bishop := NewBishop(q.Color, q.Pos)
+
+	for pos, mt := range rook.GetPossibleMoves(pieces) {
+		possibleMoves[pos] = mt
+	}
+	for pos, mt := range bishop.GetPossibleMoves(pieces) {
+		possibleMoves[pos] = mt
+	}
+
+	return possibleMoves
 }

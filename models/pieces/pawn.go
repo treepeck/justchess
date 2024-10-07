@@ -6,48 +6,60 @@ import (
 )
 
 type Pawn struct {
-	Color        enums.Color `json:"color"`
-	MovesCounter uint        `json:"movesCounter"`
-	EnPassant    bool        `json:"enPassant"`
 	Pos          helpers.Pos `json:"pos"`
 	Name         enums.Piece `json:"name"`
-	IsCaptured   bool        `json:"isCaptured"`
+	Color        enums.Color `json:"color"`
+	MovesCounter uint        `json:"movesCounter"`
+	IsEnPassant  bool        `json:"isEnPassant"`
 }
 
 func NewPawn(color enums.Color, pos helpers.Pos) *Pawn {
 	return &Pawn{
-		Color:        color,
-		MovesCounter: 0,
 		Pos:          pos,
 		Name:         enums.Pawn,
-		IsCaptured:   false,
+		Color:        color,
+		MovesCounter: 0,
+		IsEnPassant:  false,
 	}
 }
 
-func (p *Pawn) Move(pieces map[helpers.Pos]Piece, to helpers.Pos) bool {
-	availibleMoves := p.GetAvailibleMoves(pieces)
-	for _, pos := range availibleMoves {
-		if to.File == pos.File && to.Rank == pos.Rank {
-			// needed to determine en passant moves
-			beginRank := p.Pos.Rank
-			// move the pawn
-			pieces[p.Pos] = nil
-			pieces[to] = p
+func (p *Pawn) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
+	possibleMoves := p.GetPossibleMoves(pieces)
 
-			p.Pos = to
-			p.MovesCounter++
-
-			// check if en passant move
-			if p.MovesCounter > 1 {
-				p.EnPassant = false
-			} else if p.MovesCounter == 1 {
-				if beginRank-p.Pos.Rank == 2 || beginRank-p.Pos.Rank == -2 {
-					p.EnPassant = true
-				}
-			}
-			return true
+	pm := possibleMoves[move.To]
+	if pm != 0 && pm != enums.Defend {
+		if pieces[move.To] != nil {
+			move.IsCapture = true
 		}
+
+		delete(pieces, move.From)
+		pieces[move.To] = p
+		p.MovesCounter++
+		p.Pos = move.To
+
+		if pm == enums.Promotion {
+			switch move.PromotionPayload {
+			case enums.Knight:
+				pieces[p.Pos] = NewKnight(p.Color, move.To)
+			case enums.Bishop:
+				pieces[p.Pos] = NewBishop(p.Color, move.To)
+			case enums.Rook:
+				rook := NewRook(p.Color, move.To)
+				rook.MovesCounter = p.MovesCounter
+				pieces[p.Pos] = rook
+			default:
+				pieces[p.Pos] = NewQueen(p.Color, move.To)
+			}
+		} else if pm == enums.EnPassant {
+			if p.Color == enums.White {
+				delete(pieces, helpers.NewPos(p.Pos.File, p.Pos.Rank-1))
+			} else {
+				delete(pieces, helpers.NewPos(p.Pos.File, p.Pos.Rank+1))
+			}
+		}
+		return true
 	}
+
 	return false
 }
 
@@ -67,54 +79,70 @@ func (p *Pawn) GetMovesCounter() uint {
 	return p.MovesCounter
 }
 
-func (p *Pawn) GetAvailibleMoves(pieces map[helpers.Pos]Piece) []helpers.Pos {
-	// calculate move direction
+func (p *Pawn) GetPossibleMoves(pieces map[helpers.Pos]Piece,
+) map[helpers.Pos]enums.MoveType {
+	// define move direction
 	dir := 1
 	if p.Color == enums.Black {
 		dir = -1
 	}
 
-	availibleMoves := make([]helpers.Pos, 0)
+	possibleMoves := make(map[helpers.Pos]enums.MoveType)
 
 	// check if can move forward
 	forward := helpers.NewPos(p.Pos.File, p.Pos.Rank+dir)
 	if forward.IsInBoard() {
 		if pieces[forward] == nil {
-			availibleMoves = append(availibleMoves, forward)
+			if forward.Rank > 1 && forward.Rank < 8 {
+				possibleMoves[forward] = enums.Basic
+			} else {
+				// promition is possible
+				possibleMoves[forward] = enums.Promotion
+			}
 		}
 
 		if p.MovesCounter == 0 {
 			doubleForward := helpers.NewPos(p.Pos.File, p.Pos.Rank+dir*2)
 			if pieces[doubleForward] == nil {
-				availibleMoves = append(availibleMoves, doubleForward)
+				// promotion is impossible in a first move
+				possibleMoves[doubleForward] = enums.Basic
 			}
 		}
 	}
 
-	// left diagonal -1, right diagonal +1
-	for _, df := range []int{-1, 1} {
-		diagonal := helpers.NewPos(p.Pos.File+df, p.Pos.Rank+dir)
-		enPassantDiagonal := helpers.NewPos(diagonal.File, p.Pos.Rank)
+	// left file = -1, right file = +1
+	for _, f := range []int{-1, 1} {
+		diagonal := helpers.NewPos(p.Pos.File+f, p.Pos.Rank+dir)
+		possibleEnPassant := helpers.NewPos(diagonal.File, p.Pos.Rank)
 
 		if diagonal.IsInBoard() {
-			targetPiece := pieces[diagonal]
+			// in any case the pawn defends the square
+			possibleMoves[diagonal] = enums.Defend
 
+			targetPiece := pieces[diagonal]
 			if targetPiece == nil {
-				// check en passant
-				enPassant := pieces[enPassantDiagonal]
-				if enPassant != nil && enPassant.GetName() == enums.Pawn &&
-					enPassant.GetColor() != p.Color {
-					if enPassant.(*Pawn).EnPassant {
-						availibleMoves = append(availibleMoves, diagonal)
+				// check en passant case
+				ep := pieces[possibleEnPassant]
+				// if it is a pawn
+				if ep != nil && ep.GetName() == enums.Pawn &&
+					ep.GetColor() != p.Color {
+					// if it can be captured en passant
+					if ep.(*Pawn).IsEnPassant {
+						possibleMoves[diagonal] = enums.EnPassant
 					}
 				}
 			} else {
+				// if there is an enemy piece
 				if targetPiece.GetColor() != p.Color {
-					availibleMoves = append(availibleMoves, diagonal)
+					possibleMoves[diagonal] = enums.Basic
+					if targetPiece.GetPosition().Rank == 1 ||
+						targetPiece.GetPosition().Rank == 8 {
+						possibleMoves[diagonal] = enums.Promotion
+					}
 				}
 			}
 		}
 	}
 
-	return availibleMoves
+	return possibleMoves
 }

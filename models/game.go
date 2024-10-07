@@ -81,11 +81,11 @@ func (g *Game) MarshalJSON() ([]byte, error) {
 
 func (g *Game) initPieces() {
 	g.initPawns()
-	g.initRooks()
-	g.initKnights()
-	g.initBishops()
-	g.initQueens()
-	g.initKings()
+	// g.initRooks()
+	// g.initKnights()
+	// g.initBishops()
+	// g.initQueens()
+	// g.initKings()
 }
 
 func (g *Game) initPawns() {
@@ -98,68 +98,112 @@ func (g *Game) initPawns() {
 	}
 }
 
-func (g *Game) initRooks() {
-	positions := []int{1, 8}
+// func (g *Game) initRooks() {
+// 	positions := []int{1, 8}
 
-	for i := 0; i < 2; i++ {
-		pos := helpers.PosFromInd(0, positions[i])
-		g.Pieces[pos] = pieces.NewRook(enums.Black, pos)
+// 	for i := 0; i < 2; i++ {
+// 		pos := helpers.PosFromInd(0, positions[i])
+// 		g.Pieces[pos] = pieces.NewRook(enums.Black, pos)
 
-		pos = helpers.PosFromInd(7, positions[i])
-		g.Pieces[pos] = pieces.NewRook(enums.White, pos)
-	}
-}
+// 		pos = helpers.PosFromInd(7, positions[i])
+// 		g.Pieces[pos] = pieces.NewRook(enums.White, pos)
+// 	}
+// }
 
-func (g *Game) initKnights() {
-	positions := []int{2, 7}
+// func (g *Game) initKnights() {
+// 	positions := []int{2, 7}
 
-	for i := 0; i < 2; i++ {
-		pos := helpers.PosFromInd(0, positions[i])
-		g.Pieces[pos] = pieces.NewKnight(enums.Black, pos)
+// 	for i := 0; i < 2; i++ {
+// 		pos := helpers.PosFromInd(0, positions[i])
+// 		g.Pieces[pos] = pieces.NewKnight(enums.Black, pos)
 
-		pos = helpers.PosFromInd(7, positions[i])
-		g.Pieces[pos] = pieces.NewKnight(enums.White, pos)
-	}
-}
+// 		pos = helpers.PosFromInd(7, positions[i])
+// 		g.Pieces[pos] = pieces.NewKnight(enums.White, pos)
+// 	}
+// }
 
-func (g *Game) initBishops() {
-	positions := []int{3, 6}
+// func (g *Game) initBishops() {
+// 	positions := []int{3, 6}
 
-	for i := 0; i < 2; i++ {
-		pos := helpers.PosFromInd(0, positions[i])
-		g.Pieces[pos] = pieces.NewBishop(enums.Black, pos)
+// 	for i := 0; i < 2; i++ {
+// 		pos := helpers.PosFromInd(0, positions[i])
+// 		g.Pieces[pos] = pieces.NewBishop(enums.Black, pos)
 
-		pos = helpers.PosFromInd(7, positions[i])
-		g.Pieces[pos] = pieces.NewBishop(enums.White, pos)
-	}
-}
+// 		pos = helpers.PosFromInd(7, positions[i])
+// 		g.Pieces[pos] = pieces.NewBishop(enums.White, pos)
+// 	}
+// }
 
-func (g *Game) initQueens() {
-	pos := helpers.PosFromInd(0, 4)
-	g.Pieces[pos] = pieces.NewQueen(enums.Black, pos)
+// func (g *Game) initQueens() {
+// 	pos := helpers.PosFromInd(0, 4)
+// 	g.Pieces[pos] = pieces.NewQueen(enums.Black, pos)
 
-	pos = helpers.PosFromInd(7, 4)
-	g.Pieces[pos] = pieces.NewQueen(enums.White, pos)
-}
+// 	pos = helpers.PosFromInd(7, 4)
+// 	g.Pieces[pos] = pieces.NewQueen(enums.White, pos)
+// }
 
-func (g *Game) initKings() {
-	pos := helpers.PosFromInd(0, 5)
-	g.Pieces[pos] = pieces.NewKing(enums.Black, pos)
+// func (g *Game) initKings() {
+// 	pos := helpers.PosFromInd(0, 5)
+// 	g.Pieces[pos] = pieces.NewKing(enums.Black, pos)
 
-	pos = helpers.PosFromInd(7, 5)
-	g.Pieces[pos] = pieces.NewKing(enums.White, pos)
-}
+// 	pos = helpers.PosFromInd(7, 5)
+// 	g.Pieces[pos] = pieces.NewKing(enums.White, pos)
+// }
 
-func (g *Game) TakeMove(move helpers.MoveDTO) bool {
-	// check is there a piece at a beginning position
-	piece := g.Pieces[move.BeginPos]
+func (g *Game) TakeMove(md helpers.MoveDTO) bool {
+	piece := g.Pieces[md.From]
 	if piece != nil {
-		if piece.Move(g.Pieces, move.EndPos) {
-			g.Moves.Push(helpers.Move{
-				Index:             uint(g.Moves.Depth()) + 1,
-				SecondsLeft:       0,
-				AlgebraicNotation: " ",
-			})
+		move := &helpers.Move{
+			To:               md.To,
+			From:             md.From,
+			PromotionPayload: md.PromotionPayload,
+		}
+
+		if piece.Move(g.Pieces, move) {
+			// figure out which pawns can be captured en passant
+			g.checkEnPassantPawns(move)
+			// check is the move was a check
+			g.isCheckMove(move)
+
+			g.Moves.Push(*move)
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Game) checkEnPassantPawns(lastMove *helpers.Move) {
+	for pos, piece := range g.Pieces {
+		if piece.GetName() == enums.Pawn {
+			piece.(*pieces.Pawn).IsEnPassant = false
+			if pos == lastMove.To {
+				if (pos.Rank == 4 || pos.Rank == 5) &&
+					piece.(*pieces.Pawn).MovesCounter == 1 {
+					piece.(*pieces.Pawn).IsEnPassant = true
+				}
+			}
+		}
+	}
+}
+
+func (g *Game) isCheckMove(lastMove *helpers.Move) {
+	piece := g.Pieces[lastMove.To]
+	possilbeMoves := piece.GetPossibleMoves(g.Pieces)
+
+	for pos, mt := range possilbeMoves {
+		if mt != enums.Defend {
+			if g.Pieces[pos] != nil && g.Pieces[pos].GetName() == enums.King {
+				// check if the lastMove was a checkmate
+				lastMove.IsCheckmate = g.isCheckmate(pos)
+				lastMove.IsCheck = true
+			}
+		}
+	}
+}
+
+func (g *Game) isCheckmate(pos helpers.Pos) bool {
+	if g.Pieces[pos] != nil && g.Pieces[pos].GetName() == enums.King {
+		if len(g.Pieces[pos].GetPossibleMoves(g.Pieces)) == 0 {
 			return true
 		}
 	}

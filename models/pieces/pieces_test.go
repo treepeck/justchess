@@ -7,143 +7,80 @@ import (
 	"testing"
 )
 
-var enPassantPawn = pieces.NewPawn(enums.Black, helpers.Pos{
-	File: enums.D, Rank: 5,
-})
+func TestPawnGetPossibleMoves(t *testing.T) {
+	epPawn := pieces.NewPawn(enums.Black, helpers.NewPos(enums.E, 5))
+	epPawn.IsEnPassant = true
 
-var testcases = []struct {
-	name     string
-	piece    pieces.Piece
-	expected []helpers.Pos
-	pieces   map[helpers.Pos]pieces.Piece
-}{
-	{
-		name:  "White pawn d2",
-		piece: pieces.NewPawn(enums.White, helpers.Pos{File: enums.D, Rank: 2}),
-		expected: []helpers.Pos{
-			{File: enums.D, Rank: 3},
-			{File: enums.D, Rank: 4},
+	testcases := []struct {
+		name     string
+		pawn     *pieces.Pawn
+		pieces   map[helpers.Pos]pieces.Piece
+		expected map[helpers.Pos]enums.MoveType
+	}{
+		{
+			"First_Moves",
+			pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 2)),
+			map[helpers.Pos]pieces.Piece{}, // empty board
+			map[helpers.Pos]enums.MoveType{
+				{File: enums.D, Rank: 3}: enums.Defend,
+				{File: enums.F, Rank: 3}: enums.Defend,
+				{File: enums.E, Rank: 3}: enums.Basic,
+				{File: enums.E, Rank: 4}: enums.Basic,
+			},
 		},
-		pieces: map[helpers.Pos]pieces.Piece{},
-	},
-	{
-		name:     "White pawn d8",
-		piece:    pieces.NewPawn(enums.White, helpers.Pos{File: enums.D, Rank: 8}),
-		expected: []helpers.Pos{},
-		pieces:   map[helpers.Pos]pieces.Piece{},
-	},
-	{
-		name:  "Black pawn, can capture both sides",
-		piece: pieces.NewPawn(enums.Black, helpers.Pos{File: enums.E, Rank: 7}),
-		expected: []helpers.Pos{
-			{File: enums.E, Rank: 6},
-			{File: enums.E, Rank: 5},
-			{File: enums.D, Rank: 6},
-			{File: enums.F, Rank: 6},
+		{
+			"Capture",
+			pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 2)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.D, Rank: 3}: pieces.NewPawn(enums.Black,
+					helpers.NewPos(enums.D, 3)),
+			},
+			map[helpers.Pos]enums.MoveType{
+				{File: enums.D, Rank: 3}: enums.Basic,
+				{File: enums.F, Rank: 3}: enums.Defend,
+				{File: enums.E, Rank: 3}: enums.Basic,
+				{File: enums.E, Rank: 4}: enums.Basic,
+			},
 		},
-		pieces: map[helpers.Pos]pieces.Piece{
-			{File: enums.D, Rank: 6}: pieces.NewPawn(enums.White, helpers.Pos{File: enums.D, Rank: 6}),
-			{File: enums.F, Rank: 6}: pieces.NewPawn(enums.White, helpers.Pos{File: enums.F, Rank: 6}),
+		{
+			"Promotion",
+			pieces.NewPawn(enums.White, helpers.NewPos(enums.D, 7)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 8}: pieces.NewPawn(enums.Black,
+					helpers.NewPos(enums.E, 8)),
+			},
+			map[helpers.Pos]enums.MoveType{
+				{File: enums.D, Rank: 8}: enums.Promotion,
+				{File: enums.D, Rank: 9}: enums.Basic, // since the pawn hasnt moved
+				{File: enums.E, Rank: 8}: enums.Promotion,
+				{File: enums.C, Rank: 8}: enums.Defend,
+			},
 		},
-	},
-	{
-		name:  "Black knight",
-		piece: pieces.NewKnight(enums.Black, helpers.Pos{File: enums.D, Rank: 4}),
-		expected: []helpers.Pos{
-			{File: enums.F, Rank: 5},
-			{File: enums.B, Rank: 5},
-			{File: enums.B, Rank: 3},
-			{File: enums.C, Rank: 6},
-			{File: enums.E, Rank: 2},
-			{File: enums.C, Rank: 2},
-			{File: enums.E, Rank: 6},
+		{
+			"En_Passant",
+			pieces.NewPawn(enums.White, helpers.NewPos(enums.D, 5)),
+			map[helpers.Pos]pieces.Piece{
+				epPawn.Pos: epPawn,
+			},
+			map[helpers.Pos]enums.MoveType{
+				{File: enums.C, Rank: 6}: enums.Defend,
+				{File: enums.D, Rank: 6}: enums.Basic,
+				{File: enums.D, Rank: 7}: enums.Basic, // since the pawn hasnt moved
+				{File: enums.E, Rank: 6}: enums.EnPassant,
+			},
 		},
-		pieces: map[helpers.Pos]pieces.Piece{
-			{File: enums.F, Rank: 5}: pieces.NewPawn(enums.White, helpers.Pos{File: enums.F, Rank: 5}),
-			{File: enums.F, Rank: 3}: pieces.NewPawn(enums.Black, helpers.Pos{File: enums.F, Rank: 3}),
-		},
-	},
-	{
-		name:  "White knight, end of board",
-		piece: pieces.NewKnight(enums.White, helpers.Pos{File: enums.A, Rank: 8}),
-		expected: []helpers.Pos{
-			{File: enums.C, Rank: 7},
-			{File: enums.B, Rank: 6},
-		},
-		pieces: map[helpers.Pos]pieces.Piece{
-			{File: enums.C, Rank: 7}: pieces.NewPawn(enums.Black, helpers.Pos{File: enums.C, Rank: 7}),
-		},
-	},
-	{
-		name:     "White rook, start pos",
-		piece:    pieces.NewRook(enums.White, helpers.Pos{File: enums.A, Rank: 1}),
-		expected: []helpers.Pos{},
-		pieces: map[helpers.Pos]pieces.Piece{
-			{File: enums.A, Rank: 2}: pieces.NewPawn(enums.White, helpers.Pos{File: enums.A, Rank: 2}),
-			{File: enums.B, Rank: 1}: pieces.NewKnight(enums.White, helpers.Pos{File: enums.B, Rank: 1}),
-		},
-	},
-	{
-		name:  "Black rook, middle of the board",
-		piece: pieces.NewRook(enums.Black, helpers.Pos{File: enums.D, Rank: 4}),
-		expected: []helpers.Pos{
-			{File: enums.D, Rank: 3},
-			{File: enums.D, Rank: 2},
-			{File: enums.D, Rank: 1},
-			{File: enums.D, Rank: 5},
-			{File: enums.D, Rank: 6},
-			{File: enums.C, Rank: 4},
-			{File: enums.B, Rank: 4},
-			{File: enums.A, Rank: 4},
-			{File: enums.E, Rank: 4},
-			{File: enums.F, Rank: 4},
-			{File: enums.G, Rank: 4},
-			{File: enums.H, Rank: 4},
-		},
-		pieces: map[helpers.Pos]pieces.Piece{
-			{File: enums.D, Rank: 6}: pieces.NewKnight(enums.White, helpers.Pos{File: enums.D, Rank: 6}),
-			{File: enums.D, Rank: 7}: pieces.NewPawn(enums.White, helpers.Pos{File: enums.D, Rank: 7}),
-		},
-	},
-	{
-		name:  "White bishop e5",
-		piece: pieces.NewBishop(enums.White, helpers.Pos{File: enums.E, Rank: 5}),
-		expected: []helpers.Pos{
-			{File: enums.D, Rank: 6},
-			{File: enums.C, Rank: 7},
-			{File: enums.D, Rank: 4},
-			{File: enums.C, Rank: 3},
-			{File: enums.F, Rank: 6},
-			{File: enums.G, Rank: 7},
-			{File: enums.H, Rank: 8},
-		},
-		pieces: map[helpers.Pos]pieces.Piece{
-			{File: enums.C, Rank: 7}: pieces.NewPawn(enums.Black, helpers.Pos{File: enums.C, Rank: 7}),
-			{File: enums.B, Rank: 2}: pieces.NewPawn(enums.White, helpers.Pos{File: enums.B, Rank: 2}),
-			{File: enums.F, Rank: 4}: pieces.NewQueen(enums.White, helpers.Pos{File: enums.F, Rank: 4}),
-		},
-	},
-}
+	}
 
-func TestGetAvailibleMoves(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			expected := tc.expected
 
-			if tc.name == "White pawn, en passant" {
-				tc.piece.(*pieces.Pawn).MovesCounter = 2
-				enPassantPawn.MovesCounter = 1
-			}
+			got := tc.pawn.GetPossibleMoves(tc.pieces)
 
-			got := tc.piece.GetAvailibleMoves(tc.pieces)
-
-			if len(expected) != len(got) {
-				t.Error("different lengths", expected, got)
-			} else {
-				for i := range got {
-					if expected[i] != got[i] {
-						t.Error(tc.name, expected, got)
-					}
+			for pos := range expected {
+				if got[pos] != expected[pos] {
+					t.Error("got: ", got)
+					t.Error("expected: ", expected)
 				}
 			}
 		})

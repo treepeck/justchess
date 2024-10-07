@@ -24,6 +24,10 @@ func (p Pos) IsInBoard() bool {
 	return (p.File >= 1 && p.File <= 8) && (p.Rank >= 1 && p.Rank <= 8)
 }
 
+func (p Pos) IsEqual(other Pos) bool {
+	return p.File == other.File && p.Rank == other.Rank
+}
+
 func (p Pos) String() string {
 	file := ""
 	switch p.File {

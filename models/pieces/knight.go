@@ -21,18 +21,18 @@ func NewKnight(color enums.Color, pos helpers.Pos) *Knight {
 	}
 }
 
-func (k *Knight) Move(pieces map[helpers.Pos]Piece, to helpers.Pos) bool {
-	availibleMoves := k.GetAvailibleMoves(pieces)
-	for _, pos := range availibleMoves {
-		if to.File == pos.File && to.Rank == pos.Rank {
-			// move the knight
-			pieces[k.Pos] = nil
-			pieces[to] = k
+func (k *Knight) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
+	// possibleMoves := k.GetPossibleMoves(pieces)
+	// for _, pm := range possibleMoves {
+	// 	if pm.To.IsEqual(move.To) && pm.MoveType != enums.Defend {
+	// 		// move the knight
+	// 		pieces[k.Pos] = nil
+	// 		pieces[pm.To] = k
 
-			k.Pos = to
-			return true
-		}
-	}
+	// 		k.Pos = pm.To
+	// 		return true
+	// 	}
+	// }
 
 	return false
 }
@@ -49,8 +49,9 @@ func (k *Knight) GetPosition() helpers.Pos {
 	return k.Pos
 }
 
-func (k *Knight) GetAvailibleMoves(pieces map[helpers.Pos]Piece) []helpers.Pos {
-	possibleMoves := []helpers.Pos{
+func (k *Knight) GetPossibleMoves(pieces map[helpers.Pos]Piece,
+) map[helpers.Pos]enums.MoveType {
+	possiblePos := []helpers.Pos{
 		{File: k.Pos.File + 2, Rank: k.Pos.Rank + 1},
 		{File: k.Pos.File + 2, Rank: k.Pos.Rank - 1},
 		{File: k.Pos.File - 2, Rank: k.Pos.Rank + 1},
@@ -61,15 +62,20 @@ func (k *Knight) GetAvailibleMoves(pieces map[helpers.Pos]Piece) []helpers.Pos {
 		{File: k.Pos.File + 1, Rank: k.Pos.Rank + 2},
 	}
 
-	availibleMoves := make([]helpers.Pos, 0)
-	for _, move := range possibleMoves {
-		if move.IsInBoard() {
+	possibleMoves := make(map[helpers.Pos]enums.MoveType)
+	for _, pos := range possiblePos {
+		if pos.IsInBoard() {
 			// if the square is empty or if the enemy piece
-			if pieces[move] == nil || pieces[move].GetColor() != k.Color {
-				availibleMoves = append(availibleMoves, move)
+			piece := pieces[pos]
+			if piece == nil {
+				possibleMoves[pos] = enums.Basic
+			} else if piece.GetColor() != k.Color {
+				possibleMoves[pos] = enums.Basic
+			} else if piece.GetColor() == k.Color {
+				possibleMoves[pos] = enums.Defend
 			}
 		}
 	}
 
-	return availibleMoves
+	return possibleMoves
 }

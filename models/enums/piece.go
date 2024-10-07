@@ -31,7 +31,7 @@ func (p Piece) String() string {
 	case 5:
 		return "king"
 	default:
-		panic("unknown piece")
+		return "unknown piece"
 	}
 }
 

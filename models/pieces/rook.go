@@ -23,20 +23,20 @@ func NewRook(color enums.Color, pos helpers.Pos) *Rook {
 	}
 }
 
-func (r *Rook) Move(pieces map[helpers.Pos]Piece, to helpers.Pos) bool {
-	availibleMoves := r.GetAvailibleMoves(pieces)
-	for _, pos := range availibleMoves {
-		if to.File == pos.File && to.Rank == pos.Rank {
-			// move the rook
-			pieces[r.Pos] = nil
-			pieces[to] = r
+func (r *Rook) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
+	// possibleMoves := r.GetPossibleMoves(pieces)
+	// for _, pm := range possibleMoves {
+	// 	if move.To.IsEqual(pm.To) && pm.MoveType != enums.Defend {
+	// 		// move the rook
+	// 		pieces[r.Pos] = nil
+	// 		pieces[pm.To] = r
 
-			r.Pos = to
+	// 		r.Pos = pm.To
 
-			r.MovesCounter++
-			return true
-		}
-	}
+	// 		r.MovesCounter++
+	// 		return true
+	// 	}
+	// }
 	return false
 }
 
@@ -56,64 +56,73 @@ func (r *Rook) GetMovesCounter() uint {
 	return r.MovesCounter
 }
 
-func (r *Rook) GetAvailibleMoves(pieces map[helpers.Pos]Piece) []helpers.Pos {
-	availibleMoves := make([]helpers.Pos, 0)
+func (r *Rook) GetPossibleMoves(pieces map[helpers.Pos]Piece,
+) map[helpers.Pos]enums.MoveType {
+	possibleMoves := make(map[helpers.Pos]enums.MoveType)
 
 	// bottom ranks
 	for i := r.Pos.Rank - 1; i >= 1; i-- {
-		nextMove := helpers.NewPos(r.Pos.File, i)
-		if !nextMove.IsInBoard() {
+		nextPos := helpers.NewPos(r.Pos.File, i)
+		if !nextPos.IsInBoard() {
 			break
-		} else if p := pieces[nextMove]; p != nil {
+		} else if p := pieces[nextPos]; p != nil {
 			if p.GetColor() != r.Color {
-				availibleMoves = append(availibleMoves, nextMove)
+				possibleMoves[nextPos] = enums.Basic
+			} else {
+				possibleMoves[nextPos] = enums.Defend
 			}
 			break
 		}
-		availibleMoves = append(availibleMoves, nextMove)
+		possibleMoves[nextPos] = enums.Basic
 	}
 
 	// upper ranks
 	for i := r.Pos.Rank + 1; i <= 8; i++ {
-		nextMove := helpers.NewPos(r.Pos.File, i)
-		if !nextMove.IsInBoard() {
+		nextPos := helpers.NewPos(r.Pos.File, i)
+		if !nextPos.IsInBoard() {
 			break
-		} else if p := pieces[nextMove]; p != nil {
+		} else if p := pieces[nextPos]; p != nil {
 			if p.GetColor() != r.Color {
-				availibleMoves = append(availibleMoves, nextMove)
+				possibleMoves[nextPos] = enums.Basic
+			} else {
+				possibleMoves[nextPos] = enums.Defend
 			}
 			break
 		}
-		availibleMoves = append(availibleMoves, nextMove)
+		possibleMoves[nextPos] = enums.Basic
 	}
 
 	// left files
 	for i := r.Pos.File - 1; i >= 1; i-- {
-		nextMove := helpers.NewPos(i, r.Pos.Rank)
-		if !nextMove.IsInBoard() {
+		nextPos := helpers.NewPos(i, r.Pos.Rank)
+		if !nextPos.IsInBoard() {
 			break
-		} else if p := pieces[nextMove]; p != nil {
+		} else if p := pieces[nextPos]; p != nil {
 			if p.GetColor() != r.Color {
-				availibleMoves = append(availibleMoves, nextMove)
+				possibleMoves[nextPos] = enums.Basic
+			} else {
+				possibleMoves[nextPos] = enums.Defend
 			}
 			break
 		}
-		availibleMoves = append(availibleMoves, nextMove)
+		possibleMoves[nextPos] = enums.Basic
 	}
 
 	// right files
 	for i := r.Pos.File + 1; i <= 8; i++ {
-		nextMove := helpers.NewPos(i, r.Pos.Rank)
-		if !nextMove.IsInBoard() {
+		nextPos := helpers.NewPos(i, r.Pos.Rank)
+		if !nextPos.IsInBoard() {
 			break
-		} else if p := pieces[nextMove]; p != nil {
+		} else if p := pieces[nextPos]; p != nil {
 			if p.GetColor() != r.Color {
-				availibleMoves = append(availibleMoves, nextMove)
+				possibleMoves[nextPos] = enums.Basic
+			} else {
+				possibleMoves[nextPos] = enums.Defend
 			}
 			break
 		}
-		availibleMoves = append(availibleMoves, nextMove)
+		possibleMoves[nextPos] = enums.Basic
 	}
 
-	return availibleMoves
+	return possibleMoves
 }

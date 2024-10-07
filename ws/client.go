@@ -39,8 +39,8 @@ func (c *Client) readEvents() {
 	fn := slog.String("func", "hub.readEvents")
 	defer c.manager.removeClient(c)
 
-	// set the read deadline to limit inactive connections
 	c.conn.SetReadLimit(10000)
+	// set the read deadline to limit inactive connections
 	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		slog.Warn("error while setting the read deadline", fn, "err", err)
 		return
@@ -50,6 +50,7 @@ func (c *Client) readEvents() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
+			slog.Warn("error while reading a message", fn, "err", err)
 			return
 		}
 
@@ -101,7 +102,6 @@ func (c *Client) handleEvent(e Event) {
 	fn := slog.String("func", "handleEvent")
 
 	switch e.Action {
-
 	case GET_ROOMS:
 		var gr GetRoomDTO
 		err := json.Unmarshal(e.Payload, &gr)
@@ -158,21 +158,19 @@ func (c *Client) handleEvent(e Event) {
 		var idStr string
 		json.Unmarshal(e.Payload, &idStr)
 		roomId, err := uuid.Parse(idStr)
-		if err == nil && c.currentRoomId == roomId {
+		if err == nil {
 			if r := c.manager.roomController.FindById(roomId); r != nil {
 				r.HandleGetGame(c)
 			}
+		} else {
+			slog.Warn("cannot Unmarshal roomId", fn, "err", err)
 		}
 
 	case MOVE:
 		if c.currentRoomId != uuid.Nil {
 			if r := c.manager.roomController.FindById(c.currentRoomId); r != nil {
 				var move helpers.MoveDTO
-				err := json.Unmarshal(e.Payload, &move)
-				if err != nil {
-					slog.Warn("cannot Unmsrshal position", fn, "err", err)
-					return
-				}
+				json.Unmarshal(e.Payload, &move)
 				r.HandleTakeMove(move, c)
 			}
 		}

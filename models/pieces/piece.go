@@ -6,9 +6,9 @@ import (
 )
 
 type Piece interface {
-	Move(pieces map[helpers.Pos]Piece, to helpers.Pos) bool
+	Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool
 	GetName() enums.Piece
 	GetColor() enums.Color
 	GetPosition() helpers.Pos
-	GetAvailibleMoves(pieces map[helpers.Pos]Piece) []helpers.Pos
+	GetPossibleMoves(pieces map[helpers.Pos]Piece) map[helpers.Pos]enums.MoveType
 }
