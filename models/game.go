@@ -81,11 +81,11 @@ func (g *Game) MarshalJSON() ([]byte, error) {
 
 func (g *Game) initPieces() {
 	g.initPawns()
-	// g.initRooks()
-	// g.initKnights()
-	// g.initBishops()
-	// g.initQueens()
-	// g.initKings()
+	g.initRooks()
+	g.initKnights()
+	g.initBishops()
+	g.initQueens()
+	g.initKings()
 }
 
 func (g *Game) initPawns() {
@@ -98,57 +98,57 @@ func (g *Game) initPawns() {
 	}
 }
 
-// func (g *Game) initRooks() {
-// 	positions := []int{1, 8}
+func (g *Game) initRooks() {
+	positions := []int{1, 8}
 
-// 	for i := 0; i < 2; i++ {
-// 		pos := helpers.PosFromInd(0, positions[i])
-// 		g.Pieces[pos] = pieces.NewRook(enums.Black, pos)
+	for i := 0; i < 2; i++ {
+		pos := helpers.PosFromInd(0, positions[i])
+		g.Pieces[pos] = pieces.NewRook(enums.Black, pos)
 
-// 		pos = helpers.PosFromInd(7, positions[i])
-// 		g.Pieces[pos] = pieces.NewRook(enums.White, pos)
-// 	}
-// }
+		pos = helpers.PosFromInd(7, positions[i])
+		g.Pieces[pos] = pieces.NewRook(enums.White, pos)
+	}
+}
 
-// func (g *Game) initKnights() {
-// 	positions := []int{2, 7}
+func (g *Game) initKnights() {
+	positions := []int{2, 7}
 
-// 	for i := 0; i < 2; i++ {
-// 		pos := helpers.PosFromInd(0, positions[i])
-// 		g.Pieces[pos] = pieces.NewKnight(enums.Black, pos)
+	for i := 0; i < 2; i++ {
+		pos := helpers.PosFromInd(0, positions[i])
+		g.Pieces[pos] = pieces.NewKnight(enums.Black, pos)
 
-// 		pos = helpers.PosFromInd(7, positions[i])
-// 		g.Pieces[pos] = pieces.NewKnight(enums.White, pos)
-// 	}
-// }
+		pos = helpers.PosFromInd(7, positions[i])
+		g.Pieces[pos] = pieces.NewKnight(enums.White, pos)
+	}
+}
 
-// func (g *Game) initBishops() {
-// 	positions := []int{3, 6}
+func (g *Game) initBishops() {
+	positions := []int{3, 6}
 
-// 	for i := 0; i < 2; i++ {
-// 		pos := helpers.PosFromInd(0, positions[i])
-// 		g.Pieces[pos] = pieces.NewBishop(enums.Black, pos)
+	for i := 0; i < 2; i++ {
+		pos := helpers.PosFromInd(0, positions[i])
+		g.Pieces[pos] = pieces.NewBishop(enums.Black, pos)
 
-// 		pos = helpers.PosFromInd(7, positions[i])
-// 		g.Pieces[pos] = pieces.NewBishop(enums.White, pos)
-// 	}
-// }
+		pos = helpers.PosFromInd(7, positions[i])
+		g.Pieces[pos] = pieces.NewBishop(enums.White, pos)
+	}
+}
 
-// func (g *Game) initQueens() {
-// 	pos := helpers.PosFromInd(0, 4)
-// 	g.Pieces[pos] = pieces.NewQueen(enums.Black, pos)
+func (g *Game) initQueens() {
+	pos := helpers.PosFromInd(0, 4)
+	g.Pieces[pos] = pieces.NewQueen(enums.Black, pos)
 
-// 	pos = helpers.PosFromInd(7, 4)
-// 	g.Pieces[pos] = pieces.NewQueen(enums.White, pos)
-// }
+	pos = helpers.PosFromInd(7, 4)
+	g.Pieces[pos] = pieces.NewQueen(enums.White, pos)
+}
 
-// func (g *Game) initKings() {
-// 	pos := helpers.PosFromInd(0, 5)
-// 	g.Pieces[pos] = pieces.NewKing(enums.Black, pos)
+func (g *Game) initKings() {
+	pos := helpers.PosFromInd(0, 5)
+	g.Pieces[pos] = pieces.NewKing(enums.Black, pos)
 
-// 	pos = helpers.PosFromInd(7, 5)
-// 	g.Pieces[pos] = pieces.NewKing(enums.White, pos)
-// }
+	pos = helpers.PosFromInd(7, 5)
+	g.Pieces[pos] = pieces.NewKing(enums.White, pos)
+}
 
 func (g *Game) TakeMove(md helpers.MoveDTO) bool {
 	piece := g.Pieces[md.From]

@@ -7,7 +7,6 @@ import (
 
 type Rook struct {
 	Color        enums.Color `json:"color"`
-	IsCaptured   bool        `json:"isCaptured"`
 	MovesCounter uint        `json:"movesCounter"`
 	Pos          helpers.Pos `json:"pos"`
 	Name         enums.Piece `json:"name"`
@@ -16,7 +15,6 @@ type Rook struct {
 func NewRook(color enums.Color, pos helpers.Pos) *Rook {
 	return &Rook{
 		Color:        color,
-		IsCaptured:   false,
 		MovesCounter: 0,
 		Pos:          pos,
 		Name:         enums.Rook,

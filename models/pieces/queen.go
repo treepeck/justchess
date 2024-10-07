@@ -6,18 +6,16 @@ import (
 )
 
 type Queen struct {
-	Color      enums.Color `json:"color"`
-	IsCaptured bool        `json:"isCaptured"`
-	Pos        helpers.Pos `json:"pos"`
-	Name       enums.Piece `json:"name"`
+	Color enums.Color `json:"color"`
+	Pos   helpers.Pos `json:"pos"`
+	Name  enums.Piece `json:"name"`
 }
 
 func NewQueen(color enums.Color, pos helpers.Pos) *Queen {
 	return &Queen{
-		Color:      color,
-		IsCaptured: false,
-		Pos:        pos,
-		Name:       enums.Queen,
+		Color: color,
+		Pos:   pos,
+		Name:  enums.Queen,
 	}
 }
 

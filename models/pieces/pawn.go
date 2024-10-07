@@ -94,7 +94,7 @@ func (p *Pawn) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 	if forward.IsInBoard() {
 		if pieces[forward] == nil {
 			if forward.Rank > 1 && forward.Rank < 8 {
-				possibleMoves[forward] = enums.Basic
+				possibleMoves[forward] = enums.PawnForward
 			} else {
 				// promition is possible
 				possibleMoves[forward] = enums.Promotion
@@ -105,7 +105,7 @@ func (p *Pawn) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 			doubleForward := helpers.NewPos(p.Pos.File, p.Pos.Rank+dir*2)
 			if pieces[doubleForward] == nil {
 				// promotion is impossible in a first move
-				possibleMoves[doubleForward] = enums.Basic
+				possibleMoves[doubleForward] = enums.PawnForward
 			}
 		}
 	}

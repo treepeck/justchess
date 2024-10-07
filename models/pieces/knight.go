@@ -6,18 +6,16 @@ import (
 )
 
 type Knight struct {
-	Color      enums.Color `json:"color"`
-	IsCaptured bool        `json:"isCaptured"`
-	Pos        helpers.Pos `json:"pos"`
-	Name       enums.Piece `json:"name"`
+	Color enums.Color `json:"color"`
+	Pos   helpers.Pos `json:"pos"`
+	Name  enums.Piece `json:"name"`
 }
 
 func NewKnight(color enums.Color, pos helpers.Pos) *Knight {
 	return &Knight{
-		Color:      color,
-		IsCaptured: false,
-		Pos:        pos,
-		Name:       enums.Knight,
+		Color: color,
+		Pos:   pos,
+		Name:  enums.Knight,
 	}
 }
 

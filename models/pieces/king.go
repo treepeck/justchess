@@ -3,12 +3,10 @@ package pieces
 import (
 	"chess-api/models/enums"
 	"chess-api/models/helpers"
-	"log/slog"
 )
 
 type King struct {
 	Color        enums.Color `json:"color"`
-	IsCaptured   bool        `json:"isCaptured"`
 	MovesCounter uint        `json:"movesCounter"`
 	Pos          helpers.Pos `json:"pos"`
 	Name         enums.Piece `json:"name"`
@@ -18,7 +16,6 @@ type King struct {
 func NewKing(color enums.Color, pos helpers.Pos) *King {
 	return &King{
 		Color:        color,
-		IsCaptured:   false,
 		MovesCounter: 0,
 		Pos:          pos,
 		Name:         enums.King,
@@ -26,7 +23,27 @@ func NewKing(color enums.Color, pos helpers.Pos) *King {
 }
 
 func (k *King) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
-	slog.Debug("King Move")
+	possibleMoves := k.GetPossibleMoves(pieces)
+
+	pm := possibleMoves[move.To]
+	if pm != 0 && pm != enums.Defend {
+		if pieces[move.To] != nil {
+			move.IsCapture = true
+		}
+
+		delete(pieces, move.From)
+		pieces[move.To] = k
+		k.MovesCounter++
+		k.Pos = move.To
+
+		// TODO: handle castling
+		// if move.MoveType == enums.LongCastling {
+
+		// } else if move.MoveType == enums.ShortCastling {
+
+		// }
+		return true
+	}
 	return false
 }
 
@@ -55,14 +72,47 @@ func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 
 	for _, piece := range pieces {
 		if piece.GetColor() != k.Color {
-			possibleMoves := piece.GetPossibleMoves(pieces)
-			for pos, moveType := range possibleMoves {
-				inaccessibleSquares[pos] = moveType
+			if piece.GetName() == enums.Pawn {
+				possibleMoves := piece.GetPossibleMoves(pieces)
+				for pos, moveType := range possibleMoves {
+					if moveType != enums.PawnForward {
+						inaccessibleSquares[pos] = moveType
+					}
+				}
+			} else if piece.GetName() != enums.King {
+				possibleMoves := piece.GetPossibleMoves(pieces)
+				for pos, moveType := range possibleMoves {
+					inaccessibleSquares[pos] = moveType
+				}
+			} else {
+				enemyKingPossibleMoves := []helpers.Pos{
+					{File: piece.GetPosition().File - 1,
+						Rank: piece.GetPosition().Rank + 1},
+					{File: piece.GetPosition().File,
+						Rank: piece.GetPosition().Rank + 1},
+					{File: piece.GetPosition().File + 1,
+						Rank: piece.GetPosition().Rank + 1},
+					{File: piece.GetPosition().File - 1,
+						Rank: piece.GetPosition().Rank},
+					{File: piece.GetPosition().File + 1,
+						Rank: piece.GetPosition().Rank},
+					{File: piece.GetPosition().File - 1,
+						Rank: piece.GetPosition().Rank - 1},
+					{File: piece.GetPosition().File,
+						Rank: piece.GetPosition().Rank - 1},
+					{File: piece.GetPosition().File + 1,
+						Rank: piece.GetPosition().Rank - 1},
+				}
+				for _, pos := range enemyKingPossibleMoves {
+					if pos.IsInBoard() {
+						inaccessibleSquares[pos] = enums.Basic
+					}
+				}
 			}
 		}
 	}
 
-	_ = []helpers.Pos{
+	possiblePositions := []helpers.Pos{
 		{File: k.Pos.File - 1, Rank: k.Pos.Rank + 1},
 		{File: k.Pos.File, Rank: k.Pos.Rank + 1},
 		{File: k.Pos.File + 1, Rank: k.Pos.Rank + 1},
@@ -73,24 +123,19 @@ func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 		{File: k.Pos.File + 1, Rank: k.Pos.Rank - 1},
 	}
 
-	// possibleMoves := make([]helpers.PossibleMove, 0)
-	// for _, pos := range possiblePositions {
-	// 	if !enemyPM[pos] {
-	// 		if pos.IsInBoard() {
-	// 			p := pieces[pos]
-	// 			if p == nil || p.GetColor() != k.Color {
-	// 				// TODO: handle special moves.
-	// 				possibleMoves = append(possibleMoves,
-	// 					helpers.NewPossibleMove(enums.Basic, pos),
-	// 				)
-	// 			} else {
-	// 				possibleMoves = append(possibleMoves,
-	// 					helpers.NewPossibleMove(enums.Defend, pos),
-	// 				)
-	// 			}
-	// 		}
-	// 	}
-	// }
+	possibleMoves := make(map[helpers.Pos]enums.MoveType)
+	for _, pos := range possiblePositions {
+		if inaccessibleSquares[pos] == 0 {
+			if pos.IsInBoard() {
+				p := pieces[pos]
+				if p == nil || p.GetColor() != k.Color {
+					possibleMoves[pos] = enums.Basic
+				} else {
+					possibleMoves[pos] = enums.Defend
+				}
+			}
+		}
+	}
 
-	return make(map[helpers.Pos]enums.MoveType)
+	return possibleMoves
 }

@@ -3,8 +3,9 @@ package enums
 type MoveType int
 
 const (
-	Basic  MoveType = iota + 1 // move to an empty square
-	Defend                     // forbits the enemy king to move on an attacked square
+	Basic MoveType = iota + 1 // move to an empty square
+	PawnForward
+	Defend // forbits the enemy king to move on an attacked square
 	LongCastling
 	ShortCastling
 	EnPassant
@@ -15,6 +16,8 @@ func (mt MoveType) String() string {
 	switch mt {
 	case Basic:
 		return "basic"
+	case PawnForward:
+		return "pawnForward"
 	case Defend:
 		return "defend"
 	case LongCastling:

@@ -6,18 +6,16 @@ import (
 )
 
 type Bishop struct {
-	Color      enums.Color `json:"color"`
-	IsCaptured bool        `json:"isCaptured"`
-	Pos        helpers.Pos `json:"pos"`
-	Name       enums.Piece `json:"name"`
+	Color enums.Color `json:"color"`
+	Pos   helpers.Pos `json:"pos"`
+	Name  enums.Piece `json:"name"`
 }
 
 func NewBishop(color enums.Color, pos helpers.Pos) *Bishop {
 	return &Bishop{
-		Color:      color,
-		IsCaptured: false,
-		Pos:        pos,
-		Name:       enums.Bishop,
+		Color: color,
+		Pos:   pos,
+		Name:  enums.Bishop,
 	}
 }
 
