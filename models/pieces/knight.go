@@ -20,17 +20,19 @@ func NewKnight(color enums.Color, pos helpers.Pos) *Knight {
 }
 
 func (k *Knight) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
-	// possibleMoves := k.GetPossibleMoves(pieces)
-	// for _, pm := range possibleMoves {
-	// 	if pm.To.IsEqual(move.To) && pm.MoveType != enums.Defend {
-	// 		// move the knight
-	// 		pieces[k.Pos] = nil
-	// 		pieces[pm.To] = k
+	possibleMoves := k.GetPossibleMoves(pieces)
 
-	// 		k.Pos = pm.To
-	// 		return true
-	// 	}
-	// }
+	pm := possibleMoves[move.To]
+	if pm != 0 && pm != enums.Defend {
+		if pieces[move.To] != nil {
+			move.IsCapture = true
+		}
+
+		delete(pieces, move.From)
+		pieces[move.To] = k
+		k.Pos = move.To
+		return true
+	}
 
 	return false
 }

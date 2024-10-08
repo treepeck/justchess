@@ -312,6 +312,38 @@ func TestKingGetPossibleMoves(t *testing.T) {
 				{File: enums.F, Rank: 6}: enums.Basic,
 			},
 		},
+		{
+			"white_0-0",
+			pieces.NewKing(enums.White, helpers.NewPos(enums.E, 1)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.H, Rank: 1}: pieces.NewRook(enums.White,
+					helpers.NewPos(enums.H, 1)),
+			},
+			map[helpers.Pos]enums.MoveType{
+				{File: enums.D, Rank: 1}: enums.Basic,
+				{File: enums.D, Rank: 2}: enums.Basic,
+				{File: enums.E, Rank: 2}: enums.Basic,
+				{File: enums.F, Rank: 2}: enums.Basic,
+				{File: enums.F, Rank: 1}: enums.Basic,
+				{File: enums.G, Rank: 1}: enums.ShortCastling,
+			},
+		},
+		{
+			"black_0-0-0",
+			pieces.NewKing(enums.Black, helpers.NewPos(enums.E, 8)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.A, Rank: 8}: pieces.NewRook(enums.Black,
+					helpers.NewPos(enums.A, 8)),
+			},
+			map[helpers.Pos]enums.MoveType{
+				{File: enums.F, Rank: 8}: enums.Basic,
+				{File: enums.F, Rank: 7}: enums.Basic,
+				{File: enums.E, Rank: 7}: enums.Basic,
+				{File: enums.D, Rank: 7}: enums.Basic,
+				{File: enums.D, Rank: 8}: enums.Basic,
+				{File: enums.C, Rank: 8}: enums.LongCastling,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -332,19 +364,93 @@ func TestKingGetPossibleMoves(t *testing.T) {
 func TestKingMove(t *testing.T) {
 	testcases := []struct {
 		name          string
-		king          *pieces.Pawn
+		king          *pieces.King
 		pieces        map[helpers.Pos]pieces.Piece
 		move          *helpers.Move
 		expectedRes   bool
 		expectedBoard map[helpers.Pos]pieces.Piece
-	}{}
+	}{
+		{
+			"illegal_move_e6-e5",
+			pieces.NewKing(enums.White, helpers.NewPos(enums.E, 6)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 6}: pieces.NewKing(enums.White, helpers.NewPos(enums.E, 6)),
+				{File: enums.D, Rank: 6}: pieces.NewPawn(enums.Black, helpers.NewPos(enums.D, 6)),
+				{File: enums.F, Rank: 6}: pieces.NewPawn(enums.Black, helpers.NewPos(enums.F, 6)),
+			},
+			&helpers.Move{
+				To:   helpers.NewPos(enums.E, 5),
+				From: helpers.NewPos(enums.E, 6),
+			},
+			false,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 6}: pieces.NewKing(enums.White, helpers.NewPos(enums.E, 6)),
+				{File: enums.D, Rank: 6}: pieces.NewPawn(enums.Black, helpers.NewPos(enums.D, 6)),
+				{File: enums.F, Rank: 6}: pieces.NewPawn(enums.Black, helpers.NewPos(enums.F, 6)),
+			},
+		},
+		{
+			"legal_move_b7-b6",
+			pieces.NewKing(enums.Black, helpers.NewPos(enums.B, 7)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.B, Rank: 7}: pieces.NewKing(enums.Black, helpers.NewPos(enums.B, 7)),
+				{File: enums.B, Rank: 6}: pieces.NewPawn(enums.White, helpers.NewPos(enums.B, 6)),
+				{File: enums.A, Rank: 1}: pieces.NewRook(enums.White, helpers.NewPos(enums.A, 1)),
+				{File: enums.H, Rank: 7}: pieces.NewRook(enums.White, helpers.NewPos(enums.H, 7)),
+			},
+			&helpers.Move{
+				To:   helpers.NewPos(enums.B, 6),
+				From: helpers.NewPos(enums.B, 7),
+			},
+			true,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.B, Rank: 6}: pieces.NewKing(enums.Black, helpers.NewPos(enums.B, 6)),
+				{File: enums.A, Rank: 1}: pieces.NewRook(enums.White, helpers.NewPos(enums.A, 1)),
+				{File: enums.H, Rank: 7}: pieces.NewRook(enums.White, helpers.NewPos(enums.H, 7)),
+			},
+		},
+		{
+			"black_0-0",
+			pieces.NewKing(enums.Black, helpers.NewPos(enums.E, 8)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.H, Rank: 8}: pieces.NewRook(enums.Black, helpers.NewPos(enums.H, 8)),
+			},
+			&helpers.Move{
+				To:       helpers.NewPos(enums.G, 8),
+				From:     helpers.NewPos(enums.E, 8),
+				MoveType: enums.ShortCastling,
+			},
+			true,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.G, Rank: 8}: pieces.NewKing(enums.Black, helpers.NewPos(enums.G, 8)),
+				{File: enums.F, Rank: 8}: pieces.NewRook(enums.Black, helpers.NewPos(enums.F, 8)),
+			},
+		},
+		{
+			"white_0-0-0",
+			pieces.NewKing(enums.White, helpers.NewPos(enums.E, 1)),
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.A, Rank: 1}: pieces.NewRook(enums.White, helpers.NewPos(enums.A, 1)),
+			},
+			&helpers.Move{
+				To:       helpers.NewPos(enums.C, 1),
+				From:     helpers.NewPos(enums.E, 1),
+				MoveType: enums.LongCastling,
+			},
+			true,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.C, Rank: 1}: pieces.NewKing(enums.White, helpers.NewPos(enums.C, 1)),
+				{File: enums.D, Rank: 1}: pieces.NewRook(enums.White, helpers.NewPos(enums.D, 1)),
+			},
+		},
+	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			expectedRes := tc.expectedRes
 			expectedBoard := tc.expectedBoard
 
-			gotRes := tc.pawn.Move(tc.pieces, tc.move)
+			gotRes := tc.king.Move(tc.pieces, tc.move)
 			gotBoard := tc.pieces
 
 			if expectedRes != gotRes {

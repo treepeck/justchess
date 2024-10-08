@@ -36,12 +36,24 @@ func (k *King) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
 		k.MovesCounter++
 		k.Pos = move.To
 
-		// TODO: handle castling
-		// if move.MoveType == enums.LongCastling {
-
-		// } else if move.MoveType == enums.ShortCastling {
-
-		// }
+		// handle castling
+		if pm == enums.LongCastling {
+			rookPos := helpers.NewPos(k.Pos.File-2, k.Pos.Rank)
+			rook := pieces[rookPos]
+			delete(pieces, rookPos)
+			newRookPos := helpers.NewPos(k.Pos.File+1, k.Pos.Rank)
+			pieces[newRookPos] = rook
+			rook.(*Rook).Pos = newRookPos
+			rook.(*Rook).MovesCounter++
+		} else if pm == enums.ShortCastling {
+			rookPos := helpers.NewPos(k.Pos.File+1, k.Pos.Rank)
+			rook := pieces[rookPos]
+			delete(pieces, rookPos)
+			newRookPos := helpers.NewPos(k.Pos.File-1, k.Pos.Rank)
+			pieces[newRookPos] = rook
+			rook.(*Rook).Pos = newRookPos
+			rook.(*Rook).MovesCounter++
+		}
 		return true
 	}
 	return false
@@ -133,6 +145,47 @@ func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 				} else {
 					possibleMoves[pos] = enums.Defend
 				}
+			}
+		}
+	}
+
+	// handle castling
+	if !k.IsChecked && k.MovesCounter == 0 {
+		// check 0-0
+		canShortCastle := true
+		for i := 1; i <= 2; i++ {
+			pos := helpers.NewPos(k.Pos.File+i, k.Pos.Rank)
+			// is the square is vacant and is not under attack
+			if pieces[pos] != nil || inaccessibleSquares[pos] != 0 {
+				canShortCastle = false
+			}
+		}
+		if canShortCastle {
+			rookPos := helpers.NewPos(k.Pos.File+3, k.Pos.Rank)
+			p := pieces[rookPos]
+			if p != nil && p.GetName() == enums.Rook &&
+				p.(*Rook).MovesCounter == 0 {
+				possibleMoves[helpers.NewPos(k.Pos.File+2, k.Pos.Rank)] =
+					enums.ShortCastling
+			}
+		}
+
+		// check 0-0-0
+		canLongCastle := true
+		for i := 1; i <= 3; i++ {
+			pos := helpers.NewPos(k.Pos.File-i, k.Pos.Rank)
+			// is the square is vacant and is not under attack
+			if pieces[pos] != nil || inaccessibleSquares[pos] != 0 {
+				canLongCastle = false
+			}
+		}
+		if canLongCastle {
+			rookPos := helpers.NewPos(k.Pos.File-4, k.Pos.Rank)
+			p := pieces[rookPos]
+			if p != nil && p.GetName() == enums.Rook &&
+				p.(*Rook).MovesCounter == 0 {
+				possibleMoves[helpers.NewPos(k.Pos.File-2, k.Pos.Rank)] =
+					enums.LongCastling
 			}
 		}
 	}

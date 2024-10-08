@@ -20,16 +20,19 @@ func NewQueen(color enums.Color, pos helpers.Pos) *Queen {
 }
 
 func (q *Queen) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
-	// possibleMoves := q.GetPossibleMoves(pieces)
-	// for _, pm := range possibleMoves {
-	// 	if pm.To.IsEqual(move.To) && pm.MoveType != enums.Defend {
-	// 		pieces[q.Pos] = nil
-	// 		pieces[pm.To] = q
-	// 		q.Pos = pm.To
+	possibleMoves := q.GetPossibleMoves(pieces)
 
-	// 		return true
-	// 	}
-	// }
+	pm := possibleMoves[move.To]
+	if pm != 0 && pm != enums.Defend {
+		if pieces[move.To] != nil {
+			move.IsCapture = true
+		}
+
+		delete(pieces, move.From)
+		pieces[move.To] = q
+		q.Pos = move.To
+		return true
+	}
 
 	return false
 }

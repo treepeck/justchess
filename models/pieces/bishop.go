@@ -20,17 +20,20 @@ func NewBishop(color enums.Color, pos helpers.Pos) *Bishop {
 }
 
 func (b *Bishop) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
-	// possibleMoves := b.GetPossibleMoves(pieces)
-	// for _, pm := range possibleMoves {
-	// 	if pm.To.IsEqual(move.To) && pm.MoveType != enums.Defend {
-	// 		// move the bishop
-	// 		pieces[b.Pos] = nil
-	// 		pieces[pm.To] = b
-	// 		b.Pos = pm.To
+	possibleMoves := b.GetPossibleMoves(pieces)
 
-	// 		return true
-	// 	}
-	// }
+	pm := possibleMoves[move.To]
+	if pm != 0 && pm != enums.Defend {
+		if pieces[move.To] != nil {
+			move.IsCapture = true
+		}
+
+		delete(pieces, move.From)
+		pieces[move.To] = b
+		b.Pos = move.To
+		return true
+	}
+
 	return false
 }
 
