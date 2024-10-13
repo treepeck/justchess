@@ -12,41 +12,52 @@ import (
 )
 
 const (
-	pongWait     = 10 * time.Second
+	// Deadline for the next pong message from peer.
+	pongWait = 10 * time.Second
+	// Client sends ping messages with the defined interval.
+	// It must be less than pongWait.
 	pingInterval = (pongWait * 9) / 10
 )
 
+// Client stores the *Conn and writes events by using a channel.
+// The use of a channel is necessary, since whe *websocket.Conn supports
+// only one concurrent write at a time.
 type Client struct {
-	User             models.User `json:"user"`
+	User             models.User `json:"user"` // behind all Clients stands real Users.
 	conn             *websocket.Conn
 	manager          *Manager
 	writeEventBuffer chan Event
-	currentRoomId    uuid.UUID
+	currentRoom      *Room
 }
 
+// newClient creates a new client.
 func newClient(conn *websocket.Conn, m *Manager, user models.User) *Client {
 	return &Client{
 		User:             user,
 		conn:             conn,
 		manager:          m,
 		writeEventBuffer: make(chan Event),
-		currentRoomId:    uuid.Nil,
+		currentRoom:      nil,
 	}
 }
 
-// Reads all incoming messages from the connection.
+// readEvents reads and handles all incoming messages (events) from the connection.
 func (c *Client) readEvents() {
-	fn := slog.String("func", "hub.readEvents")
-	defer c.manager.removeClient(c)
+	defer func() {
+		c.manager.unregister <- c
+	}()
+
+	fn := slog.String("func", "readEvents")
 
 	c.conn.SetReadLimit(10000)
-	// set the read deadline to limit inactive connections
+	// set the read deadline to limit inactive connections.
 	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		slog.Warn("error while setting the read deadline", fn, "err", err)
 		return
 	}
 	c.conn.SetPongHandler(c.pongHandler)
 
+	// forever loop to read incomming Events aka (messages) from the peer.
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
@@ -64,12 +75,19 @@ func (c *Client) readEvents() {
 	}
 }
 
+// writeEvents grabs the events from the writeEventBuffer channel
+// and sends those events to the client.
 func (c *Client) writeEvents() {
-	fn := slog.String("func", "hub.writeEvents")
-	defer c.manager.removeClient(c)
-
 	ticker := time.NewTicker(pingInterval)
+	defer func() {
+		ticker.Stop()
+		c.manager.unregister <- c
+	}()
 
+	fn := slog.String("func", "writeEvents")
+
+	// forever loop grabs the incomming events from a channel and writes them
+	// through a connection.
 	for {
 		select {
 		case e, ok := <-c.writeEventBuffer:
@@ -94,100 +112,155 @@ func (c *Client) writeEvents() {
 	}
 }
 
-func (c *Client) pongHandler(_ string) error {
-	return c.conn.SetReadDeadline(time.Now().Add(pongWait))
-}
-
+// handleEvent handles the incomming events by calling corresponding functions.
 func (c *Client) handleEvent(e Event) {
 	fn := slog.String("func", "handleEvent")
 
 	switch e.Action {
-	case GET_ROOMS:
-		var gr GetRoomDTO
-		err := json.Unmarshal(e.Payload, &gr)
-		if err != nil {
-			slog.Warn("cannot Unmarshal GetRoomDTO", fn, "err", err)
-			return
-		}
-
-		e := Event{
-			Action: UPDATE_ROOMS,
-		}
-		var rooms []byte
-		if gr.Bonus == "All" && gr.Control == "All" {
-			rooms, err = json.Marshal(c.manager.roomController.FindAvailible())
-		} else {
-			rooms, err = json.Marshal(c.manager.roomController.FilterRooms(gr))
-		}
-		if err != nil {
-			slog.Warn("cannot Marshal rooms", fn, "err", err)
-			return
-		}
-		e.Payload = rooms
-		c.writeEventBuffer <- e
-
 	case CREATE_ROOM:
-		var cr CreateRoomDTO
-		err := json.Unmarshal(e.Payload, &cr)
-		if err != nil {
-			slog.Warn("cannot Unmarshal CreateRoomDTO", fn, "err", err)
-			return
-		}
-
-		if r := c.manager.roomController.FindByOwnerId(cr.Owner.Id); r != nil {
-			slog.Info("cannot create multiple rooms", fn)
-			return
-		}
-		c.manager.createRoom(cr, c)
+		c.handleCreateRoom(e.Payload)
 
 	case JOIN_ROOM:
-		var idStr string
-		json.Unmarshal(e.Payload, &idStr)
-		roomId, err := uuid.Parse(idStr)
-		if err != nil {
-			slog.Warn("cannot parse roomId", fn, "err", err)
-			return
-		}
-		if r := c.manager.roomController.FindById(roomId); r != nil &&
-			c.currentRoomId == uuid.Nil {
-			r.AddPlayer(c)
-			c.changeRoom(r.Id)
-		}
+		c.handleJoinRoom(e.Payload)
+
+	case LEAVE_ROOM:
+		c.handleLeaveRoom()
+
+	case GET_ROOMS:
+		c.handleGetRooms()
 
 	case GET_GAME:
-		var idStr string
-		json.Unmarshal(e.Payload, &idStr)
-		roomId, err := uuid.Parse(idStr)
-		if err == nil {
-			if r := c.manager.roomController.FindById(roomId); r != nil {
-				r.HandleGetGame(c)
-			}
-		} else {
-			slog.Warn("cannot Unmarshal roomId", fn, "err", err)
-		}
+		c.handleGetGame(e.Payload)
 
 	case MOVE:
-		if c.currentRoomId != uuid.Nil {
-			if r := c.manager.roomController.FindById(c.currentRoomId); r != nil {
-				var move helpers.MoveDTO
-				json.Unmarshal(e.Payload, &move)
-				r.HandleTakeMove(move, c)
-			}
-		}
+		c.handleMove(e.Payload)
 
 	default:
 		slog.Warn("event have unknown action", fn, "action", e.Action)
 	}
 }
 
-func (c *Client) changeRoom(roomId uuid.UUID) {
-	if c.currentRoomId == uuid.Nil {
-		p, _ := json.Marshal(roomId.String())
+func (c *Client) handleCreateRoom(payload json.RawMessage) {
+	fn := slog.String("func", "handleCreateRoom")
+
+	var cr CreateRoomDTO
+	err := json.Unmarshal(payload, &cr)
+	if err != nil {
+		slog.Warn("cannot Unmarshal CreateRoomDTO", fn, "err", err)
+		return
+	}
+
+	if c.currentRoom != nil {
+		slog.Info("cannot create multiple rooms", fn)
+		return
+	}
+	r := newRoom(cr, c)
+	c.currentRoom = r
+	c.manager.add <- r
+}
+
+func (c *Client) handleJoinRoom(payload json.RawMessage) {
+	fn := slog.String("func", "handleJoinRoom")
+
+	roomId, err := uuid.Parse(string(payload))
+	if err != nil {
+		slog.Warn("cannot parse roomId", fn, "err", err)
+		c.sendError(UNPROCESSABLE_ENTITY)
+		return
+	}
+	if r := c.manager.findRoomById(roomId); r != nil &&
+		c.currentRoom == nil {
+		r.addClient(c)
+	}
+}
+
+func (c *Client) handleLeaveRoom() {
+	if c.currentRoom != nil {
+		c.currentRoom.unregister <- c
+	}
+}
+
+// getGame sends the latest data about the specified game.
+func (c *Client) handleGetGame(payload json.RawMessage) {
+	fn := slog.String("func", "handleGetGame")
+
+	roomId, err := uuid.Parse(string(payload))
+	if err != nil {
+		slog.Warn("cannot Parse roomId", fn, "err", err)
+		c.sendError(UNPROCESSABLE_ENTITY)
+		return
+	}
+	if r := c.manager.findRoomById(roomId); r != nil {
+		p, err := json.Marshal(r.Game)
+		if err != nil {
+			slog.Warn("cannot Marshal Game", fn, "err", err)
+			return
+		}
 		e := Event{
-			Action:  CHANGE_ROOM,
+			Action:  UPDATE_GAME,
 			Payload: p,
 		}
-		c.currentRoomId = roomId
 		c.writeEventBuffer <- e
 	}
+}
+
+func (c *Client) handleMove(payload json.RawMessage) {
+	fn := slog.String("func", "handleMove")
+
+	var m helpers.MoveDTO
+	err := json.Unmarshal(payload, &m)
+	if err != nil {
+		slog.Warn("cannot Unmarshal MoveDTO", fn, "err", err)
+		return
+	}
+
+	if c.currentRoom != nil {
+		c.currentRoom.handleTakeMove(m, c)
+	}
+}
+
+// handleGetRooms sends the current availible rooms one by one.
+// There can be a lot of rooms, so they can`t be send as a single message.
+func (c *Client) handleGetRooms() {
+	fn := slog.String("func", "getRooms")
+
+	for r := range c.manager.rooms {
+		if r.Game == nil {
+			payload, err := json.Marshal(r)
+			if err != nil {
+				slog.Warn("cannot Marshal Room", fn, "err", err)
+				continue
+			}
+			e := Event{
+				Action:  ADD_ROOM,
+				Payload: payload,
+			}
+			c.writeEventBuffer <- e
+		}
+	}
+}
+
+// redirects the client to the specified room.
+func (c *Client) sendRedirect(roomId uuid.UUID) {
+	p, _ := json.Marshal(roomId.String())
+	e := Event{
+		Action:  REDIRECT,
+		Payload: p,
+	}
+	c.currentRoom = c.manager.findRoomById(roomId)
+	c.writeEventBuffer <- e
+}
+
+// sendError sends an emerged error as Event type.
+func (c *Client) sendError(errName string) {
+	e := Event{
+		Action:  errName,
+		Payload: nil,
+	}
+	c.writeEventBuffer <- e
+}
+
+// pongHandler adds pongWait to the read deadline for the next pong message.
+func (c *Client) pongHandler(_ string) error {
+	return c.conn.SetReadDeadline(time.Now().Add(pongWait))
 }

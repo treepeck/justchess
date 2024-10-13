@@ -5,37 +5,52 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
+// upgrader is used by the Manager to recieve a *Conn.
 var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	ReadBufferSize:  1024,
-	CheckOrigin: func(req *http.Request) bool {
-		// TODO: change to the client (front-end) domain later
-		return true
+	CheckOrigin: func(r *http.Request) bool {
+		// All connections except front-end are prohibited.
+		// To test a ws package, this function must return true always.
+		//return r.Header.Get("Origin") == os.Getenv("CLIENT_DOMAIN")
+		return true // uncomment while testing a ws package.
 	},
 }
 
+// Manager stores the map of connected clients, handles new connections and
+// disconnections.
 type Manager struct {
-	sync.Mutex
-	Clients        map[*Client]bool
-	roomController *RoomController
+	register   chan *Client
+	unregister chan *Client
+	add        chan *Room
+	remove     chan *Room
+	broadcast  chan Event
+	clients    map[*Client]bool
+	rooms      map[*Room]bool
 }
 
-// Creates a new Manager.
+// NewManager creates and runs a new manager.
 func NewManager() *Manager {
-	return &Manager{
-		Clients:        make(map[*Client]bool),
-		roomController: NewController(),
+	m := &Manager{
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		add:        make(chan *Room),
+		remove:     make(chan *Room),
+		broadcast:  make(chan Event),
+		clients:    make(map[*Client]bool),
+		rooms:      make(map[*Room]bool),
 	}
+	go m.run()
+	return m
 }
 
-// Upgrades the incoming HTTP connection to the WebSocket Protocol.
-// If the connection cannot be upgraded, sends a header with status code 500
+// HandleConnection upgrades the incoming HTTP connection to the WebSocket Protocol.
+// If the connection cannot be upgraded, it sends a header with the status code 500
 // back to the client.
 func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 	fn := slog.String("func", "HandleConnection")
@@ -61,88 +76,166 @@ func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	c := newClient(conn, m, *u)
-	m.addClient(c)
+	// the register channel is used to avoid concurrent access to the clients map.
+	m.register <- c
 }
 
-// Adds a new client to the clients map and invokes the client`s goroutines:
-//  1. readEvents goroutine handles the incomming events from the client;
-//  2. writeEvent goroutine grabs the events from the writeEventBuffer channel
-//     and sends those events to the client.
+// Run receives data via channels and processes it.
+func (m *Manager) run() {
+	for {
+		select {
+		case c := <-m.register:
+			m.addClient(c)
+
+		case c := <-m.unregister:
+			m.removeClient(c)
+
+		case r := <-m.add:
+			m.addRoom(r)
+
+		case r := <-m.remove:
+			m.removeRoom(r)
+
+		case e := <-m.broadcast:
+			// broadcast the event among all connected clients.
+			for c := range m.clients {
+				// skip the clients that are already in a game.
+				if c.currentRoom == nil {
+					c.writeEventBuffer <- e
+				}
+			}
+		}
+	}
+}
+
+// addClient adds a new Client to the clients map and invokes the client`s goroutines.
 func (m *Manager) addClient(c *Client) {
-	m.Lock()
-	defer m.Unlock()
+	fn := slog.String("func", "manager.addClient")
 
-	fn := slog.String("func", "addClient")
+	// if the client is alredy connected, close the previous connection.
+	for connC := range m.clients {
+		if connC.User.Id == c.User.Id {
+			m.removeClient(connC)
+		}
+	}
 
-	m.Clients[c] = true
+	m.clients[c] = true
 	slog.Info("client "+c.User.Name+" joined", fn)
 
 	go c.readEvents()
 	go c.writeEvents()
 
-	m.broadcast(UPDATE_CLIENTS_COUNTER)
+	m.broadcastCC()
 }
 
-// Removes client from the clients map. Closes a connection with the front-end.
+// removeClient removes client from the clients map.
+// Closes a connection with the front-end.
 func (m *Manager) removeClient(c *Client) {
-	m.Lock()
-	defer m.Unlock()
+	fn := slog.String("func", "manager.removeClient")
 
-	fn := slog.String("func", "removeClient")
-
-	if _, ok := m.Clients[c]; ok {
+	if _, ok := m.clients[c]; ok {
 		c.conn.Close()
-		delete(m.Clients, c)
+		delete(m.clients, c)
 
 		slog.Info("client "+c.User.Name+" removed", fn)
-		m.broadcast(UPDATE_CLIENTS_COUNTER)
-		m.deleteRoom(c.User.Id)
-		c = nil
+		m.broadcastCC()
+
+		if c.currentRoom != nil {
+			c.currentRoom.unregister <- c
+		}
 	}
 }
 
-func (m *Manager) broadcast(action string) {
-	fn := slog.String("func", "broadcast")
+// addRoom registers a new room.
+func (m *Manager) addRoom(r *Room) {
+	fn := slog.String("func", "addRoom")
+	m.rooms[r] = true
+	slog.Info("room added", fn, slog.Int("count", len(m.rooms)))
 
-	var e Event
-	switch action {
+	m.broadcastAddRoom(r)
+}
 
-	case UPDATE_CLIENTS_COUNTER:
-		cc, _ := json.Marshal(len(m.Clients))
-		e.Payload = cc
+// removeRoom unregisters a room.
+func (m *Manager) removeRoom(r *Room) {
+	fn := slog.String("func", "removeRoom")
 
-	case UPDATE_ROOMS:
-		rooms, err := json.Marshal(m.roomController.FindAvailible())
-		if err != nil {
-			slog.Warn("cannot Marshal rooms", fn, "err", err)
-			return
-		}
-		e.Payload = rooms
-
-	default:
-		slog.Warn("event had unknown action", fn, "action", action)
-		return
+	if _, ok := m.rooms[r]; ok {
+		delete(m.rooms, r)
+		slog.Info("room removed", fn, slog.Int("count", len(m.rooms)))
 	}
 
-	e.Action = action
-	for c := range m.Clients {
-		if c.currentRoomId == uuid.Nil {
+	m.broadcastRemoveRoom(r)
+}
+
+// findRoomById finds the room with the specified id.
+func (m *Manager) findRoomById(id uuid.UUID) *Room {
+	for r := range m.rooms {
+		if r.Id == id {
+			return r
+		}
+	}
+	return nil
+}
+
+// broadcastAddRoom is a helper function that broadcasts the add room event.
+func (m *Manager) broadcastAddRoom(r *Room) {
+	fn := slog.String("func", "broadcastAddRoom")
+
+	p, err := json.Marshal(r)
+	if err != nil {
+		slog.Warn("cannot Marshal Room", fn, "err", err)
+		return
+	}
+	e := Event{
+		Action:  ADD_ROOM,
+		Payload: p,
+	}
+	for c := range m.clients {
+		// skip the clients that are already in a game.
+		if c.currentRoom == nil {
 			c.writeEventBuffer <- e
 		}
 	}
 }
 
-func (m *Manager) createRoom(cr CreateRoomDTO, owner *Client) *Room {
-	r := NewRoom(cr, owner)
-	m.roomController.AddRoom(r)
-	m.broadcast(UPDATE_ROOMS)
-	return r
+// broadcastRemoveRoom is a helper function that broadcasts the remove room event.
+func (m *Manager) broadcastRemoveRoom(r *Room) {
+	fn := slog.String("func", "broadcastRemoveRoom")
+
+	p, err := json.Marshal(r)
+	if err != nil {
+		slog.Warn("cannot Marshal Room", fn, "err", err)
+		return
+	}
+	e := Event{
+		Action:  REMOVE_ROOM,
+		Payload: p,
+	}
+	for c := range m.clients {
+		// skip the clients that are already in a game.
+		if c.currentRoom == nil {
+			c.writeEventBuffer <- e
+		}
+	}
 }
 
-func (m *Manager) deleteRoom(ownerId uuid.UUID) {
-	r := m.roomController.FindByOwnerId(ownerId)
-	if r != nil {
-		m.roomController.RemoveRoom(r)
-		m.broadcast(UPDATE_ROOMS)
+// broadcastCC is a helper function that broadcasts the updated clients counter.
+func (m *Manager) broadcastCC() {
+	fn := slog.String("func", "broadcastCC")
+
+	p, err := json.Marshal(len(m.clients))
+	if err != nil {
+		slog.Warn("cannot Marshal clients counter", fn, "err", err)
+		return
+	}
+	e := Event{
+		Action:  CLIENTS_COUNTER,
+		Payload: p,
+	}
+	for c := range m.clients {
+		// skip the clients that are already in a game.
+		if c.currentRoom == nil {
+			c.writeEventBuffer <- e
+		}
 	}
 }

@@ -35,9 +35,10 @@ func (k *King) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
 		pieces[move.To] = k
 		k.MovesCounter++
 		k.Pos = move.To
+		move.MoveType = pm
 
 		// handle castling
-		if pm == enums.LongCastling {
+		if move.MoveType == enums.LongCastling {
 			rookPos := helpers.NewPos(k.Pos.File-2, k.Pos.Rank)
 			rook := pieces[rookPos]
 			delete(pieces, rookPos)
@@ -45,7 +46,7 @@ func (k *King) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
 			pieces[newRookPos] = rook
 			rook.(*Rook).Pos = newRookPos
 			rook.(*Rook).MovesCounter++
-		} else if pm == enums.ShortCastling {
+		} else if move.MoveType == enums.ShortCastling {
 			rookPos := helpers.NewPos(k.Pos.File+1, k.Pos.Rank)
 			rook := pieces[rookPos]
 			delete(pieces, rookPos)

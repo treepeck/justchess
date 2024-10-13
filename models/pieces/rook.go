@@ -22,19 +22,22 @@ func NewRook(color enums.Color, pos helpers.Pos) *Rook {
 }
 
 func (r *Rook) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
-	// possibleMoves := r.GetPossibleMoves(pieces)
-	// for _, pm := range possibleMoves {
-	// 	if move.To.IsEqual(pm.To) && pm.MoveType != enums.Defend {
-	// 		// move the rook
-	// 		pieces[r.Pos] = nil
-	// 		pieces[pm.To] = r
+	possibleMoves := r.GetPossibleMoves(pieces)
 
-	// 		r.Pos = pm.To
+	pm := possibleMoves[move.To]
+	if pm != 0 && pm != enums.Defend {
+		if pieces[move.To] != nil {
+			move.IsCapture = true
+		}
 
-	// 		r.MovesCounter++
-	// 		return true
-	// 	}
-	// }
+		delete(pieces, move.From)
+		pieces[move.To] = r
+		r.Pos = move.To
+		r.MovesCounter++
+
+		return true
+	}
+
 	return false
 }
 

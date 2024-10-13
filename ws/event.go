@@ -21,18 +21,26 @@ func (e *Event) Marshal() []byte {
 
 // client events
 const (
-	GET_ROOMS   = "GET_ROOMS"
-	CREATE_ROOM = "CREATE_ROOM"
-	JOIN_ROOM   = "JOIN_ROOM"
-	GET_GAME    = "GET_GAME"
-	MOVE        = "MOVE"
+	CREATE_ROOM = "cr" // Creates a new room.
+	JOIN_ROOM   = "jr" // Join a room.
+	LEAVE_ROOM  = "lr" // Leave a room.
+	GET_ROOMS   = "gr" // Gets all availible rooms one by one.
+	GET_GAME    = "gg" // Get up-to-date game info.
+	MOVE        = "m"  // Take a move.
 )
 
 // server events
 const (
-	UPDATE_CLIENTS_COUNTER = "UPDATE_CLIENTS_COUNTER"
-	UPDATE_ROOMS           = "UPDATE_ROOMS"
-	CHANGE_ROOM            = "CHANGE_ROOM"
-	UPDATE_BOARD           = "UPDATE_BOARD"
-	UPDATE_GAME            = "UPDATE_GAME"
+	CLIENTS_COUNTER = "cc" // Updates clients counter.
+	REDIRECT        = "r"  // Redirect client to a room.
+	ADD_ROOM        = "ar" // Add availible room.
+	REMOVE_ROOM     = "rr" // Remove room.
+	UPDATE_GAME     = "ug" // Update game.
+)
+
+// server errors
+const (
+	UNPROCESSABLE_ENTITY = "ue"
+	CREATE_ROOM_ERR      = "cre"
+	JOIN_ROOM_ERR        = "jre"
 )

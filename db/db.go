@@ -11,7 +11,7 @@ import (
 
 var DB *sql.DB
 
-func OpenDatabase() error {
+func OpenDatabase(schemaPath string) error {
 	// format a connection string
 	connectStr := fmt.Sprintf(
 		"user=%s password=%s dbname=%s host=%s port=%s sslmode=%s",
@@ -30,7 +30,7 @@ func OpenDatabase() error {
 	}
 
 	// create tables
-	schema, err := os.ReadFile("./db/schema.sql")
+	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		slog.Error("database schema not found", "err", err)
 		return err

@@ -7,136 +7,160 @@ import (
 	"encoding/json"
 	"log/slog"
 	"math/rand"
-	"sync"
 
 	"github.com/google/uuid"
 )
 
+// Room stores two players and a game they play.
+// The Room type is very similar to the Manager.
+// There is always one single Room for the every game.
 type Room struct {
-	sync.Mutex
-	Id          uuid.UUID    `json:"id"`
-	Game        *models.Game `json:"game"`
-	Owner       models.User  `json:"owner"`
-	WhitePlayer *Client
-	BlackPlayer *Client
+	Id         uuid.UUID     `json:"id"`
+	Game       *models.Game  `json:"game"`
+	Owner      models.User   `json:"owner"`
+	Bonus      uint          `json:"bonus"`
+	Control    enums.Control `json:"control"`
+	clients    map[*Client]bool
+	register   chan *Client
+	unregister chan *Client
 }
 
+// CreateRoomDTO provides necessary data to register a new Room.
 type CreateRoomDTO struct {
 	Control enums.Control `json:"control"`
 	Bonus   uint          `json:"bonus"`
 	Owner   models.User   `json:"owner"`
 }
 
-type GetRoomDTO struct {
-	Control string `json:"control"`
-	Bonus   string `json:"bonus"`
+// newRoom creates and runs a new room. The owner client is added to the room.
+func newRoom(cr CreateRoomDTO, owner *Client) *Room {
+	r := &Room{
+		Id:         uuid.New(),
+		Game:       nil,
+		Owner:      cr.Owner,
+		Bonus:      cr.Bonus,
+		Control:    cr.Control,
+		clients:    make(map[*Client]bool),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+	}
+	go r.run()
+	r.addClient(owner)
+	return r
 }
 
-func NewRoom(cr CreateRoomDTO, owner *Client) *Room {
-	r := &Room{
-		Id:          uuid.New(),
-		Owner:       cr.Owner,
-		Game:        nil,
-		WhitePlayer: nil,
-		BlackPlayer: nil,
+func (r *Room) run() {
+	for {
+		select {
+		case c := <-r.register:
+			r.addClient(c)
+
+		case c := <-r.unregister:
+			r.removeClient(c)
+		}
+	}
+}
+
+// addClient adds a client to the room.
+func (r *Room) addClient(c *Client) {
+	// if the game hasn`t started yet.
+	if r.Game == nil {
+		r.clients[c] = true
+	} else {
+		// handle reconnections ONLY and deny any other clients to connect.
+		if r.Game.WhiteId == c.User.Id ||
+			r.Game.BlackId == c.User.Id {
+			r.clients[c] = true
+		} else {
+			return
+		}
+	}
+	c.sendRedirect(r.Id)
+
+	r.startGame()
+}
+
+// removeClient deletes the client from the room and deletes the room itself if the
+// room owner disconnects and the game has not been started yet (game aborted).
+func (r *Room) removeClient(c *Client) {
+	delete(r.clients, c)
+	c.currentRoom = nil
+	if (r.Game == nil && r.Owner.Id == c.User.Id) || len(r.clients) == 0 {
+		c.manager.remove <- r
+	}
+}
+
+// startGame creates a new game if all clients are connected.
+func (r *Room) startGame() {
+	if r.Game != nil || len(r.clients) != 2 {
+		return
 	}
 
 	// randomize side selection
 	whiteId := uuid.Nil
 	blackId := uuid.Nil
-	if rand.Intn(2) == 1 {
-		r.WhitePlayer = owner
-		whiteId = owner.User.Id
-	} else {
-		r.BlackPlayer = owner
-		blackId = owner.User.Id
-	}
-	owner.changeRoom(r.Id)
 
-	r.Game = models.NewGame(r.Id, cr.Control, cr.Bonus, whiteId, blackId)
-	return r
+	players := make([]*Client, 0)
+	for c := range r.clients {
+		players = append(players, c)
+	}
+
+	if rand.Intn(100) < 50 {
+		whiteId = players[0].User.Id
+		blackId = players[1].User.Id
+	} else {
+		whiteId = players[1].User.Id
+		blackId = players[0].User.Id
+	}
+
+	r.Game = models.NewGame(r.Id, r.Control, r.Bonus, whiteId, blackId)
 }
 
-// Adds client to the room if:
-// 1. The game hasn`t been started yet and there is availible side.
-// 2. The game has been started, but the client just reconnects.
-func (r *Room) AddPlayer(c *Client) {
-	r.Lock()
-	defer r.Unlock()
-
-	if r.Game.Status == enums.Waiting {
-		// take the availible side
-		if r.Game.WhiteId == uuid.Nil {
-			r.WhitePlayer = c
-			r.Game.WhiteId = c.User.Id
-			c.changeRoom(r.Id)
-		} else if r.Game.BlackId == uuid.Nil {
-			r.BlackPlayer = c
-			r.Game.BlackId = c.User.Id
-			c.changeRoom(r.Id)
-		}
-		r.Game.Status = enums.Continues
-	} else {
-		// handle reconnection
-		if r.Game.WhiteId == c.User.Id {
-			r.WhitePlayer = c
-			c.changeRoom(r.Id)
-		} else if r.Game.BlackId == c.User.Id {
-			r.BlackPlayer = c
-			c.changeRoom(r.Id)
-		}
-	}
-
-	// if the user joined, update a frontend game state
-	if c.currentRoomId != uuid.Nil {
-		r.Broadcast(UPDATE_GAME)
-	}
-}
-
-func (r *Room) Broadcast(action string) {
+func (r *Room) broadcast(action string) {
 	fn := slog.String("func", "room.broadcast")
 
-	var e Event
+	var payload []byte
+	var err error
+
 	switch action {
 	case UPDATE_GAME:
-		p, err := json.Marshal(r.Game)
-		if err != nil {
-			slog.Warn("cannot Marshal game", fn, "err", err)
-			return
-		}
-		e.Payload = p
+		payload, err = json.Marshal(r.Game)
 
 	default:
 		slog.Warn("event had unknown action", fn, "action", action)
 		return
 	}
 
-	e.Action = action
-	if r.WhitePlayer != nil {
-		r.WhitePlayer.writeEventBuffer <- e
+	if err != nil {
+		slog.Warn("cannot Marshal payload", fn, "err", err)
 	}
-	if r.BlackPlayer != nil {
-		r.BlackPlayer.writeEventBuffer <- e
+	e := Event{
+		Action:  action,
+		Payload: payload,
 	}
+	for c := range r.clients {
+		c.writeEventBuffer <- e
+	}
+
 }
 
-func (r *Room) HandleTakeMove(move helpers.MoveDTO, c *Client) {
+func (r *Room) handleTakeMove(move helpers.MoveDTO, c *Client) {
 	index := r.Game.Moves.Depth() + 1
 	isEven := index%2 == 0
 	// for the white player the current move number must be odd
 	if !isEven && c.User.Id == r.Game.WhiteId {
 		if r.Game.TakeMove(move) {
-			r.Broadcast(UPDATE_GAME)
+			r.broadcast(UPDATE_GAME)
 		}
 	} else if isEven && c.User.Id == r.Game.BlackId {
 		if r.Game.TakeMove(move) {
-			r.Broadcast(UPDATE_GAME)
+			r.broadcast(UPDATE_GAME)
 		}
 	}
 }
 
-func (r *Room) HandleGetGame(c *Client) {
-	fn := slog.String("func", "HandleGetName")
+func (r *Room) handleGetGame(c *Client) {
+	fn := slog.String("func", "handleGetGame")
 	// send updated game info back to the client
 	p, err := json.Marshal(r.Game)
 	if err != nil {

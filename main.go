@@ -35,7 +35,7 @@ func main() {
 	}
 
 	// connect to the database
-	err = db.OpenDatabase()
+	err = db.OpenDatabase("./db/schema.sql")
 	if err != nil {
 		return
 	}

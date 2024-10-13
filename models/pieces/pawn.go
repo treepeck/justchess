@@ -36,8 +36,9 @@ func (p *Pawn) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
 		pieces[move.To] = p
 		p.MovesCounter++
 		p.Pos = move.To
+		move.MoveType = pm
 
-		if pm == enums.Promotion {
+		if move.MoveType == enums.Promotion {
 			switch move.PromotionPayload {
 			case enums.Knight:
 				pieces[p.Pos] = NewKnight(p.Color, move.To)
@@ -50,7 +51,7 @@ func (p *Pawn) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
 			default:
 				pieces[p.Pos] = NewQueen(p.Color, move.To)
 			}
-		} else if pm == enums.EnPassant {
+		} else if move.MoveType == enums.EnPassant {
 			if p.Color == enums.White {
 				delete(pieces, helpers.NewPos(p.Pos.File, p.Pos.Rank-1))
 			} else {

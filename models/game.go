@@ -22,14 +22,6 @@ type Game struct {
 	Pieces   map[helpers.Pos]pieces.Piece `json:"pieces"`
 }
 
-type CreateGameDTO struct {
-	Id      uuid.UUID     `json:"id"`
-	Control enums.Control `json:"control"`
-	Bonus   uint          `json:"bonus"`
-	WhiteId uuid.UUID     `json:"whiteId"`
-	BlackId uuid.UUID     `json:"blackId"`
-}
-
 func NewGame(id uuid.UUID, control enums.Control,
 	bonus uint, whiteId, blackId uuid.UUID,
 ) *Game {
@@ -163,7 +155,7 @@ func (g *Game) TakeMove(md helpers.MoveDTO) bool {
 			// figure out which pawns can be captured en passant
 			g.checkEnPassantPawns(move)
 			// check is the move was a check
-			g.isCheckMove(move)
+			g.checkKings(move)
 
 			g.Moves.Push(*move)
 			return true
@@ -186,16 +178,18 @@ func (g *Game) checkEnPassantPawns(lastMove *helpers.Move) {
 	}
 }
 
-func (g *Game) isCheckMove(lastMove *helpers.Move) {
-	piece := g.Pieces[lastMove.To]
-	possilbeMoves := piece.GetPossibleMoves(g.Pieces)
+func (g *Game) checkKings(lastMove *helpers.Move) {
+	lastMovedPiece := g.Pieces[lastMove.To]
+	lastMovedPiecePM := lastMovedPiece.GetPossibleMoves(g.Pieces)
 
-	for pos, mt := range possilbeMoves {
-		if mt != enums.Defend {
-			if g.Pieces[pos] != nil && g.Pieces[pos].GetName() == enums.King {
-				// check if the lastMove was a checkmate
-				lastMove.IsCheckmate = g.isCheckmate(pos)
-				lastMove.IsCheck = true
+	for pos, piece := range g.Pieces {
+		if piece.GetName() == enums.King {
+			if lastMovedPiecePM[pos] != 0 {
+				if lastMovedPiece.GetColor() != piece.GetColor() {
+					piece.(*pieces.King).IsChecked = true
+				}
+			} else {
+				piece.(*pieces.King).IsChecked = false
 			}
 		}
 	}
