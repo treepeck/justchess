@@ -2,32 +2,46 @@ package ws
 
 import (
 	"chess-api/db"
+	"chess-api/models/game/enums"
+	"chess-api/repository"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
-// Ignore logs from writeEvents and readEvents functions during tests.
-func TestHandleConnection(t *testing.T) {
+// createTestServer is a helper function which creates a test websocket server.
+// the created server should be closed after tests by calling server.Close().
+// the database should alse be closed by calling db.CloseDatabase func.
+func createTestServer() *httptest.Server {
 	// load env
 	err := godotenv.Load("./../.env")
 	if err != nil {
-		return
+		return nil
 	}
 
 	err = db.OpenDatabase("./../db/schema.sql")
 	if err != nil {
-		return
+		return nil
 	}
-	defer db.CloseDatabase()
 
 	m := NewManager()
 
-	s := httptest.NewServer(http.HandlerFunc(m.HandleConnection))
+	return httptest.NewServer(http.HandlerFunc(m.HandleConnection))
+}
+
+// Ignore logs from writeEvents and readEvents functions during tests.
+func TestHandleConnection(t *testing.T) {
+	s := createTestServer()
+	defer db.CloseDatabase()
+	if s == nil { // server wasnt created
+		return
+	}
 	defer s.Close()
 
 	testcases := []struct {
@@ -65,6 +79,82 @@ func TestHandleConnection(t *testing.T) {
 
 			if r.StatusCode != tc.expectedStatusCode {
 				t.Errorf("expected status: %d, got: %d", tc.expectedStatusCode, r.StatusCode)
+			}
+		})
+	}
+}
+
+func TestAddRoom(t *testing.T) {
+	s := createTestServer()
+	defer db.CloseDatabase()
+	if s == nil { // server wasnt created
+		return
+	}
+	defer s.Close()
+
+	// url is generated dynamically
+	url := "ws" + strings.TrimPrefix(s.URL, "http") +
+		"/ws?id=" + "6635826b-5307-4155-9ef6-bff8bb8c3fc4"
+	// connect to a Manager
+	c, _, _ := websocket.DefaultDialer.Dial(url, nil)
+	if c == nil {
+		return
+	}
+	defer c.Close()
+
+	id, _ := uuid.Parse("6635826b-5307-4155-9ef6-bff8bb8c3fc4")
+	user := repository.FindUserById(id)
+	if user == nil {
+		return
+	}
+
+	testcases := []struct {
+		name        string
+		cr          CreateRoomDTO
+		expectedRes Event
+	}{
+		{
+			"add room",
+			CreateRoomDTO{
+				Control: enums.Blitz,
+				Bonus:   2,
+				Owner:   *user,
+			},
+			Event{
+				Action:  REDIRECT,
+				Payload: nil,
+			},
+		},
+		{
+			"add multiple rooms",
+			CreateRoomDTO{},
+			Event{
+				Action:  CREATE_ROOM_ERR,
+				Payload: nil,
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			payload, _ := json.Marshal(tc.cr)
+			e := Event{
+				Action:  CREATE_ROOM,
+				Payload: payload,
+			}
+			c.WriteJSON(e)
+
+			if tc.name == "add room" {
+				c.ReadMessage() // skip first message
+			}
+
+			var got Event
+			err := c.ReadJSON(&got)
+			if err != nil {
+				t.Fatalf("failed to read websocket response: %v", err)
+			}
+			if got.Action != tc.expectedRes.Action {
+				t.Errorf("expected action: %s, got: %s", tc.expectedRes.Action, got.Action)
 			}
 		})
 	}

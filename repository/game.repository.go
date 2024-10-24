@@ -1,10 +1,8 @@
 package repository
 
-import (
-	"chess-api/models"
-)
+import "chess-api/models/game"
 
-func AddGame() *models.Game {
+func AddGame() *game.G {
 	// fn := slog.String("func", "repository.AddGame")
 
 	// defer rows.Close()

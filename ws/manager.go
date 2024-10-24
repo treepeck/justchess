@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -17,8 +18,8 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		// All connections except front-end are prohibited.
 		// To test a ws package, this function must return true always.
-		//return r.Header.Get("Origin") == os.Getenv("CLIENT_DOMAIN")
-		return true // uncomment while testing a ws package.
+		return r.Header.Get("Origin") == os.Getenv("CLIENT_DOMAIN")
+		// return true // uncomment while testing a ws package.
 	},
 }
 
@@ -108,7 +109,7 @@ func (m *Manager) run() {
 	}
 }
 
-// addClient adds a new Client to the clients map and invokes the client`s goroutines.
+// addClient adds a new client to the clients map and invokes the client`s goroutines.
 func (m *Manager) addClient(c *Client) {
 	fn := slog.String("func", "manager.addClient")
 
@@ -146,7 +147,7 @@ func (m *Manager) removeClient(c *Client) {
 	}
 }
 
-// addRoom registers a new room.
+// addRoom adds a new room.
 func (m *Manager) addRoom(r *Room) {
 	fn := slog.String("func", "addRoom")
 	m.rooms[r] = true
@@ -155,12 +156,13 @@ func (m *Manager) addRoom(r *Room) {
 	m.broadcastAddRoom(r)
 }
 
-// removeRoom unregisters a room.
+// removeRoom removes a room.
 func (m *Manager) removeRoom(r *Room) {
 	fn := slog.String("func", "removeRoom")
 
 	if _, ok := m.rooms[r]; ok {
 		delete(m.rooms, r)
+		r.close <- true // end room goroutine
 		slog.Info("room removed", fn, slog.Int("count", len(m.rooms)))
 	}
 
@@ -177,7 +179,7 @@ func (m *Manager) findRoomById(id uuid.UUID) *Room {
 	return nil
 }
 
-// broadcastAddRoom is a helper function that broadcasts the add room event.
+// broadcastAddRoom is a helper function that broadcasts the added room.
 func (m *Manager) broadcastAddRoom(r *Room) {
 	fn := slog.String("func", "broadcastAddRoom")
 
@@ -198,7 +200,7 @@ func (m *Manager) broadcastAddRoom(r *Room) {
 	}
 }
 
-// broadcastRemoveRoom is a helper function that broadcasts the remove room event.
+// broadcastRemoveRoom is a helper function that broadcasts the removed room.
 func (m *Manager) broadcastRemoveRoom(r *Room) {
 	fn := slog.String("func", "broadcastRemoveRoom")
 

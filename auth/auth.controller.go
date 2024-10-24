@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"chess-api/models"
+	"chess-api/models/user"
 	"chess-api/repository"
 	"encoding/json"
 	"log/slog"
@@ -46,7 +46,7 @@ func handleGuest(rw http.ResponseWriter, r *http.Request) {
 	fn := slog.String("func", "handleGuest")
 
 	// decode the request body
-	var cu models.CreateUserDTO
+	var cu user.CreateUserDTO
 	err := json.NewDecoder(r.Body).Decode(&cu)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnprocessableEntity)

@@ -1,9 +1,10 @@
 package ws
 
 import (
-	"chess-api/models"
-	"chess-api/models/enums"
-	"chess-api/models/helpers"
+	"chess-api/models/game"
+	"chess-api/models/game/enums"
+	"chess-api/models/game/helpers"
+	"chess-api/models/user"
 	"encoding/json"
 	"log/slog"
 	"math/rand"
@@ -16,20 +17,21 @@ import (
 // There is always one single Room for the every game.
 type Room struct {
 	Id         uuid.UUID     `json:"id"`
-	Game       *models.Game  `json:"game"`
-	Owner      models.User   `json:"owner"`
+	Game       *game.G       `json:"game"`
+	Owner      user.U        `json:"owner"`
 	Bonus      uint          `json:"bonus"`
 	Control    enums.Control `json:"control"`
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
+	close      chan bool // channel to close the room
 }
 
 // CreateRoomDTO provides necessary data to register a new Room.
 type CreateRoomDTO struct {
 	Control enums.Control `json:"control"`
 	Bonus   uint          `json:"bonus"`
-	Owner   models.User   `json:"owner"`
+	Owner   user.U        `json:"owner"`
 }
 
 // newRoom creates and runs a new room. The owner client is added to the room.
@@ -43,6 +45,7 @@ func newRoom(cr CreateRoomDTO, owner *Client) *Room {
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		close:      make(chan bool),
 	}
 	go r.run()
 	r.addClient(owner)
@@ -57,6 +60,10 @@ func (r *Room) run() {
 
 		case c := <-r.unregister:
 			r.removeClient(c)
+
+		case <-r.close:
+			// exit loop
+			return
 		}
 	}
 }
@@ -75,6 +82,7 @@ func (r *Room) addClient(c *Client) {
 			return
 		}
 	}
+	c.currentRoom = r
 	c.sendRedirect(r.Id)
 
 	r.startGame()
@@ -97,8 +105,8 @@ func (r *Room) startGame() {
 	}
 
 	// randomize side selection
-	whiteId := uuid.Nil
-	blackId := uuid.Nil
+	var whiteId uuid.UUID
+	var blackId uuid.UUID
 
 	players := make([]*Client, 0)
 	for c := range r.clients {
@@ -113,7 +121,8 @@ func (r *Room) startGame() {
 		blackId = players[0].User.Id
 	}
 
-	r.Game = models.NewGame(r.Id, r.Control, r.Bonus, whiteId, blackId)
+	r.Game = game.NewG(r.Id, r.Control, r.Bonus, whiteId, blackId)
+	r.broadcast(UPDATE_GAME)
 }
 
 func (r *Room) broadcast(action string) {
@@ -144,32 +153,15 @@ func (r *Room) broadcast(action string) {
 
 }
 
-func (r *Room) handleTakeMove(move helpers.MoveDTO, c *Client) {
-	index := r.Game.Moves.Depth() + 1
+func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
+	index := len(r.Game.Moves)
 	isEven := index%2 == 0
-	// for the white player the current move number must be odd
-	if !isEven && c.User.Id == r.Game.WhiteId {
-		if r.Game.TakeMove(move) {
+	// for the white player the current move number must be odd,
+	// for the black player - even
+	if (!isEven && c.User.Id == r.Game.WhiteId) ||
+		(isEven && c.User.Id == r.Game.BlackId) {
+		if r.Game.HandleMove(move) {
 			r.broadcast(UPDATE_GAME)
 		}
-	} else if isEven && c.User.Id == r.Game.BlackId {
-		if r.Game.TakeMove(move) {
-			r.broadcast(UPDATE_GAME)
-		}
 	}
-}
-
-func (r *Room) handleGetGame(c *Client) {
-	fn := slog.String("func", "handleGetGame")
-	// send updated game info back to the client
-	p, err := json.Marshal(r.Game)
-	if err != nil {
-		slog.Warn("cannot Marshal game", fn, "err", err)
-		return
-	}
-	e := Event{
-		Action:  UPDATE_GAME,
-		Payload: p,
-	}
-	c.writeEventBuffer <- e
 }

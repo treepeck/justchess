@@ -5,10 +5,10 @@ import (
 	"errors"
 )
 
-type Piece int
+type PieceType int
 
 const (
-	Pawn Piece = iota
+	Pawn PieceType = iota + 1
 	Rook
 	Knight
 	Bishop
@@ -16,27 +16,27 @@ const (
 	King
 )
 
-func (p Piece) String() string {
+func (p PieceType) String() string {
 	switch p {
-	case 0:
-		return "pawn"
 	case 1:
-		return "rook"
+		return "pawn"
 	case 2:
-		return "knight"
+		return "rook"
 	case 3:
-		return "bishop"
+		return "knight"
 	case 4:
-		return "queen"
+		return "bishop"
 	case 5:
+		return "queen"
+	case 6:
 		return "king"
 	default:
 		return "unknown piece"
 	}
 }
 
-func ParsePiece(control string) (Piece, error) {
-	switch control {
+func ParsePiece(piece string) (PieceType, error) {
+	switch piece {
 	case "pawn":
 		return Pawn, nil
 	case "rook":
@@ -50,15 +50,15 @@ func ParsePiece(control string) (Piece, error) {
 	case "king":
 		return King, nil
 	default:
-		return -1, errors.New("unknown piece")
+		return 0, errors.New("unknown piece")
 	}
 }
 
-func (p Piece) MarshalJSON() ([]byte, error) {
+func (p PieceType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.String())
 }
 
-func (p *Piece) UnmarshalJSON(data []byte) (err error) {
+func (p *PieceType) UnmarshalJSON(data []byte) (err error) {
 	var piece string
 	if err = json.Unmarshal(data, &piece); err != nil {
 		return err

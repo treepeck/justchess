@@ -1,52 +1,24 @@
 package pieces
 
 import (
-	"chess-api/models/enums"
-	"chess-api/models/helpers"
+	"chess-api/models/game/enums"
+	"chess-api/models/game/helpers"
 )
 
 type Knight struct {
-	Color enums.Color `json:"color"`
-	Pos   helpers.Pos `json:"pos"`
-	Name  enums.Piece `json:"name"`
+	Color        enums.Color     `json:"color"`
+	Pos          helpers.Pos     `json:"pos"`
+	Type         enums.PieceType `json:"type"`
+	MovesCounter uint            `json:"movesCounter"`
 }
 
 func NewKnight(color enums.Color, pos helpers.Pos) *Knight {
 	return &Knight{
-		Color: color,
-		Pos:   pos,
-		Name:  enums.Knight,
+		Color:        color,
+		Pos:          pos,
+		Type:         enums.Knight,
+		MovesCounter: 0,
 	}
-}
-
-func (k *Knight) Move(pieces map[helpers.Pos]Piece, move *helpers.Move) bool {
-	possibleMoves := k.GetPossibleMoves(pieces)
-
-	pm := possibleMoves[move.To]
-	if pm != 0 && pm != enums.Defend {
-		if pieces[move.To] != nil {
-			move.IsCapture = true
-		}
-
-		delete(pieces, move.From)
-		pieces[move.To] = k
-		k.Pos = move.To
-		return true
-	}
-
-	return false
-}
-
-func (k *Knight) GetName() enums.Piece {
-	return enums.Knight
-}
-
-func (k *Knight) GetColor() enums.Color {
-	return k.Color
-}
-
-func (k *Knight) GetPosition() helpers.Pos {
-	return k.Pos
 }
 
 func (k *Knight) GetPossibleMoves(pieces map[helpers.Pos]Piece,
@@ -78,4 +50,28 @@ func (k *Knight) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 	}
 
 	return possibleMoves
+}
+
+func (k *Knight) Move(to helpers.Pos) {
+	k.Pos = to
+}
+
+func (k *Knight) GetType() enums.PieceType {
+	return enums.Knight
+}
+
+func (k *Knight) GetMovesCounter() uint {
+	return k.MovesCounter
+}
+
+func (k *Knight) SetMovesCounter(mc uint) {
+	k.MovesCounter = mc
+}
+
+func (k *Knight) GetColor() enums.Color {
+	return k.Color
+}
+
+func (k *Knight) GetPosition() helpers.Pos {
+	return k.Pos
 }

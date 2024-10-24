@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"chess-api/models"
+	"chess-api/models/user"
 	"log/slog"
 
 	"chess-api/db"
@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddGuest(id uuid.UUID) *models.User {
+func AddGuest(id uuid.UUID) *user.U {
 	fn := slog.String("func", "AddGuest")
 
 	const queryText = `
@@ -30,7 +30,7 @@ func AddGuest(id uuid.UUID) *models.User {
 	}
 
 	defer rows.Close()
-	var user models.User
+	var user user.U
 	if rows.Next() {
 		rows.Scan(&user.Id, &user.Name, &user.IsDeleted,
 			&user.GamesCount, &user.BlitzRating, &user.BulletRating,
@@ -40,7 +40,7 @@ func AddGuest(id uuid.UUID) *models.User {
 	return &user
 }
 
-func FindUserById(id uuid.UUID) *models.User {
+func FindUserById(id uuid.UUID) *user.U {
 	fn := slog.String("func", "FindUserById")
 
 	const queryText string = `
@@ -59,7 +59,7 @@ func FindUserById(id uuid.UUID) *models.User {
 	}
 
 	defer rows.Close()
-	var user models.User
+	var user user.U
 	if rows.Next() {
 		rows.Scan(&user.Id, &user.Name, &user.IsDeleted,
 			&user.GamesCount, &user.BlitzRating, &user.BulletRating,

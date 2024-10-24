@@ -1,4 +1,4 @@
-package models
+package user
 
 import (
 	"time"
@@ -6,7 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type User struct {
+// U describes user data.
+type U struct {
 	Id           uuid.UUID `json:"id"`
 	Name         string    `json:"username"`
 	BlitzRating  uint      `json:"blitzRating"`
@@ -23,6 +24,6 @@ type CreateUserDTO struct {
 	Id uuid.UUID `json:"id"`
 }
 
-func (u *User) GetPassword() string {
+func (u *U) GetPassword() string {
 	return u.password
 }

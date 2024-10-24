@@ -1,8 +1,8 @@
 package ws
 
 import (
-	"chess-api/models"
-	"chess-api/models/helpers"
+	"chess-api/models/game/helpers"
+	"chess-api/models/user"
 	"encoding/json"
 	"log/slog"
 	"time"
@@ -19,11 +19,11 @@ const (
 	pingInterval = (pongWait * 9) / 10
 )
 
-// Client stores the *Conn and writes events by using a channel.
-// The use of a channel is necessary, since whe *websocket.Conn supports
+// Client stores the connection and writes events by using a channel.
+// The use of a channel is necessary, since whe connection supports
 // only one concurrent write at a time.
 type Client struct {
-	User             models.User `json:"user"` // behind all Clients stands real Users.
+	User             user.U `json:"user"` // behind all Clients stands real Users.
 	conn             *websocket.Conn
 	manager          *Manager
 	writeEventBuffer chan Event
@@ -31,7 +31,7 @@ type Client struct {
 }
 
 // newClient creates a new client.
-func newClient(conn *websocket.Conn, m *Manager, user models.User) *Client {
+func newClient(conn *websocket.Conn, m *Manager, user user.U) *Client {
 	return &Client{
 		User:             user,
 		conn:             conn,
@@ -61,15 +61,18 @@ func (c *Client) readEvents() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			slog.Warn("error while reading a message", fn, "err", err)
-			return
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway,
+				websocket.CloseNormalClosure) {
+				slog.Warn("error while reading a message", fn, "err", err)
+			}
+			break
 		}
 
 		var e Event
 		err = json.Unmarshal(data, &e)
 		if err != nil {
 			slog.Warn("cannot Unmarshal event", fn, "err", err)
-			return
+			break
 		}
 		c.handleEvent(e)
 	}
@@ -147,15 +150,22 @@ func (c *Client) handleCreateRoom(payload json.RawMessage) {
 	err := json.Unmarshal(payload, &cr)
 	if err != nil {
 		slog.Warn("cannot Unmarshal CreateRoomDTO", fn, "err", err)
+		c.writeEventBuffer <- Event{
+			Action:  CREATE_ROOM_ERR,
+			Payload: nil,
+		}
 		return
 	}
 
 	if c.currentRoom != nil {
 		slog.Info("cannot create multiple rooms", fn)
+		c.writeEventBuffer <- Event{
+			Action:  CREATE_ROOM_ERR,
+			Payload: nil,
+		}
 		return
 	}
 	r := newRoom(cr, c)
-	c.currentRoom = r
 	c.manager.add <- r
 }
 
@@ -196,6 +206,9 @@ func (c *Client) handleGetGame(payload json.RawMessage) {
 			slog.Warn("cannot Marshal Game", fn, "err", err)
 			return
 		}
+		// add client to the room.
+		r.register <- c
+
 		e := Event{
 			Action:  UPDATE_GAME,
 			Payload: p,
@@ -207,7 +220,7 @@ func (c *Client) handleGetGame(payload json.RawMessage) {
 func (c *Client) handleMove(payload json.RawMessage) {
 	fn := slog.String("func", "handleMove")
 
-	var m helpers.MoveDTO
+	var m helpers.Move
 	err := json.Unmarshal(payload, &m)
 	if err != nil {
 		slog.Warn("cannot Unmarshal MoveDTO", fn, "err", err)
@@ -247,7 +260,6 @@ func (c *Client) sendRedirect(roomId uuid.UUID) {
 		Action:  REDIRECT,
 		Payload: p,
 	}
-	c.currentRoom = c.manager.findRoomById(roomId)
 	c.writeEventBuffer <- e
 }
 

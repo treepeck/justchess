@@ -3,6 +3,7 @@ package enums
 import (
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 type Control int
@@ -12,6 +13,20 @@ const (
 	Blitz
 	Rapid
 )
+
+// ToDuration returns the duration of a control in nanoseconds.
+func (c Control) ToDuration() time.Duration {
+	switch c {
+	case 0:
+		return time.Minute
+	case 1:
+		return time.Minute * 3
+	case 2:
+		return time.Minute * 10
+	default:
+		panic("unknown control")
+	}
+}
 
 func (c Control) String() string {
 	switch c {
