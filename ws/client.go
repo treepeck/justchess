@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"chess-api/models/game/enums"
 	"chess-api/models/game/helpers"
 	"chess-api/models/user"
 	"encoding/json"
@@ -166,7 +167,9 @@ func (c *Client) handleCreateRoom(payload json.RawMessage) {
 		return
 	}
 	r := newRoom(cr, c)
+	c.currentRoom = r
 	c.manager.add <- r
+	c.sendRedirect(r.Id)
 }
 
 func (c *Client) handleJoinRoom(payload json.RawMessage) {
@@ -180,7 +183,7 @@ func (c *Client) handleJoinRoom(payload json.RawMessage) {
 	}
 	if r := c.manager.findRoomById(roomId); r != nil &&
 		c.currentRoom == nil {
-		r.addClient(c)
+		c.sendRedirect(r.Id)
 	}
 }
 
@@ -200,20 +203,9 @@ func (c *Client) handleGetGame(payload json.RawMessage) {
 		c.sendError(UNPROCESSABLE_ENTITY)
 		return
 	}
+	// TODO: add game history (handle completed games, stored in a db)
 	if r := c.manager.findRoomById(roomId); r != nil {
-		p, err := json.Marshal(r.Game)
-		if err != nil {
-			slog.Warn("cannot Marshal Game", fn, "err", err)
-			return
-		}
-		// add client to the room.
 		r.register <- c
-
-		e := Event{
-			Action:  UPDATE_GAME,
-			Payload: p,
-		}
-		c.writeEventBuffer <- e
 	}
 }
 
@@ -236,9 +228,8 @@ func (c *Client) handleMove(payload json.RawMessage) {
 // There can be a lot of rooms, so they can`t be send as a single message.
 func (c *Client) handleGetRooms() {
 	fn := slog.String("func", "getRooms")
-
 	for r := range c.manager.rooms {
-		if r.Game == nil {
+		if r.game.Status == enums.Waiting {
 			payload, err := json.Marshal(r)
 			if err != nil {
 				slog.Warn("cannot Marshal Room", fn, "err", err)

@@ -4,7 +4,6 @@ import (
 	"chess-api/models/game/enums"
 	"chess-api/models/game/helpers"
 	"chess-api/models/game/pieces"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,18 +11,21 @@ import (
 
 // G represents a game and stores all necessary data.
 type G struct {
-	Id        uuid.UUID                     `json:"id"`        // game id.
-	Bonus     uint                          `json:"bonus"`     // time increment.
-	Moves     []helpers.Move                `json:"moves"`     // completed moves.
-	Pieces    map[helpers.Pos]pieces.Piece  `json:"pieces"`    // board state.
-	Status    enums.Status                  `json:"status"`    // game status.
-	Control   enums.Control                 `json:"control"`   // time control.
-	WhiteId   uuid.UUID                     `json:"whiteId"`   // white player id.
-	BlackId   uuid.UUID                     `json:"blackId"`   // black player id.
-	PlayedAt  time.Time                     `json:"playedAt"`  // when the game was started.
-	WhiteTime time.Duration                 `json:"whiteTime"` // how much time do the white have left.
-	BlackTime time.Duration                 `json:"blackTime"` // how much time do the black have left.
-	cvm       map[helpers.PossibleMove]bool // current valid moves.
+	Id          uuid.UUID                     `json:"id"`        // game id.
+	Bonus       uint                          `json:"bonus"`     // time increment.
+	Moves       []helpers.Move                `json:"moves"`     // completed moves.
+	Pieces      map[helpers.Pos]pieces.Piece  `json:"pieces"`    // board state.
+	Status      enums.Status                  `json:"status"`    // game status.
+	Control     enums.Control                 `json:"control"`   // time control.
+	WhiteId     uuid.UUID                     `json:"whiteId"`   // white player id.
+	BlackId     uuid.UUID                     `json:"blackId"`   // black player id.
+	PlayedAt    time.Time                     `json:"playedAt"`  // when the game was started.
+	WhiteTime   time.Duration                 `json:"whiteTime"` // how much time do the white have left.
+	BlackTime   time.Duration                 `json:"blackTime"` // how much time do the black have left.
+	Cvm         map[helpers.PossibleMove]bool // current valid moves.
+	Epm         map[helpers.PossibleMove]bool // enemy possible moves.
+	currentTurn enums.Color
+	PlayerTurn  uuid.UUID
 }
 
 // NewG creates a new game.
@@ -31,38 +33,39 @@ func NewG(id uuid.UUID, control enums.Control,
 	bonus uint, whiteId, blackId uuid.UUID,
 ) *G {
 	g := &G{
-		Id:        id,
-		Bonus:     bonus,
-		Moves:     make([]helpers.Move, 0),
-		Pieces:    make(map[helpers.Pos]pieces.Piece),
-		Status:    enums.Waiting,
-		Control:   control,
-		WhiteId:   whiteId,
-		BlackId:   blackId,
-		PlayedAt:  time.Now(),
-		WhiteTime: control.ToDuration(),
-		BlackTime: control.ToDuration(),
-		cvm:       make(map[helpers.PossibleMove]bool),
+		Id:          id,
+		Bonus:       bonus,
+		Moves:       make([]helpers.Move, 0),
+		Pieces:      make(map[helpers.Pos]pieces.Piece),
+		Status:      enums.Waiting,
+		Control:     control,
+		WhiteId:     whiteId,
+		BlackId:     blackId,
+		PlayedAt:    time.Now(),
+		WhiteTime:   control.ToDuration(),
+		BlackTime:   control.ToDuration(),
+		Cvm:         make(map[helpers.PossibleMove]bool),
+		Epm:         make(map[helpers.PossibleMove]bool),
+		currentTurn: enums.White,
+		PlayerTurn:  whiteId,
 	}
 	g.initPieces()
 	// get white player valid moves in advance to increase performance
-	g.cvm = g.getPlayerValidMoves(enums.White)
+	g.Cvm = g.getValidMoves()
+	g.Epm = g.getPossibleMoves(enums.Black)
 	return g
 }
 
-// getPlayerValidMoves finds all valid moves for the specified player.
+// getValidMoves finds all valid moves for the specified player.
 // The validity of the returned moves is guaranteed - player`s possible
 // moves are filtered down by the validity checking.
 // For more details about move validity, see [chess-api/models/pieces.GetPossibleMoves].
-func (g *G) getPlayerValidMoves(side enums.Color,
-) map[helpers.PossibleMove]bool {
-	ppm := getPlayerPossibleMoves(side, g.Pieces)
+func (g *G) getValidMoves() map[helpers.PossibleMove]bool {
+	ppm := g.getPossibleMoves(g.currentTurn)
 	// determine enemy side
-	var es enums.Color
-	if side == enums.White {
+	es := enums.White
+	if g.currentTurn == enums.White {
 		es = enums.Black
-	} else {
-		es = enums.White
 	}
 	// store valid moves
 	vm := make(map[helpers.PossibleMove]bool)
@@ -71,59 +74,53 @@ func (g *G) getPlayerValidMoves(side enums.Color,
 		if pm.MoveType == enums.Defend {
 			continue
 		}
-		// create a board copy
-		bc := make(map[helpers.Pos]pieces.Piece)
-		for pos, piece := range g.Pieces {
-			// piece is a pointer! so modifying the piece in board copy,
-			// piece in original board (g.Pieces) is modified too!
-			bc[pos] = piece
-		}
 		// make sure that after making this move the allied king is not checked
 		isChecked := false
-		bc[pm.From].Move(pm.To)
-		// update board state
-		bc[pm.To] = bc[pm.From]
-		delete(bc, pm.From)
+		prevPiece := g.Pieces[pm.To]
+		g.Pieces[pm.To] = g.Pieces[pm.From]
+		g.Pieces[pm.From].Move(pm.To)
+		delete(g.Pieces, pm.From)
 		// find all enemy possible moves on a new position
-		eppm := getPlayerPossibleMoves(es, bc)
+		eppm := g.getPossibleMoves(es)
 		for epm := range eppm {
-			p := bc[epm.To]
+			p := g.Pieces[epm.To]
 			// if the allied king is checked
-			if p != nil && p.GetType() == enums.King && p.GetColor() == side {
+			if p != nil && p.GetType() == enums.King && p.GetColor() == g.currentTurn {
 				isChecked = true
-				// return the piece to original pos!
-				bc[pm.To].Move(pm.From)
-				bc[pm.To].SetMovesCounter(bc[pm.To].GetMovesCounter() - 2)
 				break
 			}
 		}
+		// respore the board
+		g.Pieces[pm.From] = g.Pieces[pm.To]
+		delete(g.Pieces, pm.To)
+		if prevPiece != nil {
+			g.Pieces[pm.To] = prevPiece
+		}
+		g.Pieces[pm.From].Move(pm.From)
+		g.Pieces[pm.From].SetMovesCounter(g.Pieces[pm.From].GetMovesCounter() - 2)
 		// if the allied king remained in a safe position, the move is valid
 		if !isChecked {
 			vm[pm] = true
-			// return the piece to original pos!
-			bc[pm.To].Move(pm.From)
-			bc[pm.To].SetMovesCounter(0)
 		}
 	}
 	return vm
 }
 
-// getPlayerPossibleMoves finds all possible moves for the specified player
-// and board.
+// getPossibleMoves finds all possible moves for the specified player
+// on the specified board.
 // The validity of the returned moves is not guaranteed.
 // For more details about move validity, see [chess-api/models/pieces.GetPossibleMoves].
-func getPlayerPossibleMoves(side enums.Color,
-	pieces map[helpers.Pos]pieces.Piece) map[helpers.PossibleMove]bool {
+func (g *G) getPossibleMoves(side enums.Color,
+) map[helpers.PossibleMove]bool {
 	pm := make(map[helpers.PossibleMove]bool)
-	for from, piece := range pieces {
-		if piece.GetColor() == side {
-			ppm := piece.GetPossibleMoves(pieces)
+	for from, piece := range g.Pieces {
+		if piece != nil && piece.GetColor() == side {
+			ppm := piece.GetPossibleMoves(g.Pieces)
 			for pos, mt := range ppm {
 				pm[helpers.PossibleMove{
-					To:        pos,
-					From:      from,
-					MoveType:  mt,
-					PieceType: piece.GetType(),
+					To:       pos,
+					From:     from,
+					MoveType: mt,
 				}] = true
 			}
 		}
@@ -134,7 +131,7 @@ func getPlayerPossibleMoves(side enums.Color,
 // HandleMove handles player`s moves. True is retured if the move is valid,
 // false otherwise.
 func (g *G) HandleMove(m helpers.Move) bool {
-	for vm := range g.cvm {
+	for vm := range g.Cvm {
 		if vm.From.IsEqual(m.From) &&
 			vm.To.IsEqual(m.To) {
 			// move the piece
@@ -156,15 +153,19 @@ func (g *G) HandleMove(m helpers.Move) bool {
 
 func (g *G) processLastMove(lastMove *helpers.Move) {
 	// get opponent`s valid moves to determine checkmate
-	es := enums.Black          // enemy side
-	if len(g.Moves)+1%2 == 0 { // black has moved
-		es = enums.White
+	es := enums.White // enemy side
+	g.PlayerTurn = g.WhiteId
+	if g.currentTurn == enums.White {
+		es = enums.Black
+		g.PlayerTurn = g.BlackId
 	}
-	g.cvm = g.getPlayerValidMoves(es)
+	g.Epm = g.getPossibleMoves(g.currentTurn)
+	g.currentTurn = es
+	g.Cvm = g.getValidMoves()
 
 	// if the opponent does not have any valid moves,
 	// it is either a stalemate or a checkmate
-	if len(g.cvm) == 0 {
+	if len(g.Cvm) == 0 {
 		g.determineCheck(lastMove)
 		if lastMove.IsCheck {
 			lastMove.IsCheckmate = true
@@ -292,35 +293,4 @@ func (g *G) initKings() {
 
 	pos = helpers.PosFromInd(7, 5)
 	g.Pieces[pos] = pieces.NewKing(enums.White, pos)
-}
-
-// MarshalJSON serializes game object to a json.
-func (g *G) MarshalJSON() ([]byte, error) {
-	gameDTO := struct {
-		Id       uuid.UUID               `json:"id"`
-		Control  enums.Control           `json:"control"`
-		Bonus    uint                    `json:"bonus"`
-		Status   enums.Status            `json:"status"`
-		WhiteId  uuid.UUID               `json:"whiteId"`
-		BlackId  uuid.UUID               `json:"blackId"`
-		PlayedAt time.Time               `json:"playedAt"`
-		Moves    []helpers.Move          `json:"moves"`
-		Pieces   map[string]pieces.Piece `json:"pieces"`
-	}{
-		Id:       g.Id,
-		Control:  g.Control,
-		Bonus:    g.Bonus,
-		Status:   g.Status,
-		WhiteId:  g.WhiteId,
-		BlackId:  g.BlackId,
-		PlayedAt: g.PlayedAt,
-		Moves:    g.Moves,
-		Pieces:   make(map[string]pieces.Piece),
-	}
-
-	for pos, piece := range g.Pieces {
-		gameDTO.Pieces[pos.String()] = piece
-	}
-
-	return json.Marshal(gameDTO)
 }

@@ -29,34 +29,29 @@ func TestGetPlayerValidMoves(t *testing.T) {
 			},
 			map[helpers.PossibleMove]bool{
 				{
-					To:        helpers.NewPos(enums.D, 2),
-					From:      helpers.NewPos(enums.C, 2),
-					MoveType:  enums.Basic,
-					PieceType: enums.Rook,
+					To:       helpers.NewPos(enums.D, 2),
+					From:     helpers.NewPos(enums.C, 2),
+					MoveType: enums.Basic,
 				}: true,
 				{
-					To:        helpers.NewPos(enums.D, 4),
-					From:      helpers.NewPos(enums.A, 4),
-					MoveType:  enums.Basic,
-					PieceType: enums.Rook,
+					To:       helpers.NewPos(enums.D, 4),
+					From:     helpers.NewPos(enums.A, 4),
+					MoveType: enums.Basic,
 				}: true,
 				{
-					To:        helpers.NewPos(enums.C, 1),
-					From:      helpers.NewPos(enums.D, 1),
-					MoveType:  enums.Basic,
-					PieceType: enums.King,
+					To:       helpers.NewPos(enums.C, 1),
+					From:     helpers.NewPos(enums.D, 1),
+					MoveType: enums.Basic,
 				}: true,
 				{
-					To:        helpers.NewPos(enums.E, 2),
-					From:      helpers.NewPos(enums.D, 1),
-					MoveType:  enums.Basic,
-					PieceType: enums.King,
+					To:       helpers.NewPos(enums.E, 2),
+					From:     helpers.NewPos(enums.D, 1),
+					MoveType: enums.Basic,
 				}: true,
 				{
-					To:        helpers.NewPos(enums.E, 1),
-					From:      helpers.NewPos(enums.D, 1),
-					MoveType:  enums.Basic,
-					PieceType: enums.King,
+					To:       helpers.NewPos(enums.E, 1),
+					From:     helpers.NewPos(enums.D, 1),
+					MoveType: enums.Basic,
 				}: true,
 			},
 			enums.White,
@@ -74,22 +69,19 @@ func TestGetPlayerValidMoves(t *testing.T) {
 			},
 			map[helpers.PossibleMove]bool{
 				{
-					To:        helpers.NewPos(enums.F, 1),
-					From:      helpers.NewPos(enums.E, 1),
-					MoveType:  enums.Basic,
-					PieceType: enums.King,
+					To:       helpers.NewPos(enums.F, 1),
+					From:     helpers.NewPos(enums.E, 1),
+					MoveType: enums.Basic,
 				}: true,
 				{
-					To:        helpers.NewPos(enums.C, 1),
-					From:      helpers.NewPos(enums.D, 1),
-					MoveType:  enums.Basic,
-					PieceType: enums.Queen,
+					To:       helpers.NewPos(enums.C, 1),
+					From:     helpers.NewPos(enums.D, 1),
+					MoveType: enums.Basic,
 				}: true,
 				{
-					To:        helpers.NewPos(enums.D, 2),
-					From:      helpers.NewPos(enums.E, 1),
-					MoveType:  enums.Basic,
-					PieceType: enums.King,
+					To:       helpers.NewPos(enums.D, 2),
+					From:     helpers.NewPos(enums.E, 1),
+					MoveType: enums.Basic,
 				}: true,
 			},
 			enums.Black,
@@ -99,7 +91,8 @@ func TestGetPlayerValidMoves(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			g.Pieces = tc.pieces
-			got := g.getPlayerValidMoves(tc.currentTurn)
+			g.currentTurn = tc.currentTurn
+			got := g.getValidMoves()
 
 			if len(got) != len(tc.expectedVM) {
 				t.Errorf("expected len: %d, got: %d", len(tc.expectedVM), len(got))
@@ -149,8 +142,9 @@ func TestHandleMove(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			g.Pieces = tc.pieces
+			g.currentTurn = tc.currentTurn
 
-			g.cvm = g.getPlayerValidMoves(tc.currentTurn)
+			g.Cvm = g.getValidMoves()
 			gotRes := g.HandleMove(*tc.move)
 			gotBoard := g.Pieces
 

@@ -21,7 +21,7 @@ func AddGuest(id uuid.UUID) *user.U {
 			registered_at, likes
 	`
 
-	// TODO: replace uuid.New() with the safer newUserpassword generation later
+	// TODO: replace uuid.New() with the safer password generation later
 	name := "Player-" + id.String()[0:8]
 	rows, err := db.DB.Query(queryText, id, name, uuid.New())
 	if err != nil {
@@ -57,8 +57,8 @@ func FindUserById(id uuid.UUID) *user.U {
 		slog.Warn("cannot execute query", fn, "err", err)
 		return nil
 	}
-
 	defer rows.Close()
+
 	var user user.U
 	if rows.Next() {
 		rows.Scan(&user.Id, &user.Name, &user.IsDeleted,

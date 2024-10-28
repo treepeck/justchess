@@ -152,7 +152,6 @@ func (m *Manager) addRoom(r *Room) {
 	fn := slog.String("func", "addRoom")
 	m.rooms[r] = true
 	slog.Info("room added", fn, slog.Int("count", len(m.rooms)))
-
 	m.broadcastAddRoom(r)
 }
 
@@ -179,7 +178,7 @@ func (m *Manager) findRoomById(id uuid.UUID) *Room {
 	return nil
 }
 
-// broadcastAddRoom is a helper function that broadcasts the added room.
+// broadcastAddRoom broadcasts the added room.
 func (m *Manager) broadcastAddRoom(r *Room) {
 	fn := slog.String("func", "broadcastAddRoom")
 

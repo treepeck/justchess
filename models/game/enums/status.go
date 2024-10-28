@@ -2,24 +2,23 @@ package enums
 
 import (
 	"encoding/json"
-	"errors"
 )
 
 type Status int
 
 const (
-	Canceled Status = iota
-	Waiting
-	WhiteWon
-	BlackWon
-	Draw
-	Continues
+	Aborted   Status = iota // one of the players did not make the first move or cancelled the game.
+	Waiting                 // the game doesn't start until both sides connect.
+	WhiteWon                // white player won.
+	BlackWon                // black player won.
+	Draw                    // draw or by agreement or by stalemate or there is not enough pieces to checkmate.
+	Continues               // game continues.
 )
 
 func (s Status) String() string {
 	switch s {
 	case 0:
-		return "canceled"
+		return "aborted"
 	case 1:
 		return "waiting"
 	case 2:
@@ -35,36 +34,6 @@ func (s Status) String() string {
 	}
 }
 
-func ParseStatus(status string) (Status, error) {
-	switch status {
-	case "canceled":
-		return Canceled, nil
-	case "waiting":
-		return Waiting, nil
-	case "white_won":
-		return WhiteWon, nil
-	case "black_won":
-		return BlackWon, nil
-	case "draw":
-		return Draw, nil
-	case "continues":
-		return Continues, nil
-	default:
-		return -1, errors.New("unknown status")
-	}
-}
-
 func (s Status) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.String())
-}
-
-func (s *Status) UnmarshalJSON(data []byte) (err error) {
-	var status string
-	if err = json.Unmarshal(data, &status); err != nil {
-		return err
-	}
-	if *s, err = ParseStatus(status); err != nil {
-		return err
-	}
-	return nil
 }

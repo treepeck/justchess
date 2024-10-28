@@ -19,8 +19,7 @@ type Move struct {
 
 // possibleMove is a helper struct for determining player`s possible moves.
 type PossibleMove struct {
-	To        Pos
-	From      Pos
-	MoveType  enums.MoveType
-	PieceType enums.PieceType // which piece can make the move.
+	To       Pos            `json:"to"`
+	From     Pos            `json:"from"`
+	MoveType enums.MoveType `json:"moveType"`
 }

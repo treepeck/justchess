@@ -7,9 +7,9 @@ import (
 
 type Bishop struct {
 	Color        enums.Color     `json:"color"`
-	Pos          helpers.Pos     `json:"pos"`
+	Pos          helpers.Pos     `json:"-"`
 	Type         enums.PieceType `json:"type"`
-	MovesCounter uint            `json:"movesCounter"`
+	MovesCounter uint            `json:"-"`
 }
 
 func NewBishop(color enums.Color, pos helpers.Pos) *Bishop {
@@ -33,6 +33,7 @@ func (b *Bishop) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 
 func (b *Bishop) Move(to helpers.Pos) {
 	b.Pos = to
+	b.MovesCounter++
 }
 
 func (b *Bishop) GetMovesCounter() uint {

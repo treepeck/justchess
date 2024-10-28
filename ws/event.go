@@ -6,8 +6,8 @@ import (
 )
 
 type Event struct {
-	Action  string          `json:"action"`
-	Payload json.RawMessage `json:"payload"`
+	Action  string          `json:"a"`
+	Payload json.RawMessage `json:"p"`
 }
 
 func (e *Event) Marshal() []byte {
@@ -32,10 +32,14 @@ const (
 // server events
 const (
 	CLIENTS_COUNTER = "cc" // Updates clients counter.
-	REDIRECT        = "r"  // Redirect client to a room.
 	ADD_ROOM        = "ar" // Add availible room.
 	REMOVE_ROOM     = "rr" // Remove room.
-	UPDATE_GAME     = "ug" // Update game.
+	REDIRECT        = "r"  // Redirect client to a room.
+	GAME            = "g"
+	UPDATE_BOARD    = "ub" // Redraw board on client.
+	MOVES           = "mh" // Moves history.
+	STATUS          = "s"  // Up-to-date game status.
+	VALID_MOVES     = "vm" // Update valid moves on client.
 )
 
 // server errors

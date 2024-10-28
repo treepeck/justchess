@@ -35,3 +35,24 @@ type Piece interface {
 	// GetColor returns the piece color.
 	GetColor() enums.Color
 }
+
+// BuildPiece takes concrete piece and returns that piece copy.
+func BuildPiece(piece Piece) Piece {
+	var p Piece
+	switch piece.GetType() {
+	case enums.Pawn:
+		p = NewPawn(piece.GetColor(), piece.GetPosition())
+	case enums.Knight:
+		p = NewKnight(piece.GetColor(), piece.GetPosition())
+	case enums.Bishop:
+		p = NewBishop(piece.GetColor(), piece.GetPosition())
+	case enums.Rook:
+		p = NewRook(piece.GetColor(), piece.GetPosition())
+	case enums.Queen:
+		p = NewQueen(piece.GetColor(), piece.GetPosition())
+	case enums.King:
+		p = NewKing(piece.GetColor(), piece.GetPosition())
+	}
+	p.SetMovesCounter(piece.GetMovesCounter())
+	return p
+}

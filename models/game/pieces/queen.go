@@ -7,9 +7,9 @@ import (
 
 type Queen struct {
 	Color        enums.Color     `json:"color"`
-	Pos          helpers.Pos     `json:"pos"`
+	Pos          helpers.Pos     `json:"-"`
 	Type         enums.PieceType `json:"type"`
-	MovesCounter uint            `json:"movesCounter"`
+	MovesCounter uint            `json:"-"`
 }
 
 func NewQueen(color enums.Color, pos helpers.Pos) *Queen {
@@ -38,6 +38,7 @@ func (q *Queen) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 
 func (q *Queen) Move(to helpers.Pos) {
 	q.Pos = to
+	q.MovesCounter++
 }
 
 func (q *Queen) GetMovesCounter() uint {

@@ -37,14 +37,3 @@ func ParseColor(color string) (Color, error) {
 func (c Color) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.String())
 }
-
-func (c *Color) UnmarshalJSON(data []byte) (err error) {
-	var color string
-	if err = json.Unmarshal(data, &color); err != nil {
-		return err
-	}
-	if *c, err = ParseColor(color); err != nil {
-		return err
-	}
-	return nil
-}

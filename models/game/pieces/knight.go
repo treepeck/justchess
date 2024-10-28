@@ -7,9 +7,9 @@ import (
 
 type Knight struct {
 	Color        enums.Color     `json:"color"`
-	Pos          helpers.Pos     `json:"pos"`
+	Pos          helpers.Pos     `json:"-"`
 	Type         enums.PieceType `json:"type"`
-	MovesCounter uint            `json:"movesCounter"`
+	MovesCounter uint            `json:"-"`
 }
 
 func NewKnight(color enums.Color, pos helpers.Pos) *Knight {
@@ -54,6 +54,7 @@ func (k *Knight) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 
 func (k *Knight) Move(to helpers.Pos) {
 	k.Pos = to
+	k.MovesCounter++
 }
 
 func (k *Knight) GetType() enums.PieceType {

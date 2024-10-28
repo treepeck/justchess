@@ -16,8 +16,8 @@ import (
 )
 
 // createTestServer is a helper function which creates a test websocket server.
-// the created server should be closed after tests by calling server.Close().
-// the database should alse be closed by calling db.CloseDatabase func.
+// Created server should be closed after executing tests by calling the server.Close().
+// Database should alse be closed by calling the db.CloseDatabase func.
 func createTestServer() *httptest.Server {
 	// load env
 	err := godotenv.Load("./../.env")

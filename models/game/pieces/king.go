@@ -7,8 +7,8 @@ import (
 
 type King struct {
 	Color        enums.Color     `json:"color"`
-	MovesCounter uint            `json:"movesCounter"`
-	Pos          helpers.Pos     `json:"pos"`
+	MovesCounter uint            `json:"-"`
+	Pos          helpers.Pos     `json:"-"`
 	Type         enums.PieceType `json:"type"`
 }
 

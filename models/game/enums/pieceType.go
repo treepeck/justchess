@@ -2,7 +2,6 @@ package enums
 
 import (
 	"encoding/json"
-	"errors"
 )
 
 type PieceType int
@@ -35,22 +34,22 @@ func (p PieceType) String() string {
 	}
 }
 
-func ParsePiece(piece string) (PieceType, error) {
+func ParsePiece(piece string) PieceType {
 	switch piece {
 	case "pawn":
-		return Pawn, nil
+		return Pawn
 	case "rook":
-		return Rook, nil
+		return Rook
 	case "knight":
-		return Knight, nil
+		return Knight
 	case "bishop":
-		return Bishop, nil
+		return Bishop
 	case "queen":
-		return Queen, nil
+		return Queen
 	case "king":
-		return King, nil
+		return King
 	default:
-		return 0, errors.New("unknown piece")
+		return 0
 	}
 }
 
@@ -63,8 +62,6 @@ func (p *PieceType) UnmarshalJSON(data []byte) (err error) {
 	if err = json.Unmarshal(data, &piece); err != nil {
 		return err
 	}
-	if *p, err = ParsePiece(piece); err != nil {
-		return err
-	}
+	*p = ParsePiece(piece)
 	return nil
 }

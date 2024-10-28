@@ -6,11 +6,11 @@ import (
 )
 
 type Pawn struct {
-	Pos          helpers.Pos     `json:"pos"`
+	Pos          helpers.Pos     `json:"-"`
 	Type         enums.PieceType `json:"type"`
 	Color        enums.Color     `json:"color"`
-	MovesCounter uint            `json:"movesCounter"`
-	IsEnPassant  bool            `json:"isEnPassant"`
+	MovesCounter uint            `json:"-"`
+	IsEnPassant  bool            `json:"-"`
 }
 
 func NewPawn(color enums.Color, pos helpers.Pos) *Pawn {

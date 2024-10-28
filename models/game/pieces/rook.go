@@ -7,8 +7,8 @@ import (
 
 type Rook struct {
 	Color        enums.Color     `json:"color"`
-	MovesCounter uint            `json:"movesCounter"`
-	Pos          helpers.Pos     `json:"pos"`
+	MovesCounter uint            `json:"-"`
+	Pos          helpers.Pos     `json:"-"`
 	Type         enums.PieceType `json:"type"`
 }
 
@@ -33,6 +33,7 @@ func (r *Rook) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 
 func (r *Rook) Move(to helpers.Pos) {
 	r.Pos = to
+	r.MovesCounter++
 }
 
 func (r *Rook) GetMovesCounter() uint {
