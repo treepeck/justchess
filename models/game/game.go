@@ -134,21 +134,54 @@ func (g *G) HandleMove(m helpers.Move) bool {
 	for vm := range g.Cvm {
 		if vm.From.IsEqual(m.From) &&
 			vm.To.IsEqual(m.To) {
-			// move the piece
-			g.Pieces[m.From].Move(m.To)
+			m.MoveType = vm.MoveType
 			// determine is move a capture
 			if g.Pieces[m.To] != nil {
 				m.IsCapture = true
 			}
-			// update the board state
-			g.Pieces[m.To] = g.Pieces[m.From]
-			delete(g.Pieces, m.From)
+			g.movePiece(m.From, m.To)
+			// handle special moves
+			switch m.MoveType {
+			case enums.Promotion:
+				g.handlePromotion(&m)
+
+			case enums.LongCastling:
+				g.handleCastling(m.To.Rank, m.To.File-2)
+
+			case enums.ShortCastling:
+				g.handleCastling(m.To.Rank, m.To.File+1)
+			}
 
 			g.processLastMove(&m)
 			return true
 		}
 	}
 	return false
+}
+
+// handlePromotion promotes a pawn to a specified piece.
+func (g *G) handlePromotion(m *helpers.Move) {
+	if m.PromotionPayload == 0 { // invalid piece for promotion
+		return
+	}
+
+	pp := g.Pieces[m.To] // previous piece
+	g.Pieces[m.To] = pieces.BuildPiece(m.PromotionPayload, pp.GetColor(),
+		pp.GetPosition(), pp.GetMovesCounter(),
+	)
+}
+
+// handleCastling moves the rook according to the type of castling.
+func (g *G) handleCastling(rank, file int) {
+	var rookPos helpers.Pos
+	rookPos.Rank = rank
+	rookPos.File = file
+
+	dF := -2             // delta file between rook and moved king- 0-0 by default
+	if file == enums.A { // 0-0-0
+		dF = 3
+	}
+	g.movePiece(rookPos, helpers.NewPos(rookPos.File+dF, rank))
 }
 
 func (g *G) processLastMove(lastMove *helpers.Move) {
@@ -163,13 +196,12 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 	g.currentTurn = es
 	g.Cvm = g.getValidMoves()
 
+	g.determineCheck(lastMove)
 	// if the opponent does not have any valid moves,
 	// it is either a stalemate or a checkmate
 	if len(g.Cvm) == 0 {
-		g.determineCheck(lastMove)
 		if lastMove.IsCheck {
 			lastMove.IsCheckmate = true
-			// TODO: game.endGame
 		}
 		// } else {
 		// 	// TODO: handle stalemate game.endGame
@@ -216,6 +248,14 @@ func (g *G) determineEnPassant(lastMove helpers.Move) {
 			lmp.(*pieces.Pawn).IsEnPassant = true
 		}
 	}
+}
+
+// movePiece moves a piece and updates pieces.
+func (g *G) movePiece(from, to helpers.Pos) {
+	g.Pieces[from].Move(to)
+	// update the board state
+	g.Pieces[to] = g.Pieces[from]
+	delete(g.Pieces, from)
 }
 
 // initPieces places the pieces in their standard places.

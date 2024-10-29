@@ -43,13 +43,12 @@ func (p *Pawn) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 				// promition is possible
 				pm[forward] = enums.Promotion
 			}
-		}
-
-		if p.MovesCounter == 0 {
-			doubleForward := helpers.NewPos(p.Pos.File, p.Pos.Rank+dir*2)
-			if pieces[doubleForward] == nil {
-				// promotion is impossible in a first move
-				pm[doubleForward] = enums.PawnForward
+			if p.MovesCounter == 0 {
+				doubleForward := helpers.NewPos(p.Pos.File, p.Pos.Rank+dir*2)
+				if pieces[doubleForward] == nil {
+					// promotion is impossible in a first move
+					pm[doubleForward] = enums.PawnForward
+				}
 			}
 		}
 	}

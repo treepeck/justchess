@@ -113,7 +113,6 @@ func TestHandleMove(t *testing.T) {
 
 	testcases := []struct {
 		name           string
-		piece          pieces.Piece
 		pieces         map[helpers.Pos]pieces.Piece
 		move           *helpers.Move
 		expectedRes    bool
@@ -122,8 +121,8 @@ func TestHandleMove(t *testing.T) {
 	}{
 		{
 			"legal_move_e2-e4",
-			pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 2)),
 			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 2}: pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 2)),
 				{File: enums.E, Rank: 2}: pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 2)),
 			},
 			&helpers.Move{
@@ -134,6 +133,60 @@ func TestHandleMove(t *testing.T) {
 			true,
 			map[helpers.Pos]pieces.Piece{
 				{File: enums.E, Rank: 4}: pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 4)),
+			},
+			enums.White,
+		},
+		{
+			"legal_white_0-0",
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 1}: pieces.NewKing(enums.White, helpers.NewPos(enums.E, 1)),
+				{File: enums.H, Rank: 1}: pieces.NewRook(enums.White, helpers.NewPos(enums.H,
+					1)),
+			},
+			&helpers.Move{
+				To:               helpers.NewPos(enums.G, 1),
+				From:             helpers.NewPos(enums.E, 1),
+				PromotionPayload: 0,
+			},
+			true,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.G, Rank: 1}: pieces.NewKing(enums.White, helpers.NewPos(enums.G, 1)),
+				{File: enums.F, Rank: 1}: pieces.NewRook(enums.White, helpers.NewPos(enums.F, 1)),
+			},
+			enums.White,
+		},
+		{
+			"legal_black_0-0-0",
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 8}: pieces.NewKing(enums.Black, helpers.NewPos(enums.E, 8)),
+				{File: enums.A, Rank: 8}: pieces.NewRook(enums.Black, helpers.NewPos(enums.A,
+					8)),
+			},
+			&helpers.Move{
+				To:               helpers.NewPos(enums.C, 8),
+				From:             helpers.NewPos(enums.E, 8),
+				PromotionPayload: 0,
+			},
+			true,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.C, Rank: 8}: pieces.NewKing(enums.Black, helpers.NewPos(enums.C, 8)),
+				{File: enums.D, Rank: 8}: pieces.NewRook(enums.Black, helpers.NewPos(enums.D, 8)),
+			},
+			enums.Black,
+		},
+		{
+			"e8=Q",
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 7}: pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 7)),
+			},
+			&helpers.Move{
+				To:               helpers.NewPos(enums.E, 8),
+				From:             helpers.NewPos(enums.E, 7),
+				PromotionPayload: enums.Queen,
+			},
+			true,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 8}: pieces.NewQueen(enums.White, helpers.NewPos(enums.E, 8)),
 			},
 			enums.White,
 		},
