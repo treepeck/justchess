@@ -55,6 +55,11 @@ func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 	checkSquare(0, -1)  // lower square.
 	checkSquare(+1, -1) // lower right square.
 
+	// if the king is checked, it can not castle
+	if is[k.Pos] != 0 {
+		return possibleMoves
+	}
+
 	// handleCastling is a nested function that checks if a king can castle.
 	handleCastling := func(ct enums.MoveType, ss, dF int) {
 		var rookPos helpers.Pos
