@@ -26,13 +26,11 @@ func NewPawn(color enums.Color, pos helpers.Pos) *Pawn {
 func (p *Pawn) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 ) map[helpers.Pos]enums.MoveType {
 	pm := make(map[helpers.Pos]enums.MoveType)
-
 	// determine move direction
 	dir := 1
 	if p.Color == enums.Black {
 		dir = -1
 	}
-
 	// check if can move forward
 	forward := helpers.NewPos(p.Pos.File, p.Pos.Rank+dir)
 	if forward.IsInBoard() {

@@ -190,6 +190,23 @@ func TestHandleMove(t *testing.T) {
 			},
 			enums.White,
 		},
+		{
+			"exd6_en_passant",
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.E, Rank: 5}: pieces.NewPawn(enums.White, helpers.NewPos(enums.E, 5)),
+				{File: enums.D, Rank: 5}: pieces.NewPawn(enums.Black, helpers.NewPos(enums.D, 5)),
+			},
+			&helpers.Move{
+				To:               helpers.NewPos(enums.D, 6),
+				From:             helpers.NewPos(enums.E, 5),
+				PromotionPayload: 0,
+			},
+			true,
+			map[helpers.Pos]pieces.Piece{
+				{File: enums.D, Rank: 6}: pieces.NewPawn(enums.White, helpers.NewPos(enums.D, 6)),
+			},
+			enums.White,
+		},
 	}
 
 	for _, tc := range testcases {
@@ -197,12 +214,19 @@ func TestHandleMove(t *testing.T) {
 			g.Pieces = tc.pieces
 			g.currentTurn = tc.currentTurn
 
+			if tc.name == "exd6_en_passant" {
+				g.Pieces[helpers.NewPos(enums.D, 5)].(*pieces.Pawn).IsEnPassant = true
+			}
+
 			g.Cvm = g.getValidMoves()
 			gotRes := g.HandleMove(*tc.move)
 			gotBoard := g.Pieces
 
 			if tc.expectedRes != gotRes {
 				t.Errorf("expected result: %t, got result: %t", tc.expectedRes, gotRes)
+			}
+			if len(tc.expectedPieces) != len(gotBoard) {
+				t.Errorf("expected board: %v, got board: %v", tc.expectedPieces, gotBoard)
 			}
 			for pos, piece := range tc.expectedPieces {
 				if gotBoard[pos].GetPosition() != piece.GetPosition() {

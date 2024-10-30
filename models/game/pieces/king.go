@@ -55,7 +55,7 @@ func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 	checkSquare(0, -1)  // lower square.
 	checkSquare(+1, -1) // lower right square.
 
-	// if the king is checked, it can not castle
+	// the king can not castle in check
 	if is[k.Pos] != 0 {
 		return possibleMoves
 	}

@@ -4,6 +4,7 @@ import (
 	"chess-api/models/game/enums"
 	"chess-api/models/game/helpers"
 	"chess-api/models/game/pieces"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -145,6 +146,10 @@ func (g *G) HandleMove(m helpers.Move) bool {
 			case enums.Promotion:
 				g.handlePromotion(&m)
 
+			case enums.EnPassant:
+				m.IsCapture = true
+				g.handleEnPassant(g.Pieces[m.To])
+
 			case enums.LongCastling:
 				g.handleCastling(m.To.Rank, m.To.File-2)
 
@@ -184,6 +189,27 @@ func (g *G) handleCastling(rank, file int) {
 	g.movePiece(rookPos, helpers.NewPos(rookPos.File+dF, rank))
 }
 
+// handleEnPassant removes captured pawn from the board.
+func (g *G) handleEnPassant(lmp pieces.Piece) {
+	fn := slog.String("func", "handleEnPassant")
+	// determine pawn direction
+	dir := 1
+	if lmp.GetColor() == enums.Black {
+		dir = -1
+	}
+	// position of the captured piece
+	pos := helpers.NewPos(
+		lmp.GetPosition().File,
+		lmp.GetPosition().Rank-dir,
+	)
+	capturedPawn := g.Pieces[pos]
+	if capturedPawn == nil {
+		slog.Warn("error in logic, incorrect EnPassant", fn)
+		return
+	}
+	delete(g.Pieces, pos)
+}
+
 func (g *G) processLastMove(lastMove *helpers.Move) {
 	// get opponent`s valid moves to determine checkmate
 	es := enums.White // enemy side
@@ -208,7 +234,7 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 		// }
 	}
 
-	// iterate over board, find all pieces and reset the en passant flag,
+	// iterate over board, find all pawn and reset the en passant flag,
 	// since the en passant capture is only availible for one move
 	for _, p := range g.Pieces {
 		switch p.GetType() {
@@ -218,6 +244,7 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 	}
 	g.determineEnPassant(*lastMove)
 
+	g.Cvm = g.getValidMoves()
 	// store the move
 	g.Moves = append(g.Moves, *lastMove)
 }
