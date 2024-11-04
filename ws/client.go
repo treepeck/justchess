@@ -24,7 +24,7 @@ const (
 // The use of a channel is necessary, since whe connection supports
 // only one concurrent write at a time.
 type Client struct {
-	User             user.U `json:"user"` // behind all Clients stands real Users.
+	User             user.U `json:"user"`
 	conn             *websocket.Conn
 	manager          *Manager
 	writeEventBuffer chan Event
@@ -32,9 +32,9 @@ type Client struct {
 }
 
 // newClient creates a new client.
-func newClient(conn *websocket.Conn, m *Manager, user user.U) *Client {
+func newClient(conn *websocket.Conn, m *Manager, u user.U) *Client {
 	return &Client{
-		User:             user,
+		User:             u,
 		conn:             conn,
 		manager:          m,
 		writeEventBuffer: make(chan Event),

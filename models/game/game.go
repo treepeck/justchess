@@ -18,6 +18,7 @@ type G struct {
 	Pieces      map[helpers.Pos]pieces.Piece  `json:"pieces"`    // board state.
 	Status      enums.Status                  `json:"status"`    // game status.
 	Control     enums.Control                 `json:"control"`   // time control.
+	Result      enums.GameResult              `json:"result"`    // reason for the end of the game.
 	WhiteId     uuid.UUID                     `json:"whiteId"`   // white player id.
 	BlackId     uuid.UUID                     `json:"blackId"`   // black player id.
 	PlayedAt    time.Time                     `json:"playedAt"`  // when the game was started.
@@ -164,6 +165,13 @@ func (g *G) HandleMove(m helpers.Move) bool {
 	return false
 }
 
+// endGame ends the game due to provided reason.
+func (g *G) endGame(r enums.GameResult) {
+	g.Result = r
+	g.Status = enums.Over
+	// TODO: stop the timers
+}
+
 // handlePromotion promotes a pawn to a specified piece.
 func (g *G) handlePromotion(m *helpers.Move) {
 	if m.PromotionPayload == 0 { // invalid piece for promotion
@@ -228,10 +236,13 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 	if len(g.Cvm) == 0 {
 		if lastMove.IsCheck {
 			lastMove.IsCheckmate = true
+			g.endGame(enums.Checkmate)
+		} else { // handle stalemate
+			g.endGame(enums.Stalemate)
 		}
-		// } else {
-		// 	// TODO: handle stalemate game.endGame
-		// }
+		// store the move
+		g.Moves = append(g.Moves, *lastMove)
+		return
 	}
 
 	// iterate over board, find all pawn and reset the en passant flag,

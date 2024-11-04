@@ -118,7 +118,6 @@ func TestAddRoom(t *testing.T) {
 			CreateRoomDTO{
 				Control: enums.Blitz,
 				Bonus:   2,
-				Owner:   *user,
 			},
 			Event{
 				Action:  REDIRECT,

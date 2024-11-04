@@ -47,6 +47,7 @@ func main() {
 	middlewareStack := middleware.CreateStack(
 		middleware.LogRequest,
 		middleware.AllowCors,
+		middleware.IsAuthorized,
 	)
 
 	// instantiate manager (basically same as router)
@@ -57,7 +58,7 @@ func main() {
 	router := http.NewServeMux()
 	router.Handle("/auth/", http.StripPrefix(
 		"/auth",
-		middlewareStack(auth.AuthRouter()),
+		middleware.LogRequest(middleware.AllowCors(auth.AuthRouter())),
 	))
 	router.Handle("/user/", http.StripPrefix(
 		"/user",

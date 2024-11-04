@@ -13,31 +13,42 @@ CREATE TABLE IF NOT EXISTS users(
   last_visit TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- create custom types
+-- custom types creation.
+-- 0 - Bullet 1min;
+-- 1 - Blitz 3min;
+-- 2 - Rapid 10min.
 DO $$ BEGIN
-	CREATE TYPE TIME_CONTROL AS ENUM ('blitz', 'bullet', 'rapid');
+	CREATE DOMAIN TIME_CONTROL AS INTEGER
+  CHECK (VALUE IN (0, 1, 2));
 EXCEPTION
 	WHEN duplicate_object THEN 
 	RAISE NOTICE 'time_control already created, skipping innitialization';
 END $$;
 
 DO $$ BEGIN
-	CREATE TYPE GAME_STATUS AS ENUM (
-    'white_won', 'black_won',
-    'draw', 'continues', 'waiting'
-  );
-EXCEPTION
-	WHEN duplicate_object THEN 
-	RAISE NOTICE 'game_status already created, skipping innitialization';
-END $$;
-
-DO $$ BEGIN
-	 -- time bonus represented in seconds, 0 - no time bonus
+	 -- time bonus represented in seconds, 0 - no time bonus.
     CREATE DOMAIN TIME_BONUS AS INTEGER
     CHECK (VALUE IN (0, 1, 2, 10));
 EXCEPTION
 	WHEN duplicate_object THEN 
-	RAISE NOTICE 'game_status already created, skipping innitialization';
+	RAISE NOTICE 'time_bonus already created, skipping innitialization';
+END $$;
+
+-- 0 - Checkmate;
+-- 1 - Resignation;
+-- 2 - Timeout;
+-- 3 - Stalemate;
+-- 4 - InsufficientMaterial;
+-- 5 - FiftyMoves;
+-- 6 - Repetition;
+-- 7 - Agreement.  
+DO $$ BEGIN
+	 -- game result describes the ways chess game can end. 
+    CREATE DOMAIN GAME_RESULT AS INTEGER
+    CHECK (VALUE IN (0, 1, 2, 3, 4, 5, 6, 7));
+EXCEPTION
+	WHEN duplicate_object THEN 
+	RAISE NOTICE 'game_result already created, skipping innitialization';
 END $$;
 
 CREATE TABLE IF NOT EXISTS games(
@@ -46,7 +57,7 @@ CREATE TABLE IF NOT EXISTS games(
   white_id VARCHAR(36),
   control TIME_CONTROL NOT NULL,
   bonus TIME_BONUS NOT NULL,
-  status GAME_STATUS NOT NULL DEFAULT 'waiting',
+  result GAME_RESULT NOT NULL,
   moves JSONB,
   played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (black_id) REFERENCES users(id),

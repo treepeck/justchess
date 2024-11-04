@@ -9,7 +9,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
+var Pool *sql.DB
 
 func OpenDatabase(schemaPath string) error {
 	// format a connection string
@@ -24,7 +24,7 @@ func OpenDatabase(schemaPath string) error {
 	)
 
 	var err error
-	DB, err = sql.Open("postgres", connectStr)
+	Pool, err = sql.Open("postgres", connectStr)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func OpenDatabase(schemaPath string) error {
 		return err
 	}
 
-	_, err = DB.Query(string(schema))
+	_, err = Pool.Query(string(schema))
 	if err != nil {
 		slog.Error("query cannot be executed", "err", err)
 	}
@@ -45,8 +45,8 @@ func OpenDatabase(schemaPath string) error {
 }
 
 func CloseDatabase() error {
-	if DB != nil {
-		err := DB.Close()
+	if Pool != nil {
+		err := Pool.Close()
 		return err
 	}
 	return fmt.Errorf("database isn`t connected")

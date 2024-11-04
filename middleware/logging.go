@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// LogRequest logs each incomming http request.
 func LogRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		fn := slog.String("func", "LogRequest")

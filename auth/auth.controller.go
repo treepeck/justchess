@@ -1,84 +1,143 @@
 package auth
 
 import (
+	"chess-api/jwt_auth"
 	"chess-api/models/user"
 	"chess-api/repository"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
-func handleGetUserByCookie(rw http.ResponseWriter, r *http.Request) {
-	fn := slog.String("func", "handleGetUserByCookie")
-
-	cookie, err := r.Cookie("UserId")
+// handleGuest generates a new pair of tokens and sends them back to the client,
+// so that client can play but can not have access to rating system.
+func handleGuest(rw http.ResponseWriter, r *http.Request) {
+	id := uuid.New()
+	at, rt, err := jwt_auth.GeneratePair(jwt_auth.Subject{
+		Id: id,
+		R:  jwt_auth.Guest,
+	})
 	if err != nil {
-		slog.Warn("UserId cookie not found", fn, "err", err)
-		rw.WriteHeader(http.StatusBadRequest)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	setRefreshTokenCookie(rw, rt)
+	// send access token back to the client
+	rw.Header().Add("Content-Type", "text/plain")
+	rw.Write([]byte(at))
+}
 
-	userId, err := uuid.Parse(cookie.Value)
+// handleGetTokens parses the encoded refresh token from a cookie and tries to
+// decode it. If success, it generates a new pair of tokens (refresh and
+// access tokens) and sends them back to the client to keep the user authorized.
+func handleGetTokens(rw http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("Authorization")
 	if err != nil {
-		slog.Warn("userId cannot be Parsed", fn, "err", err)
-		rw.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	u := repository.FindUserById(userId)
-	if u == nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// update user cookie to keep the user signed in
-	setUserIdCookie(rw, u.Id)
+	if !strings.HasPrefix(cookie.Value, "Bearer ") {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
-	// send user back to the client
-	rw.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(*u)
-}
+	et := strings.TrimPrefix(cookie.Value, "Bearer")
 
-func handleGuest(rw http.ResponseWriter, r *http.Request) {
-	fn := slog.String("func", "handleGuest")
-
-	// decode the request body
-	var cu user.CreateUserDTO
-	err := json.NewDecoder(r.Body).Decode(&cu)
+	rt, err := jwt_auth.DecodeToken(et, "REFRESH_TOKEN_SECRET")
 	if err != nil {
-		rw.WriteHeader(http.StatusUnprocessableEntity)
-		slog.Warn("error while decoding the request body ", fn, "err", err)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// create a new user
-	u := repository.AddGuest(cu.Id)
-	if u == nil {
-		rw.WriteHeader(http.StatusConflict)
+	es, err := rt.Claims.GetSubject()
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// complete the guest authorization by setting a cookie with the user id
-	setUserIdCookie(rw, u.Id)
+	var s jwt_auth.Subject
+	err = json.Unmarshal([]byte(es), &s)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
-	// send user back to the client
-	rw.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(rw).Encode(*u)
+	if s.R == jwt_auth.Guest {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	at, _rt, err := jwt_auth.GeneratePair(s)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	setRefreshTokenCookie(rw, _rt)
+
+	rw.Header().Add("Content-Type", "text/plain")
+	rw.Write([]byte(at))
 }
 
-// When the guest is authorized, we set a http-only secure cookie with the
-// player id to identify that the user authorized later.
-func setUserIdCookie(rw http.ResponseWriter, userId uuid.UUID) {
-	// set a http-only cookie with user id
+// handleGetUserByAccessToken returns the user data
+func handleGetUserByAccessToken(rw http.ResponseWriter, r *http.Request) {
+	// parse access token from the Authorization header
+	h := r.Header.Get("Authorization")
+	// encoded JWT string must begin with the Bearer prefix
+	if !strings.HasPrefix(h, "Bearer ") {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// parse encoded token
+	et := strings.TrimPrefix(h, "Bearer ")
+
+	at, err := jwt_auth.DecodeToken(et, "ACCESS_TOKEN_SECRET")
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// try to get user info from the decoded access token
+	es, err := at.Claims.GetSubject()
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var s jwt_auth.Subject
+	err = json.Unmarshal([]byte(es), &s)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// return mock guest data
+	var u user.U
+	if s.R == jwt_auth.Guest {
+		u = *user.NewUser(s.Id)
+	} else {
+		_u := repository.FindUserById(s.Id)
+		if _u == nil {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		u = *_u
+	}
+	rw.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(rw).Encode(u)
+}
+
+// setRefreshTokenCookie sets the Authorization cookie to the encoded refresh JWT.
+func setRefreshTokenCookie(rw http.ResponseWriter, et string) {
 	cookie := http.Cookie{
-		Name:     "UserId",
-		Value:    userId.String(),
+		Name:     "Authorization",
+		Value:    "Bearer " + et,
 		Path:     "/",
 		Domain:   os.Getenv("SERVER_HOST"),
-		MaxAge:   259200, // 3 days in seconds
+		MaxAge:   2592000, // 30 days in seconds
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,

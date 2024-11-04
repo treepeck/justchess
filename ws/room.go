@@ -6,6 +6,7 @@ import (
 	"chess-api/models/game/helpers"
 	"chess-api/models/game/pieces"
 	"chess-api/models/user"
+	"chess-api/repository"
 	"encoding/json"
 	"log/slog"
 	"math/rand"
@@ -23,17 +24,16 @@ type Room struct {
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
-	close      chan bool // channel to close the room
+	close      chan bool // channel to break the room Run loop.
 }
 
 // CreateRoomDTO provides necessary data to register a new Room.
 type CreateRoomDTO struct {
 	Control enums.Control `json:"control"`
 	Bonus   uint          `json:"bonus"`
-	Owner   user.U        `json:"owner"`
 }
 
-// newRoom creates and runs a new room. The owner client is added to the room.
+// newRoom creates and runs a new room.
 func newRoom(cr CreateRoomDTO, owner *Client) *Room {
 	r := &Room{
 		Id:         uuid.New(),
@@ -115,6 +115,31 @@ func (r *Room) startGame() {
 		r.game.BlackId = players[0].User.Id
 	}
 	r.game.PlayerTurn = r.game.WhiteId // white moves first
+}
+
+// endGame writes the game data to the db and
+// removes the players from the room.
+func (r *Room) endGame() {
+	repository.SaveGame(r.game)
+
+	for c := range r.clients {
+		r.unregister <- c
+	}
+}
+
+// handleTakeMove handles player`s moves.
+func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
+	if r.game.PlayerTurn != c.User.Id {
+		return
+	}
+
+	if r.game.HandleMove(move) {
+		r.broadcastGameInfo()
+
+		if r.game.Status == enums.Over {
+			r.endGame()
+		}
+	}
 }
 
 // broadcastGameInfo broadcasts 4 messages that contains:
@@ -225,16 +250,6 @@ func (r *Room) broadcastStatus() {
 			Payload: p,
 		}
 		c.writeEventBuffer <- e
-	}
-}
-
-func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
-	if r.game.PlayerTurn != c.User.Id {
-		return
-	}
-
-	if r.game.HandleMove(move) {
-		r.broadcastGameInfo()
 	}
 }
 

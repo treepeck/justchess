@@ -1,6 +1,8 @@
 package ws
 
 import (
+	"chess-api/jwt_auth"
+	"chess-api/models/user"
 	"chess-api/repository"
 	"encoding/json"
 	"log/slog"
@@ -55,17 +57,9 @@ func NewManager() *Manager {
 // back to the client.
 func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 	fn := slog.String("func", "HandleConnection")
-	// TODO: replace with the Authorization and take AccessToken From Authorization Header
-	idStr := r.URL.Query().Get("id")
-	userId, err := uuid.Parse(idStr)
+	et := r.URL.Query().Get("at")
+	at, err := jwt_auth.DecodeToken(et, "ACCESS_TOKEN_SECRET")
 	if err != nil {
-		slog.Warn("cannot parse uuid", fn, "err", err)
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	u := repository.FindUserById(userId)
-	if u == nil {
-		slog.Warn("user not found", fn, "err", err)
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -73,10 +67,36 @@ func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		slog.Warn("error while upgrading the connection", fn, "err", err)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	c := newClient(conn, m, *u)
+	// unmarshal subject
+	sp, err := at.Claims.GetSubject()
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	var s jwt_auth.Subject
+	err = json.Unmarshal([]byte(sp), &s)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var u user.U
+	if s.R == jwt_auth.Guest {
+		u = *user.NewUser(s.Id)
+	} else {
+		_u := repository.FindUserById(s.Id)
+		if _u == nil {
+			u = *user.NewUser(s.Id)
+		} else {
+			u = *_u
+		}
+	}
+
+	c := newClient(conn, m, u)
 	// the register channel is used to avoid concurrent access to the clients map.
 	m.register <- c
 }
@@ -121,7 +141,7 @@ func (m *Manager) addClient(c *Client) {
 	}
 
 	m.clients[c] = true
-	slog.Info("client "+c.User.Name+" joined", fn)
+	slog.Info("client "+c.User.Id.String()+" joined", fn)
 
 	go c.readEvents()
 	go c.writeEvents()
@@ -138,7 +158,7 @@ func (m *Manager) removeClient(c *Client) {
 		c.conn.Close()
 		delete(m.clients, c)
 
-		slog.Info("client "+c.User.Name+" removed", fn)
+		slog.Info("client "+c.User.Id.String()+" removed", fn)
 		m.broadcastCC()
 
 		if c.currentRoom != nil {
@@ -161,7 +181,7 @@ func (m *Manager) removeRoom(r *Room) {
 
 	if _, ok := m.rooms[r]; ok {
 		delete(m.rooms, r)
-		r.close <- true // end room goroutine
+		r.close <- true // exit room Run loop
 		slog.Info("room removed", fn, slog.Int("count", len(m.rooms)))
 	}
 
