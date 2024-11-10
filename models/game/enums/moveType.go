@@ -11,24 +11,3 @@ const (
 	EnPassant
 	Promotion
 )
-
-func (mt MoveType) String() string {
-	switch mt {
-	case Basic:
-		return "basic"
-	case PawnForward:
-		return "pawnForward"
-	case Defend:
-		return "defend"
-	case LongCastling:
-		return "longCastling"
-	case ShortCastling:
-		return "shortCastling"
-	case EnPassant:
-		return "enPassant"
-	case Promotion:
-		return "promotion"
-	default:
-		return "unknown move type"
-	}
-}

@@ -35,11 +35,15 @@ const (
 	ADD_ROOM        = "ar" // Add availible room.
 	REMOVE_ROOM     = "rr" // Remove room.
 	REDIRECT        = "r"  // Redirect client to a room.
-	GAME            = "g"
-	UPDATE_BOARD    = "ub" // Redraw board on client.
-	MOVES           = "mh" // Moves history.
-	STATUS          = "s"  // Up-to-date game status.
-	VALID_MOVES     = "vm" // Update valid moves on client.
+	// Game related events
+	LAST_MOVE    = "lm" // Last maded move.
+	UPDATE_BOARD = "ub" // Redraw the board.
+	MOVES        = "mh" // Full moves history.
+	STATUS       = "s"  // Player connection statuses.
+	VALID_MOVES  = "vm" // Valid moves for the current turn.
+	GAME_INFO    = "gi" // Game parameters (control, bonus), players ids.
+	END_RESULT   = "er" // Who won the game, why the game is over.
+	ABORT        = "a"  // Game is aborted.
 )
 
 // server errors

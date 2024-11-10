@@ -12,22 +12,18 @@ import (
 
 // G represents a game and stores all necessary data.
 type G struct {
-	Id          uuid.UUID                     `json:"id"`        // game id.
-	Bonus       uint                          `json:"bonus"`     // time increment.
-	Moves       []helpers.Move                `json:"moves"`     // completed moves.
-	Pieces      map[helpers.Pos]pieces.Piece  `json:"pieces"`    // board state.
-	Status      enums.Status                  `json:"status"`    // game status.
-	Control     enums.Control                 `json:"control"`   // time control.
-	Result      enums.GameResult              `json:"result"`    // reason for the end of the game.
-	WhiteId     uuid.UUID                     `json:"whiteId"`   // white player id.
-	BlackId     uuid.UUID                     `json:"blackId"`   // black player id.
-	PlayedAt    time.Time                     `json:"playedAt"`  // when the game was started.
-	WhiteTime   time.Duration                 `json:"whiteTime"` // how much time do the white have left.
-	BlackTime   time.Duration                 `json:"blackTime"` // how much time do the black have left.
-	Cvm         map[helpers.PossibleMove]bool // current valid moves.
-	Epm         map[helpers.PossibleMove]bool // enemy possible moves.
-	currentTurn enums.Color
-	PlayerTurn  uuid.UUID
+	Id                uuid.UUID                     `json:"-"`
+	Bonus             uint                          `json:"bonus"` // time increment.
+	Moves             []helpers.Move                `json:"-"`
+	Pieces            map[helpers.Pos]pieces.Piece  `json:"-"`
+	Status            enums.Status                  `json:"status"`
+	Control           enums.Control                 `json:"control"`
+	Result            enums.GameResult              `json:"-"`
+	White             *helpers.Player               `json:"white"`
+	Black             *helpers.Player               `json:"black"`
+	PlayedAt          time.Time                     `json:"-"`
+	CurrentTurn       enums.Color                   `json:"-"`
+	CurrentValidMoves map[helpers.PossibleMove]bool `json:"-"`
 }
 
 // NewG creates a new game.
@@ -35,26 +31,20 @@ func NewG(id uuid.UUID, control enums.Control,
 	bonus uint, whiteId, blackId uuid.UUID,
 ) *G {
 	g := &G{
-		Id:          id,
-		Bonus:       bonus,
-		Moves:       make([]helpers.Move, 0),
-		Pieces:      make(map[helpers.Pos]pieces.Piece),
-		Status:      enums.Waiting,
-		Control:     control,
-		WhiteId:     whiteId,
-		BlackId:     blackId,
-		PlayedAt:    time.Now(),
-		WhiteTime:   control.ToDuration(),
-		BlackTime:   control.ToDuration(),
-		Cvm:         make(map[helpers.PossibleMove]bool),
-		Epm:         make(map[helpers.PossibleMove]bool),
-		currentTurn: enums.White,
-		PlayerTurn:  whiteId,
+		Id:                id,
+		Bonus:             bonus,
+		Moves:             make([]helpers.Move, 0),
+		Pieces:            make(map[helpers.Pos]pieces.Piece),
+		Status:            enums.Waiting,
+		Control:           control,
+		White:             helpers.NewPlayer(uuid.Nil, control.ToDuration()),
+		Black:             helpers.NewPlayer(uuid.Nil, control.ToDuration()),
+		PlayedAt:          time.Now(),
+		CurrentTurn:       enums.White,
+		CurrentValidMoves: make(map[helpers.PossibleMove]bool),
 	}
 	g.initPieces()
-	// get white player valid moves in advance to increase performance
-	g.Cvm = g.getValidMoves()
-	g.Epm = g.getPossibleMoves(enums.Black)
+	g.CurrentValidMoves = g.getValidMoves(enums.White)
 	return g
 }
 
@@ -62,11 +52,11 @@ func NewG(id uuid.UUID, control enums.Control,
 // The validity of the returned moves is guaranteed - player`s possible
 // moves are filtered down by the validity checking.
 // For more details about move validity, see [chess-api/models/pieces.GetPossibleMoves].
-func (g *G) getValidMoves() map[helpers.PossibleMove]bool {
-	ppm := g.getPossibleMoves(g.currentTurn)
+func (g *G) getValidMoves(side enums.Color) map[helpers.PossibleMove]bool {
+	ppm := g.getPossibleMoves(side)
 	// determine enemy side
 	es := enums.White
-	if g.currentTurn == enums.White {
+	if side == enums.White {
 		es = enums.Black
 	}
 	// store valid moves
@@ -78,7 +68,9 @@ func (g *G) getValidMoves() map[helpers.PossibleMove]bool {
 		}
 		// make sure that after making this move the allied king is not checked
 		isChecked := false
+		// store previous piece on end position
 		prevPiece := g.Pieces[pm.To]
+		// execute possible mvoe
 		g.Pieces[pm.To] = g.Pieces[pm.From]
 		g.Pieces[pm.From].Move(pm.To)
 		delete(g.Pieces, pm.From)
@@ -86,13 +78,13 @@ func (g *G) getValidMoves() map[helpers.PossibleMove]bool {
 		eppm := g.getPossibleMoves(es)
 		for epm := range eppm {
 			p := g.Pieces[epm.To]
-			// if the allied king is checked
-			if p != nil && p.GetType() == enums.King && p.GetColor() == g.currentTurn {
+			// if the allied king is checked, move is not valid
+			if p != nil && p.GetType() == enums.King && p.GetColor() == side {
 				isChecked = true
 				break
 			}
 		}
-		// respore the board
+		// restore the board
 		g.Pieces[pm.From] = g.Pieces[pm.To]
 		delete(g.Pieces, pm.To)
 		if prevPiece != nil {
@@ -132,20 +124,34 @@ func (g *G) getPossibleMoves(side enums.Color,
 
 // HandleMove handles player`s moves. True is retured if the move is valid,
 // false otherwise.
-func (g *G) HandleMove(m helpers.Move) bool {
-	for vm := range g.Cvm {
-		if vm.From.IsEqual(m.From) &&
-			vm.To.IsEqual(m.To) {
+func (g *G) HandleMove(m *helpers.Move) bool {
+	for vm := range g.CurrentValidMoves {
+		if vm.From.IsEqual(m.From) && vm.To.IsEqual(m.To) {
+			// stop the player`s ticker.
+			if g.CurrentTurn == enums.White {
+				g.White.Ticker.Stop()
+			} else {
+				g.Black.Ticker.Stop()
+			}
+
 			m.MoveType = vm.MoveType
 			// determine is move a capture
 			if g.Pieces[m.To] != nil {
 				m.IsCapture = true
 			}
+			// iterate over board, find all pawns and reset the en passant flag,
+			// since the en passant capture is only availible for one move
+			for _, p := range g.Pieces {
+				switch p.GetType() {
+				case enums.Pawn:
+					p.(*pieces.Pawn).IsEnPassant = false
+				}
+			}
 			g.movePiece(m.From, m.To)
 			// handle special moves
 			switch m.MoveType {
 			case enums.Promotion:
-				g.handlePromotion(&m)
+				g.handlePromotion(m)
 
 			case enums.EnPassant:
 				m.IsCapture = true
@@ -157,25 +163,34 @@ func (g *G) HandleMove(m helpers.Move) bool {
 			case enums.ShortCastling:
 				g.handleCastling(m.To.Rank, m.To.File+1)
 			}
-
-			g.processLastMove(&m)
+			g.processLastMove(m)
 			return true
 		}
 	}
 	return false
 }
 
+func (g *G) StartGame(whiteId, blackId uuid.UUID) {
+	g.White.Id = whiteId
+	g.Black.Id = blackId
+
+	g.Status = enums.Continues
+	// start white ticker
+	g.White.Ticker.Reset(time.Second)
+}
+
 // endGame ends the game due to provided reason.
 func (g *G) endGame(r enums.GameResult) {
 	g.Result = r
 	g.Status = enums.Over
-	// TODO: stop the timers
+	g.White.Ticker.Stop()
+	g.Black.Ticker.Stop()
 }
 
 // handlePromotion promotes a pawn to a specified piece.
 func (g *G) handlePromotion(m *helpers.Move) {
 	if m.PromotionPayload == 0 { // invalid piece for promotion
-		return
+		m.PromotionPayload = enums.Queen
 	}
 
 	pp := g.Pieces[m.To] // previous piece
@@ -190,7 +205,7 @@ func (g *G) handleCastling(rank, file int) {
 	rookPos.Rank = rank
 	rookPos.File = file
 
-	dF := -2             // delta file between rook and moved king- 0-0 by default
+	dF := -2             // delta file between rook and moved king - 0-0 by default
 	if file == enums.A { // 0-0-0
 		dF = 3
 	}
@@ -205,7 +220,7 @@ func (g *G) handleEnPassant(lmp pieces.Piece) {
 	if lmp.GetColor() == enums.Black {
 		dir = -1
 	}
-	// position of the captured piece
+	// en passant pawn is located behind the moved pawn
 	pos := helpers.NewPos(
 		lmp.GetPosition().File,
 		lmp.GetPosition().Rank-dir,
@@ -219,50 +234,36 @@ func (g *G) handleEnPassant(lmp pieces.Piece) {
 }
 
 func (g *G) processLastMove(lastMove *helpers.Move) {
-	// get opponent`s valid moves to determine checkmate
-	es := enums.White // enemy side
-	g.PlayerTurn = g.WhiteId
-	if g.currentTurn == enums.White {
-		es = enums.Black
-		g.PlayerTurn = g.BlackId
-	}
-	g.Epm = g.getPossibleMoves(g.currentTurn)
-	g.currentTurn = es
-	g.Cvm = g.getValidMoves()
-
 	g.determineCheck(lastMove)
-	// if the opponent does not have any valid moves,
-	// it is either a stalemate or a checkmate
-	if len(g.Cvm) == 0 {
+	// get valid moves for a next player
+	g.CurrentValidMoves = g.getValidMoves(g.CurrentTurn.GetOppositeColor())
+	// if the player does not have any valid moves,
+	// the pevious move is either a stalemate or a checkmate
+	if len(g.CurrentValidMoves) == 0 {
 		if lastMove.IsCheck {
 			lastMove.IsCheckmate = true
 			g.endGame(enums.Checkmate)
-		} else { // handle stalemate
+		} else {
 			g.endGame(enums.Stalemate)
 		}
-		// store the move
-		g.Moves = append(g.Moves, *lastMove)
-		return
 	}
-
-	// iterate over board, find all pawn and reset the en passant flag,
-	// since the en passant capture is only availible for one move
-	for _, p := range g.Pieces {
-		switch p.GetType() {
-		case enums.Pawn:
-			p.(*pieces.Pawn).IsEnPassant = false
-		}
-	}
-	g.determineEnPassant(*lastMove)
-
-	g.Cvm = g.getValidMoves()
 	// store the move
 	g.Moves = append(g.Moves, *lastMove)
+	// switch the turn and reset the next player`s ticker
+	g.CurrentTurn = g.CurrentTurn.GetOppositeColor()
+	if g.CurrentTurn == enums.White {
+		g.White.Ticker.Reset(time.Second)
+		lastMove.TimeLeft = g.Black.Time
+	} else {
+		g.Black.Ticker.Reset(time.Second)
+		lastMove.TimeLeft = g.White.Time
+	}
 }
 
 // determineCheck determines whether the previous move was a check.
 func (g *G) determineCheck(lastMove *helpers.Move) {
 	lmp := g.Pieces[lastMove.To] // last moved piece
+	// get possible moves for the last moved piece
 	pm := lmp.GetPossibleMoves(g.Pieces)
 
 	for pos := range pm {
@@ -271,19 +272,6 @@ func (g *G) determineCheck(lastMove *helpers.Move) {
 		if p != nil && p.GetType() == enums.King &&
 			p.GetColor() != lmp.GetColor() {
 			lastMove.IsCheck = true
-		}
-	}
-}
-
-// determineEnPassant determines whether the previous move was
-// a pawn double squares forward.
-func (g *G) determineEnPassant(lastMove helpers.Move) {
-	lmp := g.Pieces[lastMove.To] // last moved piece
-
-	if lmp.GetType() == enums.Pawn {
-		if (lmp.GetPosition().Rank == 4 || lmp.GetPosition().Rank == 5) &&
-			lmp.(*pieces.Pawn).MovesCounter == 1 {
-			lmp.(*pieces.Pawn).IsEnPassant = true
 		}
 	}
 }
@@ -365,6 +353,7 @@ func (g *G) initQueens() {
 	g.Pieces[pos] = pieces.NewQueen(enums.White, pos)
 }
 
+// initQueens is a helper function to initialize kings.
 func (g *G) initKings() {
 	pos := helpers.PosFromInd(0, 5)
 	g.Pieces[pos] = pieces.NewKing(enums.Black, pos)

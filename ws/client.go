@@ -169,7 +169,7 @@ func (c *Client) handleCreateRoom(payload json.RawMessage) {
 	r := newRoom(cr, c)
 	c.currentRoom = r
 	c.manager.add <- r
-	c.sendRedirect(r.Id)
+	c.sendEvent(REDIRECT, r.Id)
 }
 
 func (c *Client) handleJoinRoom(payload json.RawMessage) {
@@ -183,7 +183,7 @@ func (c *Client) handleJoinRoom(payload json.RawMessage) {
 	}
 	if r := c.manager.findRoomById(roomId); r != nil &&
 		c.currentRoom == nil {
-		c.sendRedirect(r.Id)
+		c.sendEvent(REDIRECT, r.Id)
 	}
 }
 
@@ -203,9 +203,13 @@ func (c *Client) handleGetGame(payload json.RawMessage) {
 		c.sendError(UNPROCESSABLE_ENTITY)
 		return
 	}
-	// TODO: add game history (handle completed games, stored in a db)
 	if r := c.manager.findRoomById(roomId); r != nil {
 		r.register <- c
+		// } else if g := repository.FindGameById(roomId); g != nil {
+		// 	c.sendEvent(MOVES, g.Moves)
+		// 	c.sendEvent(GAME_INFO, g)
+		// 	c.sendEvent(GAME_INFO, g.Result)
+		// }
 	}
 }
 
@@ -244,11 +248,38 @@ func (c *Client) handleGetRooms() {
 	}
 }
 
-// redirects the client to the specified room.
-func (c *Client) sendRedirect(roomId uuid.UUID) {
-	p, _ := json.Marshal(roomId.String())
+func (c *Client) sendEvent(a string, pData any) {
+	fn := slog.String("func", "sendEvent")
+	p, err := json.Marshal(pData)
+	if err != nil {
+		slog.Warn("cannot send event: "+a, fn, "err", err)
+		return
+	}
 	e := Event{
-		Action:  REDIRECT,
+		Action:  a,
+		Payload: p,
+	}
+	c.writeEventBuffer <- e
+}
+
+func (c *Client) sendValidMoves(vm map[helpers.PossibleMove]bool) {
+	fn := slog.String("func", "sendValidMoves")
+
+	var p []byte
+	var err error
+
+	ppm := make([]helpers.PossibleMove, 0)
+	for pm := range vm {
+		ppm = append(ppm, pm)
+	}
+
+	p, err = json.Marshal(ppm)
+	if err != nil {
+		slog.Warn("cannot Marshal possible moves", fn, "err", err)
+		return
+	}
+	e := Event{
+		Action:  VALID_MOVES,
 		Payload: p,
 	}
 	c.writeEventBuffer <- e

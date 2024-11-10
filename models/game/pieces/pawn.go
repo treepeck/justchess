@@ -88,6 +88,15 @@ func (p *Pawn) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 }
 
 func (p *Pawn) Move(to helpers.Pos) {
+	// if the pawn moves double forward,
+	// it can be captured en passant on the next turn.
+	if p.MovesCounter == 0 {
+		if (p.Pos.Rank == 2 || p.Pos.Rank == 7) &&
+			(to.Rank == 4 || to.Rank == 5) {
+			p.IsEnPassant = true
+		}
+	}
+
 	p.Pos = to
 	p.MovesCounter++
 }

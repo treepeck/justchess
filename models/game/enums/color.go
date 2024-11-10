@@ -23,6 +23,13 @@ func (c Color) String() string {
 	}
 }
 
+func (c Color) GetOppositeColor() Color {
+	if c == White {
+		return Black
+	}
+	return White
+}
+
 func ParseColor(color string) (Color, error) {
 	switch color {
 	case "white":

@@ -91,8 +91,8 @@ func TestGetPlayerValidMoves(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			g.Pieces = tc.pieces
-			g.currentTurn = tc.currentTurn
-			got := g.getValidMoves()
+			g.CurrentTurn = tc.currentTurn
+			got := g.getValidMoves(g.CurrentTurn)
 
 			if len(got) != len(tc.expectedVM) {
 				t.Errorf("expected len: %d, got: %d", len(tc.expectedVM), len(got))
@@ -212,14 +212,14 @@ func TestHandleMove(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			g.Pieces = tc.pieces
-			g.currentTurn = tc.currentTurn
+			g.CurrentTurn = tc.currentTurn
 
 			if tc.name == "exd6_en_passant" {
 				g.Pieces[helpers.NewPos(enums.D, 5)].(*pieces.Pawn).IsEnPassant = true
 			}
 
-			g.Cvm = g.getValidMoves()
-			gotRes := g.HandleMove(*tc.move)
+			g.CurrentValidMoves = g.getValidMoves(g.CurrentTurn)
+			gotRes := g.HandleMove(tc.move)
 			gotBoard := g.Pieces
 
 			if tc.expectedRes != gotRes {

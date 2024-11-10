@@ -24,7 +24,7 @@ func SaveGame(g *game.G) {
 
 	var rows *sql.Rows
 	rows, err := db.Pool.Query(queryText, g.Id,
-		g.BlackId, g.WhiteId, g.Control, g.Bonus, g.Result,
+		g.Black.Id, g.White.Id, g.Control, g.Bonus, g.Result,
 		g.Moves, g.PlayedAt,
 	)
 	if err != nil || !rows.Next() {
@@ -51,7 +51,7 @@ func FindGameById(id uuid.UUID) *game.G {
 
 	var game game.G
 	if rows.Next() {
-		rows.Scan(&game.Id, &game.BlackId, &game.WhiteId, &game.Control,
+		rows.Scan(&game.Id, &game.Black.Id, &game.White.Id, &game.Control,
 			&game.Bonus, &game.Status, &game.Moves, &game.PlayedAt,
 		)
 		return &game

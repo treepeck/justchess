@@ -4,18 +4,15 @@ import (
 	"chess-api/models/game"
 	"chess-api/models/game/enums"
 	"chess-api/models/game/helpers"
-	"chess-api/models/game/pieces"
 	"chess-api/models/user"
-	"chess-api/repository"
 	"encoding/json"
-	"log/slog"
 	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 )
 
-// Room stores two players and a game they play.
-// The Room type is very similar to the Manager.
+// Room stores players and a game.
 // There is always one single Room for the every game.
 type Room struct {
 	Id         uuid.UUID
@@ -24,7 +21,7 @@ type Room struct {
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
-	close      chan bool // channel to break the room Run loop.
+	close      chan bool // channel to break the room run loop.
 }
 
 // CreateRoomDTO provides necessary data to register a new Room.
@@ -58,6 +55,12 @@ func (r *Room) run() {
 		case c := <-r.unregister:
 			r.removeClient(c)
 
+		case <-r.game.White.Ticker.C:
+			r.handleWhiteTimeTick()
+
+		case <-r.game.Black.Ticker.C:
+			r.handleBlackTimeTick()
+
 		case <-r.close:
 			return // exit loop
 		}
@@ -66,21 +69,28 @@ func (r *Room) run() {
 
 // addClient adds a client to the room.
 func (r *Room) addClient(c *Client) {
-	// if the game hasn`t started yet.
-	if r.game.Status == enums.Waiting {
+	switch r.game.Status {
+	// deny any connections
+	case enums.Aborted, enums.Over:
+		return
+
+	case enums.Waiting:
 		r.clients[c] = true
-	} else {
-		// handle reconnections ONLY and deny any other clients to connect.
-		if r.game.WhiteId == c.User.Id ||
-			r.game.BlackId == c.User.Id {
+		c.currentRoom = r
+		r.startGame()
+
+	case enums.Leave:
+		// if the client was connected before
+		if r.game.Black.Id == c.User.Id {
 			r.clients[c] = true
-		} else {
-			return
+			c.currentRoom = r
+			r.resumeGame(enums.Black)
+		} else if r.game.White.Id == c.User.Id {
+			r.clients[c] = true
+			c.currentRoom = r
+			r.resumeGame(enums.White)
 		}
 	}
-	c.currentRoom = r
-	r.startGame()
-	r.broadcastGameInfo()
 }
 
 // removeClient deletes the client from the room and deletes the room itself if the
@@ -88,168 +98,150 @@ func (r *Room) addClient(c *Client) {
 func (r *Room) removeClient(c *Client) {
 	delete(r.clients, c)
 	c.currentRoom = nil
-	if (r.game.Status == enums.Waiting && r.owner.Id == c.User.Id) ||
-		len(r.clients) == 0 {
+
+	if len(r.clients) == 0 {
 		c.manager.remove <- r
+		return
+	}
+
+	if c.User.Id == r.game.White.Id {
+		r.game.White.ExtraTime = 20 * time.Second
+		r.game.White.Ticker.Reset(time.Second)
+	} else if c.User.Id == r.game.Black.Id {
+		r.game.Black.ExtraTime = 20 * time.Second
+		r.game.Black.Ticker.Reset(time.Second)
 	}
 }
 
 // startGame creates a new game if all clients are connected.
 func (r *Room) startGame() {
-	if r.game.Status != enums.Waiting || len(r.clients) != 2 {
+	if len(r.clients) != 2 {
 		return
 	}
-
-	r.game.Status = enums.Continues
-	// randomize side selection
+	// randomly generate players sides
 	players := make([]*Client, 0)
 	for c := range r.clients {
 		players = append(players, c)
 	}
-
+	var whiteId, blackId uuid.UUID
 	if rand.Intn(100) < 50 {
-		r.game.WhiteId = players[0].User.Id
-		r.game.BlackId = players[1].User.Id
+		whiteId = players[0].User.Id
+		blackId = players[1].User.Id
 	} else {
-		r.game.WhiteId = players[1].User.Id
-		r.game.BlackId = players[0].User.Id
+		whiteId = players[1].User.Id
+		blackId = players[0].User.Id
 	}
-	r.game.PlayerTurn = r.game.WhiteId // white moves first
+	r.game.StartGame(whiteId, blackId)
+	// broadcast game info
+	for c := range r.clients {
+		c.sendEvent(GAME_INFO, r.game)
+		c.sendValidMoves(r.game.CurrentValidMoves)
+	}
+}
+
+func (r *Room) handleWhiteTimeTick() {
+	if r.game.CurrentTurn == enums.White {
+		r.game.White.DecrementTime()
+	}
+	if !r.game.White.IsConnected {
+		r.game.White.DecrementExtraTime()
+	}
+	// handle timeouts
+	if r.game.White.Time == 0 {
+		r.endGame(enums.Timeout, enums.Black)
+	} else if r.game.White.ExtraTime == 0 {
+		switch r.game.Status {
+		case enums.Continues:
+			r.abortGame()
+
+		case enums.Leave:
+			r.endGame(enums.Resignation, enums.Black)
+		}
+	}
+}
+
+func (r *Room) handleBlackTimeTick() {
+	if r.game.CurrentTurn == enums.Black {
+		r.game.Black.DecrementTime()
+	}
+	if !r.game.Black.IsConnected {
+		r.game.Black.DecrementExtraTime()
+	}
+	// handle timeouts
+	if r.game.Black.Time == 0 {
+		r.endGame(enums.Timeout, enums.White)
+	} else if r.game.Black.ExtraTime == 0 {
+		switch r.game.Status {
+		case enums.Continues:
+			r.abortGame()
+
+		case enums.Leave:
+			r.endGame(enums.Resignation, enums.White)
+		}
+	}
+}
+
+func (r *Room) abortGame() {
+	r.game.Status = enums.Aborted
+	r.game.White.Ticker.Stop()
+	r.game.Black.Ticker.Stop()
+	for c := range r.clients {
+		c.writeEventBuffer <- Event{
+			Action:  ABORT,
+			Payload: nil,
+		}
+	}
+}
+
+func (r *Room) resumeGame(side enums.Color) {
+	r.game.Status = enums.Continues
+
+	if side == enums.White {
+		r.game.White.IsConnected = true
+		if r.game.CurrentTurn == enums.Black {
+			r.game.White.Ticker.Stop()
+		}
+	} else {
+		r.game.Black.IsConnected = true
+		if r.game.CurrentTurn == enums.White {
+			r.game.Black.Ticker.Stop()
+		}
+	}
 }
 
 // endGame writes the game data to the db and
 // removes the players from the room.
-func (r *Room) endGame() {
-	repository.SaveGame(r.game)
+func (r *Room) endGame(result enums.GameResult, winner enums.Color) {
+	// repository.SaveGame(r.game)
 
-	for c := range r.clients {
-		r.unregister <- c
-	}
+	// for c := range r.clients {
+	// 	// broadcast game result
+	// 	p, _ := json.Marshal(r.game.Result)
+	// 	e := Event{
+	// 		Action:  RESULT,
+	// 		Payload: p,
+	// 	}
+	// 	c.writeEventBuffer <- e
+	// 	r.unregister <- c
+	// }
 }
 
 // handleTakeMove handles player`s moves.
 func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
-	if r.game.PlayerTurn != c.User.Id {
+	// ignore moves if it is not a player`s turn
+	if (c.User.Id == r.game.White.Id && r.game.CurrentTurn != enums.White) ||
+		(c.User.Id == r.game.Black.Id && r.game.CurrentTurn != enums.Black) {
 		return
 	}
 
-	if r.game.HandleMove(move) {
-		r.broadcastGameInfo()
-
-		if r.game.Status == enums.Over {
-			r.endGame()
+	if r.game.HandleMove(&move) {
+		for c := range r.clients {
+			c.sendEvent(LAST_MOVE, move)
+			c.sendValidMoves(r.game.CurrentValidMoves)
 		}
-	}
-}
-
-// broadcastGameInfo broadcasts 4 messages that contains:
-//  1. Game status;
-//  2. Board (is the game has been started);
-//  3. Player`s valid moves (if the game is not over);
-//  4. Moves history (is the game has been started).
-func (r *Room) broadcastGameInfo() {
-	r.broadcastStatus()
-	if r.game.Status != enums.Waiting {
-		r.broadcastUpdateBoard()
-		if r.game.Status == enums.Continues {
-			r.broadcastValidMoves()
-		}
-		r.broadcastMoveHistory()
-	}
-}
-
-// broadcastUpdateBoard broadcasts the updated board state to players.
-func (r *Room) broadcastUpdateBoard() {
-	fn := slog.String("func", "broadcaseUpdateBoard")
-
-	// since the map with the struct key cannot be serialized,
-	// convert it to map[string]Piece.
-	pieces := make(map[string]pieces.Piece)
-	for pos, piece := range r.game.Pieces {
-		pieces[pos.String()] = piece
-	}
-	p, err := json.Marshal(pieces)
-	if err != nil {
-		slog.Warn("cannot Marshal board state", fn, "err", err)
-		return
-	}
-	e := Event{
-		Action:  UPDATE_BOARD,
-		Payload: p,
-	}
-	for c := range r.clients {
-		c.writeEventBuffer <- e
-	}
-}
-
-// broadcatValidMoves broadcasts the player`s valid moves for the current turn.
-func (r *Room) broadcastValidMoves() {
-	fn := slog.String("func", "broadcastValidMoves")
-
-	var p []byte
-	var err error
-	for c := range r.clients {
-		ppm := make([]helpers.PossibleMove, 0)
-		if c.User.Id == r.game.PlayerTurn {
-			// convert map to slice
-			for pm := range r.game.Cvm {
-				ppm = append(ppm, pm)
-			}
-		} else {
-			for pm := range r.game.Epm {
-				ppm = append(ppm, pm)
-			}
-		}
-		p, err = json.Marshal(ppm)
-		if err != nil {
-			slog.Warn("cannot Marshal possible moves", fn, "err", err)
-			return
-		}
-		e := Event{
-			Action:  VALID_MOVES,
-			Payload: p,
-		}
-		c.writeEventBuffer <- e
-	}
-}
-
-// broadcastMoveHistory broadcasts the list of the completed moves.
-func (r *Room) broadcastMoveHistory() {
-	fn := slog.String("func", "broadcastMoveHistory")
-
-	for c := range r.clients {
-		p, err := json.Marshal(r.game.Moves)
-		if err != nil {
-			slog.Warn("cannot marshal move history", fn, "err", err)
-			return
-		}
-
-		e := Event{
-			Action:  MOVES,
-			Payload: p,
-		}
-		c.writeEventBuffer <- e
-	}
-}
-
-func (r *Room) broadcastStatus() {
-	gameDTO := struct {
-		White  uuid.UUID    `json:"white"`
-		Black  uuid.UUID    `json:"black"`
-		Status enums.Status `json:"status"`
-	}{
-		White:  r.game.WhiteId,
-		Black:  r.game.BlackId,
-		Status: r.game.Status,
-	}
-
-	for c := range r.clients {
-		p, _ := json.Marshal(gameDTO)
-		e := Event{
-			Action:  STATUS,
-			Payload: p,
-		}
-		c.writeEventBuffer <- e
+		// if r.game.Status == enums.Over {
+		// 	// r.endGame()
+		// }
 	}
 }
 
