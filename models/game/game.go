@@ -24,6 +24,7 @@ type G struct {
 	PlayedAt          time.Time                     `json:"-"`
 	CurrentTurn       enums.Color                   `json:"-"`
 	CurrentValidMoves map[helpers.PossibleMove]bool `json:"-"`
+	Winner            int                           `json:"-"` // 1 - white won, -1 - black won, 0 - draw
 }
 
 // NewG creates a new game.
@@ -180,8 +181,9 @@ func (g *G) StartGame(whiteId, blackId uuid.UUID) {
 }
 
 // endGame ends the game due to provided reason.
-func (g *G) endGame(r enums.GameResult) {
+func (g *G) EndGame(r enums.GameResult, w int) {
 	g.Result = r
+	g.Winner = w
 	g.Status = enums.Over
 	g.White.Ticker.Stop()
 	g.Black.Ticker.Stop()
@@ -242,9 +244,9 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 	if len(g.CurrentValidMoves) == 0 {
 		if lastMove.IsCheck {
 			lastMove.IsCheckmate = true
-			g.endGame(enums.Checkmate)
+			g.EndGame(enums.Checkmate, int(g.CurrentTurn))
 		} else {
-			g.endGame(enums.Stalemate)
+			g.EndGame(enums.Stalemate, 0)
 		}
 	}
 	// store the move

@@ -6,6 +6,7 @@ import (
 	"chess-api/models/game/helpers"
 	"chess-api/models/user"
 	"encoding/json"
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -69,6 +70,9 @@ func (r *Room) run() {
 
 // addClient adds a client to the room.
 func (r *Room) addClient(c *Client) {
+	fn := slog.String("func", "room.addClient")
+	slog.Debug("client "+c.User.Name+" added", fn)
+
 	switch r.game.Status {
 	// deny any connections
 	case enums.Aborted, enums.Over:
@@ -93,9 +97,12 @@ func (r *Room) addClient(c *Client) {
 	}
 }
 
-// removeClient deletes the client from the room and deletes the room itself if the
-// room owner disconnects and the game has not been started yet (game aborted).
+// removeClient deletes the client from the room and deletes the room itself
+// if the there is no one left in the room.
 func (r *Room) removeClient(c *Client) {
+	fn := slog.String("func", "room.removeClient")
+	slog.Debug("client "+c.User.Name+" removed", fn)
+
 	delete(r.clients, c)
 	c.currentRoom = nil
 
@@ -104,12 +111,15 @@ func (r *Room) removeClient(c *Client) {
 		return
 	}
 
-	if c.User.Id == r.game.White.Id {
-		r.game.White.ExtraTime = 20 * time.Second
-		r.game.White.Ticker.Reset(time.Second)
-	} else if c.User.Id == r.game.Black.Id {
-		r.game.Black.ExtraTime = 20 * time.Second
-		r.game.Black.Ticker.Reset(time.Second)
+	if r.game.Status == enums.Continues {
+		r.game.Status = enums.Leave
+		if c.User.Id == r.game.White.Id {
+			r.game.White.ExtraTime = 20 * time.Second
+			r.game.White.Ticker.Reset(time.Second)
+		} else if c.User.Id == r.game.Black.Id {
+			r.game.Black.ExtraTime = 20 * time.Second
+			r.game.Black.Ticker.Reset(time.Second)
+		}
 	}
 }
 
@@ -143,40 +153,40 @@ func (r *Room) handleWhiteTimeTick() {
 	if r.game.CurrentTurn == enums.White {
 		r.game.White.DecrementTime()
 	}
-	if !r.game.White.IsConnected {
+	if !r.game.White.IsConnected || len(r.game.Moves) == 0 {
 		r.game.White.DecrementExtraTime()
 	}
 	// handle timeouts
 	if r.game.White.Time == 0 {
-		r.endGame(enums.Timeout, enums.Black)
+		r.endGame(enums.Timeout, int(enums.Black))
 	} else if r.game.White.ExtraTime == 0 {
 		switch r.game.Status {
 		case enums.Continues:
 			r.abortGame()
 
 		case enums.Leave:
-			r.endGame(enums.Resignation, enums.Black)
+			r.endGame(enums.Resignation, int(enums.Black))
 		}
 	}
 }
 
 func (r *Room) handleBlackTimeTick() {
-	if r.game.CurrentTurn == enums.Black {
+	if r.game.CurrentTurn <= enums.Black {
 		r.game.Black.DecrementTime()
 	}
-	if !r.game.Black.IsConnected {
+	if !r.game.Black.IsConnected || len(r.game.Moves) == 1 {
 		r.game.Black.DecrementExtraTime()
 	}
 	// handle timeouts
 	if r.game.Black.Time == 0 {
-		r.endGame(enums.Timeout, enums.White)
+		r.endGame(enums.Timeout, int(enums.White))
 	} else if r.game.Black.ExtraTime == 0 {
 		switch r.game.Status {
 		case enums.Continues:
 			r.abortGame()
 
 		case enums.Leave:
-			r.endGame(enums.Resignation, enums.White)
+			r.endGame(enums.Resignation, int(enums.White))
 		}
 	}
 }
@@ -190,6 +200,7 @@ func (r *Room) abortGame() {
 			Action:  ABORT,
 			Payload: nil,
 		}
+		c.manager.remove <- r
 	}
 }
 
@@ -207,23 +218,33 @@ func (r *Room) resumeGame(side enums.Color) {
 			r.game.Black.Ticker.Stop()
 		}
 	}
+
+	for c := range r.clients {
+		c.sendEvent(GAME_INFO, r.game)
+	}
 }
 
 // endGame writes the game data to the db and
 // removes the players from the room.
-func (r *Room) endGame(result enums.GameResult, winner enums.Color) {
+func (r *Room) endGame(res enums.GameResult, w int) {
 	// repository.SaveGame(r.game)
+	r.game.EndGame(res, w)
+	// broadcast game result
+	for c := range r.clients {
+		endGameDTO := struct {
+			Result enums.GameResult `json:"r"`
+			Winner int              `json:"w"`
+		}{
+			Result: res, Winner: w,
+		}
 
-	// for c := range r.clients {
-	// 	// broadcast game result
-	// 	p, _ := json.Marshal(r.game.Result)
-	// 	e := Event{
-	// 		Action:  RESULT,
-	// 		Payload: p,
-	// 	}
-	// 	c.writeEventBuffer <- e
-	// 	r.unregister <- c
-	// }
+		p, _ := json.Marshal(endGameDTO)
+		e := Event{
+			Action:  END_RESULT,
+			Payload: p,
+		}
+		c.writeEventBuffer <- e
+	}
 }
 
 // handleTakeMove handles player`s moves.
@@ -239,9 +260,9 @@ func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
 			c.sendEvent(LAST_MOVE, move)
 			c.sendValidMoves(r.game.CurrentValidMoves)
 		}
-		// if r.game.Status == enums.Over {
-		// 	// r.endGame()
-		// }
+		if r.game.Status == enums.Over {
+			r.endGame(r.game.Result, r.game.Winner)
+		}
 	}
 }
 

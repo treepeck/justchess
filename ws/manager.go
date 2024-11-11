@@ -183,9 +183,8 @@ func (m *Manager) removeRoom(r *Room) {
 		delete(m.rooms, r)
 		r.close <- true // exit room Run loop
 		slog.Info("room removed", fn, slog.Int("count", len(m.rooms)))
+		m.broadcastRemoveRoom(r)
 	}
-
-	m.broadcastRemoveRoom(r)
 }
 
 // findRoomById finds the room with the specified id.

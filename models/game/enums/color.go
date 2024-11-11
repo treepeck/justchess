@@ -8,15 +8,15 @@ import (
 type Color int
 
 const (
-	White Color = iota
-	Black
+	White Color = 1
+	Black Color = -1
 )
 
 func (c Color) String() string {
 	switch c {
-	case 0:
-		return "white"
 	case 1:
+		return "white"
+	case -1:
 		return "black"
 	default:
 		panic("unknown color")
