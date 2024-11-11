@@ -29,9 +29,9 @@ func NewPlayer(id uuid.UUID, t time.Duration) *Player {
 }
 
 func (p *Player) DecrementTime() {
-	p.Time -= 1
+	p.Time -= time.Second
 }
 
 func (p *Player) DecrementExtraTime() {
-	p.ExtraTime -= 1
+	p.ExtraTime -= time.Second
 }
