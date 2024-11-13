@@ -90,10 +90,10 @@ func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 	} else {
 		_u := repository.FindUserById(s.Id)
 		if _u == nil {
-			u = *user.NewUser(s.Id)
-		} else {
-			u = *_u
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
 		}
+		u = *_u
 	}
 
 	c := newClient(conn, m, u)

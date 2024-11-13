@@ -32,7 +32,7 @@ func IsAuthorized(next http.Handler) http.Handler {
 		// parse encoded token
 		et := strings.TrimPrefix(h, "Bearer ")
 
-		at, err := jwt_auth.DecodeToken(et, "ACCESS_TOKEN_STRING")
+		at, err := jwt_auth.DecodeToken(et, "ACCESS_TOKEN_SECRET")
 		if err != nil {
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
