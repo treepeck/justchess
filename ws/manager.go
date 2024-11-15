@@ -155,15 +155,15 @@ func (m *Manager) removeClient(c *Client) {
 	fn := slog.String("func", "manager.removeClient")
 
 	if _, ok := m.clients[c]; ok {
+		if c.currentRoom != nil {
+			c.currentRoom.unregister <- c
+		}
+
 		c.conn.Close()
 		delete(m.clients, c)
 
 		slog.Info("client "+c.User.Id.String()+" removed", fn)
 		m.broadcastCC()
-
-		if c.currentRoom != nil {
-			c.currentRoom.unregister <- c
-		}
 	}
 }
 

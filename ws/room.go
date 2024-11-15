@@ -200,7 +200,6 @@ func (r *Room) abortGame() {
 			Action:  ABORT,
 			Payload: nil,
 		}
-		c.manager.remove <- r
 	}
 }
 

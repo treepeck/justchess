@@ -29,6 +29,9 @@ func OpenDatabase(schemaPath string) error {
 		return err
 	}
 
+	Pool.SetMaxOpenConns(10)
+	Pool.SetMaxIdleConns(5)
+
 	// create tables
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
