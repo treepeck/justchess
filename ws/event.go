@@ -21,12 +21,13 @@ func (e *Event) Marshal() []byte {
 
 // client events
 const (
-	CREATE_ROOM = "cr" // Creates a new room.
-	JOIN_ROOM   = "jr" // Join a room.
-	LEAVE_ROOM  = "lr" // Leave a room.
-	GET_ROOMS   = "gr" // Gets all availible rooms one by one.
-	GET_GAME    = "gg" // Get up-to-date game info.
-	MOVE        = "m"  // Take a move.
+	CREATE_ROOM  = "cr" // Creates a new room.
+	JOIN_ROOM    = "jr" // Join a room.
+	LEAVE_ROOM   = "lr" // Leave a room.
+	GET_ROOMS    = "gr" // Gets all availible rooms one by one.
+	GET_GAME     = "gg" // Get up-to-date game info.
+	MOVE         = "m"  // Take a move.
+	SEND_MESSAGE = "sm" // Incomming chat message.
 )
 
 // server events
@@ -35,6 +36,7 @@ const (
 	ADD_ROOM        = "ar" // Add availible room.
 	REMOVE_ROOM     = "rr" // Remove room.
 	REDIRECT        = "r"  // Redirect client to a room.
+	CHAT_MESSAGE    = "cm" // Broadcasted chat message.
 	// Game related events
 	LAST_MOVE   = "lm" // Last maded move.
 	MOVES       = "mh" // Full moves history.

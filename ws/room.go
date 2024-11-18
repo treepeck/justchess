@@ -153,9 +153,9 @@ func (r *Room) handleWhiteTimeTick() {
 	if r.game.CurrentTurn == enums.White {
 		r.game.White.DecrementTime()
 	}
-	if !r.game.White.IsConnected || len(r.game.Moves) == 0 {
-		r.game.White.DecrementExtraTime()
-	}
+	// if !r.game.White.IsConnected || len(r.game.Moves) == 0 {
+	// 	r.game.White.DecrementExtraTime()
+	// }
 	// handle timeouts
 	if r.game.White.Time == 0 {
 		r.endGame(enums.Timeout, int(enums.Black))
@@ -174,9 +174,9 @@ func (r *Room) handleBlackTimeTick() {
 	if r.game.CurrentTurn <= enums.Black {
 		r.game.Black.DecrementTime()
 	}
-	if !r.game.Black.IsConnected || len(r.game.Moves) == 1 {
-		r.game.Black.DecrementExtraTime()
-	}
+	// if !r.game.Black.IsConnected || len(r.game.Moves) == 1 {
+	// 	r.game.Black.DecrementExtraTime()
+	// }
 	// handle timeouts
 	if r.game.Black.Time == 0 {
 		r.endGame(enums.Timeout, int(enums.White))
@@ -265,7 +265,28 @@ func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
 	}
 }
 
-// MarshalJSON serializes room into json string.
+func (r *Room) broadcastChatMessage(m json.RawMessage, sid uuid.UUID) {
+	// To avoid spamming, the number of messages for each player is limited to 15.
+	sender := ""
+	if sid == r.game.White.Id {
+		sender = "[white]: "
+		if r.game.White.MessageCounter > 15 {
+			return
+		}
+		r.game.White.MessageCounter++
+	} else if sid == r.game.Black.Id {
+		sender = "[black]: "
+		if r.game.Black.MessageCounter > 15 {
+			return
+		}
+		r.game.Black.MessageCounter++
+	}
+	for c := range r.clients {
+		c.sendEvent(CHAT_MESSAGE, sender+string(m))
+	}
+}
+
+// MarshalJSON serializes room into json to send it to the client.
 func (r *Room) MarshalJSON() ([]byte, error) {
 	roomDTO := struct {
 		Id      uuid.UUID     `json:"id"`

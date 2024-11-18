@@ -139,6 +139,9 @@ func (c *Client) handleEvent(e Event) {
 	case MOVE:
 		c.handleMove(e.Payload)
 
+	case SEND_MESSAGE:
+		c.handleSendMessage(e.Payload)
+
 	default:
 		slog.Warn("event have unknown action", fn, "action", e.Action)
 	}
@@ -231,7 +234,7 @@ func (c *Client) handleMove(payload json.RawMessage) {
 // handleGetRooms sends the current availible rooms one by one.
 // There can be a lot of rooms, so they can`t be send as a single message.
 func (c *Client) handleGetRooms() {
-	fn := slog.String("func", "getRooms")
+	fn := slog.String("func", "handleGetRooms")
 	for r := range c.manager.rooms {
 		if r.game.Status == enums.Waiting {
 			payload, err := json.Marshal(r)
@@ -245,6 +248,12 @@ func (c *Client) handleGetRooms() {
 			}
 			c.writeEventBuffer <- e
 		}
+	}
+}
+
+func (c *Client) handleSendMessage(payload json.RawMessage) {
+	if c.currentRoom != nil {
+		c.currentRoom.broadcastChatMessage(payload, c.User.Id)
 	}
 }
 
