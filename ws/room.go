@@ -153,9 +153,9 @@ func (r *Room) handleWhiteTimeTick() {
 	if r.game.CurrentTurn == enums.White {
 		r.game.White.DecrementTime()
 	}
-	// if !r.game.White.IsConnected || len(r.game.Moves) == 0 {
-	// 	r.game.White.DecrementExtraTime()
-	// }
+	if !r.game.White.IsConnected || len(r.game.Moves) == 0 {
+		r.game.White.DecrementExtraTime()
+	}
 	// handle timeouts
 	if r.game.White.Time == 0 {
 		r.endGame(enums.Timeout, int(enums.Black))
@@ -174,9 +174,9 @@ func (r *Room) handleBlackTimeTick() {
 	if r.game.CurrentTurn <= enums.Black {
 		r.game.Black.DecrementTime()
 	}
-	// if !r.game.Black.IsConnected || len(r.game.Moves) == 1 {
-	// 	r.game.Black.DecrementExtraTime()
-	// }
+	if !r.game.Black.IsConnected || len(r.game.Moves) == 1 {
+		r.game.Black.DecrementExtraTime()
+	}
 	// handle timeouts
 	if r.game.Black.Time == 0 {
 		r.endGame(enums.Timeout, int(enums.White))
@@ -250,7 +250,8 @@ func (r *Room) endGame(res enums.GameResult, w int) {
 func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
 	// ignore moves if it is not a player`s turn
 	if (c.User.Id == r.game.White.Id && r.game.CurrentTurn != enums.White) ||
-		(c.User.Id == r.game.Black.Id && r.game.CurrentTurn != enums.Black) {
+		(c.User.Id == r.game.Black.Id && r.game.CurrentTurn != enums.Black) ||
+		r.game.Status == enums.Over {
 		return
 	}
 

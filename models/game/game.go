@@ -255,9 +255,11 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 	g.CurrentTurn = g.CurrentTurn.GetOppositeColor()
 	if g.CurrentTurn == enums.White {
 		g.White.Ticker.Reset(time.Second)
+		g.Black.AddTime(time.Duration(g.Bonus) * time.Second)
 		lastMove.TimeLeft = g.Black.Time
 	} else {
 		g.Black.Ticker.Reset(time.Second)
+		g.White.AddTime(time.Duration(g.Bonus) * time.Second)
 		lastMove.TimeLeft = g.White.Time
 	}
 }

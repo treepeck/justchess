@@ -35,6 +35,10 @@ func (p *Player) DecrementTime() {
 	p.Time -= time.Second
 }
 
+func (p *Player) AddTime(d time.Duration) {
+	p.Time += d
+}
+
 func (p *Player) DecrementExtraTime() {
 	p.ExtraTime -= time.Second
 }
