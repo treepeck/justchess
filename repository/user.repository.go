@@ -33,8 +33,6 @@ import (
 // }
 
 func FindUserById(id uuid.UUID) *user.U {
-	fn := slog.String("func", "FindUserById")
-
 	const queryText string = `
 		SELECT
 			id, name, is_deleted,
@@ -46,7 +44,7 @@ func FindUserById(id uuid.UUID) *user.U {
 
 	rows, err := db.Pool.Query(queryText, id.String())
 	if err != nil {
-		slog.Warn("cannot execute query", fn, "err", err)
+		slog.Warn("cannot execute query", "err", err)
 		return nil
 	}
 	defer rows.Close()

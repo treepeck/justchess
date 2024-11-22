@@ -21,27 +21,23 @@ func NewKing(color enums.Color, pos helpers.Pos) *King {
 	}
 }
 
+// King`s GetPossibleMoves returns valid moves.
+// Thus, there is no need to additionaly check king`s possible moves.
 func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
-) map[helpers.Pos]enums.MoveType {
-	// calculate all posible moves for enemy pieces
-	// to prevent moving under attacked squares.
-	// map is used to store the unique moves only.
+) []helpers.PossibleMove {
 	is := getInaccessibleSquares(pieces, k.Color)
 
-	possibleMoves := make(map[helpers.Pos]enums.MoveType)
-	// checkSquare is a nested function that checks is the specified square
-	// vacant.
+	pm := make([]helpers.PossibleMove, 0)
+	// checkSquare checks is the specified square vacant.
 	checkSquare := func(dF, dR int) { // delta file, delta rank.
 		file, rank := k.Pos.File+dF, k.Pos.Rank+dR
 
 		pos := helpers.NewPos(file, rank)
-		if is[pos] == 0 { // vacant square, is not under enemy attack.
+		if !is[pos] { // vacant square, is not under enemy attack.
 			if pos.IsInBoard() {
 				p := pieces[pos]
 				if p == nil || p.GetColor() != k.Color {
-					possibleMoves[pos] = enums.Basic
-				} else {
-					possibleMoves[pos] = enums.Defend
+					pm = append(pm, helpers.NewPM(pos, enums.Basic))
 				}
 			}
 		}
@@ -55,12 +51,11 @@ func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 	checkSquare(0, -1)  // lower square.
 	checkSquare(+1, -1) // lower right square.
 
-	// the king can not castle in check
-	if is[k.Pos] != 0 {
-		return possibleMoves
+	// the king can not castle in check.
+	if is[k.Pos] {
+		return pm
 	}
-
-	// handleCastling is a nested function that checks if a king can castle.
+	// handleCastling checks is a king can castle.
 	handleCastling := func(ct enums.MoveType, ss, dF int) {
 		var rookPos helpers.Pos
 		if ct == enums.ShortCastling {
@@ -71,26 +66,29 @@ func (k *King) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 		for i := 1; i <= ss; i++ {
 			pos := helpers.NewPos(k.Pos.File+(i*dF), k.Pos.Rank)
 			// if the square is not vacant or under attack.
-			if pieces[pos] != nil || is[pos] != 0 {
+			if pieces[pos] != nil || is[pos] {
 				return
 			}
 		}
-
 		// check the rook
 		r := pieces[rookPos]
 		if r != nil && r.GetType() == enums.Rook &&
 			r.GetMovesCounter() == 0 {
-			possibleMoves[helpers.NewPos(k.Pos.File+(2*dF), k.Pos.Rank)] = ct
+			finalPos := helpers.NewPos(k.Pos.File+(2*dF), k.Pos.Rank)
+			pm = append(pm, helpers.NewPM(finalPos, ct))
 		}
 	}
 	handleCastling(enums.ShortCastling, 2, 1)
 	handleCastling(enums.LongCastling, 3, -1)
-	return possibleMoves
+	return pm
 }
 
+// getInaccessibleSquares calculate all posible moves for enemy pieces
+// to forbit the king to move under attacked squares. The map as a return type
+// is used to store the unique moves only.
 func getInaccessibleSquares(pieces map[helpers.Pos]Piece, side enums.Color,
-) map[helpers.Pos]enums.MoveType {
-	is := make(map[helpers.Pos]enums.MoveType)
+) map[helpers.Pos]bool {
+	is := make(map[helpers.Pos]bool)
 
 	for _, piece := range pieces {
 		if piece.GetColor() != side {
@@ -99,20 +97,23 @@ func getInaccessibleSquares(pieces map[helpers.Pos]Piece, side enums.Color,
 			// cannot attack front squares.
 			case enums.Pawn:
 				pm := piece.GetPossibleMoves(pieces)
-				for pos, moveType := range pm {
-					if moveType != enums.PawnForward {
-						is[pos] = moveType
+				for _, m := range pm {
+					if m.MoveType != enums.PawnForward {
+						is[m.To] = true
 					}
 				}
-			// piece.GetPossibleMoves cannot be called here, otherwise enless loop will occur:
+			// piece.GetPossibleMoves cannot be called here,
+			// otherwise endless loop will occur:
 			// king.GetPossibleMoves -> enemyKing.GetPossibleMoves -> ...
 			case enums.King:
-				getEnemyKingPossibleMoves(piece.(*King), is)
-			// all other pieces.
+				for _, pos := range getEnemyKingMovePattern(piece.(*King)) {
+					is[pos] = true
+				}
+
 			default:
 				pm := piece.GetPossibleMoves(pieces)
-				for pos, moveType := range pm {
-					is[pos] = moveType
+				for _, m := range pm {
+					is[m.To] = true
 				}
 			}
 		}
@@ -120,7 +121,7 @@ func getInaccessibleSquares(pieces map[helpers.Pos]Piece, side enums.Color,
 	return is
 }
 
-func getEnemyKingPossibleMoves(k *King, pm map[helpers.Pos]enums.MoveType) {
+func getEnemyKingMovePattern(k *King) []helpers.Pos {
 	possiblePositions := []helpers.Pos{
 		{File: k.Pos.File - 1, Rank: k.Pos.Rank + 1},
 		{File: k.Pos.File, Rank: k.Pos.Rank + 1},
@@ -132,11 +133,13 @@ func getEnemyKingPossibleMoves(k *King, pm map[helpers.Pos]enums.MoveType) {
 		{File: k.Pos.File + 1, Rank: k.Pos.Rank - 1},
 	}
 
+	mp := make([]helpers.Pos, 0)
 	for _, pos := range possiblePositions {
 		if pos.IsInBoard() {
-			pm[pos] = enums.Basic
+			mp = append(mp, pos)
 		}
 	}
+	return mp
 }
 
 func (k *King) Move(to helpers.Pos) {
@@ -162,4 +165,11 @@ func (k *King) GetColor() enums.Color {
 
 func (k *King) GetPosition() helpers.Pos {
 	return k.Pos
+}
+
+func (k *King) GetFEN() string {
+	if k.Color == enums.White {
+		return "K"
+	}
+	return "k"
 }

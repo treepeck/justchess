@@ -38,13 +38,12 @@ const (
 	REDIRECT        = "r"  // Redirect client to a room.
 	CHAT_MESSAGE    = "cm" // Broadcasted chat message.
 	// Game related events
-	LAST_MOVE   = "lm" // Last maded move.
-	MOVES       = "mh" // Full moves history.
-	STATUS      = "s"  // Player connection statuses.
-	VALID_MOVES = "vm" // Valid moves for the current turn.
-	GAME_INFO   = "gi" // Game parameters (control, bonus), players ids.
-	END_RESULT  = "er" // Who won the game, why the game is over.
-	ABORT       = "a"  // Game is aborted.
+	LAST_MOVE  = "lm" // Last maded move.
+	MOVES      = "mh" // Full moves history.
+	STATUS     = "s"  // Player connection statuses.
+	GAME_INFO  = "gi" // Game parameters (control, bonus), players ids.
+	END_RESULT = "er" // Who won the game, why the game is over.
+	ABORT      = "a"  // Game is aborted.
 )
 
 // server errors

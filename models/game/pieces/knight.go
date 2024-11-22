@@ -22,7 +22,7 @@ func NewKnight(color enums.Color, pos helpers.Pos) *Knight {
 }
 
 func (k *Knight) GetPossibleMoves(pieces map[helpers.Pos]Piece,
-) map[helpers.Pos]enums.MoveType {
+) []helpers.PossibleMove {
 	possiblePos := []helpers.Pos{
 		{File: k.Pos.File + 2, Rank: k.Pos.Rank + 1},
 		{File: k.Pos.File + 2, Rank: k.Pos.Rank - 1},
@@ -34,22 +34,19 @@ func (k *Knight) GetPossibleMoves(pieces map[helpers.Pos]Piece,
 		{File: k.Pos.File + 1, Rank: k.Pos.Rank + 2},
 	}
 
-	possibleMoves := make(map[helpers.Pos]enums.MoveType)
+	pm := make([]helpers.PossibleMove, 0)
 	for _, pos := range possiblePos {
-		if pos.IsInBoard() {
-			// if the square is empty or if the enemy piece
-			piece := pieces[pos]
-			if piece == nil {
-				possibleMoves[pos] = enums.Basic
-			} else if piece.GetColor() != k.Color {
-				possibleMoves[pos] = enums.Basic
-			} else if piece.GetColor() == k.Color {
-				possibleMoves[pos] = enums.Defend
-			}
+		if !pos.IsInBoard() {
+			continue
+		}
+		piece := pieces[pos]
+		if piece == nil || piece.GetColor() != k.Color {
+			pm = append(pm, helpers.NewPM(pos, enums.Basic))
+		} else {
+			pm = append(pm, helpers.NewPM(pos, enums.Defend))
 		}
 	}
-
-	return possibleMoves
+	return pm
 }
 
 func (k *Knight) Move(to helpers.Pos) {
@@ -75,4 +72,11 @@ func (k *Knight) GetColor() enums.Color {
 
 func (k *Knight) GetPosition() helpers.Pos {
 	return k.Pos
+}
+
+func (k *Knight) GetFEN() string {
+	if k.Color == enums.White {
+		return "N"
+	}
+	return "n"
 }

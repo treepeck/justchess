@@ -151,7 +151,3 @@ func createTestServer() *httptest.Server {
 // 		})
 // 	}
 // }
-
-func TestAddRoom() {
-
-}

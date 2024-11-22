@@ -70,8 +70,7 @@ func (r *Room) run() {
 
 // addClient adds a client to the room.
 func (r *Room) addClient(c *Client) {
-	fn := slog.String("func", "room.addClient")
-	slog.Debug("client "+c.User.Name+" added", fn)
+	slog.Debug("client " + c.User.Name + " added")
 
 	switch r.game.Status {
 	// deny any connections
@@ -100,8 +99,7 @@ func (r *Room) addClient(c *Client) {
 // removeClient deletes the client from the room and deletes the room itself
 // if the there is no one left in the room.
 func (r *Room) removeClient(c *Client) {
-	fn := slog.String("func", "room.removeClient")
-	slog.Debug("client "+c.User.Name+" removed", fn)
+	slog.Debug("client " + c.User.Name + " removed")
 
 	delete(r.clients, c)
 	c.currentRoom = nil
@@ -145,7 +143,6 @@ func (r *Room) startGame() {
 	// broadcast game info
 	for c := range r.clients {
 		c.sendEvent(GAME_INFO, r.game)
-		c.sendValidMoves(r.game.CurrentValidMoves)
 	}
 }
 
@@ -257,8 +254,7 @@ func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
 
 	if r.game.HandleMove(&move) {
 		for c := range r.clients {
-			c.sendEvent(LAST_MOVE, move)
-			c.sendValidMoves(r.game.CurrentValidMoves)
+			c.sendLastMove(move, r.game.Pieces[move.To].GetType())
 		}
 		if r.game.Status == enums.Over {
 			r.endGame(r.game.Result, r.game.Winner)

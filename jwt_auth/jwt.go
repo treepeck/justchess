@@ -18,17 +18,16 @@ type Subject struct {
 
 // GeneratePair generates a pair of JWT`s: access token and refresh token.
 func GeneratePair(s Subject) (at, rt string, err error) {
-	fn := slog.String("func", "GeneratePair")
 	// generate and sign access token
 	at, err = GenerateToken(s, "ACCESS_TOKEN_SECRET", time.Minute*30)
 	if err != nil {
-		slog.Warn("can not generate access token", fn, "err", err)
+		slog.Warn("can not generate access token", "err", err)
 		return
 	}
 	// generate and sign refresh token
 	rt, err = GenerateToken(s, "REFRESH_TOKEN_SECRET", (time.Hour*24)*15)
 	if err != nil {
-		slog.Warn("can not generate refresh token", fn, "err", err)
+		slog.Warn("can not generate refresh token", "err", err)
 		return
 	}
 	return

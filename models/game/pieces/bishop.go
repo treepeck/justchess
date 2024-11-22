@@ -22,13 +22,13 @@ func NewBishop(color enums.Color, pos helpers.Pos) *Bishop {
 }
 
 func (b *Bishop) GetPossibleMoves(pieces map[helpers.Pos]Piece,
-) map[helpers.Pos]enums.MoveType {
-	possibleMoves := make(map[helpers.Pos]enums.MoveType)
-	traverse(-1, 1, pieces, b, possibleMoves)  // Upper left diagonal (decrease file, increase rank).
-	traverse(-1, -1, pieces, b, possibleMoves) // Lower left diagonal (decrease file, decrease rank).
-	traverse(1, 1, pieces, b, possibleMoves)   // Upper right diagonal (increase file, increase rank).
-	traverse(1, -1, pieces, b, possibleMoves)  // Lower right diagonal (increase file, decrease rank).
-	return possibleMoves
+) []helpers.PossibleMove {
+	pm := make([]helpers.PossibleMove, 0)
+	pm = append(pm, traverse(-1, 1, pieces, b)...)  // Upper left diagonal.
+	pm = append(pm, traverse(-1, -1, pieces, b)...) // Lower left diagonal.
+	pm = append(pm, traverse(1, 1, pieces, b)...)   // Upper right diagonal.
+	pm = append(pm, traverse(1, -1, pieces, b)...)  // Lower right diagonal.
+	return pm
 }
 
 func (b *Bishop) Move(to helpers.Pos) {
@@ -54,4 +54,11 @@ func (b *Bishop) GetColor() enums.Color {
 
 func (b *Bishop) GetPosition() helpers.Pos {
 	return b.Pos
+}
+
+func (b *Bishop) GetFEN() string {
+	if b.Color == enums.White {
+		return "B"
+	}
+	return "b"
 }

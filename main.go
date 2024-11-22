@@ -17,7 +17,8 @@ import (
 func main() {
 	// set up logger
 	h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level:     slog.LevelDebug,
+		AddSource: true,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.TimeKey {
 				a.Value = slog.StringValue(time.Now().Format("01/02/2006 15:04:05"))
@@ -26,12 +27,11 @@ func main() {
 		},
 	})
 	slog.SetDefault(slog.New(h))
-	fn := slog.String("func", "main")
 
 	// load environment variables
 	err := godotenv.Load()
 	if err != nil {
-		slog.Error(".env file cannot be load", fn, "err", err)
+		slog.Error(".env file cannot be load", "err", err)
 	}
 
 	// connect to the database
@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	slog.Info("Database connected successfully", fn)
+	slog.Info("Database connected successfully")
 	defer db.CloseDatabase()
 
 	// create a middleware stack to send the

@@ -10,8 +10,6 @@ import (
 )
 
 func SaveGame(g *game.G) {
-	fn := slog.String("func", "SaveGame")
-
 	const queryText = `
 		INSERT INTO games (
 			id, black_id, white_id,
@@ -28,15 +26,13 @@ func SaveGame(g *game.G) {
 		g.Moves, g.PlayedAt,
 	)
 	if err != nil || !rows.Next() {
-		slog.Warn("error while writing a game", fn, "err", err)
+		slog.Warn("error while writing a game", "err", err)
 		return
 	}
 	rows.Close()
 }
 
 func FindGameById(id uuid.UUID) *game.G {
-	fn := slog.String("func", "FindGameById")
-
 	const queryText = `
 		SELECT *
 		WHERE id = $1 
@@ -44,7 +40,7 @@ func FindGameById(id uuid.UUID) *game.G {
 
 	rows, err := db.Pool.Query(queryText, id.String())
 	if err != nil {
-		slog.Warn("cannot execute query", fn, "err", err)
+		slog.Warn("cannot execute query", "err", err)
 		return nil
 	}
 	defer rows.Close()

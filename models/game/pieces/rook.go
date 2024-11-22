@@ -22,13 +22,13 @@ func NewRook(color enums.Color, pos helpers.Pos) *Rook {
 }
 
 func (r *Rook) GetPossibleMoves(pieces map[helpers.Pos]Piece,
-) map[helpers.Pos]enums.MoveType {
-	possibleMoves := make(map[helpers.Pos]enums.MoveType)
-	traverse(0, 1, pieces, r, possibleMoves)  // upper horizontal (increase rank).
-	traverse(0, -1, pieces, r, possibleMoves) // lower horizontal (decrease rank).
-	traverse(1, 0, pieces, r, possibleMoves)  // right horizontal (increase file).
-	traverse(-1, 0, pieces, r, possibleMoves) // left horizontal (decrease file).
-	return possibleMoves
+) []helpers.PossibleMove {
+	pm := make([]helpers.PossibleMove, 0)
+	pm = append(pm, traverse(0, 1, pieces, r)...)  // Upper horizontal.
+	pm = append(pm, traverse(0, -1, pieces, r)...) // Lower horizontal.
+	pm = append(pm, traverse(1, 0, pieces, r)...)  // Right horizontal.
+	pm = append(pm, traverse(-1, 0, pieces, r)...) // Left horizontal.
+	return pm
 }
 
 func (r *Rook) Move(to helpers.Pos) {
@@ -54,4 +54,11 @@ func (r *Rook) GetColor() enums.Color {
 
 func (r *Rook) GetPosition() helpers.Pos {
 	return r.Pos
+}
+
+func (r *Rook) GetFEN() string {
+	if r.Color == enums.White {
+		return "R"
+	}
+	return "r"
 }

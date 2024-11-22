@@ -17,9 +17,8 @@ type Piece interface {
 	//   1. Making this move does not expose the allied king to check;
 	//   2. If the allied king is checked, the move is valid only if it blocks the
 	//      king from the check.
-	// The map is used as a returned type to simplify the testing
-	// (there is no need to specify the exact order of the move positions).
-	GetPossibleMoves(pieces map[helpers.Pos]Piece) map[helpers.Pos]enums.MoveType
+	GetPossibleMoves(pieces map[helpers.Pos]Piece,
+	) []helpers.PossibleMove
 	// Move moves the piece to a new position.
 	// Move does not modify the board state [chess-api/models/Game].
 	// The validity of a move must be checked before calling.
@@ -34,6 +33,8 @@ type Piece interface {
 	GetType() enums.PieceType
 	// GetColor returns the piece color.
 	GetColor() enums.Color
+	// GetFEN returns the Forsyth-Edwards Notation of the piece
+	GetFEN() string
 }
 
 // BuildPiece returns concrete piece with the specified parameters.

@@ -48,12 +48,10 @@ func (c *Client) readEvents() {
 		c.manager.unregister <- c
 	}()
 
-	fn := slog.String("func", "readEvents")
-
 	c.conn.SetReadLimit(10000)
 	// set the read deadline to limit inactive connections.
 	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		slog.Warn("error while setting the read deadline", fn, "err", err)
+		slog.Warn("error while setting the read deadline", "err", err)
 		return
 	}
 	c.conn.SetPongHandler(c.pongHandler)
@@ -64,7 +62,7 @@ func (c *Client) readEvents() {
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway,
 				websocket.CloseNormalClosure) {
-				slog.Warn("error while reading a message", fn, "err", err)
+				slog.Warn("error while reading a message", "err", err)
 			}
 			break
 		}
@@ -72,7 +70,7 @@ func (c *Client) readEvents() {
 		var e Event
 		err = json.Unmarshal(data, &e)
 		if err != nil {
-			slog.Warn("cannot Unmarshal event", fn, "err", err)
+			slog.Warn("cannot Unmarshal event", "err", err)
 			break
 		}
 		c.handleEvent(e)
@@ -87,9 +85,6 @@ func (c *Client) writeEvents() {
 		ticker.Stop()
 		c.manager.unregister <- c
 	}()
-
-	fn := slog.String("func", "writeEvents")
-
 	// forever loop grabs the incomming events from a channel and writes them
 	// through a connection.
 	for {
@@ -97,13 +92,13 @@ func (c *Client) writeEvents() {
 		case e, ok := <-c.writeEventBuffer:
 			c.conn.SetWriteDeadline(time.Now().Add(pingInterval))
 			if !ok {
-				slog.Info("connection closed", fn)
+				slog.Info("connection closed")
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, e.Marshal()); err != nil {
-				slog.Warn("failed to write event", fn, "err", err)
+				slog.Warn("failed to write event", "err", err)
 				return
 			}
 
@@ -118,8 +113,6 @@ func (c *Client) writeEvents() {
 
 // handleEvent handles the incomming events by calling corresponding functions.
 func (c *Client) handleEvent(e Event) {
-	fn := slog.String("func", "handleEvent")
-
 	switch e.Action {
 	case CREATE_ROOM:
 		c.handleCreateRoom(e.Payload)
@@ -143,17 +136,15 @@ func (c *Client) handleEvent(e Event) {
 		c.handleSendMessage(e.Payload)
 
 	default:
-		slog.Warn("event have unknown action", fn, "action", e.Action)
+		slog.Warn("event have unknown action", "action", e.Action)
 	}
 }
 
 func (c *Client) handleCreateRoom(payload json.RawMessage) {
-	fn := slog.String("func", "handleCreateRoom")
-
 	var cr CreateRoomDTO
 	err := json.Unmarshal(payload, &cr)
 	if err != nil {
-		slog.Warn("cannot Unmarshal CreateRoomDTO", fn, "err", err)
+		slog.Warn("cannot Unmarshal CreateRoomDTO", "err", err)
 		c.writeEventBuffer <- Event{
 			Action:  CREATE_ROOM_ERR,
 			Payload: nil,
@@ -162,7 +153,7 @@ func (c *Client) handleCreateRoom(payload json.RawMessage) {
 	}
 
 	if c.currentRoom != nil {
-		slog.Info("cannot create multiple rooms", fn)
+		slog.Info("cannot create multiple rooms")
 		c.writeEventBuffer <- Event{
 			Action:  CREATE_ROOM_ERR,
 			Payload: nil,
@@ -176,11 +167,9 @@ func (c *Client) handleCreateRoom(payload json.RawMessage) {
 }
 
 func (c *Client) handleJoinRoom(payload json.RawMessage) {
-	fn := slog.String("func", "handleJoinRoom")
-
 	roomId, err := uuid.Parse(string(payload))
 	if err != nil {
-		slog.Warn("cannot parse roomId", fn, "err", err)
+		slog.Warn("cannot parse roomId", "err", err)
 		c.sendError(UNPROCESSABLE_ENTITY)
 		return
 	}
@@ -198,11 +187,9 @@ func (c *Client) handleLeaveRoom() {
 
 // getGame sends the latest data about the specified game.
 func (c *Client) handleGetGame(payload json.RawMessage) {
-	fn := slog.String("func", "handleGetGame")
-
 	roomId, err := uuid.Parse(string(payload))
 	if err != nil {
-		slog.Warn("cannot Parse roomId", fn, "err", err)
+		slog.Warn("cannot Parse roomId", "err", err)
 		c.sendError(UNPROCESSABLE_ENTITY)
 		return
 	}
@@ -217,12 +204,10 @@ func (c *Client) handleGetGame(payload json.RawMessage) {
 }
 
 func (c *Client) handleMove(payload json.RawMessage) {
-	fn := slog.String("func", "handleMove")
-
 	var m helpers.Move
 	err := json.Unmarshal(payload, &m)
 	if err != nil {
-		slog.Warn("cannot Unmarshal MoveDTO", fn, "err", err)
+		slog.Warn("cannot Unmarshal MoveDTO", "err", err)
 		return
 	}
 
@@ -234,12 +219,11 @@ func (c *Client) handleMove(payload json.RawMessage) {
 // handleGetRooms sends the current availible rooms one by one.
 // There can be a lot of rooms, so they can`t be send as a single message.
 func (c *Client) handleGetRooms() {
-	fn := slog.String("func", "handleGetRooms")
 	for r := range c.manager.rooms {
 		if r.game.Status == enums.Waiting {
 			payload, err := json.Marshal(r)
 			if err != nil {
-				slog.Warn("cannot Marshal Room", fn, "err", err)
+				slog.Warn("cannot Marshal Room", "err", err)
 				continue
 			}
 			e := Event{
@@ -258,10 +242,9 @@ func (c *Client) handleSendMessage(payload json.RawMessage) {
 }
 
 func (c *Client) sendEvent(a string, pData any) {
-	fn := slog.String("func", "sendEvent")
 	p, err := json.Marshal(pData)
 	if err != nil {
-		slog.Warn("cannot send event: "+a, fn, "err", err)
+		slog.Warn("cannot send event: "+a, "err", err)
 		return
 	}
 	e := Event{
@@ -271,24 +254,27 @@ func (c *Client) sendEvent(a string, pData any) {
 	c.writeEventBuffer <- e
 }
 
-func (c *Client) sendValidMoves(vm map[helpers.PossibleMove]bool) {
-	fn := slog.String("func", "sendValidMoves")
-
-	var p []byte
-	var err error
-
-	ppm := make([]helpers.PossibleMove, 0)
-	for pm := range vm {
-		ppm = append(ppm, pm)
+// sendLastMove serializes move into Long Algebraic Notation and sends it
+// with the timer left duration.
+func (c *Client) sendLastMove(m helpers.Move, pt enums.PieceType) {
+	type lastMoveDTO struct {
+		UCI      string        `json:"uci"`
+		LAN      string        `json:"lan"` // TODO: replace with SAN
+		TimeLeft time.Duration `json:"timeLeft"`
+	}
+	lm := lastMoveDTO{
+		UCI:      m.From.String() + m.To.String() + m.PromotionPayload.String(),
+		LAN:      m.ToLAN(pt),
+		TimeLeft: m.TimeLeft,
 	}
 
-	p, err = json.Marshal(ppm)
+	p, err := json.Marshal(lm)
 	if err != nil {
-		slog.Warn("cannot Marshal possible moves", fn, "err", err)
+		slog.Warn("cannot Marshal last move", "err", err)
 		return
 	}
 	e := Event{
-		Action:  VALID_MOVES,
+		Action:  LAST_MOVE,
 		Payload: p,
 	}
 	c.writeEventBuffer <- e

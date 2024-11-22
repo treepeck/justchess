@@ -56,7 +56,6 @@ func NewManager() *Manager {
 // If the connection cannot be upgraded, it sends a header with the status code 500
 // back to the client.
 func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
-	fn := slog.String("func", "HandleConnection")
 	et := r.URL.Query().Get("at")
 	at, err := jwt_auth.DecodeToken(et, "ACCESS_TOKEN_SECRET")
 	if err != nil {
@@ -66,7 +65,7 @@ func (m *Manager) HandleConnection(rw http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
-		slog.Warn("error while upgrading the connection", fn, "err", err)
+		slog.Warn("error while upgrading the connection", "err", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -131,8 +130,6 @@ func (m *Manager) run() {
 
 // addClient adds a new client to the clients map and invokes the client`s goroutines.
 func (m *Manager) addClient(c *Client) {
-	fn := slog.String("func", "manager.addClient")
-
 	// if the client is alredy connected, close the previous connection.
 	for connC := range m.clients {
 		if connC.User.Id == c.User.Id {
@@ -141,7 +138,7 @@ func (m *Manager) addClient(c *Client) {
 	}
 
 	m.clients[c] = true
-	slog.Info("client "+c.User.Id.String()+" joined", fn)
+	slog.Info("client " + c.User.Id.String() + " joined")
 
 	go c.readEvents()
 	go c.writeEvents()
@@ -152,8 +149,6 @@ func (m *Manager) addClient(c *Client) {
 // removeClient removes client from the clients map.
 // Closes a connection with the front-end.
 func (m *Manager) removeClient(c *Client) {
-	fn := slog.String("func", "manager.removeClient")
-
 	if _, ok := m.clients[c]; ok {
 		if c.currentRoom != nil {
 			c.currentRoom.unregister <- c
@@ -162,27 +157,24 @@ func (m *Manager) removeClient(c *Client) {
 		c.conn.Close()
 		delete(m.clients, c)
 
-		slog.Info("client "+c.User.Id.String()+" removed", fn)
+		slog.Info("client " + c.User.Id.String() + " removed")
 		m.broadcastCC()
 	}
 }
 
 // addRoom adds a new room.
 func (m *Manager) addRoom(r *Room) {
-	fn := slog.String("func", "addRoom")
 	m.rooms[r] = true
-	slog.Info("room added", fn, slog.Int("count", len(m.rooms)))
+	slog.Info("room added", slog.Int("count", len(m.rooms)))
 	m.broadcastAddRoom(r)
 }
 
 // removeRoom removes a room.
 func (m *Manager) removeRoom(r *Room) {
-	fn := slog.String("func", "removeRoom")
-
 	if _, ok := m.rooms[r]; ok {
 		delete(m.rooms, r)
 		r.close <- true // exit room Run loop
-		slog.Info("room removed", fn, slog.Int("count", len(m.rooms)))
+		slog.Info("room removed", slog.Int("count", len(m.rooms)))
 		m.broadcastRemoveRoom(r)
 	}
 }
@@ -199,11 +191,9 @@ func (m *Manager) findRoomById(id uuid.UUID) *Room {
 
 // broadcastAddRoom broadcasts the added room.
 func (m *Manager) broadcastAddRoom(r *Room) {
-	fn := slog.String("func", "broadcastAddRoom")
-
 	p, err := json.Marshal(r)
 	if err != nil {
-		slog.Warn("cannot Marshal Room", fn, "err", err)
+		slog.Warn("cannot Marshal Room", "err", err)
 		return
 	}
 	e := Event{
@@ -220,11 +210,9 @@ func (m *Manager) broadcastAddRoom(r *Room) {
 
 // broadcastRemoveRoom is a helper function that broadcasts the removed room.
 func (m *Manager) broadcastRemoveRoom(r *Room) {
-	fn := slog.String("func", "broadcastRemoveRoom")
-
 	p, err := json.Marshal(r)
 	if err != nil {
-		slog.Warn("cannot Marshal Room", fn, "err", err)
+		slog.Warn("cannot Marshal Room", "err", err)
 		return
 	}
 	e := Event{
@@ -241,11 +229,9 @@ func (m *Manager) broadcastRemoveRoom(r *Room) {
 
 // broadcastCC is a helper function that broadcasts the updated clients counter.
 func (m *Manager) broadcastCC() {
-	fn := slog.String("func", "broadcastCC")
-
 	p, err := json.Marshal(len(m.clients))
 	if err != nil {
-		slog.Warn("cannot Marshal clients counter", fn, "err", err)
+		slog.Warn("cannot Marshal clients counter", "err", err)
 		return
 	}
 	e := Event{
