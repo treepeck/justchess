@@ -13,19 +13,19 @@ import (
 
 // G represents a game and stores all necessary data.
 type G struct {
-	Id                uuid.UUID                     `json:"-"`
-	Bonus             uint                          `json:"bonus"` // time increment.
-	Moves             []helpers.Move                `json:"-"`
-	Pieces            map[helpers.Pos]pieces.Piece  `json:"-"`
-	Status            enums.Status                  `json:"status"`
-	Control           enums.Control                 `json:"control"`
-	Result            enums.GameResult              `json:"-"`
-	White             *helpers.Player               `json:"white"`
-	Black             *helpers.Player               `json:"black"`
-	PlayedAt          time.Time                     `json:"-"`
-	CurrentTurn       enums.Color                   `json:"-"`
-	CurrentValidMoves map[helpers.PossibleMove]bool `json:"-"`
-	Winner            int                           `json:"-"` // 1 - white won, -1 - black won, 0 - draw
+	Id                uuid.UUID                              `json:"-"`
+	Bonus             uint                                   `json:"bonus"` // time increment.
+	Moves             []helpers.Move                         `json:"-"`
+	Pieces            map[helpers.Pos]pieces.Piece           `json:"-"`
+	Status            enums.Status                           `json:"status"`
+	Control           enums.Control                          `json:"control"`
+	Result            enums.GameResult                       `json:"-"`
+	White             *helpers.Player                        `json:"white"`
+	Black             *helpers.Player                        `json:"black"`
+	PlayedAt          time.Time                              `json:"-"`
+	CurrentTurn       enums.Color                            `json:"-"`
+	CurrentValidMoves map[helpers.Pos][]helpers.PossibleMove `json:"-"`
+	Winner            int                                    `json:"-"` // 1 - white won, -1 - black won, 0 - draw
 }
 
 // NewG creates a new game.
@@ -373,10 +373,9 @@ func (g *G) initKings() {
 	g.Pieces[pos] = pieces.NewKing(enums.White, pos)
 }
 
-// ToFEN serializes board into Forsyth-Edwards Notation.
+// ToFEN serializes board into Forsyth-Edwards Notation (piece placement field only).
 func (g *G) ToFEN() string {
 	fen := ""
-	// piece placement field.
 	for i := 8; i >= 1; i-- {
 		row := ""
 		cnt := 0
@@ -398,11 +397,5 @@ func (g *G) ToFEN() string {
 		fen += row + "/"
 	}
 	fen = fen[0 : len(fen)-1] // delete last "/"
-	// active color field.
-	if g.CurrentTurn == enums.White {
-		fen += " w"
-	} else {
-		fen += " b"
-	}
 	return fen
 }

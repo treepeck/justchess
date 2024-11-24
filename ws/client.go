@@ -258,14 +258,28 @@ func (c *Client) sendEvent(a string, pData any) {
 // with the timer left duration.
 func (c *Client) sendLastMove(m helpers.Move, pt enums.PieceType) {
 	type lastMoveDTO struct {
-		UCI      string        `json:"uci"`
-		LAN      string        `json:"lan"` // TODO: replace with SAN
-		TimeLeft time.Duration `json:"timeLeft"`
+		UCI        string            `json:"uci"`
+		LAN        string            `json:"lan"` // TODO: replace with SAN
+		FEN        string            `json:"fen"`
+		ValidMoves map[string]string `json:"vm"`
+		TimeLeft   time.Duration     `json:"timeLeft"`
 	}
+	// convert map[helpers.Pos][]helpers.PossibleMove to JS Object with
+	// string keys and string values.
+	vm := make(map[string]string)
+	for pos, moves := range c.currentRoom.game.CurrentValidMoves {
+		vm[pos.String()] = ""
+		for _, m := range moves {
+			vm[pos.String()] += m.To.String()
+		}
+	}
+
 	lm := lastMoveDTO{
-		UCI:      m.From.String() + m.To.String() + m.PromotionPayload.String(),
-		LAN:      m.ToLAN(pt),
-		TimeLeft: m.TimeLeft,
+		UCI:        m.From.String() + m.To.String() + m.PromotionPayload.String(),
+		LAN:        m.ToLAN(pt),
+		FEN:        c.currentRoom.game.ToFEN(),
+		ValidMoves: vm,
+		TimeLeft:   m.TimeLeft,
 	}
 
 	p, err := json.Marshal(lm)

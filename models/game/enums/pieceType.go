@@ -18,35 +18,35 @@ const (
 func (p PieceType) String() string {
 	switch p {
 	case 1:
-		return "pawn"
+		return "♙"
 	case 2:
-		return "rook"
+		return "♖"
 	case 3:
-		return "knight"
+		return "♘"
 	case 4:
-		return "bishop"
+		return "♗"
 	case 5:
-		return "queen"
+		return "♕"
 	case 6:
-		return "king"
+		return "♔"
 	default:
-		return "unknown piece"
+		return ""
 	}
 }
 
 func ParsePiece(piece string) PieceType {
 	switch piece {
-	case "pawn":
+	case "♙":
 		return Pawn
-	case "rook":
+	case "♖":
 		return Rook
-	case "knight":
+	case "♘":
 		return Knight
-	case "bishop":
+	case "♗":
 		return Bishop
-	case "queen":
+	case "♕":
 		return Queen
-	case "king":
+	case "♔":
 		return King
 	default:
 		return 0

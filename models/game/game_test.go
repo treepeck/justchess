@@ -219,20 +219,18 @@ func TestHandleMove(t *testing.T) {
 
 func TestToFEN(t *testing.T) {
 	testcases := []struct {
-		name        string
-		pieces      map[helpers.Pos]pieces.Piece
-		currentTurn enums.Color
+		name   string
+		pieces map[helpers.Pos]pieces.Piece
 	}{
 		{
-			"8/8/4p3/8/2k5/8/8/8 w",
+			"8/8/4p3/8/2k5/8/8/8",
 			map[helpers.Pos]pieces.Piece{
 				{File: enums.C, Rank: 4}: pieces.NewKing(enums.Black, helpers.NewPos(enums.C, 4)),
 				{File: enums.E, Rank: 6}: pieces.NewPawn(enums.Black, helpers.NewPos(enums.E, 6)),
 			},
-			enums.White,
 		},
 		{
-			"r1bk3r/p2pBpNp/n4n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 b",
+			"r1bk3r/p2pBpNp/n4n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1",
 			map[helpers.Pos]pieces.Piece{
 				{File: enums.A, Rank: 8}: pieces.NewRook(enums.Black, helpers.NewPos(enums.A, 8)),
 				{File: enums.C, Rank: 8}: pieces.NewBishop(enums.Black, helpers.NewPos(enums.C, 8)),
@@ -258,14 +256,12 @@ func TestToFEN(t *testing.T) {
 				{File: enums.A, Rank: 1}: pieces.NewQueen(enums.Black, helpers.NewPos(enums.A, 1)),
 				{File: enums.G, Rank: 1}: pieces.NewBishop(enums.Black, helpers.NewPos(enums.G, 1)),
 			},
-			enums.Black,
 		},
 	}
 
 	for _, tc := range testcases {
 		g := NewG(uuid.Nil, enums.Blitz, 0, uuid.Nil, uuid.Nil)
 		g.Pieces = tc.pieces
-		g.CurrentTurn = tc.currentTurn
 		got := g.ToFEN()
 
 		if got != tc.name {
