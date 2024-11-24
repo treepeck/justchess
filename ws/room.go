@@ -248,7 +248,7 @@ func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
 	// ignore moves if it is not a player`s turn
 	if (c.User.Id == r.game.White.Id && r.game.CurrentTurn != enums.White) ||
 		(c.User.Id == r.game.Black.Id && r.game.CurrentTurn != enums.Black) ||
-		r.game.Status == enums.Over {
+		r.game.Status == enums.Over || r.game.Status == enums.Aborted {
 		return
 	}
 
@@ -266,13 +266,13 @@ func (r *Room) broadcastChatMessage(m json.RawMessage, sid uuid.UUID) {
 	// To avoid spamming, the number of messages for each player is limited to 15.
 	sender := ""
 	if sid == r.game.White.Id {
-		sender = "[white]: "
+		sender = "white: "
 		if r.game.White.MessageCounter > 15 {
 			return
 		}
 		r.game.White.MessageCounter++
 	} else if sid == r.game.Black.Id {
-		sender = "[black]: "
+		sender = "black: "
 		if r.game.Black.MessageCounter > 15 {
 			return
 		}
