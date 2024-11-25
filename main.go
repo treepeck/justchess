@@ -26,13 +26,11 @@ func main() {
 		},
 	})
 	slog.SetDefault(slog.New(h))
-
 	// load environment variables
 	err := godotenv.Load()
 	if err != nil {
 		slog.Error(".env file cannot be load", "err", err)
 	}
-
 	// connect to the database
 	err = db.OpenDatabase("./db/schema.sql")
 	if err != nil {
@@ -40,7 +38,6 @@ func main() {
 	}
 	slog.Info("Database connected successfully")
 	defer db.CloseDatabase()
-
 	// create a middleware stack to send the
 	// the request through the chain of middlewares
 	middlewareStack := middleware.CreateStack(
@@ -48,11 +45,9 @@ func main() {
 		middleware.AllowCors,
 		middleware.IsAuthorized,
 	)
-
 	// instantiate manager (basically same as router)
 	// to handle websocket connections
 	m := ws.NewManager()
-
 	// load routes
 	router := http.NewServeMux()
 	router.Handle("/auth/", http.StripPrefix(
@@ -64,7 +59,6 @@ func main() {
 		middlewareStack(user.UserRouter()),
 	))
 	router.HandleFunc("/ws", m.HandleConnection)
-
 	// start server
 	HOST := os.Getenv("SERVER_HOST")
 	PORT := os.Getenv("SERVER_PORT")

@@ -14,7 +14,7 @@ import (
 )
 
 // Room stores players and a game.
-// There is always one single Room for the every game.
+// There is always one single Room for every game.
 type Room struct {
 	Id         uuid.UUID
 	game       *game.G
@@ -63,15 +63,13 @@ func (r *Room) run() {
 			r.handleBlackTimeTick()
 
 		case <-r.close:
-			return // exit loop
+			return
 		}
 	}
 }
 
 // addClient adds a client to the room.
 func (r *Room) addClient(c *Client) {
-	slog.Debug("client " + c.User.Name + " added")
-
 	switch r.game.Status {
 	// deny any connections
 	case enums.Aborted, enums.Over:
@@ -81,6 +79,10 @@ func (r *Room) addClient(c *Client) {
 		r.clients[c] = true
 		c.currentRoom = r
 		r.startGame()
+		if r.game.Status == enums.Continues {
+			// close the room for other players.
+			c.manager.broadcastRemoveRoom(c.currentRoom)
+		}
 
 	case enums.Leave:
 		// if the client was connected before
@@ -94,6 +96,7 @@ func (r *Room) addClient(c *Client) {
 			r.resumeGame(enums.White)
 		}
 	}
+	slog.Debug("client " + c.User.Name + " added")
 }
 
 // removeClient deletes the client from the room and deletes the room itself
