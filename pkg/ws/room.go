@@ -29,7 +29,7 @@ type Room struct {
 type CreateRoomDTO struct {
 	Control enums.Control `json:"control"`
 	Bonus   uint          `json:"bonus"`
-	OwnerId uuid.UUID     `json:"id"`
+	OwnerId uuid.UUID     `json:"ownerId"`
 }
 
 // newRoom creates and runs a new room.
@@ -91,10 +91,16 @@ func (r *Room) addClient(c *Client) {
 			r.clients[c] = true
 			c.currentRoom = r
 			r.resumeGame(enums.Black)
+			if len(r.game.Moves) > 1 {
+				c.sendMoveHistory()
+			}
 		} else if r.game.White.Id == c.Id {
 			r.clients[c] = true
 			c.currentRoom = r
 			r.resumeGame(enums.White)
+			if len(r.game.Moves) > 1 {
+				c.sendMoveHistory()
+			}
 		}
 	}
 	slog.Debug("client " + c.Id.String() + " added")
@@ -258,7 +264,7 @@ func (r *Room) handleTakeMove(move helpers.Move, c *Client) {
 
 	if r.game.HandleMove(&move) {
 		for c := range r.clients {
-			c.sendLastMove(move, r.game.Pieces[move.To].GetType())
+			c.sendLastMove(r.serializeLastMove())
 		}
 		if r.game.Status == enums.Over {
 			r.endGame(r.game.Result, r.game.Winner)
@@ -301,4 +307,25 @@ func (r *Room) MarshalJSON() ([]byte, error) {
 		OwnerId: r.ownerId,
 	}
 	return json.Marshal(roomDTO)
+}
+
+// serializeLastMove prepares last move DTO for sending to the client.
+func (r *Room) serializeLastMove() helpers.MoveDTO {
+	m := r.game.Moves[len(r.game.Moves)-1]
+	lm := helpers.MoveDTO{
+		UCI:        m.From.String() + m.To.String() + m.PromotionPayload.String(),
+		LAN:        m.ToLAN(r.game.Pieces[m.To].GetType()), // WARNING: May break! Should rewrite.
+		FEN:        r.game.ToFEN(),
+		TimeLeft:   m.TimeLeft,
+		ValidMoves: make(map[string]string),
+	}
+	// Convert map[helpers.Pos][]helpers.PossibleMove to
+	// map[string]string to marshal valid moves.
+	for pos, moves := range r.game.CurrentValidMoves {
+		lm.ValidMoves[pos.String()] = ""
+		for _, m := range moves {
+			lm.ValidMoves[pos.String()] += m.To.String()
+		}
+	}
+	return lm
 }

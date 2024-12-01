@@ -1,21 +1,20 @@
 package helpers
 
 import (
-	"time"
-
 	"justchess/pkg/models/game/enums"
+	"time"
 )
 
 // Move is used to store completed moves in a database.
 type Move struct {
-	To               Pos `json:"to"`
-	From             Pos `json:"from"`
-	MoveType         enums.MoveType
-	IsCheck          bool
-	IsCapture        bool
-	IsCheckmate      bool
+	To               Pos             `json:"to"`
+	From             Pos             `json:"from"`
+	MoveType         enums.MoveType  `json:"-"`
+	IsCheck          bool            `json:"-"`
+	IsCapture        bool            `json:"-"`
+	IsCheckmate      bool            `json:"-"`
+	TimeLeft         time.Duration   `json:"-"`
 	PromotionPayload enums.PieceType `json:"pp"`
-	TimeLeft         time.Duration
 }
 
 // ToLAN serializes the given move into Long Algebraic Notation.
@@ -55,6 +54,15 @@ func (m Move) ToLAN(pt enums.PieceType) string {
 		}
 	}
 	return lan
+}
+
+// MoveDTO is stored in a database and displayed on a frontend.
+type MoveDTO struct {
+	UCI        string            `json:"uci"`
+	LAN        string            `json:"lan"`
+	FEN        string            `json:"fen"`
+	TimeLeft   time.Duration     `json:"timeLeft"`
+	ValidMoves map[string]string `json:"vm"`
 }
 
 // PossibleMove represents player`s possible moves.

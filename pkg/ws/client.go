@@ -195,11 +195,6 @@ func (c *Client) handleGetGame(payload json.RawMessage) {
 	}
 	if r := c.manager.findRoomById(roomId); r != nil {
 		r.register <- c
-		// } else if g := repository.FindGameById(roomId); g != nil {
-		// 	c.sendEvent(MOVES, g.Moves)
-		// 	c.sendEvent(GAME_INFO, g)
-		// 	c.sendEvent(GAME_INFO, g.Result)
-		// }
 	}
 }
 
@@ -256,42 +251,50 @@ func (c *Client) sendEvent(a string, pData any) {
 
 // sendLastMove serializes move into Long Algebraic Notation and sends it
 // with the timer left duration.
-func (c *Client) sendLastMove(m helpers.Move, pt enums.PieceType) {
-	type lastMoveDTO struct {
-		UCI        string            `json:"uci"`
-		LAN        string            `json:"lan"` // TODO: replace with SAN
-		FEN        string            `json:"fen"`
-		ValidMoves map[string]string `json:"vm"`
-		TimeLeft   time.Duration     `json:"timeLeft"`
-	}
-	// convert map[helpers.Pos][]helpers.PossibleMove to JS Object with
-	// string keys and string values.
-	vm := make(map[string]string)
-	for pos, moves := range c.currentRoom.game.CurrentValidMoves {
-		vm[pos.String()] = ""
-		for _, m := range moves {
-			vm[pos.String()] += m.To.String()
-		}
-	}
-
-	lm := lastMoveDTO{
-		UCI:        m.From.String() + m.To.String() + m.PromotionPayload.String(),
-		LAN:        m.ToLAN(pt),
-		FEN:        c.currentRoom.game.ToFEN(),
-		ValidMoves: vm,
-		TimeLeft:   m.TimeLeft,
-	}
-
-	p, err := json.Marshal(lm)
+func (c *Client) sendLastMove(m helpers.MoveDTO) {
+	p, err := json.Marshal(m)
 	if err != nil {
 		slog.Warn("cannot Marshal last move", "err", err)
 		return
 	}
+
 	e := Event{
 		Action:  LAST_MOVE,
 		Payload: p,
 	}
 	c.writeEventBuffer <- e
+}
+
+func (c *Client) sendMoveHistory() {
+	if c.currentRoom == nil || len(c.currentRoom.game.Moves) < 1 {
+		slog.Warn("cannot send moves history.")
+		return
+	}
+	mh := make([]helpers.MoveDTO, 0)
+	for i := 0; i < len(c.currentRoom.game.Moves)-1; i++ {
+		m := c.currentRoom.game.Moves[i]
+		lm := helpers.MoveDTO{
+			UCI:        m.From.String() + m.To.String() + m.PromotionPayload.String(),
+			LAN:        m.ToLAN(c.currentRoom.game.Pieces[m.To].GetType()), // WARNING: May break! Should rewrite.
+			FEN:        c.currentRoom.game.ToFEN(),
+			TimeLeft:   m.TimeLeft,
+			ValidMoves: make(map[string]string),
+		}
+		mh = append(mh, lm)
+	}
+	// Last move should have valid moves to make possible continue the game.
+	lastMove := c.currentRoom.serializeLastMove()
+	mh = append(mh, lastMove)
+
+	p, err := json.Marshal(mh)
+	if err != nil {
+		slog.Error("cannot marshal move history.", "err", err)
+		return
+	}
+	c.writeEventBuffer <- Event{
+		Action:  MOVES,
+		Payload: p,
+	}
 }
 
 // sendError sends an emerged error as Event type.

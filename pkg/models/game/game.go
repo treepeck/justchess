@@ -239,8 +239,6 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 			g.EndGame(enums.Stalemate, 0)
 		}
 	}
-	// store the move
-	g.Moves = append(g.Moves, *lastMove)
 	// switch the turn and reset the next player`s ticker
 	g.CurrentTurn = g.CurrentTurn.GetOppositeColor()
 	if g.CurrentTurn == enums.White {
@@ -252,6 +250,7 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 		g.White.AddTime(time.Duration(g.Bonus) * time.Second)
 		lastMove.TimeLeft = g.White.Time
 	}
+	g.Moves = append(g.Moves, *lastMove)
 }
 
 // determineCheck determines whether the previous move was a check.
