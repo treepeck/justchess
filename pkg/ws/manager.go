@@ -15,8 +15,6 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	ReadBufferSize:  1024,
 	CheckOrigin: func(r *http.Request) bool {
-		// Accept connections from any domen. To connect successfully,
-		// user has to provide a valid access JWT.
 		return true
 	},
 }

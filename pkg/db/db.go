@@ -6,8 +6,13 @@ import (
 	"log/slog"
 	"os"
 
+	_ "embed"
+
 	_ "github.com/lib/pq"
 )
+
+//go:embed schema.sql
+var schema string
 
 var DB *sql.DB
 
@@ -15,7 +20,8 @@ var DB *sql.DB
 // using env variables to format a connection string
 func OpenDB() error {
 	connectStr := fmt.Sprintf(
-		"host=postgres user=%s password=%s dbname=%s port=5432 sslmode=disable",
+		"host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable",
+		os.Getenv("DB_HOST"),
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_NAME"),
@@ -32,17 +38,12 @@ func OpenDB() error {
 	return nil
 }
 
-// CreateTables reads the pathToSchema file and executes all queries from this file.
-func CreateTables(pathToSchema string) error {
-	schema, err := os.ReadFile(pathToSchema)
-	if err != nil {
-		return err
-	}
-
+// CreateTables reads the embeded schema file and executes all queries from this file.
+func CreateTables() error {
 	if DB == nil {
 		return fmt.Errorf("database connection is not opened")
 	}
-	_, err = DB.Query(string(schema))
+	_, err := DB.Query(string(schema))
 	if err != nil {
 		return err
 	}

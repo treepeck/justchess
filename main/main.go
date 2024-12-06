@@ -29,14 +29,17 @@ func main() {
 		slog.Error("Database cannot be opened.", "err", err)
 		return
 	}
-	err = db.CreateTables("./pkg/db/schema.sql")
+	err = db.CreateTables()
 	if err != nil {
 		slog.Error("Tables cannot be created.", "err", err)
 		return
 	}
 	// Setup routes.
 	router := setupRouter()
-	http.ListenAndServe(":3502", router)
+	err = http.ListenAndServe(":3502", router)
+	if err != nil {
+		slog.Error("Cannot listen and server.", "err", err)
+	}
 }
 
 func setupRouter() *http.ServeMux {
