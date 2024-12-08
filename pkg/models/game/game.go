@@ -64,11 +64,6 @@ func (g *G) getValidMoves(side enums.Color,
 	// store valid moves.
 	vm := make(map[helpers.Pos][]helpers.PossibleMove)
 	for from, pm := range g.getPossibleMoves(side) {
-		// king.GetPossibleMove returns valid moves.
-		if g.Pieces[from] != nil && g.Pieces[from].GetType() == enums.King {
-			vm[from] = pm
-			continue
-		}
 		for _, m := range pm {
 			// skip defend moves.
 			if m.MoveType == enums.Defend {
