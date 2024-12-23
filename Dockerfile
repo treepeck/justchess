@@ -13,6 +13,5 @@ RUN --mount=type=cache,target=/var/cache/apk \
         && \
         update-ca-certificates
 COPY .env .
-COPY ./pkg/db/schema.sql .
 COPY --from=build /bin/api /bin/
 ENTRYPOINT ["/bin/api"]
