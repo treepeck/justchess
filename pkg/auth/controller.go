@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"justchess/pkg/models/user"
-	"justchess/pkg/repository"
 
 	"github.com/google/uuid"
 )
@@ -79,29 +78,18 @@ func handleGetUserByRefreshToken(rw http.ResponseWriter, r *http.Request) {
 	}
 	setRefreshTokenCookie(rw, nrt)
 
-	u := repository.FindUserById(id)
-	// In this case the user is missing in a db, but has a valid JWT,
-	// so we deal with a guest.
-	if u == nil {
-		// To avoid creating a new guest each time the user refreshes the page
-		// (for enabling room reconnection, etc.), send back the guest with an
-		// old id.
-		g := user.Guest{
-			Id:          id,
-			Name:        "Guest-" + id.String()[0:8],
-			AccessToken: at,
-		}
-		err := json.NewEncoder(rw).Encode(g)
-		if err != nil {
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	} else {
-		err := json.NewEncoder(rw).Encode(u)
-		if err != nil {
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+	// To avoid creating a new guest each time the user refreshes the page
+	// (for enabling room reconnection, etc.), send back the guest with an
+	// old id.
+	g := user.Guest{
+		Id:          id,
+		Name:        "Guest-" + id.String()[0:8],
+		AccessToken: at,
+	}
+	err = json.NewEncoder(rw).Encode(g)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 

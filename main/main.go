@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"justchess/pkg/auth"
-	"justchess/pkg/db"
 	"justchess/pkg/middleware"
 	"justchess/pkg/ws"
 
@@ -20,18 +19,6 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		slog.Error(".env file cannot be loaded", "err", err)
-		return
-	}
-	// Setup db.
-	err = db.OpenDB()
-	defer db.CloseDB()
-	if err != nil {
-		slog.Error("Database cannot be opened.", "err", err)
-		return
-	}
-	err = db.CreateTables()
-	if err != nil {
-		slog.Error("Tables cannot be created.", "err", err)
 		return
 	}
 	// Setup routes.
