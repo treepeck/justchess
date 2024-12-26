@@ -17,7 +17,7 @@ import (
 // There is always one single Room for every game.
 type Room struct {
 	id         uuid.UUID
-	game       *game.G
+	game       *game.Game
 	ownerId    uuid.UUID
 	clients    map[*Client]bool
 	register   chan *Client
@@ -233,7 +233,6 @@ func (r *Room) resumeGame(side enums.Color) {
 // endGame writes the game data to the db and
 // removes the players from the room.
 func (r *Room) endGame(res enums.GameResult, w int) {
-	// repository.SaveGame(r.game)
 	r.game.EndGame(res, w)
 	// broadcast game result
 	for c := range r.clients {

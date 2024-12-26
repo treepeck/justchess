@@ -12,8 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// G represents a game and stores all necessary data.
-type G struct {
+// Game represents a game and stores all necessary data.
+type Game struct {
 	Id                uuid.UUID                              `json:"-"`
 	Bonus             uint                                   `json:"bonus"` // time increment.
 	Moves             []helpers.Move                         `json:"-"`
@@ -32,8 +32,8 @@ type G struct {
 // NewG creates a new game.
 func NewG(id uuid.UUID, control enums.Control,
 	bonus uint, whiteId, blackId uuid.UUID,
-) *G {
-	g := &G{
+) *Game {
+	g := &Game{
 		Id:                id,
 		Bonus:             bonus,
 		Moves:             make([]helpers.Move, 0),
@@ -54,7 +54,7 @@ func NewG(id uuid.UUID, control enums.Control,
 // getValidMoves finds all valid moves for the specified player.
 // It simply filters down player`s possible move by the validity checking.
 // For more details about move validity, see [justchess/pkg/models/pieces.GetPossibleMoves].
-func (g *G) getValidMoves(side enums.Color,
+func (g *Game) getValidMoves(side enums.Color,
 ) map[helpers.Pos][]helpers.PossibleMove {
 	// determine enemy side.
 	es := enums.White
@@ -108,7 +108,7 @@ func (g *G) getValidMoves(side enums.Color,
 // getPossibleMoves finds all possible moves for the specified player.
 // The validity of the returned moves is not guaranteed.
 // For more details about move validity, see [justchess/pkg/models/pieces.GetPossibleMoves].
-func (g *G) getPossibleMoves(side enums.Color,
+func (g *Game) getPossibleMoves(side enums.Color,
 ) map[helpers.Pos][]helpers.PossibleMove {
 	pm := make(map[helpers.Pos][]helpers.PossibleMove)
 	for from, piece := range g.Pieces {
@@ -125,7 +125,7 @@ func (g *G) getPossibleMoves(side enums.Color,
 
 // HandleMove executes valid moves and returns true if the move is valid,
 // false otherwise.
-func (g *G) HandleMove(m *helpers.Move) bool {
+func (g *Game) HandleMove(m *helpers.Move) bool {
 	for from, cvm := range g.CurrentValidMoves {
 		for _, vm := range cvm {
 			if !from.IsEqual(m.From) || !vm.To.IsEqual(m.To) {
@@ -176,7 +176,7 @@ func (g *G) HandleMove(m *helpers.Move) bool {
 
 // handlePromotion promotes a pawn to a specified piece. If the
 // piece is not provided, the pawn is promoted to queen.
-func (g *G) handlePromotion(m *helpers.Move) {
+func (g *Game) handlePromotion(m *helpers.Move) {
 	if m.PromotionPayload == 0 { // invalid piece for promotion.
 		m.PromotionPayload = enums.Queen
 	}
@@ -188,7 +188,7 @@ func (g *G) handlePromotion(m *helpers.Move) {
 }
 
 // handleCastling moves the rook according to the type of castling.
-func (g *G) handleCastling(rank, file int) {
+func (g *Game) handleCastling(rank, file int) {
 	var rookPos helpers.Pos
 	rookPos.Rank = rank
 	rookPos.File = file
@@ -201,7 +201,7 @@ func (g *G) handleCastling(rank, file int) {
 }
 
 // handleEnPassant removes captured pawn from the board.
-func (g *G) handleEnPassant(lmp pieces.Piece) {
+func (g *Game) handleEnPassant(lmp pieces.Piece) {
 	// determine pawn direction
 	dir := 1
 	if lmp.GetColor() == enums.Black {
@@ -220,7 +220,7 @@ func (g *G) handleEnPassant(lmp pieces.Piece) {
 	delete(g.Pieces, pos)
 }
 
-func (g *G) processLastMove(lastMove *helpers.Move) {
+func (g *Game) processLastMove(lastMove *helpers.Move) {
 	g.determineCheck(lastMove)
 	// get valid moves for a next player
 	g.CurrentValidMoves = g.getValidMoves(g.CurrentTurn.GetOppositeColor())
@@ -249,7 +249,7 @@ func (g *G) processLastMove(lastMove *helpers.Move) {
 }
 
 // determineCheck determines whether the previous move was a check.
-func (g *G) determineCheck(lastMove *helpers.Move) {
+func (g *Game) determineCheck(lastMove *helpers.Move) {
 	lmp := g.Pieces[lastMove.To] // last moved piece.
 	// get possible moves for the last moved piece.
 	pm := lmp.GetPossibleMoves(g.Pieces)
@@ -265,7 +265,7 @@ func (g *G) determineCheck(lastMove *helpers.Move) {
 }
 
 // StartGame starts the game and resets white timer.
-func (g *G) StartGame(whiteId, blackId uuid.UUID) {
+func (g *Game) StartGame(whiteId, blackId uuid.UUID) {
 	g.White.Id = whiteId
 	g.Black.Id = blackId
 
@@ -274,7 +274,7 @@ func (g *G) StartGame(whiteId, blackId uuid.UUID) {
 }
 
 // EndGame ends the game due to provided reason.
-func (g *G) EndGame(r enums.GameResult, w int) {
+func (g *Game) EndGame(r enums.GameResult, w int) {
 	g.Result = r
 	g.Winner = w
 	g.Status = enums.Over
@@ -283,7 +283,7 @@ func (g *G) EndGame(r enums.GameResult, w int) {
 }
 
 // movePiece moves a piece and updates pieces.
-func (g *G) movePiece(from, to helpers.Pos) {
+func (g *Game) movePiece(from, to helpers.Pos) {
 	g.Pieces[from].Move(to)
 	// update the board state.
 	g.Pieces[to] = g.Pieces[from]
@@ -291,7 +291,7 @@ func (g *G) movePiece(from, to helpers.Pos) {
 }
 
 // initPieces places the pieces in their standard places.
-func (g *G) initPieces() {
+func (g *Game) initPieces() {
 	g.initPawns()
 	g.initRooks()
 	g.initKnights()
@@ -301,7 +301,7 @@ func (g *G) initPieces() {
 }
 
 // initPawns places pawns to their standard positions.
-func (g *G) initPawns() {
+func (g *Game) initPawns() {
 	for i := 1; i <= 8; i++ {
 		pos := helpers.PosFromInd(1, i)
 		g.Pieces[pos] = pieces.NewPawn(enums.Black, pos)
@@ -312,7 +312,7 @@ func (g *G) initPawns() {
 }
 
 // initRooks places rooks to their standard positions.
-func (g *G) initRooks() {
+func (g *Game) initRooks() {
 	positions := []int{1, 8}
 
 	for i := 0; i < 2; i++ {
@@ -325,7 +325,7 @@ func (g *G) initRooks() {
 }
 
 // initKnights places knights to their standard positions.
-func (g *G) initKnights() {
+func (g *Game) initKnights() {
 	positions := []int{2, 7}
 
 	for i := 0; i < 2; i++ {
@@ -338,7 +338,7 @@ func (g *G) initKnights() {
 }
 
 // initBishops places bishops to their standard positions.
-func (g *G) initBishops() {
+func (g *Game) initBishops() {
 	positions := []int{3, 6}
 
 	for i := 0; i < 2; i++ {
@@ -351,7 +351,7 @@ func (g *G) initBishops() {
 }
 
 // initQueens places queens to their standard positions.
-func (g *G) initQueens() {
+func (g *Game) initQueens() {
 	pos := helpers.PosFromInd(0, 4)
 	g.Pieces[pos] = pieces.NewQueen(enums.Black, pos)
 
@@ -360,7 +360,7 @@ func (g *G) initQueens() {
 }
 
 // initKings places kings to their standard positions.
-func (g *G) initKings() {
+func (g *Game) initKings() {
 	pos := helpers.PosFromInd(0, 5)
 	g.Pieces[pos] = pieces.NewKing(enums.Black, pos)
 
@@ -369,7 +369,7 @@ func (g *G) initKings() {
 }
 
 // ToFEN serializes board into Forsyth-Edwards Notation (piece placement field only).
-func (g *G) ToFEN() string {
+func (g *Game) ToFEN() string {
 	fen := ""
 	for i := 8; i >= 1; i-- {
 		row := ""
