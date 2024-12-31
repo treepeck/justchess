@@ -142,7 +142,7 @@ func (r *Room) startGame() {
 		players = append(players, c)
 	}
 	var whiteId, blackId uuid.UUID
-	if rand.Intn(100) < 50 {
+	if rand.Intn(2) == 1 {
 		whiteId = players[0].Id
 		blackId = players[1].Id
 	} else {
