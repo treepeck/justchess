@@ -12,6 +12,23 @@ import (
 // The moves returned by Gen*PseudoLegalMoves functions must be checked further to became
 // legal, since they can expose the allied king to check or did not cover the checked king.
 
+// genAttackedSquares returns a bitboard with all attacked squares.
+func genAttackedSquares(c enums.Color, allies [6]uint64,
+	occupied uint64) (attacked uint64) {
+	if c == enums.White {
+		attacked |= genWhitePawnsAttackPattern(allies[0])
+	} else {
+		attacked |= genBlackPawnsAttackPattern(allies[0])
+	}
+	attacked |= genKnightsMovePattern(allies[1])
+	attacked |= genBishopsMovePattern(allies[2], occupied)
+	attacked |= genRooksMovePattern(allies[3], occupied)
+	attacked |= genQueensMovePattern(allies[4], occupied)
+	attacked |= genKingMovesPattern(allies[5])
+	return
+}
+
+// genPseudoLegalMove generates pseudo legal moves for the specified piece type.
 func genPseudoLegalMoves(pt enums.PieceType, from int,
 	allies, enemies uint64) (moves []helpers.Move) {
 	switch pt {

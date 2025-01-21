@@ -5,9 +5,10 @@ import (
 )
 
 type Move struct {
-	To                int
-	From              int
-	FENBefore         string
+	To   int
+	From int
+	// Describes the board state after making the move.
+	FEN               string
 	Color             enums.Color
 	MoveType          enums.MoveType
 	PieceType         enums.PieceType

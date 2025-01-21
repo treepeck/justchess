@@ -5,7 +5,7 @@ import (
 	"justchess/pkg/game/helpers"
 )
 
-// Bitboard represents a chessboard in a bitboard manner.
+// Bitboard stores only fields that can be serialized to a Forsyth-Edwards Notation.
 type Bitboard struct {
 	// Pieces stores a piece placement bitboard for each piece type and for all pieces of both colors.
 	// Bitboards can be accessed by indexes:
@@ -26,7 +26,6 @@ type Bitboard struct {
 	// In each board LSBs represent white pieces, MSBs - black pieces.
 	Pieces      [14]uint64
 	ActiveColor enums.Color
-	// CastlingRights stores the castling rights:
 	// [0] - White king castle. (0-0)
 	// [1] - White queen castle. (0-0-0)
 	// [2] - Black king castle. (0-0)
@@ -43,7 +42,6 @@ type Bitboard struct {
 	FullmoveClk int
 }
 
-// NewBitboard returns initialized Bitboard.
 func NewBitboard(pieces [14]uint64, activeColor enums.Color,
 	castlingRights [4]bool, epTarget, hclk, fclk int) *Bitboard {
 	b := &Bitboard{
@@ -56,8 +54,8 @@ func NewBitboard(pieces [14]uint64, activeColor enums.Color,
 	return b
 }
 
-// MakeMove makes the move on a bitboard COPY.
-func MakeMove(pieces [14]uint64, move helpers.Move) {
+// MakeMove makes the move on a bitboard copy.
+func MakeMove(pieces []uint64, move helpers.Move) {
 	from := uint64(1) << move.From
 	to := uint64(1) << move.To
 	fromTo := from ^ to
@@ -71,47 +69,47 @@ func MakeMove(pieces [14]uint64, move helpers.Move) {
 	}
 }
 
-// genWhitePseudoLegalMoves generates pseudo-legal moves for all white pieces.
-// Generated moves are filtered down to legal moves by filterMoves function.
-func (bb *Bitboard) genWhitePseudoLegalMoves() map[int][]helpers.Move {
+// filterIllegalMoves filtes the moves by finding all attacked by enemies
+// squares after making the move. If the allies king is attacked, move is not legal.
+func (bb *Bitboard) filterIllegalMoves(pseudoLegal []helpers.Move,
+) (legal []helpers.Move) {
+	before := bb.Pieces[:]
+	var allies [6]uint64
+	allies[0] = bb.Pieces[2+bb.ActiveColor]  // Allied pawns.
+	allies[1] = bb.Pieces[4+bb.ActiveColor]  // Allied knights.
+	allies[2] = bb.Pieces[6+bb.ActiveColor]  // Allied bishops.
+	allies[3] = bb.Pieces[8+bb.ActiveColor]  // Allied rooks.
+	allies[4] = bb.Pieces[10+bb.ActiveColor] // Allied queens.
+	allies[5] = bb.Pieces[12+bb.ActiveColor] // Allied king.
+	for _, move := range pseudoLegal {
+		MakeMove(before, move)
+		isChecked := true
+		if genAttackedSquares(bb.ActiveColor.Inverse(), allies,
+			bb.Pieces[0]|bb.Pieces[1])&allies[5] != 0 {
+			isChecked = false
+		}
+		// Restore the board state.
+		copy(bb.Pieces[:], before)
+		if !isChecked {
+			legal = append(legal, move)
+		}
+	}
+	return
+}
+
+// genLegalMove generates pseudo-legal moves for all pieces of the active color.
+// After that the generated moves are filtered down to legal moves by
+// filterIllegalMoves function.
+func (bb *Bitboard) genLegalMoves() {
 	psm := make(map[int][]helpers.Move)
-	for i := 2; i < 14; i += 2 {
+	for i := 2; i < 14; i++ {
+		if (bb.ActiveColor == enums.Black && i%2 == 0) ||
+			(bb.ActiveColor == enums.White && i%2 != 0) {
+			continue
+		}
 		for _, piece := range helpers.GetIndicesFromBitboard(bb.Pieces[i]) {
 			psm[piece] = genPseudoLegalMoves(enums.PieceType(i), piece, bb.Pieces[0],
 				bb.Pieces[1])
 		}
 	}
-	return psm
 }
-
-// filterMoves filters down the pseudo-legal moves to legal only.
-// func (bb *Bitboard) filterMoves() {
-// 	psm := bb.genWhitePseudoLegalMoves()
-// 	piecesCopy := bb.Copy()
-// 	for from, moves := range psm {
-// 		for _, move := range moves {
-// 			MakeMove(piecesCopy, move)
-// 		}
-// 	}
-// }
-
-// TODO: initBoards might be deleted.
-// initBoards creates 14 bitboards with standart piece positions.
-// func initBoards() [14]uint64 {
-// 	var pieces [14]uint64
-// 	pieces[0] = 0xFFFF
-// 	pieces[1] = 0xFFFF000000000000
-// 	pieces[2] = 0xFF
-// 	pieces[3] = 0xFF00000000000000
-// 	pieces[4] = 0x42
-// 	pieces[5] = 0x4200000000000000
-// 	pieces[6] = 0x24
-// 	pieces[7] = 0x2400000000000000
-// 	pieces[8] = 0x81
-// 	pieces[9] = 0x8100000000000000
-// 	pieces[10] = 0x10
-// 	pieces[11] = 0x1000000000000000
-// 	pieces[12] = 0x8
-// 	pieces[13] = 0x08000000000000000
-// 	return pieces
-// }

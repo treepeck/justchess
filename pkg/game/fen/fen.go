@@ -8,14 +8,13 @@ import (
 	"strings"
 )
 
-// Bitboard2FEN serializes the bitboard to a FEN string.
-func Bitboard2FEN(bb *bitboard.Bitboard) (fen string) {
-	fen += serializePiecePlacementData(bb.Pieces)
-	fen += serializeActiveColor(bb.ActiveColor)
-	fen += serializeCastlingRights(bb.CastlingRights)
-	fen += serializeEnPassantTarget(bb.EpTarget)
-	fen += strconv.Itoa(bb.HalfmoveClk) + " "
-	fen += strconv.Itoa(bb.FullmoveClk)
+func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
+	FEN += serializePiecePlacementData(bb.Pieces)
+	FEN += serializeActiveColor(bb.ActiveColor)
+	FEN += serializeCastlingRights(bb.CastlingRights)
+	FEN += serializeEnPassantTarget(bb.EpTarget)
+	FEN += strconv.Itoa(bb.HalfmoveClk) + " "
+	FEN += strconv.Itoa(bb.FullmoveClk)
 	return
 }
 
@@ -92,7 +91,7 @@ func serializeCastlingRights(cr [4]bool) (fenCRF string) {
 
 func serializeEnPassantTarget(epTarget int) (fenEPF string) {
 	if epTarget < 0 {
-		return "0 "
+		return "- "
 	}
 	// Calculate file and rank.
 	files := "abcdefgh"
@@ -101,9 +100,8 @@ func serializeEnPassantTarget(epTarget int) (fenEPF string) {
 	return fenEPF + " "
 }
 
-// FEN2Biboard parses a bitboard variable from a FEN string.
-func FEN2Bitboard(fen string) *bitboard.Bitboard {
-	fields := strings.Split(fen, " ")
+func FEN2Bitboard(FEN string) *bitboard.Bitboard {
+	fields := strings.Split(FEN, " ")
 	pieces := parsePiecePlacementData(fields[0])
 	color := parseActiveColor(fields[1])
 	castlingRights := parseCastlingRights(fields[2])
@@ -175,7 +173,7 @@ func parseCastlingRights(fenCRF string) (cr [4]bool) {
 }
 
 func parseEnPassantTarget(fenEPF string) (index int) {
-	if fenEPF == "0" {
+	if fenEPF == "-" {
 		return -1
 	}
 	// Check file.

@@ -3,6 +3,7 @@ package game
 import (
 	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
+	"justchess/pkg/game/fen"
 	"justchess/pkg/game/helpers"
 	"time"
 )
@@ -14,11 +15,9 @@ type Game struct {
 	// Initial amount of time on player`s timers.
 	TimerDur time.Duration
 	// Completed moves in a historical order.
-	Moves []helpers.Move
+	MoveStack []helpers.Move
 	// Piece placement on a board.
 	Board *bitboard.Bitboard
-	// Which side is currently moving. White by default.
-	ActiveColor enums.Color
 	// Game state. Continues by default.
 	Status enums.Status
 	// False by default.
@@ -28,9 +27,9 @@ type Game struct {
 
 func NewGame(bonus uint, timerDur time.Duration) *Game {
 	return &Game{
-		Bonus:    bonus,
-		TimerDur: timerDur,
-		Moves:    make([]helpers.Move, 0),
-		Board:    bitboard.NewBitboard(),
+		Bonus:     bonus,
+		TimerDur:  timerDur,
+		MoveStack: make([]helpers.Move, 0),
+		Board:     fen.FEN2Bitboard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
 	}
 }
