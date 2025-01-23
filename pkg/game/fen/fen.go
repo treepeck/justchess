@@ -8,43 +8,62 @@ import (
 	"strings"
 )
 
+var serializeMapping = [2]map[enums.PieceType]byte{
+	{enums.Pawn: 'P',
+		enums.Knight: 'N',
+		enums.Bishop: 'B',
+		enums.Rook:   'R',
+		enums.Queen:  'Q',
+		enums.King:   'K'},
+	{enums.Pawn: 'p',
+		enums.Knight: 'n',
+		enums.Bishop: 'b',
+		enums.Rook:   'r',
+		enums.Queen:  'q',
+		enums.King:   'k'},
+}
+var parseMapping = map[byte]enums.PieceType{
+	'P': enums.Pawn,
+	'N': enums.Knight,
+	'B': enums.Bishop,
+	'R': enums.Rook,
+	'Q': enums.Queen,
+	'K': enums.King,
+	'p': enums.Pawn,
+	'n': enums.Knight,
+	'b': enums.Bishop,
+	'r': enums.Rook,
+	'q': enums.Queen,
+	'k': enums.King,
+}
+
 func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
 	FEN += serializePiecePlacementData(bb.Pieces)
 	FEN += serializeActiveColor(bb.ActiveColor)
 	FEN += serializeCastlingRights(bb.CastlingRights)
-	FEN += serializeEnPassantTarget(bb.EpTarget)
-	FEN += strconv.Itoa(bb.HalfmoveClk) + " "
-	FEN += strconv.Itoa(bb.FullmoveClk)
+	FEN += serializeEnPassantTarget(bb.EPTarget)
+	FEN += strconv.Itoa(bb.HalfmoveCnt) + " "
+	FEN += strconv.Itoa(bb.FullmoveCnt)
 	return
 }
 
-func serializePiecePlacementData(pieces [14]uint64) (fenPPF string) {
-	mapping := map[enums.PieceType]byte{
-		enums.WhitePawn:   'P',
-		enums.WhiteKnight: 'N',
-		enums.WhiteBishop: 'B',
-		enums.WhiteRook:   'R',
-		enums.WhiteQueen:  'Q',
-		enums.WhiteKing:   'K',
-		enums.BlackPawn:   'p',
-		enums.BlackKnight: 'n',
-		enums.BlackBishop: 'b',
-		enums.BlackRook:   'r',
-		enums.BlackQueen:  'q',
-		enums.BlackKing:   'k',
-	}
-	var board [64]enums.PieceType
-	for i := 2; i < 14; i++ {
-		for _, squareIndex := range helpers.GetIndicesFromBitboard(pieces[i]) {
-			board[squareIndex] = enums.PieceType(i)
+// TODO: make serializePiecePlacementData more performant.
+func serializePiecePlacementData(pieces [2][7]uint64) (fenPPF string) {
+
+	var board [64]byte
+	for i := 0; i < len(pieces); i++ {
+		for j := 1; j < len(pieces[0]); j++ {
+			for _, pieceInd := range helpers.GetIndicesFromBitboard(pieces[i][j]) {
+				board[pieceInd] = serializeMapping[i][enums.PieceType(j)+1]
+			}
 		}
 	}
-
 	for i := 7; i >= 0; i-- {
 		row := ""
 		cnt := 0
 		for j := 0; j < 8; j++ {
-			if b, ok := mapping[board[j+int(i)*8]]; !ok {
+			b := board[j+i*8]
+			if b == 0 {
 				cnt++
 			} else {
 				if cnt > 0 {
@@ -113,21 +132,7 @@ func FEN2Bitboard(FEN string) *bitboard.Bitboard {
 }
 
 // parsePiecePlacementData parses bitboards from FEN`s piece placement field.
-func parsePiecePlacementData(fenPPF string) (pieces [14]uint64) {
-	mapping := map[byte]enums.PieceType{
-		'P': enums.WhitePawn,
-		'N': enums.WhiteKnight,
-		'B': enums.WhiteBishop,
-		'R': enums.WhiteRook,
-		'Q': enums.WhiteQueen,
-		'K': enums.WhiteKing,
-		'p': enums.BlackPawn,
-		'n': enums.BlackKnight,
-		'b': enums.BlackBishop,
-		'r': enums.BlackRook,
-		'q': enums.BlackQueen,
-		'k': enums.BlackKing,
-	}
+func parsePiecePlacementData(fenPPF string) (pieces [2][7]uint64) {
 	squareIndex := 0
 	rows := strings.Split(fenPPF, "/")
 	for i := len(rows) - 1; i >= 0; i-- {
@@ -135,14 +140,15 @@ func parsePiecePlacementData(fenPPF string) (pieces [14]uint64) {
 			b := rows[i][j]
 			switch b {
 			case 'P', 'N', 'B', 'R', 'Q', 'K':
-				pieces[0] |= uint64(1) << squareIndex
+				pieces[0][0] |= uint64(1) << squareIndex
+				pieces[0][parseMapping[b]-1] |= uint64(1) << squareIndex
 			case 'p', 'n', 'b', 'r', 'q', 'k':
-				pieces[1] |= uint64(1) << squareIndex
+				pieces[1][0] |= uint64(1) << squareIndex
+				pieces[1][parseMapping[b]-1] |= uint64(1) << squareIndex
 			default:
 				squareIndex += int(b - '0') // Convert byte to it`s int representation.
 				continue
 			}
-			pieces[mapping[b]] |= uint64(1) << squareIndex
 			squareIndex++
 		}
 	}
@@ -176,7 +182,6 @@ func parseEnPassantTarget(fenEPF string) (index int) {
 	if fenEPF == "-" {
 		return -1
 	}
-	// Check file.
 	switch fenEPF[0] {
 	case 'a':
 		index = 0

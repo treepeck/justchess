@@ -4,21 +4,12 @@ package enums
 type PieceType int
 
 const (
-	// Any white piece.
-	WhiteP PieceType = iota
-	// Any black piece.
-	BlackP
-	// So on.
-	WhitePawn
-	BlackPawn
-	WhiteKnight
-	BlackKnight
-	WhiteBishop
-	BlackBishop
-	WhiteRook
-	BlackRook
-	WhiteQueen
-	BlackQueen
-	WhiteKing
-	BlackKing
+	// Any piece.
+	Piece PieceType = iota
+	Pawn
+	Knight
+	Bishop
+	Rook
+	Queen
+	King
 )

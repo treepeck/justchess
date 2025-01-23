@@ -15,10 +15,11 @@ type Move struct {
 	CapturedPieceType enums.PieceType
 }
 
-func NewMove(to, from int, mt enums.MoveType) Move {
+func NewMove(to, from int, mt enums.MoveType, pt enums.PieceType) Move {
 	return Move{
-		To:       to,
-		From:     from,
-		MoveType: mt,
+		To:        to,
+		From:      from,
+		MoveType:  mt,
+		PieceType: pt,
 	}
 }

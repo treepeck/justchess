@@ -5,111 +5,97 @@ import (
 	"justchess/pkg/game/helpers"
 )
 
-// Bitboard stores only fields that can be serialized to a Forsyth-Edwards Notation.
+// Bitboard stores the chessboard state which is described by FEN.
 type Bitboard struct {
-	// Pieces stores a piece placement bitboard for each piece type and for all pieces of both colors.
-	// Bitboards can be accessed by indexes:
-	// [0] - All white pieces;
-	// [1] - All black pieces;
-	// [2] - White pawns;
-	// [3] - Black pawns;
-	// [4] - White Knights;
-	// [5] - Black Knights;
-	// [6] - White Bishops;
-	// [7] - Black Bishops;
-	// [8] - White Rooks;
-	// [9] - Black Rooks;
-	// [10] - White Queens;
-	// [11] - Black Queens;
-	// [12] - White King;
-	// [13] - Black King.
-	// In each board LSBs represent white pieces, MSBs - black pieces.
-	Pieces      [14]uint64
+	// Piece placement. First index - color, second index - piece type.
+	Pieces      [2][7]uint64
 	ActiveColor enums.Color
-	// [0] - White king castle. (0-0)
-	// [1] - White queen castle. (0-0-0)
-	// [2] - Black king castle. (0-0)
-	// [3] - Black queen castle. (0-0-0)
+	// [0] - White king castle.
+	// [1] - White queen castle.
+	// [2] - Black king castle.
+	// [3] - Black queen castle.
 	CastlingRights [4]bool
-	// EpTarget stores the index of a square which a pawn just passed while performing a
-	// double push forward.
-	// If there isn`t EP target, the EpTarget will be equal to -1.
-	EpTarget int
-	// HalfmoveClk stores the number of half moves since the last capture or pawn move.
+	// The index of a square which a pawn just passed while performing a
+	// double push forward. If there isn`t such square, will be equal to -1.
+	EPTarget int
+	// Number of half moves since the last capture or pawn move.
 	// It is used to implement the fifty-move rule.
-	HalfmoveClk int
-	// FullmoveClk stores the number of full moves.
-	FullmoveClk int
+	HalfmoveCnt int
+	// Number of completed full moves.
+	FullmoveCnt int
 }
 
-func NewBitboard(pieces [14]uint64, activeColor enums.Color,
-	castlingRights [4]bool, epTarget, hclk, fclk int) *Bitboard {
+func NewBitboard(pieces [2][7]uint64, ac enums.Color,
+	cr [4]bool, ep, half, full int) *Bitboard {
 	b := &Bitboard{
 		Pieces:         pieces,
-		CastlingRights: castlingRights,
-		EpTarget:       epTarget,
-		HalfmoveClk:    hclk,
-		FullmoveClk:    fclk,
+		ActiveColor:    ac,
+		CastlingRights: cr,
+		EPTarget:       ep,
+		HalfmoveCnt:    half,
+		FullmoveCnt:    full,
 	}
 	return b
 }
 
-// MakeMove makes the move on a bitboard copy.
-func MakeMove(pieces []uint64, move helpers.Move) {
+// MakeMove performs the move on a COPY of the current board.
+// Returns the modified board copy.
+// Used to check if the move is legal.
+func (bb *Bitboard) MakeMove(move helpers.Move) (boardCopy [2][7]uint64) {
+	copy(boardCopy[:], bb.Pieces[:])
+	opC := move.Color.Inverse()
 	from := uint64(1) << move.From
 	to := uint64(1) << move.To
 	fromTo := from ^ to
-	pieces[move.PieceType] ^= fromTo
-	pieces[move.Color] ^= fromTo
-
+	boardCopy[move.Color][move.PieceType] ^= fromTo
+	boardCopy[move.Color][0] ^= fromTo
 	switch move.MoveType {
 	case enums.Capture, enums.EpCapture:
-		pieces[move.CapturedPieceType] ^= to
-		pieces[move.Color.Inverse()] ^= to
-	}
-}
-
-// filterIllegalMoves filtes the moves by finding all attacked by enemies
-// squares after making the move. If the allies king is attacked, move is not legal.
-func (bb *Bitboard) filterIllegalMoves(pseudoLegal []helpers.Move,
-) (legal []helpers.Move) {
-	before := bb.Pieces[:]
-	var allies [6]uint64
-	allies[0] = bb.Pieces[2+bb.ActiveColor]  // Allied pawns.
-	allies[1] = bb.Pieces[4+bb.ActiveColor]  // Allied knights.
-	allies[2] = bb.Pieces[6+bb.ActiveColor]  // Allied bishops.
-	allies[3] = bb.Pieces[8+bb.ActiveColor]  // Allied rooks.
-	allies[4] = bb.Pieces[10+bb.ActiveColor] // Allied queens.
-	allies[5] = bb.Pieces[12+bb.ActiveColor] // Allied king.
-	for _, move := range pseudoLegal {
-		MakeMove(before, move)
-		isChecked := true
-		if genAttackedSquares(bb.ActiveColor.Inverse(), allies,
-			bb.Pieces[0]|bb.Pieces[1])&allies[5] != 0 {
-			isChecked = false
-		}
-		// Restore the board state.
-		copy(bb.Pieces[:], before)
-		if !isChecked {
-			legal = append(legal, move)
-		}
+		boardCopy[opC][move.CapturedPieceType] ^= to
+		boardCopy[opC][0] ^= to
 	}
 	return
 }
 
-// genLegalMove generates pseudo-legal moves for all pieces of the active color.
-// After that the generated moves are filtered down to legal moves by
-// filterIllegalMoves function.
-func (bb *Bitboard) genLegalMoves() {
-	psm := make(map[int][]helpers.Move)
-	for i := 2; i < 14; i++ {
-		if (bb.ActiveColor == enums.Black && i%2 == 0) ||
-			(bb.ActiveColor == enums.White && i%2 != 0) {
-			continue
-		}
-		for _, piece := range helpers.GetIndicesFromBitboard(bb.Pieces[i]) {
-			psm[piece] = genPseudoLegalMoves(enums.PieceType(i), piece, bb.Pieces[0],
-				bb.Pieces[1])
+func (bb *Bitboard) GenLegalMoves() []helpers.Move {
+	c := bb.ActiveColor
+	opC := c.Inverse()
+	// First of all the pseudo legal moves must be generated.
+	pl := make([]helpers.Move, 0)
+	for i := 1; i < 6; i++ { // Take each piece type except the king.
+		pt := enums.PieceType(i)
+		pieces := helpers.GetIndicesFromBitboard(bb.Pieces[c][pt])
+		for _, piece := range pieces {
+			allies := bb.Pieces[c][0]    // All pieces of the active color.
+			enemies := bb.Pieces[opC][0] // All enemy pieces.
+			pl = append(pl, genPseudoLegalMoves(pt, c, piece, allies, enemies)...)
 		}
 	}
+	l := bb.filterIllegalMoves(pl)
+	// Add legal moves for king.
+	// To prevent the king from moving into attacked squares, exclude the king from
+	// occupied, otherwise the king will be able to move behind himself on attacked squares.
+	occupied := bb.Pieces[c][1] | bb.Pieces[c][2] | bb.Pieces[c][3] |
+		bb.Pieces[c][4] | bb.Pieces[c][5] | bb.Pieces[opC][0]
+	attacked := genAttackedSquares(opC, bb.Pieces[opC][1:], occupied)
+	can00, can000 := bb.CastlingRights[c], bb.CastlingRights[c+2]
+	kingPos := helpers.GetIndicesFromBitboard(bb.Pieces[c][6])[0]
+	l = append(l, genKingLegalMoves(kingPos, bb.Pieces[c][0],
+		bb.Pieces[opC][0], attacked, can00, can000)...)
+	return l
+}
+
+func (bb *Bitboard) filterIllegalMoves(pl []helpers.Move) (l []helpers.Move) {
+	opColor := bb.ActiveColor.Inverse()
+	for _, move := range pl {
+		board := bb.MakeMove(move)
+		enemies := board[opColor][1:]         // All enemy pieces.
+		occupied := board[0][0] | board[1][0] // All occupied squares.
+		// If the allied king is not in check, the move is legal.
+		if genAttackedSquares(opColor, enemies, occupied)&
+			bb.Pieces[bb.ActiveColor][6] == 0 {
+			l = append(l, move)
+		}
+	}
+	return
 }

@@ -2,7 +2,7 @@ package auth
 
 import (
 	"encoding/json"
-	"justchess/pkg/models/user"
+	"justchess/pkg/user"
 	"net/http"
 	"net/http/httptest"
 	"testing"

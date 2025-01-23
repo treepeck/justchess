@@ -6,9 +6,120 @@ import (
 	"testing"
 )
 
-/////////////////////////////////////////////////////////////////
-// TODO: Test move generation for multiple pieces on a board. //
-/////////////////////////////////////////////////////////////////
+func TestGenLegalMoves(t *testing.T) {
+	testcases := []struct {
+		name           string
+		pieces         [2][7]uint64
+		color          enums.Color
+		castlingRights [4]bool
+		EpTarget       int
+		HalfmoveClk    int
+		FullmoveClk    int
+		expected       []helpers.Move
+	}{
+		{"8/8/8/8/4P2q/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 1",
+			[2][7]uint64{
+				{0x1004EFFD, 0x1000EF00, 0x40040, 0x24, 0x81, 0x8, 0x10},
+				{0x80000000, 0x0, 0x0, 0x0, 0x0, 0x80000000, 0x0}},
+			enums.White, [4]bool{true, true, true, true},
+			-1, 0, 1,
+			[]helpers.Move{
+				// PAWNS
+				{To: enums.A3, From: enums.A2, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Pawn},
+				{To: enums.A4, From: enums.A2, FEN: "", Color: enums.White,
+					MoveType: enums.DoublePawnPush, PieceType: enums.Pawn},
+				{To: enums.B3, From: enums.B2, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Pawn},
+				{To: enums.B4, From: enums.B2, FEN: "", Color: enums.White,
+					MoveType: enums.DoublePawnPush, PieceType: enums.Pawn},
+				{To: enums.D3, From: enums.D2, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Pawn},
+				{To: enums.D4, From: enums.D2, FEN: "", Color: enums.White,
+					MoveType: enums.DoublePawnPush, PieceType: enums.Pawn},
+				{To: enums.G3, From: enums.G2, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Pawn},
+				{To: enums.G4, From: enums.G2, FEN: "", Color: enums.White,
+					MoveType: enums.DoublePawnPush, PieceType: enums.Pawn},
+				{To: enums.H3, From: enums.H2, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Pawn},
+				{To: enums.E5, From: enums.E4, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Pawn},
+				// KNIGHTS
+				{To: enums.E2, From: enums.G1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				{To: enums.F3, From: enums.G1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				{To: enums.H3, From: enums.G1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				{To: enums.B1, From: enums.C3, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				{To: enums.E2, From: enums.C3, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				{To: enums.A4, From: enums.C3, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				{To: enums.B5, From: enums.C3, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				{To: enums.D5, From: enums.C3, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Knight},
+				// BISHOPS
+				{To: enums.E2, From: enums.F1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Bishop},
+				{To: enums.D3, From: enums.F1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Bishop},
+				{To: enums.C4, From: enums.F1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Bishop},
+				{To: enums.B5, From: enums.F1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Bishop},
+				{To: enums.A6, From: enums.F1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Bishop},
+				// ROOKS
+				{To: enums.B1, From: enums.A1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Rook},
+				// QUEENS
+				{To: enums.E2, From: enums.D1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Queen},
+				{To: enums.F3, From: enums.D1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Queen},
+				{To: enums.G4, From: enums.D1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Queen},
+				{To: enums.H5, From: enums.D1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.Queen},
+				// KING
+				{To: enums.E2, From: enums.E1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.King},
+			},
+		},
+		{"3q4/8/8/8/8/8/3p1p2/r3K3 w HAha - 0 1",
+			[2][7]uint64{
+				{0x10, 0x0, 0x0, 0x0, 0x0, 0x0, 0x10},
+				{0x800000000002801, 0x2800, 0x0, 0x0, 0x1, 0x800000000000000, 0x0},
+			},
+			enums.White,
+			[4]bool{false, false, false, false},
+			-1, 0, 0,
+			[]helpers.Move{
+				{To: enums.E2, From: enums.E1, FEN: "", Color: enums.White,
+					MoveType: enums.Quiet, PieceType: enums.King},
+				{To: enums.F2, From: enums.E1, FEN: "", Color: enums.White,
+					MoveType: enums.Capture, PieceType: enums.King},
+			},
+		},
+	}
+	for _, tc := range testcases {
+		got := NewBitboard(tc.pieces, tc.color, tc.castlingRights,
+			tc.EpTarget, tc.HalfmoveClk, tc.FullmoveClk).GenLegalMoves()
+
+		if len(tc.expected) != len(got) {
+			t.Fatalf("expected: %v, got: %v", tc.expected, got)
+		}
+		for i, move := range tc.expected {
+			if got[i] != move {
+				t.Fatalf("expected: %v, got: %v", tc.expected, got)
+			}
+		}
+	}
+}
 
 ///////////////////////////////////////////////////////////////
 //                          KING                             //
@@ -34,7 +145,7 @@ func TestGenKingLegalMoves(t *testing.T) {
 			false,
 			false,
 			[]helpers.Move{
-				helpers.NewMove(enums.E3, enums.D4, enums.Quiet),
+				helpers.NewMove(enums.E3, enums.D4, enums.Quiet, enums.King),
 			},
 		},
 		{
@@ -46,12 +157,12 @@ func TestGenKingLegalMoves(t *testing.T) {
 			true,
 			true,
 			[]helpers.Move{
-				helpers.NewMove(enums.G1, enums.E1, enums.KingCastle),
-				helpers.NewMove(enums.D1, enums.E1, enums.Quiet),
-				helpers.NewMove(enums.D2, enums.E1, enums.Quiet),
-				helpers.NewMove(enums.E2, enums.E1, enums.Quiet),
-				helpers.NewMove(enums.F1, enums.E1, enums.Quiet),
-				helpers.NewMove(enums.F2, enums.E1, enums.Quiet),
+				helpers.NewMove(enums.G1, enums.E1, enums.KingCastle, enums.King),
+				helpers.NewMove(enums.D1, enums.E1, enums.Quiet, enums.King),
+				helpers.NewMove(enums.D2, enums.E1, enums.Quiet, enums.King),
+				helpers.NewMove(enums.E2, enums.E1, enums.Quiet, enums.King),
+				helpers.NewMove(enums.F1, enums.E1, enums.Quiet, enums.King),
+				helpers.NewMove(enums.F2, enums.E1, enums.Quiet, enums.King),
 			},
 		},
 		{
@@ -63,10 +174,10 @@ func TestGenKingLegalMoves(t *testing.T) {
 			true,
 			true,
 			[]helpers.Move{
-				helpers.NewMove(enums.B1, enums.E1, enums.QueenCastle),
-				helpers.NewMove(enums.D1, enums.E1, enums.Quiet),
-				helpers.NewMove(enums.D2, enums.E1, enums.Quiet),
-				helpers.NewMove(enums.E2, enums.E1, enums.Quiet),
+				helpers.NewMove(enums.B1, enums.E1, enums.QueenCastle, enums.King),
+				helpers.NewMove(enums.D1, enums.E1, enums.Quiet, enums.King),
+				helpers.NewMove(enums.D2, enums.E1, enums.Quiet, enums.King),
+				helpers.NewMove(enums.E2, enums.E1, enums.Quiet, enums.King),
 			},
 		},
 		{
@@ -78,10 +189,10 @@ func TestGenKingLegalMoves(t *testing.T) {
 			false,
 			false,
 			[]helpers.Move{
-				helpers.NewMove(enums.A3, enums.B2, enums.Quiet),
-				helpers.NewMove(enums.A1, enums.B2, enums.Quiet),
-				helpers.NewMove(enums.C3, enums.B2, enums.Quiet),
-				helpers.NewMove(enums.C1, enums.B2, enums.Quiet),
+				helpers.NewMove(enums.A3, enums.B2, enums.Quiet, enums.King),
+				helpers.NewMove(enums.A1, enums.B2, enums.Quiet, enums.King),
+				helpers.NewMove(enums.C3, enums.B2, enums.Quiet, enums.King),
+				helpers.NewMove(enums.C1, enums.B2, enums.Quiet, enums.King),
 			},
 		},
 	}
@@ -122,12 +233,12 @@ func TestGenWhitePawnPseudoLegalMoves(t *testing.T) {
 	}{
 		{"8/8/8/8/4P3/5p2/4P3/8", enums.E2, uint64(1) << enums.E4, uint64(1) << enums.F3,
 			[]helpers.Move{
-				helpers.NewMove(enums.E3, enums.E2, enums.Quiet),
-				helpers.NewMove(enums.F3, enums.E2, enums.Capture),
+				helpers.NewMove(enums.E3, enums.E2, enums.Quiet, enums.Pawn),
+				helpers.NewMove(enums.F3, enums.E2, enums.Capture, enums.Pawn),
 			}},
 		{"8/4P3/8/8/8/8/8/8", enums.E7, 0, 0,
 			[]helpers.Move{
-				helpers.NewMove(enums.E8, enums.E7, enums.Promotion),
+				helpers.NewMove(enums.E8, enums.E7, enums.Promotion, enums.Pawn),
 			}},
 	}
 	for _, tc := range testcases {
@@ -162,12 +273,12 @@ func TestGenBlackPawnPseudoLegalMoves(t *testing.T) {
 	}{
 		{"8/4p3/5P2/4p3/8/8/8/8", enums.E7, uint64(1) << enums.E5, uint64(1) << enums.F6,
 			[]helpers.Move{
-				helpers.NewMove(enums.E6, enums.E7, enums.Quiet),
-				helpers.NewMove(enums.F6, enums.E7, enums.Capture),
+				helpers.NewMove(enums.E6, enums.E7, enums.Quiet, enums.Pawn),
+				helpers.NewMove(enums.F6, enums.E7, enums.Capture, enums.Pawn),
 			}},
 		{"8/8/8/8/8/8/4p3/8", enums.E2, 0, 0,
 			[]helpers.Move{
-				helpers.NewMove(enums.E1, enums.E2, enums.Promotion),
+				helpers.NewMove(enums.E1, enums.E2, enums.Promotion, enums.Pawn),
 			}},
 	}
 	for _, tc := range testcases {
@@ -225,13 +336,13 @@ func TestGenKnightPseudoLegalMoves(t *testing.T) {
 	}{
 		{"8/8/8/2r3p1/4N3/8/5P2/8", enums.E4, uint64(1) << enums.F2, 0x4400000000,
 			[]helpers.Move{
-				helpers.NewMove(enums.D6, enums.E4, enums.Quiet),
-				helpers.NewMove(enums.G5, enums.E4, enums.Capture),
-				helpers.NewMove(enums.D2, enums.E4, enums.Quiet),
-				helpers.NewMove(enums.C3, enums.E4, enums.Quiet),
-				helpers.NewMove(enums.C5, enums.E4, enums.Capture),
-				helpers.NewMove(enums.F6, enums.E4, enums.Quiet),
-				helpers.NewMove(enums.G3, enums.E4, enums.Quiet),
+				helpers.NewMove(enums.D6, enums.E4, enums.Quiet, enums.Knight),
+				helpers.NewMove(enums.G5, enums.E4, enums.Capture, enums.Knight),
+				helpers.NewMove(enums.D2, enums.E4, enums.Quiet, enums.Knight),
+				helpers.NewMove(enums.C3, enums.E4, enums.Quiet, enums.Knight),
+				helpers.NewMove(enums.C5, enums.E4, enums.Capture, enums.Knight),
+				helpers.NewMove(enums.F6, enums.E4, enums.Quiet, enums.Knight),
+				helpers.NewMove(enums.G3, enums.E4, enums.Quiet, enums.Knight),
 			},
 		},
 	}
@@ -290,13 +401,13 @@ func TestGenBishopPseudoLegalMoves(t *testing.T) {
 	}{
 		{"8/8/5r2/8/3B4/4q3/1R6/8", enums.D4, uint64(1) << enums.B2, 0x200000100000,
 			[]helpers.Move{
-				helpers.NewMove(enums.C3, enums.D4, enums.Quiet),
-				helpers.NewMove(enums.C5, enums.D4, enums.Quiet),
-				helpers.NewMove(enums.B6, enums.D4, enums.Quiet),
-				helpers.NewMove(enums.A7, enums.D4, enums.Quiet),
-				helpers.NewMove(enums.E3, enums.D4, enums.Capture),
-				helpers.NewMove(enums.E5, enums.D4, enums.Quiet),
-				helpers.NewMove(enums.F6, enums.D4, enums.Capture),
+				helpers.NewMove(enums.C3, enums.D4, enums.Quiet, enums.Bishop),
+				helpers.NewMove(enums.C5, enums.D4, enums.Quiet, enums.Bishop),
+				helpers.NewMove(enums.B6, enums.D4, enums.Quiet, enums.Bishop),
+				helpers.NewMove(enums.A7, enums.D4, enums.Quiet, enums.Bishop),
+				helpers.NewMove(enums.E3, enums.D4, enums.Capture, enums.Bishop),
+				helpers.NewMove(enums.E5, enums.D4, enums.Quiet, enums.Bishop),
+				helpers.NewMove(enums.F6, enums.D4, enums.Capture, enums.Bishop),
 			}},
 	}
 	for _, tc := range testcases {
@@ -355,15 +466,15 @@ func TestGenRookPseudoLegalMoves(t *testing.T) {
 	}{
 		{"6r1/8/8/8/8/4B1R1/8/6p1", enums.G3, uint64(1) << enums.E3,
 			0x4000000000000040, []helpers.Move{
-				helpers.NewMove(enums.F3, enums.G3, enums.Quiet),
-				helpers.NewMove(enums.H3, enums.G3, enums.Quiet),
-				helpers.NewMove(enums.G8, enums.G3, enums.Capture),
-				helpers.NewMove(enums.G7, enums.G3, enums.Quiet),
-				helpers.NewMove(enums.G6, enums.G3, enums.Quiet),
-				helpers.NewMove(enums.G5, enums.G3, enums.Quiet),
-				helpers.NewMove(enums.G4, enums.G3, enums.Quiet),
-				helpers.NewMove(enums.G2, enums.G3, enums.Quiet),
-				helpers.NewMove(enums.G1, enums.G3, enums.Capture),
+				helpers.NewMove(enums.F3, enums.G3, enums.Quiet, enums.Rook),
+				helpers.NewMove(enums.H3, enums.G3, enums.Quiet, enums.Rook),
+				helpers.NewMove(enums.G8, enums.G3, enums.Capture, enums.Rook),
+				helpers.NewMove(enums.G7, enums.G3, enums.Quiet, enums.Rook),
+				helpers.NewMove(enums.G6, enums.G3, enums.Quiet, enums.Rook),
+				helpers.NewMove(enums.G5, enums.G3, enums.Quiet, enums.Rook),
+				helpers.NewMove(enums.G4, enums.G3, enums.Quiet, enums.Rook),
+				helpers.NewMove(enums.G2, enums.G3, enums.Quiet, enums.Rook),
+				helpers.NewMove(enums.G1, enums.G3, enums.Capture, enums.Rook),
 			}},
 	}
 	for _, tc := range testcases {

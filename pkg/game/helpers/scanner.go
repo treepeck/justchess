@@ -18,14 +18,14 @@ func GetIndicesFromBitboard(bb uint64) []int {
 }
 
 // GetMovesFromBitboard encodes the slice of moves from a bitboard.
-func GetMovesFromBitboard(from int, moves, enemies uint64) []Move {
+func GetMovesFromBitboard(from int, moves, enemies uint64, pt enums.PieceType) []Move {
 	mSlice := make([]Move, 0)
 	for _, i := range GetIndicesFromBitboard(moves) {
 		moveType := enums.Quiet
 		if uint64(1)<<i&enemies != 0 {
 			moveType = enums.Capture
 		}
-		mSlice = append(mSlice, NewMove(i, from, moveType))
+		mSlice = append(mSlice, NewMove(i, from, moveType, pt))
 	}
 	return mSlice
 }

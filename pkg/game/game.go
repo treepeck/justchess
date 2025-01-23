@@ -13,10 +13,10 @@ type Game struct {
 	// The number of seconds added after each move.
 	Bonus uint
 	// Initial amount of time on player`s timers.
-	TimerDur time.Duration
+	Control time.Duration
 	// Completed moves in a historical order.
 	MoveStack []helpers.Move
-	// Piece placement on a board.
+	// Board state.
 	Board *bitboard.Bitboard
 	// Game state. Continues by default.
 	Status enums.Status
@@ -28,8 +28,12 @@ type Game struct {
 func NewGame(bonus uint, timerDur time.Duration) *Game {
 	return &Game{
 		Bonus:     bonus,
-		TimerDur:  timerDur,
+		Control:   timerDur,
 		MoveStack: make([]helpers.Move, 0),
 		Board:     fen.FEN2Bitboard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
 	}
+}
+
+func (g *Game) HandleMove(move helpers.Move) {
+
 }

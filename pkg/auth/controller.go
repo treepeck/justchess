@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"justchess/pkg/models/user"
+	"justchess/pkg/user"
 
 	"github.com/google/uuid"
 )
