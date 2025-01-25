@@ -43,17 +43,12 @@ func NewBitboard(pieces [2][7]uint64, ac enums.Color,
 // Used to check if the move is legal.
 func (bb *Bitboard) MakeMove(move helpers.Move) (boardCopy [2][7]uint64) {
 	copy(boardCopy[:], bb.Pieces[:])
-	opC := move.Color.Inverse()
-	from := uint64(1) << move.From
-	to := uint64(1) << move.To
+	from := uint64(1) << move.From()
+	to := uint64(1) << move.To()
 	fromTo := from ^ to
-	boardCopy[move.Color][move.PieceType] ^= fromTo
-	boardCopy[move.Color][0] ^= fromTo
-	switch move.MoveType {
-	case enums.Capture, enums.EpCapture:
-		boardCopy[opC][move.CapturedPieceType] ^= to
-		boardCopy[opC][0] ^= to
-	}
+	pt := helpers.GetPieceTypeFromSquare(bb.Pieces, move.From())
+	boardCopy[bb.ActiveColor][pt] ^= fromTo
+	boardCopy[bb.ActiveColor][0] ^= fromTo
 	return
 }
 
@@ -63,12 +58,11 @@ func (bb *Bitboard) GenLegalMoves() []helpers.Move {
 	// First of all the pseudo legal moves must be generated.
 	pl := make([]helpers.Move, 0)
 	for i := 1; i < 6; i++ { // Take each piece type except the king.
-		pt := enums.PieceType(i)
-		pieces := helpers.GetIndicesFromBitboard(bb.Pieces[c][pt])
+		pieces := helpers.GetIndicesFromBitboard(bb.Pieces[c][i])
 		for _, piece := range pieces {
 			allies := bb.Pieces[c][0]    // All pieces of the active color.
 			enemies := bb.Pieces[opC][0] // All enemy pieces.
-			pl = append(pl, genPseudoLegalMoves(pt, c, piece, allies, enemies)...)
+			pl = append(pl, genPseudoLegalMoves(i, c, piece, allies, enemies)...)
 		}
 	}
 	l := bb.filterIllegalMoves(pl)

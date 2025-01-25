@@ -6,13 +6,7 @@ import (
 	"math/bits"
 )
 
-// When generating moves, pieces that blocks the direction are taken into account.
-// Occupied squares (by allies and enemies) considered as attacked squares to prevent
-// the king from capturing the defended pieces.
-// The moves returned by gen*PseudoLegalMoves functions must be checked further to became
-// legal, since they can expose the allied king to check or did not cover the checked king.
-
-///////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 //                          KING                             //
 ///////////////////////////////////////////////////////////////
 
@@ -35,17 +29,17 @@ func genKingLegalMoves(from int, allies, enemies, attacked uint64,
 	legalMoves := make([]helpers.Move, 0)
 	for _, i := range helpers.GetIndicesFromBitboard(moves) {
 		if uint64(1)<<i&enemies != 0 {
-			legalMoves = append(legalMoves, helpers.NewMove(i, from, enums.Capture, enums.King))
+			legalMoves = append(legalMoves, helpers.NewMove(i, from, enums.Capture))
 		} else {
-			legalMoves = append(legalMoves, helpers.NewMove(i, from, enums.Quiet, enums.King))
+			legalMoves = append(legalMoves, helpers.NewMove(i, from, enums.Quiet))
 		}
 	}
 	// Castling implementation.
 	if can000 && (0xE&allies == 0) && (0xE&attacked == 0) {
-		legalMoves = append(legalMoves, helpers.NewMove(enums.B1, from, enums.QueenCastle, enums.King))
+		legalMoves = append(legalMoves, helpers.NewMove(enums.B1, from, enums.QueenCastle))
 	}
 	if can00 && (0x60&allies == 0) && (0x60&attacked == 0) {
-		legalMoves = append(legalMoves, helpers.NewMove(enums.G1, from, enums.KingCastle, enums.King))
+		legalMoves = append(legalMoves, helpers.NewMove(enums.G1, from, enums.KingCastle))
 	}
 	return legalMoves
 }
@@ -72,19 +66,19 @@ func genWhitePawnPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Mo
 	if (allies|enemies)&(pawn<<8) == 0 {
 		if (pawn<<8)&0xFF00000000000000 != 0 { // If it is 8th rank.
 			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn<<8),
-				from, enums.Promotion, enums.Pawn))
+				from, enums.Promotion))
 		} else {
 			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn<<8),
-				from, enums.Quiet, enums.Pawn))
+				from, enums.Quiet))
 			// Pawns can perform double forward push from an initial position.
 			if pawn&0xFF00 != 0 && (allies|enemies)&(pawn<<16) == 0 {
 				moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn<<16),
-					from, enums.DoublePawnPush, enums.Pawn))
+					from, enums.DoublePawnPush))
 			}
 		}
 	}
 	cm := genWhitePawnsAttackPattern(pawn) // Capture moves.
-	return append(moves, helpers.GetMovesFromBitboard(from, (cm&enemies), enemies, enums.Pawn)...)
+	return append(moves, helpers.GetMovesFromBitboard(from, (cm&enemies), enemies)...)
 }
 
 func genBlackPawnPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
@@ -93,19 +87,19 @@ func genBlackPawnPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Mo
 	if (allies|enemies)&(pawn>>8) == 0 {
 		if (pawn>>8)&0x00000000000000FF != 0 { // If it is 1th rank.
 			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn>>8),
-				from, enums.Promotion, enums.Pawn))
+				from, enums.Promotion))
 		} else {
 			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn>>8),
-				from, enums.Quiet, enums.Pawn))
+				from, enums.Quiet))
 			// Pawns can perform double backward push from an initial position.
 			if pawn&0xFF000000000000 != 0 && (allies|enemies)&(pawn>>16) == 0 {
 				moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn>>16),
-					from, enums.DoublePawnPush, enums.Pawn))
+					from, enums.DoublePawnPush))
 			}
 		}
 	}
 	cm := genBlackPawnsAttackPattern(pawn) // Capture moves.
-	return append(moves, helpers.GetMovesFromBitboard(from, (cm&enemies), enemies, enums.Pawn)...)
+	return append(moves, helpers.GetMovesFromBitboard(from, (cm&enemies), enemies)...)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -127,7 +121,7 @@ func genKnightsMovePattern(knights uint64) uint64 {
 
 func genKnightPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
 	moves := genKnightsMovePattern(uint64(1)<<from) & ^allies
-	return helpers.GetMovesFromBitboard(from, moves, moves&enemies, enums.Knight) // Moves & enemies = capture moves.
+	return helpers.GetMovesFromBitboard(from, moves, moves&enemies) // Moves & enemies = capture moves.
 }
 
 ///////////////////////////////////////////////////////////////
@@ -170,7 +164,7 @@ func genBishopsMovePattern(bishops, occupied uint64) uint64 {
 func genBishopPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
 	moves := genBishopsMovePattern(uint64(1)<<from, allies|enemies) & ^allies
 	moves &= ^allies // Exclude the squares occupied by allied pieces.
-	return helpers.GetMovesFromBitboard(from, moves, enemies, enums.Bishop)
+	return helpers.GetMovesFromBitboard(from, moves, enemies)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -213,7 +207,7 @@ func genRooksMovePattern(rooks, occupied uint64) uint64 {
 func genRookPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
 	moves := genRooksMovePattern(uint64(1)<<from, allies|enemies)
 	moves &= ^allies // Exclude the allied pieces.
-	return helpers.GetMovesFromBitboard(from, moves, enemies, enums.Rook)
+	return helpers.GetMovesFromBitboard(from, moves, enemies)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -226,10 +220,13 @@ func genQueensMovePattern(queens, occupied uint64) uint64 {
 		genRooksMovePattern(queens, occupied)
 }
 
+// [16 24 17 25 19 27 22 30 23 36 12 21 23 1 12 24 33 35 12 19 26 33 40 1 12 21 30 39 12]
+// [16 24 17 25 19 27 21 29 22 30 23 36 12 21 23 1 12 24 33 35 12 19 26 33 40 1 12 21 30 39 12]
+
 func genQueenPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
 	moves := genQueensMovePattern(uint64(1)<<from, allies|enemies)
 	moves &= ^allies
-	return helpers.GetMovesFromBitboard(from, moves, enemies, enums.Queen)
+	return helpers.GetMovesFromBitboard(from, moves, enemies)
 }
 
 ///////////////////////////////////////////////////////////////

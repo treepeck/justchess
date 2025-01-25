@@ -1,25 +1,23 @@
 package helpers
 
-import (
-	"justchess/pkg/game/enums"
-)
+// 0-5: To (destination) square index;
+// 6-11: From (origin/source) square index;
+// 12-14: Move type [see justchess/pkg/game/enums/moveType];
+// 15: Unused.
+type Move uint16
 
-type Move struct {
-	To   int
-	From int
-	// Describes the board state after making the move.
-	FEN               string
-	Color             enums.Color
-	MoveType          enums.MoveType
-	PieceType         enums.PieceType
-	CapturedPieceType enums.PieceType
+func NewMove(to, from, mt int) Move {
+	return Move(to | (from << 6) | (mt << 12))
 }
 
-func NewMove(to, from int, mt enums.MoveType, pt enums.PieceType) Move {
-	return Move{
-		To:        to,
-		From:      from,
-		MoveType:  mt,
-		PieceType: pt,
-	}
+func (m Move) To() int {
+	return int(m) & 0x3F
+}
+
+func (m Move) From() int {
+	return int(m>>6) & 0x3F
+}
+
+func (m Move) MoveType() int {
+	return int(m>>12) & 0x7
 }
