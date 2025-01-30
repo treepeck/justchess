@@ -1,14 +1,16 @@
 package fen
 
 import (
+	"testing"
+
 	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
-	"testing"
 )
 
-var dummyBitboard = bitboard.NewBitboard([2][7]uint64{
-	{0xB25CC69, 0xA21C400, 0x40000, 0x1000800, 0x21, 0x8, 0x40},
-	{0x91CB242910000000, 0xC3040810000000, 0x8002000000000, 0x0100000000, 0x8100000000000000, 0x200000000000, 0x1000000000000000},
+var dummyBitboard = bitboard.NewBitboard([12]uint64{
+	0xA21C400, 0xC3040810000000, 0x40000, 0x8002000000000,
+	0x1000800, 0x0100000000, 0x21, 0x8100000000000000,
+	0x8, 0x200000000000, 0x40, 0x1000000000000000,
 }, enums.White, [4]bool{false, false, true, true},
 	enums.B3, 0, 13)
 
@@ -45,7 +47,7 @@ func BenchmarkBitboard2FEN(b *testing.B) {
 func TestFEN2Bitboard(t *testing.T) {
 	testcases := []struct {
 		FEN                    string
-		expectedPieces         [2][7]uint64
+		expectedPieces         [12]uint64
 		expectedActiveColor    enums.Color
 		expectedCastlingRights [4]bool
 		expectedEpTarget       int
@@ -54,17 +56,17 @@ func TestFEN2Bitboard(t *testing.T) {
 	}{
 		{
 			dummyFEN[0],
-			[2][7]uint64{
-				{0xB25CC69, 0xA21C400, 0x40000, 0x1000800, 0x21, 0x8, 0x40},
-				{0x91CB242910000000, 0xC3040810000000, 0x8002000000000, 0x0100000000, 0x8100000000000000, 0x200000000000, 0x1000000000000000}},
-			enums.White, [4]bool{false, false, true, true},
-			enums.B3, 0, 13,
+			dummyBitboard.Pieces,
+			dummyBitboard.ActiveColor,
+			dummyBitboard.CastlingRights,
+			dummyBitboard.EPTarget,
+			dummyBitboard.HalfmoveCnt,
+			dummyBitboard.FullmoveCnt,
 		},
 		{
 			dummyFEN[1],
-			[2][7]uint64{
-				{0x1004EFFD, 0x1000EF00, 0x40040, 0x24, 0x81, 0x8, 0x10},
-				{0x80000000, 0x0, 0x0, 0x0, 0x0, 0x80000000, 0x0}},
+			[12]uint64{0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
+				0x81, 0x0, 0x8, 0x80000000, 0x10, 0x0},
 			enums.White, [4]bool{true, true, true, true},
 			-1, 0, 1,
 		},
@@ -72,10 +74,8 @@ func TestFEN2Bitboard(t *testing.T) {
 	for _, tc := range testcases {
 		got := FEN2Bitboard(tc.FEN)
 		for i, pieces := range got.Pieces {
-			for j, piece := range pieces {
-				if piece != tc.expectedPieces[i][j] {
-					t.Fatalf("expected: %v, got: %v", tc.expectedPieces, got.Pieces)
-				}
+			if pieces != tc.expectedPieces[i] {
+				t.Fatalf("expected: %v, got: %v", tc.expectedPieces, got.Pieces)
 			}
 		}
 		if tc.expectedActiveColor != got.ActiveColor {

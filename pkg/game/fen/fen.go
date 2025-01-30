@@ -1,41 +1,12 @@
 package fen
 
 import (
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
-	"justchess/pkg/game/helpers"
 	"strconv"
 	"strings"
-)
 
-var serializeMapping = [2]map[enums.PieceType]byte{
-	{enums.Pawn: 'P',
-		enums.Knight: 'N',
-		enums.Bishop: 'B',
-		enums.Rook:   'R',
-		enums.Queen:  'Q',
-		enums.King:   'K'},
-	{enums.Pawn: 'p',
-		enums.Knight: 'n',
-		enums.Bishop: 'b',
-		enums.Rook:   'r',
-		enums.Queen:  'q',
-		enums.King:   'k'},
-}
-var parseMapping = map[byte]enums.PieceType{
-	'P': enums.Pawn,
-	'N': enums.Knight,
-	'B': enums.Bishop,
-	'R': enums.Rook,
-	'Q': enums.Queen,
-	'K': enums.King,
-	'p': enums.Pawn,
-	'n': enums.Knight,
-	'b': enums.Bishop,
-	'r': enums.Rook,
-	'q': enums.Queen,
-	'k': enums.King,
-}
+	"justchess/pkg/game/bitboard"
+	"justchess/pkg/game/enums"
+)
 
 func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
 	FEN += serializePiecePlacementData(bb.Pieces)
@@ -47,23 +18,37 @@ func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
 	return
 }
 
-// TODO: make serializePiecePlacementData more performant.
-func serializePiecePlacementData(pieces [2][7]uint64) (fenPPF string) {
-
-	var board [64]byte
-	for i := 0; i < len(pieces); i++ {
-		for j := 1; j < len(pieces[0]); j++ {
-			for _, pieceInd := range helpers.GetIndicesFromBitboard(pieces[i][j]) {
-				board[pieceInd] = serializeMapping[i][enums.PieceType(j)+1]
-			}
+func serializePiecePlacementData(pieces [12]uint64) (fenPPF string) {
+	mapping := map[enums.PieceType]byte{
+		enums.WhitePawn:   'P',
+		enums.WhiteKnight: 'N',
+		enums.WhiteBishop: 'B',
+		enums.WhiteRook:   'R',
+		enums.WhiteQueen:  'Q',
+		enums.WhiteKing:   'K',
+		enums.BlackPawn:   'p',
+		enums.BlackKnight: 'n',
+		enums.BlackBishop: 'b',
+		enums.BlackRook:   'r',
+		enums.BlackQueen:  'q',
+		enums.BlackKing:   'k',
+	}
+	var board [64]int
+	for i := 0; i < 64; i++ {
+		board[i] = -1
+	}
+	for i := 0; i < 12; i++ {
+		bb := pieces[i]
+		for sqInd := bitboard.GetLSB(bb); bb != 0; sqInd = bitboard.GetLSB(bb) {
+			board[sqInd] = i
+			bb &= bb - 1
 		}
 	}
 	for i := 7; i >= 0; i-- {
 		row := ""
 		cnt := 0
 		for j := 0; j < 8; j++ {
-			b := board[j+i*8]
-			if b == 0 {
+			if b, ok := mapping[enums.PieceType(board[j+i*8])]; !ok {
 				cnt++
 			} else {
 				if cnt > 0 {
@@ -132,19 +117,37 @@ func FEN2Bitboard(FEN string) *bitboard.Bitboard {
 }
 
 // parsePiecePlacementData parses bitboards from FEN`s piece placement field.
-func parsePiecePlacementData(fenPPF string) (pieces [2][7]uint64) {
+func parsePiecePlacementData(fenPPF string) (pieces [12]uint64) {
 	squareIndex := 0
 	rows := strings.Split(fenPPF, "/")
 	for i := len(rows) - 1; i >= 0; i-- {
 		for j := 0; j < len(rows[i]); j++ {
 			b := rows[i][j]
 			switch b {
-			case 'P', 'N', 'B', 'R', 'Q', 'K':
-				pieces[0][0] |= uint64(1) << squareIndex
-				pieces[0][parseMapping[b]-1] |= uint64(1) << squareIndex
-			case 'p', 'n', 'b', 'r', 'q', 'k':
-				pieces[1][0] |= uint64(1) << squareIndex
-				pieces[1][parseMapping[b]-1] |= uint64(1) << squareIndex
+			case 'P':
+				pieces[enums.WhitePawn] |= 1 << squareIndex
+			case 'p':
+				pieces[enums.BlackPawn] |= 1 << squareIndex
+			case 'N':
+				pieces[enums.WhiteKnight] |= 1 << squareIndex
+			case 'n':
+				pieces[enums.BlackKnight] |= 1 << squareIndex
+			case 'B':
+				pieces[enums.WhiteBishop] |= 1 << squareIndex
+			case 'b':
+				pieces[enums.BlackBishop] |= 1 << squareIndex
+			case 'R':
+				pieces[enums.WhiteRook] |= 1 << squareIndex
+			case 'r':
+				pieces[enums.BlackRook] |= 1 << squareIndex
+			case 'Q':
+				pieces[enums.WhiteQueen] |= 1 << squareIndex
+			case 'q':
+				pieces[enums.BlackQueen] |= 1 << squareIndex
+			case 'K':
+				pieces[enums.WhiteKing] |= 1 << squareIndex
+			case 'k':
+				pieces[enums.BlackKing] |= 1 << squareIndex
 			default:
 				squareIndex += int(b - '0') // Convert byte to it`s int representation.
 				continue
@@ -182,6 +185,7 @@ func parseEnPassantTarget(fenEPF string) (index int) {
 	if fenEPF == "-" {
 		return -1
 	}
+	// Check file.
 	switch fenEPF[0] {
 	case 'a':
 		index = 0

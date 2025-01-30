@@ -1,113 +1,151 @@
 package bitboard
 
 import (
-	"justchess/pkg/game/enums"
-	"justchess/pkg/game/helpers"
 	"math/bits"
+
+	"justchess/pkg/game/enums"
 )
 
-//////////////////////////////////////////////////////////////
+// The following block on contants defines the bit masks needed to
+// correctly calculate possible moves by performing bitwise
+// operations on a bitboard.
+const (
+	notA  uint64 = 0xFEFEFEFEFEFEFEFE // Mask for all files except the A.
+	notH  uint64 = 0x7F7F7F7F7F7F7F7F // Mask for all files except the H.
+	notAB uint64 = 0xFCFCFCFCFCFCFCFC // Mask for all files except the A and B.
+	notGH uint64 = 0x3F3F3F3F3F3F3F3F // Mask for all files except the G and H.
+)
+
+var GetLSB = bits.TrailingZeros64
+
+// 0-5: To (destination) square index;
+// 6-11: From (origin/source) square index;
+// 12-14: Move type;
+// 15: Unused.
+type Move uint16
+
+func NewMove(to, from int, mt enums.MoveType) Move {
+	return Move(to | (from << 6) | int(mt<<12))
+}
+
+func (m Move) To() int {
+	return int(m) & 0x3F
+}
+
+func (m Move) From() int {
+	return int(m>>6) & 0x3F
+}
+
+func (m Move) MoveType() enums.MoveType {
+	return enums.MoveType(m >> 12 & 0x7)
+}
+
+///////////////////////////////////////////////////////////////
 //                          KING                             //
 ///////////////////////////////////////////////////////////////
 
-func genKingMovesPattern(king uint64) uint64 {
-	var moves uint64
+func genKingMovesPattern(king uint64) (moves uint64) {
+	moves |= (king & notH) >> 9 // South east. (-9 squares)
+	moves |= king >> 8          // South south. (-8 squares)
+	moves |= (king & notA) >> 7 // South west. (-7 squares)
+	moves |= (king & notA) >> 1 // West. (-1 square)
+	moves |= (king & notH) << 1 // East. (+1 square)
 	moves |= (king & notA) << 7 // North west. (+7 squares)
 	moves |= king << 8          // North north. (+8 squares)
 	moves |= (king & notH) << 9 // North east. (+9 squares)
-	moves |= (king & notA) >> 1 // West. (-1 square)
-	moves |= (king & notH) << 1 // East. (+1 square)
-	moves |= (king & notA) >> 7 // South west. (-7 squares)
-	moves |= king >> 8          // South south. (-8 squares)
-	moves |= (king & notH) >> 9 // South east. (-9 squares)
-	return moves
+	return
 }
 
 func genKingLegalMoves(from int, allies, enemies, attacked uint64,
-	can00, can000 bool) []helpers.Move {
-	moves := genKingMovesPattern(uint64(1)<<from) & ^allies & ^attacked
-	legalMoves := make([]helpers.Move, 0)
-	for _, i := range helpers.GetIndicesFromBitboard(moves) {
-		if uint64(1)<<i&enemies != 0 {
-			legalMoves = append(legalMoves, helpers.NewMove(i, from, enums.Capture))
+	can00, can000 bool) (moves []Move) {
+	movesBB := genKingMovesPattern(1<<from) & ^allies & ^attacked
+	for i := GetLSB(movesBB); movesBB != 0; i = GetLSB(movesBB) {
+		if 1<<i&enemies != 0 {
+			moves = append(moves, NewMove(i, from, enums.Capture))
 		} else {
-			legalMoves = append(legalMoves, helpers.NewMove(i, from, enums.Quiet))
+			moves = append(moves, NewMove(i, from, enums.Quiet))
 		}
+		movesBB &= movesBB - 1
 	}
 	// Castling implementation.
 	if can000 && (0xE&allies == 0) && (0xE&attacked == 0) {
-		legalMoves = append(legalMoves, helpers.NewMove(enums.B1, from, enums.QueenCastle))
+		moves = append(moves, NewMove(enums.B1, from, enums.QueenCastle))
 	}
 	if can00 && (0x60&allies == 0) && (0x60&attacked == 0) {
-		legalMoves = append(legalMoves, helpers.NewMove(enums.G1, from, enums.KingCastle))
+		moves = append(moves, NewMove(enums.G1, from, enums.KingCastle))
 	}
-	return legalMoves
+	return
 }
 
 ///////////////////////////////////////////////////////////////
 //                          PAWN                             //
 ///////////////////////////////////////////////////////////////
 
-// TODO: Implement en passant.
+// TODO: implement en passant.
 
-// genWhitePawnsAttackPattern returns bitboard with attacked squares by white pawns.
 func genWhitePawnsAttackPattern(pawns uint64) uint64 {
 	return ((pawns & notA) << 7) | ((pawns & notH) << 9)
 }
 
-// genBlackPawnsAttackPattern returns bitboard with possible attacked squares by black pawns.
 func genBlackPawnsAttackPattern(pawns uint64) uint64 {
 	return ((pawns & notA) >> 9) | ((pawns & notH) >> 7)
 }
 
-func genWhitePawnPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
-	moves := make([]helpers.Move, 0)
-	pawn := uint64(1) << from
-	if (allies|enemies)&(pawn<<8) == 0 {
-		if (pawn<<8)&0xFF00000000000000 != 0 { // If it is 8th rank.
-			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn<<8),
-				from, enums.Promotion))
+func genWhitePawnPseudoLegalMoves(from int, allies uint64,
+	enemies uint64) (moves []Move) {
+	var pawn, occupied uint64 = 1 << from, allies | enemies
+	to := pawn << 8
+	// If the forward square is vacant.
+	if occupied&to == 0 {
+		if to&0xFF00000000000000 != 0 {
+			moves = append(moves, NewMove(GetLSB(to), from, enums.Promotion))
 		} else {
-			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn<<8),
-				from, enums.Quiet))
-			// Pawns can perform double forward push from an initial position.
-			if pawn&0xFF00 != 0 && (allies|enemies)&(pawn<<16) == 0 {
-				moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn<<16),
-					from, enums.DoublePawnPush))
+			moves = append(moves, NewMove(GetLSB(to), from, enums.Quiet))
+			if pawn&0xFF00 != 0 && occupied&(to<<8) == 0 {
+				moves = append(moves, NewMove(GetLSB(to<<8), from, enums.DoublePawnPush))
 			}
 		}
 	}
-	cm := genWhitePawnsAttackPattern(pawn) // Capture moves.
-	return append(moves, helpers.GetMovesFromBitboard(from, (cm&enemies), enemies)...)
+	leftCapture, rightCapture := pawn&notA<<7, pawn&notH<<9
+	if leftCapture&enemies != 0 {
+		moves = append(moves, NewMove(GetLSB(leftCapture), from, enums.Capture))
+	}
+	if rightCapture&enemies != 0 {
+		moves = append(moves, NewMove(GetLSB(rightCapture), from, enums.Capture))
+	}
+	return
 }
 
-func genBlackPawnPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
-	moves := make([]helpers.Move, 0)
-	pawn := uint64(1) << from
-	if (allies|enemies)&(pawn>>8) == 0 {
-		if (pawn>>8)&0x00000000000000FF != 0 { // If it is 1th rank.
-			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn>>8),
-				from, enums.Promotion))
+func genBlackPawnPseudoLegalMoves(from int, allies,
+	enemies uint64) (moves []Move) {
+	var pawn, occupied uint64 = 1 << from, allies | enemies
+	to := pawn >> 8
+	// If the forward square is vacant.
+	if occupied&to == 0 {
+		if uint64(to)&0xFF != 0 {
+			moves = append(moves, NewMove(GetLSB(to), from, enums.Promotion))
 		} else {
-			moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn>>8),
-				from, enums.Quiet))
-			// Pawns can perform double backward push from an initial position.
-			if pawn&0xFF000000000000 != 0 && (allies|enemies)&(pawn>>16) == 0 {
-				moves = append(moves, helpers.NewMove(bits.TrailingZeros64(pawn>>16),
-					from, enums.DoublePawnPush))
+			moves = append(moves, NewMove(GetLSB(to), from, enums.Quiet))
+			if pawn&0xFF000000000000 != 0 && occupied&(to>>8) == 0 {
+				moves = append(moves, NewMove(GetLSB(to>>8), from, enums.DoublePawnPush))
 			}
 		}
 	}
-	cm := genBlackPawnsAttackPattern(pawn) // Capture moves.
-	return append(moves, helpers.GetMovesFromBitboard(from, (cm&enemies), enemies)...)
+	leftCapture, rightCapture := pawn&notA>>9, pawn&notH>>7
+	if leftCapture&enemies != 0 {
+		moves = append(moves, NewMove(GetLSB(leftCapture), from, enums.Capture))
+	}
+	if rightCapture&enemies != 0 {
+		moves = append(moves, NewMove(GetLSB(rightCapture), from, enums.Capture))
+	}
+	return
 }
 
 ///////////////////////////////////////////////////////////////
 //                          KNIGHT                           //
 ///////////////////////////////////////////////////////////////
 
-func genKnightsMovePattern(knights uint64) uint64 {
-	var moves uint64
+func genKnightsMovePattern(knights uint64) (moves uint64) {
 	moves |= (knights & notA) >> 17  // South south west. (-17 squares)
 	moves |= (knights & notH) >> 15  // South south east. (-15 squares)
 	moves |= (knights & notAB) >> 10 // South west west. (-10 squares)
@@ -119,17 +157,24 @@ func genKnightsMovePattern(knights uint64) uint64 {
 	return moves
 }
 
-func genKnightPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
-	moves := genKnightsMovePattern(uint64(1)<<from) & ^allies
-	return helpers.GetMovesFromBitboard(from, moves, moves&enemies) // Moves & enemies = capture moves.
+func genKnightPseudoLegalMoves(from int, allies, enemies uint64) (moves []Move) {
+	movesBB := genKnightsMovePattern(1<<from) & ^allies
+	for i := GetLSB(movesBB); movesBB != 0; i = GetLSB(movesBB) {
+		if 1<<i&enemies != 0 {
+			moves = append(moves, NewMove(i, from, enums.Capture))
+		} else {
+			moves = append(moves, NewMove(i, from, enums.Quiet))
+		}
+		movesBB &= movesBB - 1
+	}
+	return
 }
 
 ///////////////////////////////////////////////////////////////
 //                          BISHOP                           //
 ///////////////////////////////////////////////////////////////
 
-func genBishopsMovePattern(bishops, occupied uint64) uint64 {
-	var moves uint64
+func genBishopsMovePattern(bishops, occupied uint64) (moves uint64) {
 	// North west diagonal. (+7 squares)
 	for i := (bishops & notA) << 7; i != 0; i = (i & notA) << 7 {
 		moves |= i
@@ -161,18 +206,24 @@ func genBishopsMovePattern(bishops, occupied uint64) uint64 {
 	return moves
 }
 
-func genBishopPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
-	moves := genBishopsMovePattern(uint64(1)<<from, allies|enemies) & ^allies
-	moves &= ^allies // Exclude the squares occupied by allied pieces.
-	return helpers.GetMovesFromBitboard(from, moves, enemies)
+func genBishopPseudoLegalMoves(from int, allies, enemies uint64) (moves []Move) {
+	movesBB := genBishopsMovePattern(1<<from, allies|enemies) & ^allies
+	for i := GetLSB(movesBB); movesBB != 0; i = GetLSB(movesBB) {
+		if 1<<i&enemies != 0 {
+			moves = append(moves, NewMove(i, from, enums.Capture))
+		} else {
+			moves = append(moves, NewMove(i, from, enums.Quiet))
+		}
+		movesBB &= movesBB - 1
+	}
+	return
 }
 
 ///////////////////////////////////////////////////////////////
 //                          ROOK                             //
 ///////////////////////////////////////////////////////////////
 
-func genRooksMovePattern(rooks, occupied uint64) uint64 {
-	var moves uint64
+func genRooksMovePattern(rooks, occupied uint64) (moves uint64) {
 	// West horizontal. (-1 square)
 	for i := (rooks & notA) >> 1; i != 0; i = (i & notA) >> 1 {
 		moves |= i
@@ -204,10 +255,17 @@ func genRooksMovePattern(rooks, occupied uint64) uint64 {
 	return moves
 }
 
-func genRookPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
-	moves := genRooksMovePattern(uint64(1)<<from, allies|enemies)
-	moves &= ^allies // Exclude the allied pieces.
-	return helpers.GetMovesFromBitboard(from, moves, enemies)
+func genRookPseudoLegalMoves(from int, allies, enemies uint64) (moves []Move) {
+	movesBB := genRooksMovePattern(1<<from, allies|enemies) & ^allies
+	for i := GetLSB(movesBB); movesBB != 0; i = GetLSB(movesBB) {
+		if 1<<i&enemies != 0 {
+			moves = append(moves, NewMove(i, from, enums.Capture))
+		} else {
+			moves = append(moves, NewMove(i, from, enums.Quiet))
+		}
+		movesBB &= movesBB - 1
+	}
+	return
 }
 
 ///////////////////////////////////////////////////////////////
@@ -220,49 +278,53 @@ func genQueensMovePattern(queens, occupied uint64) uint64 {
 		genRooksMovePattern(queens, occupied)
 }
 
-// [16 24 17 25 19 27 22 30 23 36 12 21 23 1 12 24 33 35 12 19 26 33 40 1 12 21 30 39 12]
-// [16 24 17 25 19 27 21 29 22 30 23 36 12 21 23 1 12 24 33 35 12 19 26 33 40 1 12 21 30 39 12]
-
-func genQueenPseudoLegalMoves(from int, allies, enemies uint64) []helpers.Move {
-	moves := genQueensMovePattern(uint64(1)<<from, allies|enemies)
-	moves &= ^allies
-	return helpers.GetMovesFromBitboard(from, moves, enemies)
+func genQueenPseudoLegalMoves(from int, allies, enemies uint64) (moves []Move) {
+	movesBB := genQueensMovePattern(1<<from, allies|enemies)
+	movesBB &= ^allies
+	for i := GetLSB(movesBB); movesBB != 0; i = GetLSB(movesBB) {
+		if 1<<i&enemies != 0 {
+			moves = append(moves, NewMove(i, from, enums.Capture))
+		} else {
+			moves = append(moves, NewMove(i, from, enums.Quiet))
+		}
+		movesBB &= movesBB - 1
+	}
+	return
 }
 
 ///////////////////////////////////////////////////////////////
 //                           GENERAL                         //
 ///////////////////////////////////////////////////////////////
 
-func genAttackedSquares(c enums.Color, allies []uint64,
-	occupied uint64) (attacked uint64) {
+func genAttackedSquaresBySide(enemies [6]uint64,
+	occupied uint64, c enums.Color) (attacked uint64) {
 	if c == enums.White {
-		attacked |= genWhitePawnsAttackPattern(allies[0])
+		attacked |= genWhitePawnsAttackPattern(enemies[0])
 	} else {
-		attacked |= genBlackPawnsAttackPattern(allies[0])
+		attacked |= genBlackPawnsAttackPattern(enemies[0])
 	}
-	attacked |= genKnightsMovePattern(allies[1])
-	attacked |= genBishopsMovePattern(allies[2], occupied)
-	attacked |= genRooksMovePattern(allies[3], occupied)
-	attacked |= genQueensMovePattern(allies[4], occupied)
-	attacked |= genKingMovesPattern(allies[5])
+	attacked |= genKnightsMovePattern(enemies[1])
+	attacked |= genBishopsMovePattern(enemies[2], occupied)
+	attacked |= genRooksMovePattern(enemies[3], occupied)
+	attacked |= genQueensMovePattern(enemies[4], occupied)
+	attacked |= genKingMovesPattern(enemies[5])
 	return
 }
 
-func genPseudoLegalMoves(pt enums.PieceType, c enums.Color,
-	from int, allies, enemies uint64) []helpers.Move {
+func genPseudoLegalMoves(pt enums.PieceType, from int,
+	allies, enemies uint64) []Move {
 	switch pt {
-	case enums.Pawn:
-		if c == enums.White {
-			return genWhitePawnPseudoLegalMoves(from, allies, enemies)
-		}
+	case enums.WhitePawn:
+		return genWhitePawnPseudoLegalMoves(from, allies, enemies)
+	case enums.BlackPawn:
 		return genBlackPawnPseudoLegalMoves(from, allies, enemies)
-	case enums.Knight:
+	case enums.WhiteKnight, enums.BlackKnight:
 		return genKnightPseudoLegalMoves(from, allies, enemies)
-	case enums.Bishop:
+	case enums.WhiteBishop, enums.BlackBishop:
 		return genBishopPseudoLegalMoves(from, allies, enemies)
-	case enums.Rook:
+	case enums.WhiteRook, enums.BlackRook:
 		return genRookPseudoLegalMoves(from, allies, enemies)
-	case enums.Queen:
+	case enums.WhiteQueen, enums.BlackQueen:
 		return genQueenPseudoLegalMoves(from, allies, enemies)
 	}
 	panic("incorrect piece type")

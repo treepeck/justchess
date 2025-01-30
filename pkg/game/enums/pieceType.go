@@ -1,13 +1,18 @@
 package enums
 
-type PieceType = int
+type PieceType int
 
 const (
-	Piece PieceType = iota
-	Pawn
-	Knight
-	Bishop
-	Rook
-	Queen
-	King
+	WhitePawn PieceType = iota
+	BlackPawn
+	WhiteKnight
+	BlackKnight
+	WhiteBishop
+	BlackBishop
+	WhiteRook
+	BlackRook
+	WhiteQueen
+	BlackQueen
+	WhiteKing
+	BlackKing
 )
