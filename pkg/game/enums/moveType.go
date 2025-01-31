@@ -9,6 +9,13 @@ const (
 	KingCastle  // 0-0
 	QueenCastle // 0-0-0
 	Capture
-	EpCapture // En passant.
-	Promotion
+	EPCapture // En passant.
+	KnightPromo
+	BishopPromo
+	RookPromo
+	QueenPromo
+	KnightPromoCapture
+	BishopPromoCapture
+	RookPromoCapture
+	QueenPromoCapture
 )

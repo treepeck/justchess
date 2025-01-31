@@ -9,7 +9,7 @@ import (
 )
 
 func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
-	FEN += serializePiecePlacementData(bb.Pieces)
+	FEN += serializePiecePlacement(bb.Pieces)
 	FEN += serializeActiveColor(bb.ActiveColor)
 	FEN += serializeCastlingRights(bb.CastlingRights)
 	FEN += serializeEnPassantTarget(bb.EPTarget)
@@ -18,7 +18,8 @@ func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
 	return
 }
 
-func serializePiecePlacementData(pieces [12]uint64) (fenPPF string) {
+// TODO: make serializePiecePlacement more performant.
+func serializePiecePlacement(pieces [12]uint64) (fenPPF string) {
 	mapping := map[enums.PieceType]byte{
 		enums.WhitePawn:   'P',
 		enums.WhiteKnight: 'N',
@@ -106,7 +107,7 @@ func serializeEnPassantTarget(epTarget int) (fenEPF string) {
 
 func FEN2Bitboard(FEN string) *bitboard.Bitboard {
 	fields := strings.Split(FEN, " ")
-	pieces := parsePiecePlacementData(fields[0])
+	pieces := parsePiecePlacement(fields[0])
 	color := parseActiveColor(fields[1])
 	castlingRights := parseCastlingRights(fields[2])
 	epTarget := parseEnPassantTarget(fields[3])
@@ -116,8 +117,8 @@ func FEN2Bitboard(FEN string) *bitboard.Bitboard {
 		epTarget, halfmoveClk, fullmoveClk)
 }
 
-// parsePiecePlacementData parses bitboards from FEN`s piece placement field.
-func parsePiecePlacementData(fenPPF string) (pieces [12]uint64) {
+// parsePiecePlacement parses bitboards from FEN`s piece placement field.
+func parsePiecePlacement(fenPPF string) (pieces [12]uint64) {
 	squareIndex := 0
 	rows := strings.Split(fenPPF, "/")
 	for i := len(rows) - 1; i >= 0; i-- {

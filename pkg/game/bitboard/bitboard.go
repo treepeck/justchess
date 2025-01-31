@@ -8,8 +8,8 @@ type Bitboard struct {
 	Pieces      [12]uint64
 	ActiveColor enums.Color
 	// [0] - White king castle.
-	// [1] - White queen castle.
-	// [2] - Black king castle.
+	// [1] - Black king castle.
+	// [2] - White queen castle.
 	// [3] - Black queen castle.
 	CastlingRights [4]bool
 	// The index of a square which a pawn just passed while performing a
@@ -20,6 +20,7 @@ type Bitboard struct {
 	HalfmoveCnt int
 	// Number of completed full moves.
 	FullmoveCnt int
+	LegalMoves  []Move
 }
 
 func NewBitboard(pieces [12]uint64, ac enums.Color,
@@ -31,26 +32,60 @@ func NewBitboard(pieces [12]uint64, ac enums.Color,
 		EPTarget:       ep,
 		HalfmoveCnt:    half,
 		FullmoveCnt:    full,
+		LegalMoves:     make([]Move, 0),
 	}
+	b.GenLegalMoves()
 	return b
 }
 
-// MakeMove performs the move on the current board state.
-func (bb *Bitboard) MakeMove(move Move) {
-	var from uint64 = 1 << move.From()
-	var to uint64 = 1 << move.To()
+// MakeMove changes the current board state by performing the move.
+func (bb *Bitboard) MakeMove(m Move) {
+	var from, to uint64 = 1 << m.From(), 1 << m.To()
 	fromTo := from ^ to
-	bb.Pieces[bb.getPieceTypeFromSquare(move.From())] ^= fromTo
-	if move.MoveType() == enums.Capture {
-		bb.Pieces[bb.getPieceTypeFromSquare(move.To())] ^= to
+	pt := bb.GetPieceTypeFromSquare(m.From())
+	switch m.Type() {
+	case enums.Quiet, enums.DoublePawnPush:
+		bb.Pieces[pt] ^= fromTo
+	case enums.KingCastle:
+		bb.Pieces[pt] ^= fromTo
+		// When making a O-O move, the king will always be 1 square left to the rook.
+		rookFrom, rookTo := to<<1, to>>1
+		bb.Pieces[6+bb.ActiveColor] ^= rookFrom ^ rookTo
+	case enums.QueenCastle:
+		bb.Pieces[pt] ^= fromTo
+		// When making a O-O-O move, the king will always be 2 squares right to the rook.
+		rookFrom, rookTo := to>>2, to<<1
+		bb.Pieces[6+bb.ActiveColor] ^= rookFrom ^ rookTo
+	case enums.Capture:
+		bb.Pieces[pt] ^= fromTo
+		bb.Pieces[pt] ^= to
+	case enums.EPCapture:
+		if bb.ActiveColor == enums.White {
+			bb.Pieces[0+(bb.ActiveColor^1)] ^= to >> 8
+		} else {
+			bb.Pieces[0+(bb.ActiveColor^1)] ^= to << 8
+		}
+		bb.Pieces[0+bb.ActiveColor] ^= fromTo
+	case enums.KnightPromo:
+		bb.Pieces[pt] ^= from
+		bb.Pieces[2+bb.ActiveColor] ^= to
+	case enums.BishopPromo:
+		bb.Pieces[pt] ^= from
+		bb.Pieces[4+bb.ActiveColor] ^= to
+	case enums.RookPromo:
+		bb.Pieces[pt] ^= from
+		bb.Pieces[6+bb.ActiveColor] ^= to
+	case enums.QueenPromo:
+		bb.Pieces[pt] ^= from
+		bb.Pieces[8+bb.ActiveColor] ^= to
 	}
 }
 
-func (bb *Bitboard) GenLegalMoves() []Move {
+// GenLegalMoves generates legal moves for the current active color.
+func (bb *Bitboard) GenLegalMoves() {
 	// First of all the pseudo legal moves must be generated.
 	pseudoLegal := make([]Move, 0)
-	c := bb.ActiveColor
-	opC := c ^ 1
+	var c, opC enums.Color = bb.ActiveColor, bb.ActiveColor ^ 1
 	var allies, enemies, occupied uint64
 	allies |= bb.Pieces[0+c] | bb.Pieces[2+c] | bb.Pieces[4+c] |
 		bb.Pieces[6+c] | bb.Pieces[8+c] | bb.Pieces[10+c]
@@ -69,24 +104,22 @@ func (bb *Bitboard) GenLegalMoves() []Move {
 			bitboard &= bitboard - 1
 		}
 	}
-	legal := bb.filterIllegalMoves(pseudoLegal)
+	bb.LegalMoves = bb.filterIllegalMoves(pseudoLegal)
 	// Add legal moves for king.
-	// To prevent the king from moving into attacked squares, exclude the king from
-	// occupied, otherwise the king will be able to move behind himself on attacked squares.
+	// Exclude the king from occupied, otherwise the king will be able
+	// to move on attacked squares behind himself.
 	attacked := genAttackedSquaresBySide([6]uint64{
 		bb.Pieces[0+opC], bb.Pieces[2+opC], bb.Pieces[4+opC],
 		bb.Pieces[6+opC], bb.Pieces[8+opC], bb.Pieces[10+opC],
 	}, occupied^bb.Pieces[10+c], opC)
 	kingPos := GetLSB(bb.Pieces[10+c])
-	legal = append(legal, genKingLegalMoves(kingPos, allies, enemies,
-		attacked, bb.CastlingRights[c], bb.CastlingRights[c+2])...)
-	return legal
+	bb.LegalMoves = append(bb.LegalMoves, genKingLegalMoves(kingPos, allies,
+		enemies, attacked, bb.CastlingRights[c], bb.CastlingRights[c+2])...)
 }
 
 func (bb *Bitboard) filterIllegalMoves(pseudoLegal []Move) (legal []Move) {
 	boardCopy := bb.Pieces
-	c := bb.ActiveColor
-	opC := c ^ 1
+	var c, opC enums.Color = bb.ActiveColor, bb.ActiveColor ^ 1
 	for _, move := range pseudoLegal {
 		bb.MakeMove(move)
 		occupied := bb.Pieces[0] | bb.Pieces[1] | bb.Pieces[2] | bb.Pieces[3] |
@@ -101,21 +134,19 @@ func (bb *Bitboard) filterIllegalMoves(pseudoLegal []Move) (legal []Move) {
 		if attacked&bb.Pieces[10+c] == 0 {
 			legal = append(legal, move)
 		}
-		// Restore board state.
+		// Restore the board.
 		bb.Pieces = boardCopy
 	}
 	return
 }
 
-// getPieceTypeFromSquare returns the type of the piece that stands on the specified square.
+// GetPieceTypeFromSquare returns the type of the piece that stands on the specified square.
 // If there is no piece on the square, returns WhitePawn.
-func (bb *Bitboard) getPieceTypeFromSquare(square int) enums.PieceType {
+func (bb *Bitboard) GetPieceTypeFromSquare(square int) enums.PieceType {
+	var sqBB uint64 = 1 << square
 	for pt, bitboard := range bb.Pieces {
-		for i := GetLSB(bitboard); bitboard != 0; i = GetLSB(bitboard) {
-			if i == square {
-				return enums.PieceType(pt)
-			}
-			bitboard &= bitboard - 1
+		if sqBB&bitboard != 0 {
+			return enums.PieceType(pt)
 		}
 	}
 	return enums.WhitePawn

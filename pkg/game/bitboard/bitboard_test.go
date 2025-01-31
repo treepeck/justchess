@@ -73,7 +73,8 @@ func TestGenLegalMoves(t *testing.T) {
 		},
 	}
 	for _, tc := range testcases {
-		got := tc.bitboard.GenLegalMoves()
+		tc.bitboard.GenLegalMoves()
+		got := tc.bitboard.LegalMoves
 
 		if len(tc.expected) != len(got) {
 			t.Fatalf("expected: %v, got: %v", tc.expected, got)

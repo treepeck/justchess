@@ -1,0 +1,70 @@
+package game
+
+import (
+	"justchess/pkg/game/bitboard"
+	"justchess/pkg/game/enums"
+	"testing"
+)
+
+var dummyGame = NewGame(0, bitboard.NewBitboard([12]uint64{
+	0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
+	0x81, 0x0, 0x8, 0x80000000, 0x10, 0x0},
+	enums.White, [4]bool{true, true, true, true},
+	-1, 0, 0))
+
+func TestProcessMove(t *testing.T) {
+	testcases := []struct {
+		game              *Game
+		move              bitboard.Move
+		expResult         enums.Result
+		expPieces         [12]uint64
+		expActiveColor    enums.Color
+		expCastlingRights [4]bool
+		expEPTarget       int
+		expHalfmoveCnt    int
+		expFullmoveCnt    int
+	}{
+		{
+			dummyGame,
+			bitboard.NewMove(enums.H5, enums.D1, enums.Quiet),
+			enums.Unknown,
+			[12]uint64{
+				0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
+				0x81, 0x0, 1 << 39, 0x80000000, 0x10, 0x0,
+			},
+			enums.Black,
+			[4]bool{true, true, true, true},
+			-1,
+			1,
+			0,
+		},
+	}
+	for _, tc := range testcases {
+		tc.game.ProcessMove(tc.move)
+		if tc.game.Result != tc.expResult {
+			t.Fatalf("expected result: %d, got: %d", tc.expResult, tc.game.Result)
+		}
+		for i, bb := range tc.game.Bitboard.Pieces {
+			if bb != tc.expPieces[i] {
+				t.Fatalf("expected pieces: %v, got: %v", tc.expPieces, tc.game.Bitboard.Pieces)
+			}
+		}
+		if tc.game.Bitboard.ActiveColor != tc.expActiveColor {
+			t.Fatalf("expected color: %d, got: %d", tc.expActiveColor, tc.game.Bitboard.ActiveColor)
+		}
+		for i, r := range tc.game.Bitboard.CastlingRights {
+			if r != tc.expCastlingRights[i] {
+				t.Fatalf("expected rights: %v, got: %v", tc.expCastlingRights, tc.game.Bitboard.CastlingRights)
+			}
+		}
+		if tc.expEPTarget != tc.game.Bitboard.EPTarget {
+			t.Fatalf("expected rights: %v, got: %v", tc.expCastlingRights, tc.game.Bitboard.CastlingRights)
+		}
+	}
+}
+
+func BenchmarkProcessMove(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		dummyGame.ProcessMove(bitboard.NewMove(enums.H5, enums.D1, enums.Quiet))
+	}
+}

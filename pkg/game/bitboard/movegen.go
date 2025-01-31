@@ -20,8 +20,7 @@ var GetLSB = bits.TrailingZeros64
 
 // 0-5: To (destination) square index;
 // 6-11: From (origin/source) square index;
-// 12-14: Move type;
-// 15: Unused.
+// 12-15: Move type;
 type Move uint16
 
 func NewMove(to, from int, mt enums.MoveType) Move {
@@ -36,8 +35,8 @@ func (m Move) From() int {
 	return int(m>>6) & 0x3F
 }
 
-func (m Move) MoveType() enums.MoveType {
-	return enums.MoveType(m >> 12 & 0x7)
+func (m Move) Type() enums.MoveType {
+	return enums.MoveType(m >> 12 & 0x9)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -98,7 +97,7 @@ func genWhitePawnPseudoLegalMoves(from int, allies uint64,
 	// If the forward square is vacant.
 	if occupied&to == 0 {
 		if to&0xFF00000000000000 != 0 {
-			moves = append(moves, NewMove(GetLSB(to), from, enums.Promotion))
+			moves = append(moves, NewMove(GetLSB(to), from, enums.QueenPromo))
 		} else {
 			moves = append(moves, NewMove(GetLSB(to), from, enums.Quiet))
 			if pawn&0xFF00 != 0 && occupied&(to<<8) == 0 {
@@ -123,7 +122,7 @@ func genBlackPawnPseudoLegalMoves(from int, allies,
 	// If the forward square is vacant.
 	if occupied&to == 0 {
 		if uint64(to)&0xFF != 0 {
-			moves = append(moves, NewMove(GetLSB(to), from, enums.Promotion))
+			moves = append(moves, NewMove(GetLSB(to), from, enums.QueenPromo))
 		} else {
 			moves = append(moves, NewMove(GetLSB(to), from, enums.Quiet))
 			if pawn&0xFF000000000000 != 0 && occupied&(to>>8) == 0 {
@@ -279,8 +278,7 @@ func genQueensMovePattern(queens, occupied uint64) uint64 {
 }
 
 func genQueenPseudoLegalMoves(from int, allies, enemies uint64) (moves []Move) {
-	movesBB := genQueensMovePattern(1<<from, allies|enemies)
-	movesBB &= ^allies
+	movesBB := genQueensMovePattern(1<<from, allies|enemies) & ^allies
 	for i := GetLSB(movesBB); movesBB != 0; i = GetLSB(movesBB) {
 		if 1<<i&enemies != 0 {
 			moves = append(moves, NewMove(i, from, enums.Capture))
@@ -296,18 +294,37 @@ func genQueenPseudoLegalMoves(from int, allies, enemies uint64) (moves []Move) {
 //                           GENERAL                         //
 ///////////////////////////////////////////////////////////////
 
-func genAttackedSquaresBySide(enemies [6]uint64,
+func GenAttackedSquares(piece, occupied uint64, pt enums.PieceType) uint64 {
+	switch pt {
+	case enums.WhitePawn:
+		return genWhitePawnsAttackPattern(piece)
+	case enums.BlackPawn:
+		return genBlackPawnsAttackPattern(piece)
+	case enums.WhiteKnight, enums.BlackKnight:
+		return genKnightsMovePattern(piece)
+	case enums.WhiteBishop, enums.BlackBishop:
+		return genBishopsMovePattern(piece, occupied)
+	case enums.WhiteRook, enums.BlackRook:
+		return genRooksMovePattern(piece, occupied)
+	case enums.WhiteQueen, enums.BlackQueen:
+		return genQueensMovePattern(piece, occupied)
+	default:
+		return 0
+	}
+}
+
+func genAttackedSquaresBySide(pieces [6]uint64,
 	occupied uint64, c enums.Color) (attacked uint64) {
 	if c == enums.White {
-		attacked |= genWhitePawnsAttackPattern(enemies[0])
+		attacked |= genWhitePawnsAttackPattern(pieces[0])
 	} else {
-		attacked |= genBlackPawnsAttackPattern(enemies[0])
+		attacked |= genBlackPawnsAttackPattern(pieces[0])
 	}
-	attacked |= genKnightsMovePattern(enemies[1])
-	attacked |= genBishopsMovePattern(enemies[2], occupied)
-	attacked |= genRooksMovePattern(enemies[3], occupied)
-	attacked |= genQueensMovePattern(enemies[4], occupied)
-	attacked |= genKingMovesPattern(enemies[5])
+	attacked |= genKnightsMovePattern(pieces[1])
+	attacked |= genBishopsMovePattern(pieces[2], occupied)
+	attacked |= genRooksMovePattern(pieces[3], occupied)
+	attacked |= genQueensMovePattern(pieces[4], occupied)
+	attacked |= genKingMovesPattern(pieces[5])
 	return
 }
 
