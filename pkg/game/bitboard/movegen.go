@@ -20,7 +20,7 @@ var GetLSB = bits.TrailingZeros64
 
 // 0-5: To (destination) square index;
 // 6-11: From (origin/source) square index;
-// 12-15: Move type;
+// 12-15: Move type.
 type Move uint16
 
 func NewMove(to, from int, mt enums.MoveType) Move {

@@ -3,19 +3,35 @@ package game
 import (
 	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
+	"justchess/pkg/game/fen"
 )
+
+type CompletedMove struct {
+	Move bitboard.Move
+	SAN  string
+	// Biboard state after completing the move.
+	FEN string
+}
+
+func NewCompletedMove(m bitboard.Move, bb *bitboard.Bitboard) CompletedMove {
+	return CompletedMove{
+		Move: m,
+		SAN:  "emptySAN",
+		FEN:  fen.Bitboard2FEN(bb),
+	}
+}
 
 type Game struct {
 	Result   enums.Result
 	Bitboard *bitboard.Bitboard
-	// Slice of the completed moves.
-	Moves []bitboard.Move
+	Moves    []CompletedMove
 }
 
 func NewGame(r enums.Result, bb *bitboard.Bitboard) *Game {
 	return &Game{
 		Result:   r,
 		Bitboard: bb,
+		Moves:    make([]CompletedMove, 0),
 	}
 }
 
@@ -37,12 +53,18 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 		}
 		g.Bitboard.MakeMove(legalMove)
 		c, opC := g.Bitboard.ActiveColor, g.Bitboard.ActiveColor^1
+		g.Bitboard.ActiveColor = opC
+		completed := NewCompletedMove(legalMove, g.Bitboard)
+		g.Moves = append(g.Moves, completed)
+		if g.isThreefoldRepetition() {
+			g.Result = enums.Repetition
+			break
+		}
 		pt := g.Bitboard.GetPieceTypeFromSquare(m.To())
 		// TRICK: Store the current castling rights.
 		// The checked king will not be able to castle on the next move,
 		// but should be able to castle later if the king and rooks did not make moves.
 		crCopy := g.Bitboard.CastlingRights
-		g.Bitboard.ActiveColor = opC
 		// To determine if the last m was a check, generate possible moves
 		// for the moved piece.
 		occupied := g.Bitboard.Pieces[0] | g.Bitboard.Pieces[1] | g.Bitboard.Pieces[2] |
@@ -66,4 +88,22 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 			}
 		}
 	}
+}
+
+func (g *Game) isThreefoldRepetition() bool {
+	duplicates := make(map[string]int)
+	cnt := 0
+	for _, move := range g.Moves {
+		// The halfmove and fullmove FEN fields are omitted.
+		FEN := move.FEN[0 : len(move.FEN)-4]
+		if _, ok := duplicates[FEN]; !ok {
+			duplicates[FEN] = 1
+		} else {
+			cnt++
+			if cnt == 3 {
+				return true
+			}
+		}
+	}
+	return false
 }
