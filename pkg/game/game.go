@@ -60,6 +60,10 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 			g.Result = enums.Repetition
 			break
 		}
+		if g.isInsufficientMaterial() {
+			g.Result = enums.InsufficienMaterial
+			break
+		}
 		pt := g.Bitboard.GetPieceTypeFromSquare(m.To())
 		// TRICK: Store the current castling rights.
 		// The checked king will not be able to castle on the next move,
@@ -103,6 +107,25 @@ func (g *Game) isThreefoldRepetition() bool {
 			if cnt == 3 {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// isInsufficientMaterial returns true if one of the following statements is true:
+//  1. both sides have a bare king;
+//  2. one side has a king and a minor piece against a bare king;
+//  3. both sides have a king and a bishop, the bishops being the same color.
+func (g *Game) isInsufficientMaterial() bool {
+	var dark uint64 = 0xAA55AA55AA55AA55 // Mask for all dark squares.
+	white, black := g.Bitboard.CalculateMaterial()
+	if white+black == 0 || white+black == 3 {
+		return true
+	}
+	if white+black == 6 {
+		var wB, bB uint64 = g.Bitboard.Pieces[4], g.Bitboard.Pieces[5]
+		if wB != 0 && bB != 0 && wB&dark == bB&dark {
+			return true
 		}
 	}
 	return false

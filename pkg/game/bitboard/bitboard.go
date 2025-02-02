@@ -97,11 +97,10 @@ func (bb *Bitboard) GenLegalMoves() {
 		if i%2 != int(c) {
 			continue
 		}
-		bitboard := bb.Pieces[i]
-		for from := GetLSB(bitboard); bitboard != 0; from = GetLSB(bitboard) {
+		for bitboard := bb.Pieces[i]; bitboard != 0; bitboard &= bitboard - 1 {
+			from := GetLSB(bitboard)
 			pseudoLegal = append(pseudoLegal, genPseudoLegalMoves(enums.PieceType(i),
 				from, allies, enemies)...)
-			bitboard &= bitboard - 1
 		}
 	}
 	bb.LegalMoves = bb.filterIllegalMoves(pseudoLegal)
@@ -150,4 +149,29 @@ func (bb *Bitboard) GetPieceTypeFromSquare(square int) enums.PieceType {
 		}
 	}
 	return enums.WhitePawn
+}
+
+func (bb *Bitboard) CalculateMaterial() (white, black int) {
+	material := map[enums.PieceType]int{
+		enums.WhitePawn:   1,
+		enums.BlackPawn:   1,
+		enums.WhiteKnight: 3,
+		enums.BlackKnight: 3,
+		enums.WhiteBishop: 3,
+		enums.BlackBishop: 3,
+		enums.WhiteRook:   5,
+		enums.BlackRook:   5,
+		enums.WhiteQueen:  9,
+		enums.BlackQueen:  9,
+	}
+	for pt := 0; pt < 10; pt++ {
+		for bitboard := bb.Pieces[pt]; bitboard != 0; bitboard &= bitboard - 1 {
+			if pt%2 == 0 {
+				white += material[enums.PieceType(pt)]
+			} else {
+				black += material[enums.PieceType(pt)]
+			}
+		}
+	}
+	return
 }
