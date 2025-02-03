@@ -4,21 +4,13 @@ import (
 	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
 	"justchess/pkg/game/fen"
+	"justchess/pkg/game/san"
 )
 
 type CompletedMove struct {
-	Move bitboard.Move
-	SAN  string
+	SAN string
 	// Biboard state after completing the move.
 	FEN string
-}
-
-func NewCompletedMove(m bitboard.Move, bb *bitboard.Bitboard) CompletedMove {
-	return CompletedMove{
-		Move: m,
-		SAN:  "emptySAN",
-		FEN:  fen.Bitboard2FEN(bb),
-	}
 }
 
 type Game struct {
@@ -51,20 +43,23 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 			enums.QueenPromoCapture && legalMove.Type() == enums.QueenPromoCapture {
 			legalMove = m
 		}
-		g.Bitboard.MakeMove(legalMove)
+		ptBefore := bitboard.GetPieceTypeFromSquare(m.From(), g.Bitboard.Pieces)
+		san := san.Move2SAN(legalMove, g.Bitboard.Pieces, g.Bitboard.LegalMoves, ptBefore)
+		g.Bitboard.MakeMove(legalMove, ptBefore)
 		c, opC := g.Bitboard.ActiveColor, g.Bitboard.ActiveColor^1
 		g.Bitboard.ActiveColor = opC
-		completed := NewCompletedMove(legalMove, g.Bitboard)
-		g.Moves = append(g.Moves, completed)
+
 		if g.isThreefoldRepetition() {
 			g.Result = enums.Repetition
 			break
 		}
+
 		if g.isInsufficientMaterial() {
 			g.Result = enums.InsufficienMaterial
 			break
 		}
-		pt := g.Bitboard.GetPieceTypeFromSquare(m.To())
+		// In case of promotion, the piece type will change.
+		newPT := bitboard.GetPieceTypeFromSquare(m.To(), g.Bitboard.Pieces)
 		// TRICK: Store the current castling rights.
 		// The checked king will not be able to castle on the next move,
 		// but should be able to castle later if the king and rooks did not make moves.
@@ -75,22 +70,31 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 			g.Bitboard.Pieces[3] | g.Bitboard.Pieces[4] | g.Bitboard.Pieces[5] |
 			g.Bitboard.Pieces[6] | g.Bitboard.Pieces[7] | g.Bitboard.Pieces[8] |
 			g.Bitboard.Pieces[9] | g.Bitboard.Pieces[10] | g.Bitboard.Pieces[11]
-		isCheck := bitboard.GenAttackedSquares(1<<m.To(), occupied, pt)&
+
+		isCheck := bitboard.GenAttackedSquares(1<<m.To(), occupied, newPT)&
 			g.Bitboard.Pieces[10+opC] != 0
 		if isCheck {
 			g.Bitboard.CastlingRights[0+c] = false
 			g.Bitboard.CastlingRights[2+c] = false
+			san += "+"
 		}
+
 		// Generate legal moves for the next color.
 		g.Bitboard.GenLegalMoves()
 		g.Bitboard.CastlingRights = crCopy
 		if len(g.Bitboard.LegalMoves) == 0 {
 			if isCheck {
 				g.Result = enums.Checkmate
+				san = san[:len(san)-2] + "#"
 			} else {
 				g.Result = enums.Stalemate
 			}
 		}
+		g.Moves = append(g.Moves, CompletedMove{
+			SAN: san,
+			FEN: fen.Bitboard2FEN(g.Bitboard),
+		})
+		break
 	}
 }
 

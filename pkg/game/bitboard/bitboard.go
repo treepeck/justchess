@@ -39,10 +39,9 @@ func NewBitboard(pieces [12]uint64, ac enums.Color,
 }
 
 // MakeMove changes the current board state by performing the move.
-func (bb *Bitboard) MakeMove(m Move) {
+func (bb *Bitboard) MakeMove(m Move, pt enums.PieceType) {
 	var from, to uint64 = 1 << m.From(), 1 << m.To()
 	fromTo := from ^ to
-	pt := bb.GetPieceTypeFromSquare(m.From())
 	switch m.Type() {
 	case enums.Quiet, enums.DoublePawnPush:
 		bb.Pieces[pt] ^= fromTo
@@ -120,7 +119,8 @@ func (bb *Bitboard) filterIllegalMoves(pseudoLegal []Move) (legal []Move) {
 	boardCopy := bb.Pieces
 	var c, opC enums.Color = bb.ActiveColor, bb.ActiveColor ^ 1
 	for _, move := range pseudoLegal {
-		bb.MakeMove(move)
+		pt := GetPieceTypeFromSquare(move.From(), bb.Pieces)
+		bb.MakeMove(move, pt)
 		occupied := bb.Pieces[0] | bb.Pieces[1] | bb.Pieces[2] | bb.Pieces[3] |
 			bb.Pieces[4] | bb.Pieces[5] | bb.Pieces[6] | bb.Pieces[7] |
 			bb.Pieces[8] | bb.Pieces[9] | bb.Pieces[10] | bb.Pieces[11]
@@ -141,9 +141,9 @@ func (bb *Bitboard) filterIllegalMoves(pseudoLegal []Move) (legal []Move) {
 
 // GetPieceTypeFromSquare returns the type of the piece that stands on the specified square.
 // If there is no piece on the square, returns WhitePawn.
-func (bb *Bitboard) GetPieceTypeFromSquare(square int) enums.PieceType {
+func GetPieceTypeFromSquare(square int, pieces [12]uint64) enums.PieceType {
 	var sqBB uint64 = 1 << square
-	for pt, bitboard := range bb.Pieces {
+	for pt, bitboard := range pieces {
 		if sqBB&bitboard != 0 {
 			return enums.PieceType(pt)
 		}

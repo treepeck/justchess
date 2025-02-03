@@ -3,6 +3,7 @@ package game
 import (
 	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
+	"justchess/pkg/game/fen"
 	"testing"
 )
 
@@ -63,8 +64,11 @@ func TestProcessMove(t *testing.T) {
 	}
 }
 
+// TODO: this has some weird behaviour.
 func BenchmarkProcessMove(b *testing.B) {
+	FENBefore := fen.Bitboard2FEN(dummyGame.Bitboard)
 	for i := 0; i < b.N; i++ {
+		dummyGame.Bitboard = fen.FEN2Bitboard(FENBefore)
 		dummyGame.ProcessMove(bitboard.NewMove(enums.H5, enums.D1, enums.Quiet))
 	}
 }
@@ -75,13 +79,13 @@ func TestIsThreefoldRepetition(t *testing.T) {
 		expected bool
 	}{
 		{[]CompletedMove{
-			{bitboard.Move(0), "", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{bitboard.Move(0), "", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{bitboard.Move(0), "", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
-			{bitboard.Move(0), "", "1kr5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
-			{bitboard.Move(0), "", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{bitboard.Move(0), "", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{bitboard.Move(0), "", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
+			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
+			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
+			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
+			{"", "1kr5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
+			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
+			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
+			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
 		}, true},
 		{[]CompletedMove{}, false},
 	}

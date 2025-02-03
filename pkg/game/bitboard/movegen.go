@@ -36,7 +36,7 @@ func (m Move) From() int {
 }
 
 func (m Move) Type() enums.MoveType {
-	return enums.MoveType(m >> 12 & 0x9)
+	return enums.MoveType(m >> 12 & 0xF)
 }
 
 ///////////////////////////////////////////////////////////////
