@@ -18,12 +18,13 @@ type Game struct {
 	Result    enums.Result
 	Bitboard  *bitboard.Bitboard
 	Moves     []CompletedMove
-	WhiteTime int
-	BlackTime int
+	WhiteTime uint8
+	BlackTime uint8
 	Timer     *time.Ticker
+	TimeBonus uint8
 }
 
-func NewGame(r enums.Result, bb *bitboard.Bitboard, initTime int) *Game {
+func NewGame(r enums.Result, bb *bitboard.Bitboard, initTime, bonus uint8) *Game {
 	if bb == nil {
 		bb = bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
 			0x4200000000000000, 0x24, 0x2400000000000000, 0x7E, 0x8100000000000000,
@@ -37,8 +38,8 @@ func NewGame(r enums.Result, bb *bitboard.Bitboard, initTime int) *Game {
 		WhiteTime: initTime,
 		BlackTime: initTime,
 		Timer:     time.NewTicker(time.Second), // The timer will send a signal each second.
+		TimeBonus: bonus,
 	}
-	go g.decrementTime()
 	return g
 }
 
