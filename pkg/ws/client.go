@@ -1,18 +1,18 @@
 package ws
 
 import (
-	"encoding/json"
-	"log/slog"
+	"bytes"
+	"encoding/binary"
+	"log"
 	"time"
-
-	"justchess/pkg/models/game/enums"
-	"justchess/pkg/models/game/helpers"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 const (
+	// Time allowed to write a message to the peer.
+	writeWait = 10 * time.Second
 	// Deadline for the next pong message from peer.
 	pongWait = 10 * time.Second
 	// Client sends ping messages with the defined interval.

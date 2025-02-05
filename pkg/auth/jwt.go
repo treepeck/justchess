@@ -2,7 +2,7 @@ package auth
 
 import (
 	"errors"
-	"log/slog"
+	"log"
 	"os"
 	"time"
 
@@ -14,12 +14,12 @@ import (
 func generatePair(id uuid.UUID) (at, rt string, err error) {
 	at, err = generateToken(id, "ATS", time.Minute*30)
 	if err != nil {
-		slog.Error("Cannot generate access token.", "err", err)
+		log.Printf("%v\n", err)
 		return
 	}
 	rt, err = generateToken(id, "RTS", (time.Hour*24)*30)
 	if err != nil {
-		slog.Error("Cannot generate refresh token.", "err", err)
+		log.Printf("%v\n", err)
 		return
 	}
 	return
@@ -31,7 +31,7 @@ func generateToken(id uuid.UUID, secret string,
 	d time.Duration) (t string, err error) {
 	s := os.Getenv(secret)
 	if s == "" {
-		return "", errors.New("cannot read evironment variable")
+		return "", errors.New("cannot read .env file")
 	}
 
 	unsigned := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
@@ -47,7 +47,7 @@ func generateToken(id uuid.UUID, secret string,
 func DecodeToken(et, secret string) (dt *jwt.Token, err error) {
 	s := os.Getenv(secret)
 	if s == "" {
-		return nil, errors.New("cannot read environment variable")
+		return nil, errors.New("cannot read .env file")
 	}
 
 	dt, err = jwt.ParseWithClaims(et, &jwt.RegisteredClaims{},

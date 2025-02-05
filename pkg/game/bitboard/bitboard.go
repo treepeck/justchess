@@ -151,7 +151,7 @@ func GetPieceTypeFromSquare(square int, pieces [12]uint64) enums.PieceType {
 	return enums.WhitePawn
 }
 
-func (bb *Bitboard) CalculateMaterial() (white, black int) {
+func (bb *Bitboard) CalculateMaterial() (mat int) {
 	material := map[enums.PieceType]int{
 		enums.WhitePawn:   1,
 		enums.BlackPawn:   1,
@@ -166,11 +166,7 @@ func (bb *Bitboard) CalculateMaterial() (white, black int) {
 	}
 	for pt := 0; pt < 10; pt++ {
 		for bitboard := bb.Pieces[pt]; bitboard != 0; bitboard &= bitboard - 1 {
-			if pt%2 == 0 {
-				white += material[enums.PieceType(pt)]
-			} else {
-				black += material[enums.PieceType(pt)]
-			}
+			mat += material[enums.PieceType(pt)]
 		}
 	}
 	return

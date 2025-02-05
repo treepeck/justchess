@@ -1,31 +1,27 @@
 package main
 
 import (
-	"log/slog"
+	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"justchess/pkg/auth"
 	"justchess/pkg/middleware"
 	"justchess/pkg/ws"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	setupLogger()
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	// Load environment variables.
-	err := godotenv.Load()
-	if err != nil {
-		slog.Error(".env file cannot be loaded", "err", err)
-		return
-	}
+	// _, err := os.ReadFile("../.env")
+	// if err != nil {
+	// 	log.Printf("%v\n", err)
+	// 	return
+	// }
 	// Setup routes.
 	router := setupRouter()
-	err = http.ListenAndServe(":3502", router)
+	err := http.ListenAndServe(":3502", router)
 	if err != nil {
-		slog.Error("Cannot listen and server.", "err", err)
+		log.Printf("%v\n", err)
 	}
 }
 
@@ -42,19 +38,7 @@ func setupRouter() *http.ServeMux {
 	))
 	// Instantiate manager to handle ws connections.
 	m := ws.NewManager()
-	router.HandleFunc("/ws", m.HandleConnection)
+	go m.Run()
+	router.HandleFunc("/ws", m.HandleNewConnection)
 	return router
-}
-
-func setupLogger() {
-	h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.TimeKey {
-				a.Value = slog.StringValue(time.Now().Format("01/02/2006 15:04:05"))
-			}
-			return a
-		},
-	})
-	slog.SetDefault(slog.New(h))
 }

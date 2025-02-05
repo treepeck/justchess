@@ -2,7 +2,7 @@ package auth
 
 import (
 	"encoding/json"
-	"log/slog"
+	"log"
 	"net/http"
 	"strings"
 
@@ -24,7 +24,7 @@ func handleCreateGuest(rw http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(rw).Encode(g)
 	if err != nil {
-		slog.Error("Guest cannot be encoded.", "err", err)
+		log.Printf("%v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}

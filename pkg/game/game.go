@@ -5,6 +5,7 @@ import (
 	"justchess/pkg/game/enums"
 	"justchess/pkg/game/fen"
 	"justchess/pkg/game/san"
+	"time"
 )
 
 type CompletedMove struct {
@@ -14,17 +15,31 @@ type CompletedMove struct {
 }
 
 type Game struct {
-	Result   enums.Result
-	Bitboard *bitboard.Bitboard
-	Moves    []CompletedMove
+	Result    enums.Result
+	Bitboard  *bitboard.Bitboard
+	Moves     []CompletedMove
+	WhiteTime int
+	BlackTime int
+	Timer     *time.Ticker
 }
 
-func NewGame(r enums.Result, bb *bitboard.Bitboard) *Game {
-	return &Game{
-		Result:   r,
-		Bitboard: bb,
-		Moves:    make([]CompletedMove, 0),
+func NewGame(r enums.Result, bb *bitboard.Bitboard, initTime int) *Game {
+	if bb == nil {
+		bb = bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
+			0x4200000000000000, 0x24, 0x2400000000000000, 0x7E, 0x8100000000000000,
+			0x8, 0x800000000000000, 0x10, 0x1000000000000000}, enums.White,
+			[4]bool{true, true, true, true}, -1, 0, 0)
 	}
+	g := &Game{
+		Result:    r,
+		Bitboard:  bb,
+		Moves:     make([]CompletedMove, 0),
+		WhiteTime: initTime,
+		BlackTime: initTime,
+		Timer:     time.NewTicker(time.Second), // The timer will send a signal each second.
+	}
+	go g.decrementTime()
+	return g
 }
 
 func (g *Game) ProcessMove(m bitboard.Move) {
@@ -98,6 +113,23 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 	}
 }
 
+func (g *Game) decrementTime() {
+	for {
+		// Wait for time ticks.
+		<-g.Timer.C
+		if g.Bitboard.ActiveColor == enums.White {
+			g.WhiteTime--
+		} else {
+			g.BlackTime--
+		}
+		if g.WhiteTime <= 0 || g.BlackTime <= 0 {
+			g.Timer.Stop()
+			g.Result = enums.Timeout
+			return
+		}
+	}
+}
+
 func (g *Game) isThreefoldRepetition() bool {
 	duplicates := make(map[string]int)
 	cnt := 0
@@ -122,11 +154,10 @@ func (g *Game) isThreefoldRepetition() bool {
 //  3. both sides have a king and a bishop, the bishops being the same color.
 func (g *Game) isInsufficientMaterial() bool {
 	var dark uint64 = 0xAA55AA55AA55AA55 // Mask for all dark squares.
-	white, black := g.Bitboard.CalculateMaterial()
-	if white+black == 0 || white+black == 3 {
+	material := g.Bitboard.CalculateMaterial()
+	if material == 0 || material == 3 {
 		return true
-	}
-	if white+black == 6 {
+	} else if material == 6 {
 		var wB, bB uint64 = g.Bitboard.Pieces[4], g.Bitboard.Pieces[5]
 		if wB != 0 && bB != 0 && wB&dark == bB&dark {
 			return true

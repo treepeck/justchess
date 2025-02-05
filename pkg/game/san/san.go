@@ -7,7 +7,7 @@ import (
 
 var pieceSymbols = [12]string{"", "", "N", "N", "B", "B", "R", "R", "Q", "Q", "K", "K"}
 
-// Move2SAN converts the move to a Standart Algebraic Notation. Note that checks and
+// Move2SAN converts the move to a Standard Algebraic Notation. Note that checks and
 // checkmates are not taken into account and must be added further.
 func Move2SAN(m bitboard.Move, pieces [12]uint64,
 	lm []bitboard.Move, pt enums.PieceType) (san string) {

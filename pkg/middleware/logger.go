@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"log/slog"
+	"log"
 	"net/http"
 )
 
@@ -13,11 +13,7 @@ func LogRequest(next http.Handler) http.Handler {
 			next.ServeHTTP(rw, r)
 			return
 		}
-
-		slog.Info("Request", slog.String("method", r.Method),
-			slog.String("url", r.URL.String()),
-		)
-
+		log.Printf("request: %v %v\n", r.Method, r.URL.String())
 		next.ServeHTTP(rw, r)
 	})
 }

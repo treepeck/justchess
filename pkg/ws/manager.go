@@ -1,12 +1,9 @@
 package ws
 
 import (
-	"encoding/json"
-	"justchess/pkg/auth"
-	"log/slog"
+	"log"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 

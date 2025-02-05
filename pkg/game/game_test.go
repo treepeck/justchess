@@ -11,7 +11,7 @@ var dummyGame = NewGame(0, bitboard.NewBitboard([12]uint64{
 	0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
 	0x81, 0x0, 0x8, 0x80000000, 0x10, 0x0},
 	enums.White, [4]bool{true, true, true, true},
-	-1, 0, 0))
+	-1, 0, 0), 10000)
 
 func TestProcessMove(t *testing.T) {
 	testcases := []struct {
@@ -90,7 +90,7 @@ func TestIsThreefoldRepetition(t *testing.T) {
 		{[]CompletedMove{}, false},
 	}
 	for _, tc := range testcases {
-		g := NewGame(0, nil)
+		g := NewGame(0, nil, 10000)
 		g.Moves = tc.moves
 		got := g.isThreefoldRepetition()
 		if got != tc.expected {
