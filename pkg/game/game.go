@@ -6,6 +6,8 @@ import (
 	"justchess/pkg/game/fen"
 	"justchess/pkg/game/san"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type CompletedMove struct {
@@ -15,16 +17,19 @@ type CompletedMove struct {
 }
 
 type Game struct {
-	Result    enums.Result
-	Bitboard  *bitboard.Bitboard
-	Moves     []CompletedMove
-	WhiteTime uint8
-	BlackTime uint8
-	Timer     *time.Ticker
-	TimeBonus uint8
+	Result      enums.Result
+	Bitboard    *bitboard.Bitboard
+	Moves       []CompletedMove
+	WhiteId     uuid.UUID
+	BlackId     uuid.UUID
+	WhiteTime   uint8
+	BlackTime   uint8
+	Timer       *time.Ticker
+	TimeControl uint8
+	TimeBonus   uint8
 }
 
-func NewGame(r enums.Result, bb *bitboard.Bitboard, initTime, bonus uint8) *Game {
+func NewGame(r enums.Result, bb *bitboard.Bitboard, control, bonus uint8) *Game {
 	if bb == nil {
 		bb = bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
 			0x4200000000000000, 0x24, 0x2400000000000000, 0x7E, 0x8100000000000000,
@@ -32,13 +37,14 @@ func NewGame(r enums.Result, bb *bitboard.Bitboard, initTime, bonus uint8) *Game
 			[4]bool{true, true, true, true}, -1, 0, 0)
 	}
 	g := &Game{
-		Result:    r,
-		Bitboard:  bb,
-		Moves:     make([]CompletedMove, 0),
-		WhiteTime: initTime,
-		BlackTime: initTime,
-		Timer:     time.NewTicker(time.Second), // The timer will send a signal each second.
-		TimeBonus: bonus,
+		Result:      r,
+		Bitboard:    bb,
+		Moves:       make([]CompletedMove, 0),
+		WhiteTime:   control,
+		BlackTime:   control,
+		Timer:       time.NewTicker(time.Second), // The timer will send a signal each second.
+		TimeBonus:   bonus,
+		TimeControl: control,
 	}
 	return g
 }
@@ -114,10 +120,14 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 	}
 }
 
-func (g *Game) decrementTime() {
+func (g *Game) DecrementTime() {
 	for {
 		// Wait for time ticks.
-		<-g.Timer.C
+		_, ok := <-g.Timer.C
+		if !ok {
+			return
+		}
+
 		if g.Bitboard.ActiveColor == enums.White {
 			g.WhiteTime--
 		} else {

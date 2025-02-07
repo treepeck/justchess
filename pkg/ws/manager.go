@@ -51,10 +51,17 @@ func (m *Manager) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
 func (m *Manager) Run() {
 	for {
 		select {
-		case c := <-m.register:
+		case c, ok := <-m.register:
+			if !ok {
+				return
+			}
 			m.addClient(c)
 			msg := make([]byte, 5)
-			binary.LittleEndian.PutUint32(msg, uint32(len(m.clients)))
+			l := len(m.clients)
+			msg[0] = uint8(l) & 0xF
+			msg[1] = uint8(l>>8) & 0xF
+			msg[2] = uint8(l>>16) & 0xF
+			msg[3] = uint8(l>>24) & 0xF
 			msg[4] = CLIENTS_COUNTER
 			m.broadcast(msg)
 
@@ -69,7 +76,7 @@ func (m *Manager) Run() {
 			m.addRoom(r)
 			msg := make([]byte, 19)
 			copy(msg[0:16], r.id[0:16])
-			msg[16] = r.game.WhiteTime
+			msg[16] = r.game.TimeControl
 			msg[17] = r.game.TimeBonus
 			msg[18] = ADD_ROOM
 			m.broadcast(msg)
@@ -109,8 +116,6 @@ func (m *Manager) removeClient(c *client) {
 func (m *Manager) addRoom(r *room) {
 	m.rooms[r] = struct{}{}
 	log.Printf("room %s added\n", r.id.String())
-
-	go r.run()
 }
 
 func (m *Manager) removeRoom(r *room) {

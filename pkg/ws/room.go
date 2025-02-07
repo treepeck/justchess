@@ -4,6 +4,8 @@ import (
 	"justchess/pkg/game"
 	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
+	"log"
+	"math/rand"
 
 	"github.com/google/uuid"
 )
@@ -39,6 +41,7 @@ func (r *room) run() {
 				return
 			}
 			r.addClient(c)
+			r.startGame()
 
 		case c := <-r.unregister:
 			r.removeClient(c)
@@ -49,17 +52,19 @@ func (r *room) run() {
 func (r *room) addClient(c *client) {
 	if len(r.clients) < 2 {
 		r.clients[c] = struct{}{}
-		// If both players connected, start the game.
-		if len(r.clients) == 2 {
-
-		}
+		c.currentRoom = r
+		// Redirect the client to the room.
+		msg := make([]byte, 17)
+		copy(msg[0:16], r.id[:])
+		msg[16] = REDIRECT
+		c.send <- msg
+		log.Printf("client %s added\n", c.id.String())
 	}
-
-	r.clients[c] = struct{}{}
 }
 
 func (r *room) removeClient(c *client) {
 	delete(r.clients, c)
+	log.Printf("client %s removed\n", c.id.String())
 	// If there are no clients left in the room, remove it.
 	if len(r.clients) == 0 {
 		close(r.register)
@@ -69,5 +74,36 @@ func (r *room) removeClient(c *client) {
 }
 
 func (r *room) startGame() {
+	if len(r.clients) != 2 {
+		return
+	}
+	// Randomly generate player`s colors.
+	for c := range r.clients {
+		if r.game.WhiteId == uuid.Nil {
+			r.game.WhiteId = c.id
+		} else {
+			r.game.BlackId = c.id
+		}
+	}
+	if rand.Intn(2) == 1 {
+		tmp := r.game.BlackId
+		r.game.BlackId = r.game.WhiteId
+		r.game.BlackId = tmp
+	}
+	go r.game.DecrementTime()
+	// Noify the clients that the game has begun.
+	r.broadcastGameInfo()
+}
 
+func (r *room) broadcastGameInfo() {
+	msg := make([]byte, 36)
+	copy(msg[0:16], r.game.WhiteId[:])
+	copy(msg[16:32], r.game.BlackId[:])
+	msg[32] = byte(r.game.Result)
+	msg[33] = r.game.TimeControl
+	msg[34] = r.game.TimeBonus
+	msg[35] = GAME_INFO
+	for c := range r.clients {
+		c.send <- msg
+	}
 }

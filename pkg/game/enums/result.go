@@ -1,9 +1,11 @@
 package enums
 
-type Result int
+type Result uint8
 
 const (
 	Unknown Result = iota
+	Continues
+	Aborted
 	Checkmate
 	Timeout
 	Stalemate

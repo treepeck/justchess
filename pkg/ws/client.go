@@ -43,6 +43,7 @@ func (c *client) readPump() {
 		c.manager.unregister <- c
 		if c.currentRoom != nil {
 			c.currentRoom.unregister <- c
+			c.currentRoom = nil
 		}
 	}()
 
@@ -80,6 +81,10 @@ func (c *client) writePump() {
 		ticker.Stop()
 		c.conn.Close()
 		c.manager.unregister <- c
+		if c.currentRoom != nil {
+			c.currentRoom.unregister <- c
+			c.currentRoom = nil
+		}
 	}()
 
 	for {
@@ -117,7 +122,7 @@ func (c *client) handleMsg(msg []byte) {
 		msg := make([]byte, 19)
 		for r := range c.manager.rooms {
 			copy(msg[0:16], r.id[0:16])
-			msg[16] = r.game.WhiteTime
+			msg[16] = r.game.TimeControl
 			msg[17] = r.game.TimeBonus
 			msg[18] = ADD_ROOM
 			c.send <- msg
@@ -129,14 +134,8 @@ func (c *client) handleMsg(msg []byte) {
 			return
 		}
 		r := newRoom(msg[0], msg[1])
-		c.currentRoom = r
-
-		// Redirect room creator.
-		msg := make([]byte, 17)
-		copy(msg[0:16], r.id[:])
-		msg[16] = REDIRECT
-		c.send <- msg
-
+		go r.run()
+		r.register <- c
 		c.manager.add <- r
 
 	case JOIN_ROOM:
@@ -153,15 +152,14 @@ func (c *client) handleMsg(msg []byte) {
 
 		for r := range c.manager.rooms {
 			if r.id == id {
-				// Redirect the client to the room.
-				msg := make([]byte, 17)
-				copy(msg[0:16], r.id[:])
-				msg[16] = REDIRECT
-				c.send <- msg
+				r.register <- c
 			}
 		}
 
-	default:
-		return
+	case MOVE:
+		if c.currentRoom == nil {
+			return
+		}
+
 	}
 }

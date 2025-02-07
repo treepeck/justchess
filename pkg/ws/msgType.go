@@ -6,7 +6,6 @@ const (
 	GET_ROOMS = iota
 	CREATE_ROOM
 	JOIN_ROOM
-	LEAVE_ROOM
 	MOVE
 	// Sent by server.
 	CLIENTS_COUNTER
