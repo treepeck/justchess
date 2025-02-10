@@ -17,19 +17,18 @@ type room struct {
 	game       *game.Game
 	register   chan *client
 	unregister chan *client
+	// After making the move the client send it to this channel.
+	moves chan []byte
 }
 
 func newRoom(control, bonus uint8) *room {
-	bb := bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
-		0x4200000000000000, 0x24, 0x2400000000000000, 0x7E, 0x8100000000000000,
-		0x8, 0x800000000000000, 0x10, 0x1000000000000000}, enums.White,
-		[4]bool{true, true, true, true}, -1, 0, 0)
 	return &room{
 		id:         uuid.New(),
 		clients:    make(map[*client]struct{}),
-		game:       game.NewGame(enums.Unknown, bb, control, bonus),
+		game:       game.NewGame(enums.Unknown, nil, control, bonus),
 		register:   make(chan *client),
 		unregister: make(chan *client),
+		moves:      make(chan []byte),
 	}
 }
 
@@ -45,6 +44,9 @@ func (r *room) run() {
 
 		case c := <-r.unregister:
 			r.removeClient(c)
+
+		case m := <-r.moves:
+			r.handleMove(m)
 		}
 	}
 }
@@ -95,6 +97,13 @@ func (r *room) startGame() {
 	r.broadcastGameInfo()
 }
 
+func (r *room) handleMove(msg []byte) {
+	move := bitboard.NewMove(int(msg[0]), int(msg[1]), enums.MoveType(msg[2]))
+	if r.game.ProcessMove(move) {
+		r.broadcastLastMove()
+	}
+}
+
 func (r *room) broadcastGameInfo() {
 	msg := make([]byte, 36)
 	copy(msg[0:16], r.game.WhiteId[:])
@@ -103,6 +112,31 @@ func (r *room) broadcastGameInfo() {
 	msg[33] = r.game.TimeControl
 	msg[34] = r.game.TimeBonus
 	msg[35] = GAME_INFO
+	for c := range r.clients {
+		c.send <- msg
+	}
+}
+
+func (r *room) broadcastLastMove() {
+	if len(r.game.Moves) < 1 {
+		return
+	}
+	lastMove := r.game.Moves[len(r.game.Moves)-1]
+	// The LAST_MOVE message consists of 4 parts:
+	//   1 - SAN of the completed move;
+	//   2 - FEN of the current board state;
+	//   3 - Legal moves for the next player.
+	//   4 - Message type: LAST_MOVE.
+	// First 3 parts of the message are separated by a 0xFF byte.
+	msg := make([]byte, 0)
+	msg = append(msg, []byte(lastMove.SAN)...)
+	msg = append(msg, 0xFF) // Separator.
+	msg = append(msg, []byte(lastMove.FEN)...)
+	msg = append(msg, 0xFF) // Separator.
+	for _, move := range r.game.Bitboard.LegalMoves {
+		msg = append(msg, byte(move.To()), byte(move.From()), byte(move.Type()))
+	}
+	msg = append(msg, LAST_MOVE)
 	for c := range r.clients {
 		c.send <- msg
 	}

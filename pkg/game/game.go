@@ -32,7 +32,7 @@ type Game struct {
 func NewGame(r enums.Result, bb *bitboard.Bitboard, control, bonus uint8) *Game {
 	if bb == nil {
 		bb = bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
-			0x4200000000000000, 0x24, 0x2400000000000000, 0x7E, 0x8100000000000000,
+			0x4200000000000000, 0x24, 0x2400000000000000, 0x81, 0x8100000000000000,
 			0x8, 0x800000000000000, 0x10, 0x1000000000000000}, enums.White,
 			[4]bool{true, true, true, true}, -1, 0, 0)
 	}
@@ -49,7 +49,9 @@ func NewGame(r enums.Result, bb *bitboard.Bitboard, control, bonus uint8) *Game 
 	return g
 }
 
-func (g *Game) ProcessMove(m bitboard.Move) {
+// ProcessMove processes only legal moves and returns true if the move was processed,
+// false otherwise.
+func (g *Game) ProcessMove(m bitboard.Move) bool {
 	for _, legalMove := range g.Bitboard.LegalMoves {
 		// Check if the move is legal.
 		if m.To() != legalMove.To() || m.From() != legalMove.From() {
@@ -60,10 +62,16 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 		if m.Type() >= enums.KnightPromo && m.Type() <= enums.QueenPromo &&
 			legalMove.Type() == enums.QueenPromo {
 			legalMove = m
-			// Same for capture promotion.
+		// Same for capture promotion.
 		} else if m.Type() >= enums.KnightPromoCapture && m.Type() <=
 			enums.QueenPromoCapture && legalMove.Type() == enums.QueenPromoCapture {
 			legalMove = m
+		} else if m.Type() == enums.DoublePawnPush {
+			if g.Bitboard.ActiveColor == enums.White {
+				g.Bitboard.EPTarget = m.From() + 8
+			} else {
+				g.Bitboard.EPTarget = m.From() - 8
+			}
 		}
 		ptBefore := bitboard.GetPieceTypeFromSquare(m.From(), g.Bitboard.Pieces)
 		san := san.Move2SAN(legalMove, g.Bitboard.Pieces, g.Bitboard.LegalMoves, ptBefore)
@@ -73,19 +81,20 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 
 		if g.isThreefoldRepetition() {
 			g.Result = enums.Repetition
-			break
+			return true
 		}
 
 		if g.isInsufficientMaterial() {
 			g.Result = enums.InsufficienMaterial
-			break
+			return true
 		}
 		// In case of promotion, the piece type will change.
 		newPT := bitboard.GetPieceTypeFromSquare(m.To(), g.Bitboard.Pieces)
 		// TRICK: Store the current castling rights.
 		// The checked king will not be able to castle on the next move,
 		// but should be able to castle later if the king and rooks did not make moves.
-		crCopy := g.Bitboard.CastlingRights
+		crCopy := make([]bool, 4)
+		copy(crCopy[:], g.Bitboard.CastlingRights[:])
 		// To determine if the last m was a check, generate possible moves
 		// for the moved piece.
 		occupied := g.Bitboard.Pieces[0] | g.Bitboard.Pieces[1] | g.Bitboard.Pieces[2] |
@@ -103,11 +112,11 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 
 		// Generate legal moves for the next color.
 		g.Bitboard.GenLegalMoves()
-		g.Bitboard.CastlingRights = crCopy
+		copy(g.Bitboard.CastlingRights[:], crCopy[:])
 		if len(g.Bitboard.LegalMoves) == 0 {
 			if isCheck {
 				g.Result = enums.Checkmate
-				san = san[:len(san)-2] + "#"
+				san = san[:len(san)-1] + "#"
 			} else {
 				g.Result = enums.Stalemate
 			}
@@ -116,8 +125,9 @@ func (g *Game) ProcessMove(m bitboard.Move) {
 			SAN: san,
 			FEN: fen.Bitboard2FEN(g.Bitboard),
 		})
-		break
+		return true
 	}
+	return false
 }
 
 func (g *Game) DecrementTime() {
@@ -166,6 +176,7 @@ func (g *Game) isThreefoldRepetition() bool {
 func (g *Game) isInsufficientMaterial() bool {
 	var dark uint64 = 0xAA55AA55AA55AA55 // Mask for all dark squares.
 	material := g.Bitboard.CalculateMaterial()
+
 	if material == 0 || material == 3 {
 		return true
 	} else if material == 6 {

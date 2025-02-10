@@ -56,7 +56,7 @@ func genKingMovesPattern(king uint64) (moves uint64) {
 }
 
 func genKingLegalMoves(from int, allies, enemies, attacked uint64,
-	can00, can000 bool) (moves []Move) {
+	can00, can000 bool, c enums.Color) (moves []Move) {
 	movesBB := genKingMovesPattern(1<<from) & ^allies & ^attacked
 	for i := GetLSB(movesBB); movesBB != 0; i = GetLSB(movesBB) {
 		if 1<<i&enemies != 0 {
@@ -67,11 +67,20 @@ func genKingLegalMoves(from int, allies, enemies, attacked uint64,
 		movesBB &= movesBB - 1
 	}
 	// Castling implementation.
-	if can000 && (0xE&allies == 0) && (0xE&attacked == 0) {
-		moves = append(moves, NewMove(enums.B1, from, enums.QueenCastle))
-	}
-	if can00 && (0x60&allies == 0) && (0x60&attacked == 0) {
-		moves = append(moves, NewMove(enums.G1, from, enums.KingCastle))
+	if c == enums.White {
+		if can000 && (0xE&allies == 0) && (0xE&attacked == 0) {
+			moves = append(moves, NewMove(enums.B1, from, enums.QueenCastle))
+		}
+		if can00 && (0x60&allies == 0) && (0x60&attacked == 0) {
+			moves = append(moves, NewMove(enums.G1, from, enums.KingCastle))
+		}
+	} else {
+		if can000 && (0xE00000000000000&allies == 0) && (0xE00000000000000&attacked == 0) {
+			moves = append(moves, NewMove(enums.B8, from, enums.QueenCastle))
+		}
+		if can00 && (0x6000000000000000&allies == 0) && (0x6000000000000000&attacked == 0) {
+			moves = append(moves, NewMove(enums.G8, from, enums.KingCastle))
+		}
 	}
 	return
 }
@@ -79,8 +88,6 @@ func genKingLegalMoves(from int, allies, enemies, attacked uint64,
 ///////////////////////////////////////////////////////////////
 //                          PAWN                             //
 ///////////////////////////////////////////////////////////////
-
-// TODO: implement en passant.
 
 func genWhitePawnsAttackPattern(pawns uint64) uint64 {
 	return ((pawns & notA) << 7) | ((pawns & notH) << 9)
@@ -90,8 +97,8 @@ func genBlackPawnsAttackPattern(pawns uint64) uint64 {
 	return ((pawns & notA) >> 9) | ((pawns & notH) >> 7)
 }
 
-func genWhitePawnPseudoLegalMoves(from int, allies uint64,
-	enemies uint64) (moves []Move) {
+func genWhitePawnPseudoLegalMoves(from int, allies,
+	enemies, EPTarget uint64) (moves []Move) {
 	var pawn, occupied uint64 = 1 << from, allies | enemies
 	to := pawn << 8
 	// If the forward square is vacant.
@@ -108,15 +115,19 @@ func genWhitePawnPseudoLegalMoves(from int, allies uint64,
 	leftCapture, rightCapture := pawn&notA<<7, pawn&notH<<9
 	if leftCapture&enemies != 0 {
 		moves = append(moves, NewMove(GetLSB(leftCapture), from, enums.Capture))
+	} else if leftCapture&EPTarget != 0 {
+		moves = append(moves, NewMove(GetLSB(leftCapture), from, enums.EPCapture))
 	}
 	if rightCapture&enemies != 0 {
 		moves = append(moves, NewMove(GetLSB(rightCapture), from, enums.Capture))
+	} else if rightCapture&EPTarget != 0 {
+		moves = append(moves, NewMove(GetLSB(rightCapture), from, enums.EPCapture))
 	}
 	return
 }
 
 func genBlackPawnPseudoLegalMoves(from int, allies,
-	enemies uint64) (moves []Move) {
+	enemies, EPTarget uint64) (moves []Move) {
 	var pawn, occupied uint64 = 1 << from, allies | enemies
 	to := pawn >> 8
 	// If the forward square is vacant.
@@ -133,9 +144,13 @@ func genBlackPawnPseudoLegalMoves(from int, allies,
 	leftCapture, rightCapture := pawn&notA>>9, pawn&notH>>7
 	if leftCapture&enemies != 0 {
 		moves = append(moves, NewMove(GetLSB(leftCapture), from, enums.Capture))
+	} else if leftCapture&EPTarget != 0 {
+		moves = append(moves, NewMove(GetLSB(leftCapture), from, enums.EPCapture))
 	}
 	if rightCapture&enemies != 0 {
 		moves = append(moves, NewMove(GetLSB(rightCapture), from, enums.Capture))
+	} else if rightCapture&EPTarget != 0 {
+		moves = append(moves, NewMove(GetLSB(rightCapture), from, enums.EPCapture))
 	}
 	return
 }
@@ -329,12 +344,18 @@ func genAttackedSquaresBySide(pieces [6]uint64,
 }
 
 func genPseudoLegalMoves(pt enums.PieceType, from int,
-	allies, enemies uint64) []Move {
+	allies, enemies uint64, EPTarget int) []Move {
 	switch pt {
 	case enums.WhitePawn:
-		return genWhitePawnPseudoLegalMoves(from, allies, enemies)
+		if EPTarget != -1 {
+			return genWhitePawnPseudoLegalMoves(from, allies, enemies, 1<<EPTarget)
+		}
+		return genWhitePawnPseudoLegalMoves(from, allies, enemies, 0x0)
 	case enums.BlackPawn:
-		return genBlackPawnPseudoLegalMoves(from, allies, enemies)
+		if EPTarget != -1 {
+			return genBlackPawnPseudoLegalMoves(from, allies, enemies, 1<<EPTarget)
+		}
+		return genBlackPawnPseudoLegalMoves(from, allies, enemies, 0x0)
 	case enums.WhiteKnight, enums.BlackKnight:
 		return genKnightPseudoLegalMoves(from, allies, enemies)
 	case enums.WhiteBishop, enums.BlackBishop:

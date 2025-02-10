@@ -160,6 +160,6 @@ func (c *client) handleMsg(msg []byte) {
 		if c.currentRoom == nil {
 			return
 		}
-
+		c.currentRoom.moves <- msg
 	}
 }

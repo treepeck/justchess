@@ -28,6 +28,15 @@ func TestBitboard2FEN(t *testing.T) {
 			dummyBitboard,
 			"r3k2r/pp1n2pp/2p2q2/b2p1n2/BP1Pp3/P1N2P2/2PB2PP/R2Q1RK1 w kq b3 0 13",
 		},
+		{
+			bitboard.NewBitboard([12]uint64{
+				0x1000EF00, 0xFF000000000000, 0x42, 0x4200000000000000,
+				0x24, 0x2400000000000000, 0x81, 0x8100000000000000,
+				0x8, 0x800000000000000, 0x10, 0x1000000000000000,
+			}, enums.White, [4]bool{true, true, true, true},
+				enums.E4, 0, 1),
+			"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e4 0 1",
+		},
 	}
 	for _, tc := range testcases {
 		got := Bitboard2FEN(tc.bitboard)

@@ -45,6 +45,7 @@ func Move2SAN(m bitboard.Move, pieces [12]uint64,
 func disambiguate(from, to int, pieces [12]uint64,
 	lm []bitboard.Move, isCapture bool) (san string) {
 	pt := bitboard.GetPieceTypeFromSquare(from, pieces)
+	cnt := 0
 	for _, move := range lm {
 		_from, _to := move.From(), move.To()
 		if _from != from && _to == to {
@@ -65,14 +66,18 @@ func disambiguate(from, to int, pieces [12]uint64,
 					// moving piece is inserted immediately after the moving piece letter.
 					san = square2Str(from)
 				}
-				if isCapture {
-					san += "x"
-				}
-				return san + square2Str(to)
 			}
+		} else {
+			cnt++
 		}
 	}
-	return square2Str(to)
+	if isCapture {
+		if cnt == len(lm) && (pt == enums.WhitePawn || pt == enums.BlackPawn) {
+			san += file2Str(from % 8)
+		}
+		san += "x"
+	}
+	return san + square2Str(to)
 }
 
 func square2Str(square int) string {

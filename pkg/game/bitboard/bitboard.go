@@ -49,15 +49,18 @@ func (bb *Bitboard) MakeMove(m Move, pt enums.PieceType) {
 		bb.Pieces[pt] ^= fromTo
 		// When making a O-O move, the king will always be 1 square left to the rook.
 		rookFrom, rookTo := to<<1, to>>1
-		bb.Pieces[6+bb.ActiveColor] ^= rookFrom ^ rookTo
+		bb.Pieces[6+bb.ActiveColor] ^= rookFrom
+		bb.Pieces[6+bb.ActiveColor] ^= rookTo
 	case enums.QueenCastle:
 		bb.Pieces[pt] ^= fromTo
 		// When making a O-O-O move, the king will always be 2 squares right to the rook.
-		rookFrom, rookTo := to>>2, to<<1
-		bb.Pieces[6+bb.ActiveColor] ^= rookFrom ^ rookTo
+		rookFrom, rookTo := to>>1, to<<1
+		bb.Pieces[6+bb.ActiveColor] ^= rookFrom
+		bb.Pieces[6+bb.ActiveColor] ^= rookTo
 	case enums.Capture:
+		capturedPT := GetPieceTypeFromSquare(m.To(), bb.Pieces)
 		bb.Pieces[pt] ^= fromTo
-		bb.Pieces[pt] ^= to
+		bb.Pieces[capturedPT] ^= to
 	case enums.EPCapture:
 		if bb.ActiveColor == enums.White {
 			bb.Pieces[0+(bb.ActiveColor^1)] ^= to >> 8
@@ -86,20 +89,20 @@ func (bb *Bitboard) GenLegalMoves() {
 	pseudoLegal := make([]Move, 0)
 	var c, opC enums.Color = bb.ActiveColor, bb.ActiveColor ^ 1
 	var allies, enemies, occupied uint64
-	allies |= bb.Pieces[0+c] | bb.Pieces[2+c] | bb.Pieces[4+c] |
+	allies = bb.Pieces[0+c] | bb.Pieces[2+c] | bb.Pieces[4+c] |
 		bb.Pieces[6+c] | bb.Pieces[8+c] | bb.Pieces[10+c]
-	enemies |= bb.Pieces[0+opC] | bb.Pieces[2+opC] | bb.Pieces[4+opC] |
+	enemies = bb.Pieces[0+opC] | bb.Pieces[2+opC] | bb.Pieces[4+opC] |
 		bb.Pieces[6+opC] | bb.Pieces[8+opC] | bb.Pieces[10+opC]
 	occupied = allies | enemies
 	// Take each piece type except the king.
 	for i := 0; i < len(bb.Pieces)-2; i++ {
-		if i%2 != int(c) {
+		if i%2 != int(c) { // Take only pieces of the active color.
 			continue
 		}
 		for bitboard := bb.Pieces[i]; bitboard != 0; bitboard &= bitboard - 1 {
 			from := GetLSB(bitboard)
 			pseudoLegal = append(pseudoLegal, genPseudoLegalMoves(enums.PieceType(i),
-				from, allies, enemies)...)
+				from, allies, enemies, bb.EPTarget)...)
 		}
 	}
 	bb.LegalMoves = bb.filterIllegalMoves(pseudoLegal)
@@ -112,7 +115,7 @@ func (bb *Bitboard) GenLegalMoves() {
 	}, occupied^bb.Pieces[10+c], opC)
 	kingPos := GetLSB(bb.Pieces[10+c])
 	bb.LegalMoves = append(bb.LegalMoves, genKingLegalMoves(kingPos, allies,
-		enemies, attacked, bb.CastlingRights[c], bb.CastlingRights[c+2])...)
+		enemies, attacked, bb.CastlingRights[c], bb.CastlingRights[c+2], c)...)
 }
 
 func (bb *Bitboard) filterIllegalMoves(pseudoLegal []Move) (legal []Move) {
