@@ -3,7 +3,8 @@ package enums
 // The following block of constants contains a predefined chessboard squares.
 // This can help with testing by providing better readability.
 const (
-	A1 int = iota
+	NoSquare int = -1
+	A1       int = iota - 1
 	B1
 	C1
 	D1
