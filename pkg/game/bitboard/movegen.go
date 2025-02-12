@@ -43,7 +43,7 @@ func (m Move) Type() enums.MoveType {
 //                          KING                             //
 ///////////////////////////////////////////////////////////////
 
-func genKingPossibleDests(king uint64) (moves uint64) {
+func genKingAttackedDests(king uint64) (moves uint64) {
 	moves = (king & notH) >> 9  // South east. (-9 squares)
 	moves |= king >> 8          // South south. (-8 squares)
 	moves |= (king & notA) >> 7 // South west. (-7 squares)
@@ -56,11 +56,11 @@ func genKingPossibleDests(king uint64) (moves uint64) {
 }
 
 func genKingLegalMoves(king, allies, enemies, attacked uint64,
-	can00, can000 bool, c enums.Color) (moves []Move) {
+	canOO, canOOO bool, c enums.Color) (moves []Move) {
 	kingPos := GetLSB(king)
 
 	// Exclude all attacked and occupied by the allied pieces squares, the king can not move on them.
-	movesBB := genKingPossibleDests(king) & ^allies & ^attacked
+	movesBB := genKingAttackedDests(king) & ^allies & ^attacked
 
 	for ; movesBB > 0; movesBB &= movesBB - 1 {
 		to := GetLSB(movesBB)
@@ -73,18 +73,18 @@ func genKingLegalMoves(king, allies, enemies, attacked uint64,
 
 	// Castling implementation.
 	if c == enums.White {
-		if can000 && (0xE&allies == 0) && (0xE&attacked == 0) {
-			moves = append(moves, NewMove(enums.B1, kingPos, enums.QueenCastle))
-		}
-		if can00 && (0x60&allies == 0) && (0x60&attacked == 0) {
+		if canOO && (0x60&allies == 0) && (0x70&attacked == 0) {
 			moves = append(moves, NewMove(enums.G1, kingPos, enums.KingCastle))
 		}
-	} else {
-		if can000 && (0xE00000000000000&allies == 0) && (0xE00000000000000&attacked == 0) {
-			moves = append(moves, NewMove(enums.B8, kingPos, enums.QueenCastle))
+		if canOOO && (0xE&allies == 0) && (0x1E&attacked == 0) {
+			moves = append(moves, NewMove(enums.C1, kingPos, enums.QueenCastle))
 		}
-		if can00 && (0x6000000000000000&allies == 0) && (0x6000000000000000&attacked == 0) {
+	} else {
+		if canOO && (0x6000000000000000&allies == 0) && (0x7000000000000000&attacked == 0) {
 			moves = append(moves, NewMove(enums.G8, kingPos, enums.KingCastle))
+		}
+		if canOOO && (0xE00000000000000&allies == 0) && (0x1E00000000000000&attacked == 0) {
+			moves = append(moves, NewMove(enums.C8, kingPos, enums.QueenCastle))
 		}
 	}
 	return
@@ -248,10 +248,20 @@ func genRooksAttackDests(rooks, occupied uint64) (moves uint64) {
 }
 
 ///////////////////////////////////////////////////////////////
+//                           QUEEN                           //
+///////////////////////////////////////////////////////////////
+
+func genQueensAttackedDests(queens, occupied uint64) uint64 {
+	return genBishopsAttackDests(queens, occupied) |
+		genRooksAttackDests(queens, occupied)
+}
+
+///////////////////////////////////////////////////////////////
 //                           GENERAL                         //
 ///////////////////////////////////////////////////////////////
 
 // TODO: make it more performant.
+// genPseudoLegalMoves sequentially generates all pseudo-legal moves for a given piece type.
 func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves []Move) {
 	for ; bb > 0; bb &= bb - 1 {
 		piecePos := GetLSB(bb)
@@ -291,4 +301,18 @@ func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves 
 		}
 	}
 	return
+}
+
+func genAttackedSquares(pieces [12]uint64, c enums.Color) uint64 {
+	var occupied uint64
+	for _, pieceBB := range pieces {
+		occupied |= pieceBB
+	}
+	// Get all attacked squares on a new position.
+	return genPawnsAttackDests(pieces[0+c], c) |
+		genKnightsAttackDests(pieces[2+c]) |
+		genBishopsAttackDests(pieces[4+c], occupied) |
+		genRooksAttackDests(pieces[6+c], occupied) |
+		genQueensAttackedDests(pieces[8+c], occupied) |
+		genKingAttackedDests(pieces[10+c])
 }

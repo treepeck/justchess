@@ -5,6 +5,266 @@ import (
 	"testing"
 )
 
+func TestMakeMove(t *testing.T) {
+	testcases := []struct {
+		name     string
+		before   [12]uint64
+		move     Move
+		expected [12]uint64
+	}{
+		{
+			"8/4p3/1PR5/8/4R3/8/4p3/8 w - - 0 1 | Quiet Re3",
+			[12]uint64{
+				0x20000000000, 0x10000000001000, 0x0, 0x0, 0x0, 0x0,
+				0x40010000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+			},
+			NewMove(enums.E3, enums.E4, enums.Quiet),
+			[12]uint64{
+				0x20000000000, 0x10000000001000, 0x0, 0x0, 0x0, 0x0,
+				0x40000100000, 0x0, 0x0, 0x0, 0x0, 0x0,
+			},
+		},
+		{
+			"8/4p3/1PR5/8/4R3/8/4p3/8 w - - 0 1 | Capture Rxe7",
+			[12]uint64{
+				0x20000000000, 0x10000000001000, 0x0, 0x0, 0x0, 0x0,
+				0x40010000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+			},
+			NewMove(enums.E7, enums.E4, enums.Capture),
+			[12]uint64{
+				0x20000000000, 0x1000, 0x0, 0x0, 0x0, 0x0,
+				0x10040000000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+			},
+		},
+		{
+			"4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1 | White O-O",
+			[12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x81, 0x0, 0x0, 0x0, 0x10, 0x1000000000000000,
+			},
+			NewMove(enums.G1, enums.E1, enums.KingCastle),
+			[12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x21, 0x0, 0x0, 0x0, 0x40, 0x1000000000000000,
+			},
+		},
+		{
+			"r3k3/8/8/8/8/8/8/R4RK1 b q - 0 1 | Black O-O-O",
+			[12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x21, 0x100000000000000, 0x0, 0x0, 0x40, 0x1000000000000000,
+			},
+			NewMove(enums.C8, enums.E8, enums.QueenCastle),
+			[12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x21, 0x800000000000000, 0x0, 0x0, 0x40, 0x400000000000000,
+			},
+		},
+		{
+			"4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1 | EnPassant exd6",
+			[12]uint64{
+				0x1000000000, 0x800000000, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0x10, 0x1000000000000000,
+			},
+			NewMove(enums.D6, enums.E5, enums.EPCapture),
+			[12]uint64{
+				0x80000000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0x10, 0x1000000000000000,
+			},
+		},
+		{
+			"4k3/8/8/4P3/8/8/2p5/6K1 b - - 0 1 | Promo c1=Q",
+			[12]uint64{
+				0x1000000000, 0x400, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0x10, 0x1000000000000000,
+			},
+			NewMove(enums.C1, enums.C2, enums.QueenPromo),
+			[12]uint64{
+				0x1000000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x4, 0x10, 0x1000000000000000,
+			},
+		},
+		{
+			"4k3/8/8/4P3/8/8/2p5/1Q4K1 b - - 0 1 | PromoCapture cxb1=N",
+			[12]uint64{
+				0x1000000000, 0x400, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x2, 0x0, 0x10, 0x1000000000000000,
+			},
+			NewMove(enums.B1, enums.C2, enums.KnightPromoCapture),
+			[12]uint64{
+				0x1000000000, 0x0, 0x0, 0x2, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0x10, 0x1000000000000000,
+			},
+		},
+	}
+
+	bb := NewBitboard([12]uint64{}, enums.White, [4]bool{false, false, false, false},
+		enums.NoSquare, 0, 0)
+	for _, tc := range testcases {
+		t.Logf("passing test: %s\n", tc.name)
+		bb.Pieces = tc.before
+		bb.MakeMove(tc.move)
+
+		for pt, board := range bb.Pieces {
+			if tc.expected[pt] != board {
+				t.Fatalf("expected: %v, got: %v\n", tc.expected, bb.Pieces)
+			}
+		}
+	}
+}
+
+func BenchmarkMakeMove(b *testing.B) {
+	bb := NewBitboard([12]uint64{0x1000000000, 0x0, 0x0, 0x2, 0x0, 0x0,
+		0x0, 0x0, 0x0, 0x0, 0x10, 0x1000000000000000}, enums.White, [4]bool{false, false, false, false},
+		enums.NoSquare, 0, 0)
+	for i := 0; i < b.N; i++ {
+		bb.MakeMove(NewMove(enums.B1, enums.C2, enums.KnightPromoCapture))
+	}
+}
+
+func TestGenLegalMoves(t *testing.T) {
+	testcases := []struct {
+		fen      string
+		bitboard *Bitboard
+		expected []Move
+	}{
+		{"8/8/8/8/4P2q/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 1",
+			NewBitboard([12]uint64{
+				0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
+				0x81, 0x0, 0x8, 0x80000000, 0x10, 0x0,
+			}, enums.White, [4]bool{true, true, true, true}, enums.NoSquare, 0, 1),
+			[]Move{
+				// PAWNS
+				NewMove(enums.A3, enums.A2, enums.Quiet),
+				NewMove(enums.A4, enums.A2, enums.DoublePawnPush),
+				NewMove(enums.B3, enums.B2, enums.Quiet),
+				NewMove(enums.B4, enums.B2, enums.DoublePawnPush),
+				NewMove(enums.D3, enums.D2, enums.Quiet),
+				NewMove(enums.D4, enums.D2, enums.DoublePawnPush),
+				NewMove(enums.G3, enums.G2, enums.Quiet),
+				NewMove(enums.G4, enums.G2, enums.DoublePawnPush),
+				NewMove(enums.H3, enums.H2, enums.Quiet),
+				NewMove(enums.E5, enums.E4, enums.Quiet),
+				// KNIGHTS
+				NewMove(enums.E2, enums.G1, enums.Quiet),
+				NewMove(enums.F3, enums.G1, enums.Quiet),
+				NewMove(enums.H3, enums.G1, enums.Quiet),
+				NewMove(enums.B1, enums.C3, enums.Quiet),
+				NewMove(enums.E2, enums.C3, enums.Quiet),
+				NewMove(enums.A4, enums.C3, enums.Quiet),
+				NewMove(enums.B5, enums.C3, enums.Quiet),
+				NewMove(enums.D5, enums.C3, enums.Quiet),
+				// BISHOPS
+				NewMove(enums.E2, enums.F1, enums.Quiet),
+				NewMove(enums.D3, enums.F1, enums.Quiet),
+				NewMove(enums.C4, enums.F1, enums.Quiet),
+				NewMove(enums.B5, enums.F1, enums.Quiet),
+				NewMove(enums.A6, enums.F1, enums.Quiet),
+				// ROOKS
+				NewMove(enums.B1, enums.A1, enums.Quiet),
+				// QUEENS
+				NewMove(enums.E2, enums.D1, enums.Quiet),
+				NewMove(enums.F3, enums.D1, enums.Quiet),
+				NewMove(enums.G4, enums.D1, enums.Quiet),
+				NewMove(enums.H5, enums.D1, enums.Quiet),
+				// KING
+				NewMove(enums.E2, enums.E1, enums.Quiet),
+			},
+		},
+		{"3q4/8/8/8/8/8/3p1p2/r3K3 w HAha - 0 1",
+			NewBitboard([12]uint64{
+				0x0, 0x2800, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x800000000000000,
+				0x10, 0x0,
+			},
+				enums.White,
+				[4]bool{false, false, false, false},
+				-1, 0, 0),
+			[]Move{
+				NewMove(enums.E2, enums.E1, enums.Quiet),
+				NewMove(enums.F2, enums.E1, enums.Capture),
+			},
+		},
+		{"2q1k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",
+			NewBitboard([12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x80, 0x0, 0x0, 0x400000000000000, 0x10, 0x1000000000000000,
+			}, enums.White, [4]bool{true, false, true, false}, -1, 0, 1),
+			[]Move{
+				NewMove(enums.F1, enums.H1, enums.Quiet),
+				NewMove(enums.G1, enums.H1, enums.Quiet),
+				NewMove(enums.H2, enums.H1, enums.Quiet),
+				NewMove(enums.H3, enums.H1, enums.Quiet),
+				NewMove(enums.H4, enums.H1, enums.Quiet),
+				NewMove(enums.H5, enums.H1, enums.Quiet),
+				NewMove(enums.H6, enums.H1, enums.Quiet),
+				NewMove(enums.H7, enums.H1, enums.Quiet),
+				NewMove(enums.H8, enums.H1, enums.Quiet),
+				NewMove(enums.D1, enums.E1, enums.Quiet),
+				NewMove(enums.F1, enums.E1, enums.Quiet),
+				NewMove(enums.D2, enums.E1, enums.Quiet),
+				NewMove(enums.E2, enums.E1, enums.Quiet),
+				NewMove(enums.F2, enums.E1, enums.Quiet),
+				NewMove(enums.G1, enums.E1, enums.KingCastle),
+			},
+		},
+		{"r3k2r/8/8/8/8/8/8/4K1R1 w kq - 0 1",
+			NewBitboard([12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x40, 0x8100000000000000, 0x0, 0x0, 0x10, 0x1000000000000000,
+			}, enums.Black, [4]bool{false, true, false, true}, -1, 0, 1),
+			[]Move{
+				NewMove(enums.A1, enums.A8, enums.Quiet),
+				NewMove(enums.A2, enums.A8, enums.Quiet),
+				NewMove(enums.A3, enums.A8, enums.Quiet),
+				NewMove(enums.A4, enums.A8, enums.Quiet),
+				NewMove(enums.A5, enums.A8, enums.Quiet),
+				NewMove(enums.A6, enums.A8, enums.Quiet),
+				NewMove(enums.A7, enums.A8, enums.Quiet),
+				NewMove(enums.B8, enums.A8, enums.Quiet),
+				NewMove(enums.C8, enums.A8, enums.Quiet),
+				NewMove(enums.D8, enums.A8, enums.Quiet),
+				NewMove(enums.H1, enums.H8, enums.Quiet),
+				NewMove(enums.H2, enums.H8, enums.Quiet),
+				NewMove(enums.H3, enums.H8, enums.Quiet),
+				NewMove(enums.H4, enums.H8, enums.Quiet),
+				NewMove(enums.H5, enums.H8, enums.Quiet),
+				NewMove(enums.H6, enums.H8, enums.Quiet),
+				NewMove(enums.H7, enums.H8, enums.Quiet),
+				NewMove(enums.F8, enums.H8, enums.Quiet),
+				NewMove(enums.G8, enums.H8, enums.Quiet),
+				NewMove(enums.D7, enums.E8, enums.Quiet),
+				NewMove(enums.E7, enums.E8, enums.Quiet),
+				NewMove(enums.F7, enums.E8, enums.Quiet),
+				NewMove(enums.D8, enums.E8, enums.Quiet),
+				NewMove(enums.F8, enums.E8, enums.Quiet),
+				NewMove(enums.C8, enums.E8, enums.QueenCastle),
+			},
+		},
+	}
+	for _, tc := range testcases {
+		t.Logf("passing test: %s\n", tc.fen)
+		tc.bitboard.GenLegalMoves()
+		got := tc.bitboard.LegalMoves
+
+		if len(tc.expected) != len(got) {
+			t.Fatalf("expected: %v, got: %v", tc.expected, got)
+		}
+		for i, move := range tc.expected {
+			if got[i] != move {
+				t.Fatalf("expected: %v, got: %v", tc.expected, got)
+			}
+		}
+	}
+}
+
+func BenchmarkGenLegalMoves(b *testing.B) {
+	bb := NewBitboard([12]uint64{
+		0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
+		0x81, 0x0, 0x8, 0x80000000, 0x10, 0x0,
+	}, enums.White, [4]bool{true, true, true, true}, enums.NoSquare, 0, 1)
+	for i := 0; i < b.N; i++ {
+		bb.GenLegalMoves()
+	}
+}
+
 func TestKingGenLegalMoves(t *testing.T) {
 	testcases := []struct {
 		fen      string
@@ -35,8 +295,8 @@ func TestKingGenLegalMoves(t *testing.T) {
 				NewMove(enums.F7, enums.E8, enums.Quiet),
 				NewMove(enums.D8, enums.E8, enums.Quiet),
 				NewMove(enums.F8, enums.E8, enums.Quiet),
-				NewMove(enums.B8, enums.E8, enums.QueenCastle),
 				NewMove(enums.G8, enums.E8, enums.KingCastle),
+				NewMove(enums.C8, enums.E8, enums.QueenCastle),
 			},
 		},
 	}
