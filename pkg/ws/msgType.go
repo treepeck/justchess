@@ -3,9 +3,9 @@ package ws
 // Message types.
 const (
 	// Sent by clients.
-	GET_ROOMS = iota
-	CREATE_ROOM
+	CREATE_ROOM = iota
 	JOIN_ROOM
+	LEAVE_ROOM
 	MOVE
 	// Sent by server.
 	CLIENTS_COUNTER

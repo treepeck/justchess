@@ -7,69 +7,68 @@ import (
 	"testing"
 )
 
-var dummyGame = NewGame(0, bitboard.NewBitboard([12]uint64{
-	0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
-	0x81, 0x0, 0x8, 0x80000000, 0x10, 0x0},
-	enums.White, [4]bool{true, true, true, true},
-	-1, 0, 0), 180, 0)
-
 func TestProcessMove(t *testing.T) {
 	testcases := []struct {
-		game              *Game
-		move              bitboard.Move
-		expResult         enums.Result
-		expPieces         [12]uint64
-		expActiveColor    enums.Color
-		expCastlingRights [4]bool
-		expEPTarget       int
-		expHalfmoveCnt    int
-		expFullmoveCnt    int
+		san         string
+		beforeFEN   string
+		move        bitboard.Move
+		expectedFEN string
 	}{
 		{
-			dummyGame,
-			bitboard.NewMove(enums.H5, enums.D1, enums.Quiet),
-			enums.Unknown,
-			[12]uint64{
-				0x1000EF00, 0x0, 0x40040, 0x0, 0x24, 0x0,
-				0x81, 0x0, 1 << 39, 0x80000000, 0x10, 0x0,
-			},
-			enums.Black,
-			[4]bool{true, true, true, true},
-			-1,
-			1,
-			0,
+			"e4",
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			bitboard.NewMove(enums.E4, enums.E2, enums.DoublePawnPush),
+			"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+		},
+		{
+			"exd5",
+			"rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+			bitboard.NewMove(enums.D5, enums.E4, enums.Capture),
+			"rnbqkbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2",
+		},
+		{
+			"exd6",
+			"rnbqkb1r/ppp2ppp/8/3pP3/3Qn3/5N2/PPP2PPP/RNB1KB1R w KQkq d6 0 6",
+			bitboard.NewMove(enums.D6, enums.E5, enums.EPCapture),
+			"rnbqkb1r/ppp2ppp/3P4/8/3Qn3/5N2/PPP2PPP/RNB1KB1R b KQkq - 0 6",
+		},
+		{
+			"O-O",
+			"r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 1 3",
+			bitboard.NewMove(enums.G1, enums.E1, enums.KingCastle),
+			"r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 2 3",
+		},
+		{
+			"O-O-O",
+			"r3kb1r/ppp1qppp/2np1n2/1B2p3/P3P1b1/2NP1N2/1PP2PPP/R1BQ1RK1 b kq - 4 6",
+			bitboard.NewMove(enums.C8, enums.E8, enums.QueenCastle),
+			"2kr1b1r/ppp1qppp/2np1n2/1B2p3/P3P1b1/2NP1N2/1PP2PPP/R1BQ1RK1 w - - 5 7",
+		},
+		{
+			"bxa8=N",
+			"rnbqkbnr/pP3ppp/4p3/8/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1",
+			bitboard.NewMove(enums.A8, enums.B7, enums.KnightPromoCapture),
+			"Nnbqkbnr/p4ppp/4p3/8/8/8/PPPP1PPP/RNBQKBNR b KQk - 0 1",
 		},
 	}
 	for _, tc := range testcases {
-		tc.game.ProcessMove(tc.move)
-		if tc.game.Result != tc.expResult {
-			t.Fatalf("expected result: %d, got: %d", tc.expResult, tc.game.Result)
-		}
-		for i, bb := range tc.game.Bitboard.Pieces {
-			if bb != tc.expPieces[i] {
-				t.Fatalf("expected pieces: %v, got: %v", tc.expPieces, tc.game.Bitboard.Pieces)
-			}
-		}
-		if tc.game.Bitboard.ActiveColor != tc.expActiveColor {
-			t.Fatalf("expected color: %d, got: %d", tc.expActiveColor, tc.game.Bitboard.ActiveColor)
-		}
-		for i, r := range tc.game.Bitboard.CastlingRights {
-			if r != tc.expCastlingRights[i] {
-				t.Fatalf("expected rights: %v, got: %v", tc.expCastlingRights, tc.game.Bitboard.CastlingRights)
-			}
-		}
-		if tc.expEPTarget != tc.game.Bitboard.EPTarget {
-			t.Fatalf("expected rights: %v, got: %v", tc.expCastlingRights, tc.game.Bitboard.CastlingRights)
+		t.Logf("Passing test: %s\n", tc.san)
+		game := NewGame(enums.Continues, fen.FEN2Bitboard(tc.beforeFEN), 180, 180)
+		game.ProcessMove(tc.move)
+		got := fen.Bitboard2FEN(game.Bitboard)
+		if got != tc.expectedFEN {
+			t.Fatalf("expected: %s, got: %s", tc.expectedFEN, got)
 		}
 	}
 }
 
-// TODO: this has some weird behaviour.
 func BenchmarkProcessMove(b *testing.B) {
-	FENBefore := fen.Bitboard2FEN(dummyGame.Bitboard)
+	game := NewGame(enums.Continues, nil, 180, 180)
+	before := fen.Bitboard2FEN(game.Bitboard)
 	for i := 0; i < b.N; i++ {
-		dummyGame.Bitboard = fen.FEN2Bitboard(FENBefore)
-		dummyGame.ProcessMove(bitboard.NewMove(enums.H5, enums.D1, enums.Quiet))
+		game.ProcessMove(bitboard.NewMove(enums.E4, enums.E2, enums.DoublePawnPush))
+		// Restore the game state.
+		game.Bitboard = fen.FEN2Bitboard(before)
 	}
 }
 

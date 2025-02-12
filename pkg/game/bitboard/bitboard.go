@@ -27,7 +27,7 @@ type Bitboard struct {
 
 func NewBitboard(pieces [12]uint64, ac enums.Color,
 	cr [4]bool, ep, half, full int) *Bitboard {
-	b := &Bitboard{
+	return &Bitboard{
 		Pieces:         pieces,
 		ActiveColor:    ac,
 		CastlingRights: cr,
@@ -36,8 +36,6 @@ func NewBitboard(pieces [12]uint64, ac enums.Color,
 		FullmoveCnt:    full,
 		LegalMoves:     make([]Move, 0),
 	}
-	// b.GenLegalMoves()
-	return b
 }
 
 // MakeMove performs the move on a bitboard. Only affects piece placement.
@@ -137,7 +135,7 @@ func (bb *Bitboard) GenLegalMoves() {
 	// to move on attacked squares behind himself.
 	var king = bb.Pieces[10+c]
 	bb.Pieces[10+c] ^= king
-	attacked := genAttackedSquares(bb.Pieces, opC)
+	attacked := GenAttackedSquares(bb.Pieces, opC)
 	// Restore king position.
 	bb.Pieces[10+c] ^= king
 	bb.LegalMoves = append(bb.LegalMoves, genKingLegalMoves(bb.Pieces[10+c], allies,
@@ -151,7 +149,7 @@ func (bb *Bitboard) filterIllegalMoves(pseudoLegal []Move) (legal []Move) {
 	for _, move := range pseudoLegal {
 		bb.MakeMove(move)
 		// If the allied king is not in check, the move is legal.
-		if genAttackedSquares(bb.Pieces, bb.ActiveColor^1)&
+		if GenAttackedSquares(bb.Pieces, bb.ActiveColor^1)&
 			bb.Pieces[10+bb.ActiveColor] == 0 {
 			legal = append(legal, move)
 		}

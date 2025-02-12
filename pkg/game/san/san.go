@@ -42,14 +42,15 @@ func Move2SAN(m bitboard.Move, pieces [12]uint64,
 	return pieceSymbols[pt] + san
 }
 
+// TODO: rewrite disambiguate, remove cnt.
 func disambiguate(from, to int, pieces [12]uint64,
 	lm []bitboard.Move, isCapture bool) (san string) {
-	pt := bitboard.GetPieceTypeFromSquare(from, pieces)
+	pt := bitboard.GetPieceTypeFromSquare(1<<from, pieces)
 	cnt := 0
 	for _, move := range lm {
 		_from, _to := move.From(), move.To()
 		if _from != from && _to == to {
-			if bitboard.GetPieceTypeFromSquare(move.From(), pieces) == pt {
+			if bitboard.GetPieceTypeFromSquare(1<<move.From(), pieces) == pt {
 				_from := move.From()
 				if from%8 != _from%8 {
 					// Step 1: If the moving pieces can be distinguished by their originating files,

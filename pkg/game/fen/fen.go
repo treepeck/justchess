@@ -79,10 +79,10 @@ func serializeCastlingRights(cr [4]bool) (fenCRF string) {
 	if cr[0] {
 		fenCRF += "K"
 	}
-	if cr[1] {
+	if cr[2] {
 		fenCRF += "Q"
 	}
-	if cr[2] {
+	if cr[1] {
 		fenCRF += "k"
 	}
 	if cr[3] {
@@ -171,9 +171,9 @@ func parseCastlingRights(fenCRF string) (cr [4]bool) {
 		switch fenCRF[i] {
 		case 'K':
 			cr[0] = true
-		case 'Q':
-			cr[1] = true
 		case 'k':
+			cr[1] = true
+		case 'Q':
 			cr[2] = true
 		case 'q':
 			cr[3] = true

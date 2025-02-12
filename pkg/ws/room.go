@@ -52,6 +52,13 @@ func (r *room) run() {
 }
 
 func (r *room) addClient(c *client) {
+	// Skip already connected clients.
+	for connectedC := range r.clients {
+		if connectedC.id == c.id {
+			return
+		}
+	}
+
 	if len(r.clients) < 2 {
 		r.clients[c] = struct{}{}
 		c.currentRoom = r

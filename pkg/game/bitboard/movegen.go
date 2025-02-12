@@ -303,7 +303,7 @@ func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves 
 	return
 }
 
-func genAttackedSquares(pieces [12]uint64, c enums.Color) uint64 {
+func GenAttackedSquares(pieces [12]uint64, c enums.Color) uint64 {
 	var occupied uint64
 	for _, pieceBB := range pieces {
 		occupied |= pieceBB

@@ -11,7 +11,7 @@ var dummyBitboard = bitboard.NewBitboard([12]uint64{
 	0xA21C400, 0xC3040810000000, 0x40000, 0x8002000000000,
 	0x1000800, 0x0100000000, 0x21, 0x8100000000000000,
 	0x8, 0x200000000000, 0x40, 0x1000000000000000,
-}, enums.White, [4]bool{false, false, true, true},
+}, enums.White, [4]bool{false, true, false, true},
 	enums.B3, 0, 13)
 
 var dummyFEN = []string{

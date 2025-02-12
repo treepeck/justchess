@@ -64,6 +64,15 @@ func (m *Manager) Run() {
 			msg[3] = uint8(l>>24) & 0xF
 			msg[4] = CLIENTS_COUNTER
 			m.broadcast(msg)
+			// Send availible rooms for the client.
+			msg = make([]byte, 19)
+			for r := range c.manager.rooms {
+				copy(msg[0:16], r.id[0:16])
+				msg[16] = r.game.TimeControl
+				msg[17] = r.game.TimeBonus
+				msg[18] = ADD_ROOM
+				c.send <- msg
+			}
 
 		case c := <-m.unregister:
 			m.removeClient(c)

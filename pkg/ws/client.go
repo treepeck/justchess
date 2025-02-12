@@ -118,16 +118,6 @@ func (c *client) handleMsg(msg []byte) {
 
 	msgType := msg[len(msg)-1]
 	switch msgType {
-	case GET_ROOMS:
-		msg := make([]byte, 19)
-		for r := range c.manager.rooms {
-			copy(msg[0:16], r.id[0:16])
-			msg[16] = r.game.TimeControl
-			msg[17] = r.game.TimeBonus
-			msg[18] = ADD_ROOM
-			c.send <- msg
-		}
-
 	case CREATE_ROOM:
 		// Forbit multiple room creation at a time.
 		if c.currentRoom != nil {
@@ -155,6 +145,12 @@ func (c *client) handleMsg(msg []byte) {
 				r.register <- c
 			}
 		}
+
+	case LEAVE_ROOM:
+		if c.currentRoom == nil {
+			return
+		}
+		c.currentRoom.register <- c
 
 	case MOVE:
 		if c.currentRoom == nil {
