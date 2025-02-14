@@ -3,9 +3,7 @@ package enums
 type Result uint8
 
 const (
-	Unknown Result = iota
-	Continues
-	Aborted
+	Continues Result = iota
 	Checkmate
 	Timeout
 	Stalemate
@@ -13,4 +11,5 @@ const (
 	FiftyMoves
 	Repetition
 	Agreement
+	Unknown
 )

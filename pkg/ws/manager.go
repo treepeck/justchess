@@ -75,11 +75,13 @@ func (m *Manager) Run() {
 			}
 
 		case c := <-m.unregister:
-			m.removeClient(c)
-			msg := make([]byte, 5)
-			binary.LittleEndian.PutUint32(msg, uint32(len(m.clients)))
-			msg[4] = CLIENTS_COUNTER
-			m.broadcast(msg)
+			if _, ok := m.clients[c]; ok {
+				m.removeClient(c)
+				msg := make([]byte, 5)
+				binary.LittleEndian.PutUint32(msg, uint32(len(m.clients)))
+				msg[4] = CLIENTS_COUNTER
+				m.broadcast(msg)
+			}
 
 		case r := <-m.add:
 			m.addRoom(r)
@@ -115,11 +117,9 @@ func (m *Manager) addClient(c *client) {
 }
 
 func (m *Manager) removeClient(c *client) {
-	if _, ok := m.clients[c]; ok {
-		delete(m.clients, c)
-		close(c.send)
-		log.Printf("client %s removed\n", c.id.String())
-	}
+	delete(m.clients, c)
+	close(c.send)
+	log.Printf("client %s removed\n", c.id.String())
 }
 
 func (m *Manager) addRoom(r *room) {

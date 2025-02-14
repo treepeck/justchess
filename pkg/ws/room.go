@@ -40,7 +40,6 @@ func (r *room) run() {
 				return
 			}
 			r.addClient(c)
-			r.startGame()
 
 		case c := <-r.unregister:
 			r.removeClient(c)
@@ -62,12 +61,12 @@ func (r *room) addClient(c *client) {
 	if len(r.clients) < 2 {
 		r.clients[c] = struct{}{}
 		c.currentRoom = r
-		// Redirect the client to the room.
-		msg := make([]byte, 17)
-		copy(msg[0:16], r.id[:])
-		msg[16] = REDIRECT
-		c.send <- msg
 		log.Printf("client %s added\n", c.id.String())
+
+		if r.game.Result == enums.Unknown && len(r.clients) == 2 {
+			r.startGame()
+			r.broadcastGameInfo()
+		}
 	}
 }
 
@@ -83,9 +82,6 @@ func (r *room) removeClient(c *client) {
 }
 
 func (r *room) startGame() {
-	if len(r.clients) != 2 {
-		return
-	}
 	// Randomly generate player`s colors.
 	for c := range r.clients {
 		if r.game.WhiteId == uuid.Nil {
@@ -100,8 +96,6 @@ func (r *room) startGame() {
 		r.game.BlackId = tmp
 	}
 	go r.game.DecrementTime()
-	// Noify the clients that the game has begun.
-	r.broadcastGameInfo()
 }
 
 func (r *room) handleMove(msg []byte) {
@@ -112,13 +106,14 @@ func (r *room) handleMove(msg []byte) {
 }
 
 func (r *room) broadcastGameInfo() {
-	msg := make([]byte, 36)
-	copy(msg[0:16], r.game.WhiteId[:])
-	copy(msg[16:32], r.game.BlackId[:])
-	msg[32] = byte(r.game.Result)
-	msg[33] = r.game.TimeControl
-	msg[34] = r.game.TimeBonus
-	msg[35] = GAME_INFO
+	msg := make([]byte, 52)
+	copy(msg[:16], r.id[:])
+	copy(msg[16:32], r.game.WhiteId[:])
+	copy(msg[32:48], r.game.BlackId[:])
+	msg[48] = byte(r.game.Result)
+	msg[49] = r.game.TimeControl
+	msg[50] = r.game.TimeBonus
+	msg[51] = GAME_INFO
 	for c := range r.clients {
 		c.send <- msg
 	}

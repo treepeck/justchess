@@ -152,6 +152,7 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 			SAN: SAN,
 			FEN: fen.Bitboard2FEN(g.Bitboard),
 		})
+
 		if g.isThreefoldRepetition() {
 			g.Result = enums.Repetition
 		}
@@ -159,6 +160,11 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 		if g.isInsufficientMaterial() {
 			g.Result = enums.InsufficienMaterial
 		}
+
+		if g.Bitboard.HalfmoveCnt == 100 {
+			g.Result = enums.FiftyMoves
+		}
+
 		return true
 	}
 	return false

@@ -263,6 +263,7 @@ func genQueensAttackedDests(queens, occupied uint64) uint64 {
 // TODO: make it more performant.
 // genPseudoLegalMoves sequentially generates all pseudo-legal moves for a given piece type.
 func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves []Move) {
+	occupied := allies | enemies
 	for ; bb > 0; bb &= bb - 1 {
 		piecePos := GetLSB(bb)
 		from := uint64(1) << piecePos
@@ -273,13 +274,12 @@ func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves 
 			movesBB = genKnightsAttackDests(from)
 
 		case enums.WhiteBishop, enums.BlackBishop:
-			movesBB = genBishopsAttackDests(from, allies|enemies)
+			movesBB = genBishopsAttackDests(from, occupied)
 
 		case enums.WhiteRook, enums.BlackRook:
-			movesBB = genRooksAttackDests(from, allies|enemies)
+			movesBB = genRooksAttackDests(from, occupied)
 
 		case enums.WhiteQueen, enums.BlackQueen:
-			occupied := allies | enemies
 			// Queen moves is just a concatenation of the rook`s and bishop`s moves.
 			movesBB = genRooksAttackDests(from, occupied) | genBishopsAttackDests(from, occupied)
 
@@ -287,12 +287,11 @@ func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves 
 			return
 		}
 
+		// Skip occupied by the allies pieces squares.
+		movesBB &= ^allies
+
 		for ; movesBB > 0; movesBB &= movesBB - 1 {
 			to := GetLSB(movesBB)
-			// Skip occupied squares.
-			if 1<<to&allies != 0 {
-				continue
-			}
 			if 1<<to&enemies != 0 {
 				moves = append(moves, NewMove(to, piecePos, enums.Capture))
 			} else {

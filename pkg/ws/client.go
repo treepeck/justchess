@@ -40,11 +40,11 @@ func newClient(c *websocket.Conn, m *Manager) *client {
 func (c *client) readPump() {
 	defer func() {
 		c.conn.Close()
-		c.manager.unregister <- c
 		if c.currentRoom != nil {
 			c.currentRoom.unregister <- c
 			c.currentRoom = nil
 		}
+		c.manager.unregister <- c
 	}()
 
 	c.conn.SetReadLimit(512)
@@ -80,11 +80,11 @@ func (c *client) writePump() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
-		c.manager.unregister <- c
 		if c.currentRoom != nil {
 			c.currentRoom.unregister <- c
 			c.currentRoom = nil
 		}
+		c.manager.unregister <- c
 	}()
 
 	for {
@@ -125,8 +125,8 @@ func (c *client) handleMsg(msg []byte) {
 		}
 		r := newRoom(msg[0], msg[1])
 		go r.run()
-		r.register <- c
 		c.manager.add <- r
+		r.register <- c
 
 	case JOIN_ROOM:
 		// Forbit multiple room joining at a time.
@@ -150,7 +150,8 @@ func (c *client) handleMsg(msg []byte) {
 		if c.currentRoom == nil {
 			return
 		}
-		c.currentRoom.register <- c
+		c.currentRoom.unregister <- c
+		c.currentRoom = nil
 
 	case MOVE:
 		if c.currentRoom == nil {
