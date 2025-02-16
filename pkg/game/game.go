@@ -62,7 +62,7 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 		if m.Type() >= enums.KnightPromo && m.Type() <= enums.QueenPromo &&
 			legalMove.Type() == enums.QueenPromo {
 			legalMove = m
-		// Same for capture promotion.
+			// Same for capture promotion.
 		} else if m.Type() >= enums.KnightPromoCapture && m.Type() <=
 			enums.QueenPromoCapture && legalMove.Type() == enums.QueenPromoCapture {
 			legalMove = m
@@ -74,6 +74,7 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 		}
 
 		movedPT := bitboard.GetPieceTypeFromSquare(1<<m.From(), g.Bitboard.Pieces)
+		var SAN = san.Move2SAN(m, g.Bitboard.Pieces, g.Bitboard.LegalMoves, movedPT)
 		g.Bitboard.MakeMove(legalMove)
 
 		// Castling is no more possible if the king has moved, or the rooks are not in their standart
@@ -124,7 +125,6 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 		// Switch the active color
 		g.Bitboard.ActiveColor ^= 1
 
-		var SAN = san.Move2SAN(m, g.Bitboard.Pieces, g.Bitboard.LegalMoves, movedPT)
 		// To determine if the last m was a check, generate possible moves
 		// for the moved piece.
 		var occupied uint64

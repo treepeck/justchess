@@ -40,8 +40,15 @@ func TestMove2SAN(t *testing.T) {
 			enums.WhitePawn,
 			"dxe8=Q",
 		},
+		{
+			bitboard.NewMove(enums.E4, enums.F6, enums.Capture),
+			fen.FEN2Bitboard("rnbqkb1r/pppppppp/5n2/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 1"),
+			enums.BlackKnight,
+			"Nxe4",
+		},
 	}
 	for _, tc := range testcases {
+		tc.bb.GenLegalMoves()
 		got := Move2SAN(tc.move, tc.bb.Pieces, tc.bb.LegalMoves, tc.pt)
 		if got != tc.expected {
 			t.Fatalf("expected: %v, got: %v", tc.expected, got)

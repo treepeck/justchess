@@ -51,7 +51,6 @@ func disambiguate(from, to int, pieces [12]uint64,
 		_from, _to := move.From(), move.To()
 		if _from != from && _to == to {
 			if bitboard.GetPieceTypeFromSquare(1<<move.From(), pieces) == pt {
-				_from := move.From()
 				if from%8 != _from%8 {
 					// Step 1: If the moving pieces can be distinguished by their originating files,
 					// the originating file letter of the moving piece is inserted immediately after
