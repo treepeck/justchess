@@ -18,18 +18,19 @@ type CompletedMove struct {
 
 type Game struct {
 	Result      enums.Result
+	Status      enums.Status
 	Bitboard    *bitboard.Bitboard
 	Moves       []CompletedMove
 	WhiteId     uuid.UUID
 	BlackId     uuid.UUID
-	WhiteTime   uint8
-	BlackTime   uint8
+	WhiteTime   byte
+	BlackTime   byte
 	Timer       *time.Ticker
-	TimeControl uint8
-	TimeBonus   uint8
+	TimeControl byte
+	TimeBonus   byte
 }
 
-func NewGame(r enums.Result, bb *bitboard.Bitboard, control, bonus uint8) *Game {
+func NewGame(bb *bitboard.Bitboard, control, bonus byte) *Game {
 	if bb == nil {
 		bb = bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
 			0x4200000000000000, 0x24, 0x2400000000000000, 0x81, 0x8100000000000000,
@@ -37,7 +38,8 @@ func NewGame(r enums.Result, bb *bitboard.Bitboard, control, bonus uint8) *Game 
 			[4]bool{true, true, true, true}, -1, 0, 0)
 	}
 	g := &Game{
-		Result:      r,
+		Result:      enums.Unknown,
+		Status:      enums.NotStarted,
 		Bitboard:    bb,
 		Moves:       make([]CompletedMove, 0),
 		WhiteTime:   control,

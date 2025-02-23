@@ -53,7 +53,7 @@ func TestProcessMove(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Logf("Passing test: %s\n", tc.san)
-		game := NewGame(enums.Unknown, fen.FEN2Bitboard(tc.beforeFEN), 180, 180)
+		game := NewGame(fen.FEN2Bitboard(tc.beforeFEN), 180, 180)
 		game.ProcessMove(tc.move)
 		got := fen.Bitboard2FEN(game.Bitboard)
 		if got != tc.expectedFEN {
@@ -63,7 +63,7 @@ func TestProcessMove(t *testing.T) {
 }
 
 func BenchmarkProcessMove(b *testing.B) {
-	game := NewGame(enums.Unknown, nil, 180, 180)
+	game := NewGame(nil, 180, 180)
 	before := fen.Bitboard2FEN(game.Bitboard)
 	for i := 0; i < b.N; i++ {
 		game.ProcessMove(bitboard.NewMove(enums.E4, enums.E2, enums.DoublePawnPush))
@@ -89,7 +89,7 @@ func TestIsThreefoldRepetition(t *testing.T) {
 		{[]CompletedMove{}, false},
 	}
 	for _, tc := range testcases {
-		g := NewGame(0, nil, 180, 0)
+		g := NewGame(nil, 180, 0)
 		g.Moves = tc.moves
 		got := g.isThreefoldRepetition()
 		if got != tc.expected {

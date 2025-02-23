@@ -1,9 +1,9 @@
 package enums
 
-type Result uint8
+type Result byte
 
 const (
-	Continues Result = iota
+	Unknown Result = iota
 	Checkmate
 	Timeout
 	Stalemate
@@ -11,5 +11,4 @@ const (
 	FiftyMoves
 	Repetition
 	Agreement
-	Unknown
 )

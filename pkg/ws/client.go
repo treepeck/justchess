@@ -19,36 +19,27 @@ const (
 )
 
 type client struct {
-	id          uuid.UUID
-	conn        *websocket.Conn
-	manager     *Manager
-	currentRoom *room
-	send        chan []byte
+	hub  *Hub
+	conn *websocket.Conn
+	send chan []byte
 }
 
-func newClient(c *websocket.Conn, m *Manager) *client {
+func newClient(c *websocket.Conn, h *Hub) *client {
 	return &client{
-		id:          uuid.New(),
-		conn:        c,
-		manager:     m,
-		currentRoom: nil,
-		send:        make(chan []byte),
+		hub:  h,
+		conn: c,
+		send: make(chan []byte),
 	}
 }
 
 // readPump pumps and handles all incoming messages from the connection.
-func (c *client) readPump() {
+func (c *client) readPump(id uuid.UUID) {
 	defer func() {
-		c.conn.Close()
-		if c.currentRoom != nil {
-			c.currentRoom.unregister <- c
-			c.currentRoom = nil
-		}
-		c.manager.unregister <- c
+		c.cleanup(id)
 	}()
 
 	c.conn.SetReadLimit(512)
-	// Set the read deadline to limit inactive connections.
+	// Set the read deadline for a ping-pong messages to drop inactive connections.
 	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		log.Printf("%v\n", err)
 		return
@@ -69,29 +60,23 @@ func (c *client) readPump() {
 		}
 
 		if msgType != websocket.BinaryMessage {
-			continue
+			return
 		}
-		c.handleMsg(data)
+		c.handleMsg(id, data)
 	}
 }
 
-func (c *client) writePump() {
+func (c *client) writePump(id uuid.UUID) {
 	ticker := time.NewTicker(pingInterval)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
-		if c.currentRoom != nil {
-			c.currentRoom.unregister <- c
-			c.currentRoom = nil
-		}
-		c.manager.unregister <- c
+		c.cleanup(id)
 	}()
 
 	for {
 		select {
 		case msg, ok := <-c.send:
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
@@ -111,52 +96,34 @@ func (c *client) writePump() {
 	}
 }
 
-func (c *client) handleMsg(msg []byte) {
-	if len(msg) < 1 {
-		return
-	}
-
+func (c *client) handleMsg(id uuid.UUID, msg []byte) {
 	msgType := msg[len(msg)-1]
+	p := make([]byte, 16)
+	copy(p[:16], id[:])
+
 	switch msgType {
-	case CREATE_ROOM:
-		// Forbit multiple room creation at a time.
-		if c.currentRoom != nil {
-			return
-		}
-		r := newRoom(msg[0], msg[1])
-		go r.run()
-		c.manager.add <- r
-		r.register <- c
+	case GET_AVAILIBLE_GAMES:
+		c.hub.gameEvents <- gameEvent{eType: GET_AVAILIBLE, payload: p}
 
-	case JOIN_ROOM:
-		// Forbit multiple room joining at a time.
-		if c.currentRoom != nil {
-			return
-		}
+	case CREATE_GAME:
+		p = append(p, []byte{msg[0], msg[1]}...)
+		c.hub.gameEvents <- gameEvent{eType: CREATE, payload: p}
 
-		id, err := uuid.FromBytes(msg[0:16])
-		if err != nil { // Invalid room id.
-			log.Printf("%v\n", err)
-			return
-		}
+	case JOIN_GAME:
+		// Append game id.
+		p = append(p, msg[:16]...)
+		c.hub.gameEvents <- gameEvent{eType: JOIN, payload: p}
 
-		for r := range c.manager.rooms {
-			if r.id == id {
-				r.register <- c
-			}
-		}
+	case GET_GAME:
+		c.hub.gameEvents <- gameEvent{eType: GET, payload: p}
 
-	case LEAVE_ROOM:
-		if c.currentRoom == nil {
-			return
-		}
-		c.currentRoom.unregister <- c
-		c.currentRoom = nil
-
-	case MOVE:
-		if c.currentRoom == nil {
-			return
-		}
-		c.currentRoom.moves <- msg
+	case LEAVE_GAME:
+		c.hub.gameEvents <- gameEvent{eType: LEAVE, payload: p}
 	}
+}
+
+// cleanup closes the connection and unregisters the client from the hub.
+func (c *client) cleanup(id uuid.UUID) {
+	c.conn.Close()
+	c.hub.clientEvents <- clientEvent{id: id, sender: nil, eType: UNREGISTER}
 }

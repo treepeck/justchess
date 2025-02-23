@@ -3,15 +3,15 @@ package ws
 // Message types.
 const (
 	// Sent by clients.
-	CREATE_ROOM = iota
-	JOIN_ROOM
-	LEAVE_ROOM
-	MOVE
+	GET_AVAILIBLE_GAMES byte = iota
+	CREATE_GAME
+	JOIN_GAME
+	GET_GAME
+	LEAVE_GAME
 	// Sent by server.
 	CLIENTS_COUNTER
-	ADD_ROOM
-	REMOVE_ROOM
-	LAST_MOVE
-	MOVES
+	ADD_GAME
+	REMOVE_GAME
+	REDIRECT
 	GAME_INFO
 )
