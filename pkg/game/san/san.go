@@ -42,37 +42,36 @@ func Move2SAN(m bitboard.Move, pieces [12]uint64,
 	return pieceSymbols[pt] + san
 }
 
-// TODO: rewrite disambiguate, remove cnt.
+// http://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c8.2.3
 func disambiguate(from, to int, pieces [12]uint64,
 	lm []bitboard.Move, isCapture bool) (san string) {
 	pt := bitboard.GetPieceTypeFromSquare(1<<from, pieces)
-	cnt := 0
-	for _, move := range lm {
-		_from, _to := move.From(), move.To()
-		if _from != from && _to == to {
-			if bitboard.GetPieceTypeFromSquare(1<<move.From(), pieces) == pt {
-				if from%8 != _from%8 {
-					// Step 1: If the moving pieces can be distinguished by their originating files,
-					// the originating file letter of the moving piece is inserted immediately after
-					// the moving piece letter.
+
+	if pt != enums.WhitePawn && pt != enums.BlackPawn {
+		// Ambiguity arises when multiple pieces of the same type can move to the same square.
+		for _, move := range lm {
+			if bitboard.GetPieceTypeFromSquare(1<<move.From(), pieces) == pt &&
+				from != move.From() && to == move.To() {
+				// Step 1: If the moving pieces can be distinguished by their originating files,
+				// the originating file letter of the moving piece is inserted immediately after
+				// the moving piece letter.
+				if from%8 != move.From()%8 {
 					san = file2Str(from % 8)
-				} else if from/8 != _from/8 {
-					// Step 2: If the moving pieces can be distinguished by their originating ranks,
-					// the originating rank digit of the moving piece is inserted immediately after
-					// the moving piece letter.
+					break
+				}
+				// Step 2: If the moving pieces can be distinguished by their originating ranks,
+				// the originating rank digit of the moving piece is inserted immediately after
+				// the moving piece letter.
+				if from/8 != move.From()/8 {
 					san = string(rune(from/8 + 1 + '0'))
-				} else {
-					// Step 3: The two character square coordinate of the originating square of the
-					// moving piece is inserted immediately after the moving piece letter.
-					san = square2Str(from)
+					break
 				}
 			}
-		} else {
-			cnt++
 		}
 	}
 	if isCapture {
-		if cnt == len(lm) && (pt == enums.WhitePawn || pt == enums.BlackPawn) {
+		// In case of pawn capture, the pawn`s originating file must be included.
+		if pt == enums.WhitePawn || pt == enums.BlackPawn {
 			san += file2Str(from % 8)
 		}
 		san += "x"

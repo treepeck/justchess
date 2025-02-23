@@ -119,6 +119,10 @@ func (c *client) handleMsg(id uuid.UUID, msg []byte) {
 
 	case LEAVE_GAME:
 		c.hub.gameEvents <- gameEvent{eType: LEAVE, payload: p}
+
+	case MAKE_MOVE:
+		p = append(p, []byte{msg[0], msg[1], msg[2]}...)
+		c.hub.gameEvents <- gameEvent{eType: MOVE, payload: p}
 	}
 }
 

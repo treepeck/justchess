@@ -2,6 +2,7 @@ package ws
 
 import (
 	"justchess/pkg/game"
+	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
 	"log"
 	"math/rand"
@@ -98,6 +99,9 @@ func (h *Hub) handleGameEvent(e gameEvent) {
 	case GET:
 		h.handleGetGame(sender)
 
+	case MOVE:
+		move := bitboard.NewMove(int(e.payload[16]), int(e.payload[17]), enums.MoveType(e.payload[18]))
+		h.handleMove(sender, move)
 	}
 }
 
@@ -129,6 +133,17 @@ func (h *Hub) addGame(sender uuid.UUID, control, bonus byte) {
 	log.Printf("game %s added\n", id.String())
 
 	h.broadcastAddGame(id, g)
+}
+
+func (h *Hub) handleMove(sender uuid.UUID, m bitboard.Move) {
+	for _, g := range h.games {
+		if (g.WhiteId == sender && g.Bitboard.ActiveColor == enums.White) ||
+			(g.BlackId == sender && g.Bitboard.ActiveColor == enums.Black) {
+			if g.ProcessMove(m) {
+				h.sendLastMove(g.WhiteId, g.BlackId, g.Moves[len(g.Moves)-1], g.Bitboard.LegalMoves)
+			}
+		}
+	}
 }
 
 func (h *Hub) handleJoinGame(sender, gameId uuid.UUID) {
@@ -248,6 +263,31 @@ func (h *Hub) sendGameInfo(reciever uuid.UUID, g *game.Game) {
 	msg = append(msg, GAME_INFO)
 
 	if c, ok := h.clients[reciever]; ok {
+		c.send <- msg
+	}
+}
+
+func (h *Hub) sendLastMove(whiteId, blackId uuid.UUID, m game.CompletedMove,
+	lm []bitboard.Move) {
+	// The LAST_MOVE message consists of 4 parts:
+	//   1 - SAN of the completed move;
+	//   2 - FEN of the current board state;
+	//   3 - Legal moves for the next player.
+	//   4 - Message type: LAST_MOVE.
+	// First 3 parts of the message are separated by a 0xFF byte.
+	msg := make([]byte, 0)
+	msg = append(msg, []byte(m.SAN)...)
+	msg = append(msg, 0xFF) // Separator.
+	msg = append(msg, []byte(m.FEN)...)
+	msg = append(msg, 0xFF) // Separator.
+	for _, move := range lm {
+		msg = append(msg, byte(move.To()), byte(move.From()), byte(move.Type()))
+	}
+	msg = append(msg, LAST_MOVE)
+	if c, ok := h.clients[whiteId]; ok {
+		c.send <- msg
+	}
+	if c, ok := h.clients[blackId]; ok {
 		c.send <- msg
 	}
 }

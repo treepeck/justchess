@@ -14,6 +14,7 @@ const (
 	JOIN
 	GET
 	LEAVE
+	MOVE
 )
 
 type clientEvent struct {

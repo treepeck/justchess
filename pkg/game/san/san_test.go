@@ -46,6 +46,12 @@ func TestMove2SAN(t *testing.T) {
 			enums.BlackKnight,
 			"Nxe4",
 		},
+		{
+			bitboard.NewMove(enums.E5, enums.D4, enums.Capture),
+			fen.FEN2Bitboard("8/8/8/4p3/3P4/8/8/8 w - - 0 1"),
+			enums.WhitePawn,
+			"dxe5",
+		},
 	}
 	for _, tc := range testcases {
 		tc.bb.GenLegalMoves()
