@@ -11,18 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// handleCreateGuest creates a new guest and generates a pair of tokens for him.
+// handleCreateGuest creates a new user and generates a pair of tokens for him.
+// NOTE: the access token does not send back, the frontend must implicitly
+// fetch the access token by triggering the /tokens endpoint.
 func handleCreateGuest(rw http.ResponseWriter, r *http.Request) {
-	g := user.NewGuest()
-	at, rt, err := generatePair(g.Id)
+	u := user.NewUser(uuid.New())
+
+	_, refresh, err := generatePair(u.Id)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	g.AccessToken = at
-	setRefreshTokenCookie(rw, rt)
+	setRefreshTokenCookie(rw, refresh)
 
-	err = json.NewEncoder(rw).Encode(g)
+	err = json.NewEncoder(rw).Encode(u)
 	if err != nil {
 		log.Printf("%v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -33,60 +35,51 @@ func handleCreateGuest(rw http.ResponseWriter, r *http.Request) {
 // handleRefreshTokens parses refresh token from the request cookie and
 // generates a new pair if the token is valid.
 func handleRefreshTokens(rw http.ResponseWriter, r *http.Request) {
-	et, err := parseRefreshToken(r)
+	encoded, err := parseRefreshToken(r)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	id, err := decodeIdFromRefreshToken(et)
+	id, err := decodeIdFromRefreshToken(encoded)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	at, nrt, err := generatePair(id)
+	access, refresh, err := generatePair(id)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	setRefreshTokenCookie(rw, nrt)
+	setRefreshTokenCookie(rw, refresh)
 	rw.Header().Add("Content-Type", "text/plain")
-	rw.Write([]byte(at))
+	rw.Write([]byte(access))
 }
 
 // handleGetUserByRefreshToken parses the request cookie and fetches the user
-// by the encoded in token id.
+// by the encoded in the token id.
 func handleGetUserByRefreshToken(rw http.ResponseWriter, r *http.Request) {
-	et, err := parseRefreshToken(r)
+	encoded, err := parseRefreshToken(r)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	id, err := decodeIdFromRefreshToken(et)
+	id, err := decodeIdFromRefreshToken(encoded)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	// Generate a new pair for authenticated user to keep them signed in.
-	at, nrt, err := generatePair(id)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	setRefreshTokenCookie(rw, nrt)
 
+	// TODO: fetch registered users from the database by id.
 	// To avoid creating a new guest each time the user refreshes the page
-	// (for enabling room reconnection, etc.), send back the guest with an
+	// (for enabling game reconnection, etc.), send back the guest with an
 	// old id.
-	g := user.Guest{
-		Id:          id,
-		Name:        "Guest-" + id.String()[0:8],
-		AccessToken: at,
-	}
-	err = json.NewEncoder(rw).Encode(g)
+	u := user.NewUser(id)
+
+	err = json.NewEncoder(rw).Encode(u)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
@@ -124,7 +117,7 @@ func parseRefreshToken(r *http.Request) (string, error) {
 // decodeIdFromRefreshToken decodes the provided token and tries
 // to parse the uuid from the token subject.
 func decodeIdFromRefreshToken(et string) (uuid.UUID, error) {
-	rt, err := DecodeToken(et, "RTS")
+	rt, err := DecodeToken(et, 2)
 	if err != nil {
 		return uuid.Nil, err
 	}

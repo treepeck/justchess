@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"justchess/pkg/auth"
 	"justchess/pkg/game"
 	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
@@ -16,6 +17,7 @@ import (
 var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	ReadBufferSize:  1024,
+	// CheckOrigin accepts all origins since the CORS is handled by the corsAllower middleware.
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -26,7 +28,7 @@ type Hub struct {
 	clientEvents chan clientEvent
 	// All connected clients.
 	clients map[uuid.UUID]*client
-	// gameEvents is used to synchronize and handle concurrent messages (game creation and delition).
+	// gameEvents is used to synchronize and handle concurrent messages (game creation, deletion, moves etc).
 	gameEvents chan gameEvent
 	// All active games.
 	games map[uuid.UUID]*game.Game
@@ -42,14 +44,33 @@ func NewHub() *Hub {
 }
 
 // HandleNewConnection creates a new client and registers it in the Hub.
+// To be connected, client must provide a valid access JWT as a GET request param.
 func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
+	encoded := r.URL.Query().Get("access")
+	access, err := auth.DecodeToken(encoded, 1)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	idStr, err := access.Claims.GetSubject()
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		log.Printf("%v\n", err)
 		return
 	}
 
-	id := uuid.New()
 	c := newClient(conn, h)
 
 	go c.readPump(id)
@@ -93,11 +114,16 @@ func (h *Hub) handleGameEvent(e gameEvent) {
 		h.addGame(sender, e.payload[16], e.payload[17])
 
 	case JOIN:
-		gameId, _ := uuid.FromBytes(e.payload[16:32])
-		h.handleJoinGame(sender, gameId)
+		gameId, err := uuid.FromBytes(e.payload[16:32])
+		if err == nil {
+			h.handleJoinGame(sender, gameId)
+		}
 
 	case GET:
 		h.handleGetGame(sender)
+
+	case LEAVE:
+		h.handleLeaveGame(sender)
 
 	case MOVE:
 		move := bitboard.NewMove(int(e.payload[16]), int(e.payload[17]), enums.MoveType(e.payload[18]))
@@ -169,6 +195,27 @@ func (h *Hub) handleGetGame(id uuid.UUID) {
 	for _, g := range h.games {
 		if g.WhiteId == id || g.BlackId == id {
 			h.sendGameInfo(id, g)
+			return
+		}
+	}
+}
+
+// If the second player is already disconnected, remove the game.
+func (h *Hub) handleLeaveGame(sender uuid.UUID) {
+	for id, g := range h.games {
+		if g.WhiteId == sender {
+			if g.Status != enums.Continues {
+				h.removeGame(id)
+				return
+			}
+			g.Status = enums.WhiteDisconnected
+			return
+		} else if g.BlackId == sender {
+			if g.Status != enums.Continues {
+				h.removeGame(id)
+				return
+			}
+			g.Status = enums.BlackDisconnected
 			return
 		}
 	}
@@ -274,7 +321,7 @@ func (h *Hub) sendLastMove(whiteId, blackId uuid.UUID, m game.CompletedMove,
 	//   2 - FEN of the current board state;
 	//   3 - Legal moves for the next player.
 	//   4 - Message type: LAST_MOVE.
-	// First 3 parts of the message are separated by a 0xFF byte.
+	// First second and trird parts of the message are separated by a 0xFF byte.
 	msg := make([]byte, 0)
 	msg = append(msg, []byte(m.SAN)...)
 	msg = append(msg, 0xFF) // Separator.
