@@ -3,7 +3,7 @@ package bitboard
 import (
 	"math/bits"
 
-	"justchess/pkg/game/enums"
+	"test-ws/pkg/game/enums"
 )
 
 // The following block on contants defines the bit masks needed to
@@ -43,7 +43,7 @@ func (m Move) Type() enums.MoveType {
 //                          KING                             //
 ///////////////////////////////////////////////////////////////
 
-func genKingAttackedDests(king uint64) (moves uint64) {
+func genKingAttackDests(king uint64) (moves uint64) {
 	moves = (king & notH) >> 9  // South east. (-9 squares)
 	moves |= king >> 8          // South south. (-8 squares)
 	moves |= (king & notA) >> 7 // South west. (-7 squares)
@@ -60,7 +60,7 @@ func genKingLegalMoves(king, allies, enemies, attacked uint64,
 	kingPos := GetLSB(king)
 
 	// Exclude all attacked and occupied by the allied pieces squares, the king can not move on them.
-	movesBB := genKingAttackedDests(king) & ^allies & ^attacked
+	movesBB := genKingAttackDests(king) & ^allies & ^attacked
 
 	for ; movesBB > 0; movesBB &= movesBB - 1 {
 		to := GetLSB(movesBB)
@@ -179,30 +179,30 @@ func genKnightsAttackDests(knights uint64) (moves uint64) {
 //                          BISHOP                           //
 ///////////////////////////////////////////////////////////////
 
-func genBishopsAttackDests(bishops, occupied uint64) (moves uint64) {
+func genBishopAttackDests(bishop, occupied uint64) (moves uint64) {
 	// South west diagonal. (-9 squares)
-	for i := (bishops & notA) >> 9; i != 0; i = (i & notA) >> 9 {
+	for i := (bishop & notA) >> 9; i != 0; i = (i & notA) >> 9 {
 		moves |= i
 		if occupied&i != 0 {
 			break
 		}
 	}
 	// South east diagonal. (-7 squares)
-	for i := (bishops & notH) >> 7; i != 0; i = (i & notH) >> 7 {
+	for i := (bishop & notH) >> 7; i != 0; i = (i & notH) >> 7 {
 		moves |= i
 		if occupied&i != 0 {
 			break
 		}
 	}
 	// North west diagonal. (+7 squares)
-	for i := (bishops & notA) << 7; i != 0; i = (i & notA) << 7 {
+	for i := (bishop & notA) << 7; i != 0; i = (i & notA) << 7 {
 		moves |= i
 		if occupied&i != 0 {
 			break
 		}
 	}
 	// North east diagonal. (+9 squares)
-	for i := (bishops & notH) << 9; i != 0; i = (i & notH) << 9 {
+	for i := (bishop & notH) << 9; i != 0; i = (i & notH) << 9 {
 		moves |= i
 		if occupied&i != 0 {
 			break
@@ -215,30 +215,30 @@ func genBishopsAttackDests(bishops, occupied uint64) (moves uint64) {
 //                          ROOK                             //
 ///////////////////////////////////////////////////////////////
 
-func genRooksAttackDests(rooks, occupied uint64) (moves uint64) {
+func genRookAttackDests(rook, occupied uint64) (moves uint64) {
 	// South vertical. (-8 squares)
-	for i := rooks << 8; i != 0; i <<= 8 {
+	for i := rook << 8; i != 0; i <<= 8 {
 		moves |= i
 		if occupied&i != 0 {
 			break
 		}
 	}
 	// West horizontal. (-1 square)
-	for i := (rooks & notA) >> 1; i != 0; i = (i & notA) >> 1 {
+	for i := (rook & notA) >> 1; i != 0; i = (i & notA) >> 1 {
 		moves |= i
 		if occupied&i != 0 {
 			break
 		}
 	}
 	// East horizontal. (+1 square)
-	for i := (rooks & notH) << 1; i != 0; i = (i & notH) << 1 {
+	for i := (rook & notH) << 1; i != 0; i = (i & notH) << 1 {
 		moves |= i
 		if occupied&i != 0 {
 			break
 		}
 	}
 	// North vertical. (+8 squares)
-	for i := rooks >> 8; i != 0; i >>= 8 {
+	for i := rook >> 8; i != 0; i >>= 8 {
 		moves |= i
 		if occupied&i != 0 {
 			break
@@ -251,9 +251,9 @@ func genRooksAttackDests(rooks, occupied uint64) (moves uint64) {
 //                           QUEEN                           //
 ///////////////////////////////////////////////////////////////
 
-func genQueensAttackedDests(queens, occupied uint64) uint64 {
-	return genBishopsAttackDests(queens, occupied) |
-		genRooksAttackDests(queens, occupied)
+func genQueenAttackDests(queen, occupied uint64) uint64 {
+	return genBishopAttackDests(queen, occupied) |
+		genRookAttackDests(queen, occupied)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -274,14 +274,14 @@ func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves 
 			movesBB = genKnightsAttackDests(from)
 
 		case enums.WhiteBishop, enums.BlackBishop:
-			movesBB = genBishopsAttackDests(from, occupied)
+			movesBB = genBishopAttackDests(from, occupied)
 
 		case enums.WhiteRook, enums.BlackRook:
-			movesBB = genRooksAttackDests(from, occupied)
+			movesBB = genRookAttackDests(from, occupied)
 
 		case enums.WhiteQueen, enums.BlackQueen:
 			// Queen moves is just a concatenation of the rook`s and bishop`s moves.
-			movesBB = genRooksAttackDests(from, occupied) | genBishopsAttackDests(from, occupied)
+			movesBB = genQueenAttackDests(from, occupied)
 
 		default:
 			return
@@ -302,16 +302,30 @@ func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves 
 	return
 }
 
-func GenAttackedSquares(pieces [12]uint64, c enums.Color) uint64 {
+func GenAttackedSquares(pieces [12]uint64, c enums.Color) (attacked uint64) {
 	var occupied uint64
 	for _, pieceBB := range pieces {
 		occupied |= pieceBB
 	}
-	// Get all attacked squares on a new position.
-	return genPawnsAttackDests(pieces[0+c], c) |
-		genKnightsAttackDests(pieces[2+c]) |
-		genBishopsAttackDests(pieces[4+c], occupied) |
-		genRooksAttackDests(pieces[6+c], occupied) |
-		genQueensAttackedDests(pieces[8+c], occupied) |
-		genKingAttackedDests(pieces[10+c])
+
+	attacked |= genPawnsAttackDests(pieces[0+c], c)
+	attacked |= genKnightsAttackDests(pieces[2+c])
+	attacked |= genKingAttackDests(pieces[10+c])
+
+	for ; pieces[4+c] > 0; pieces[4+c] &= pieces[4+c] - 1 {
+		bishop := GetLSB(pieces[4+c])
+		attacked |= genBishopAttackDests(1<<bishop, occupied)
+	}
+
+	for ; pieces[6+c] > 0; pieces[6+c] &= pieces[6+c] - 1 {
+		rook := GetLSB(pieces[6+c])
+		attacked |= genRookAttackDests(1<<rook, occupied)
+	}
+
+	for ; pieces[8+c] > 0; pieces[8+c] &= pieces[8+c] - 1 {
+		queen := GetLSB(pieces[8+c])
+		attacked |= genQueenAttackDests(1<<queen, occupied)
+	}
+
+	return
 }

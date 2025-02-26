@@ -1,9 +1,9 @@
 package game
 
 import (
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
-	"justchess/pkg/game/fen"
+	"test-ws/pkg/game/bitboard"
+	"test-ws/pkg/game/enums"
+	"test-ws/pkg/game/fen"
 	"testing"
 )
 
@@ -50,6 +50,12 @@ func TestProcessMove(t *testing.T) {
 			bitboard.NewMove(enums.A8, enums.B7, enums.KnightPromoCapture),
 			"Nnbqkbnr/p4ppp/4p3/8/8/8/PPPP1PPP/RNBQKBNR b KQk - 0 1",
 		},
+		{
+			"Bb5+",
+			"rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1",
+			bitboard.NewMove(enums.B5, enums.F1, enums.Quiet),
+			"rnbqkbnr/ppp1pppp/8/1B1p4/4P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 1",
+		},
 	}
 	for _, tc := range testcases {
 		t.Logf("Passing test: %s\n", tc.san)
@@ -57,7 +63,10 @@ func TestProcessMove(t *testing.T) {
 		game.ProcessMove(tc.move)
 		got := fen.Bitboard2FEN(game.Bitboard)
 		if got != tc.expectedFEN {
-			t.Fatalf("expected: %s, got: %s", tc.expectedFEN, got)
+			t.Fatalf("expected fen: %s, got: %s", tc.expectedFEN, got)
+		}
+		if game.Moves[len(game.Moves)-1].SAN != tc.san {
+			t.Fatalf("expected san: %s, got: %s", tc.san, game.Moves[len(game.Moves)-1].SAN)
 		}
 	}
 }
