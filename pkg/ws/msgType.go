@@ -1,19 +1,20 @@
 package ws
 
-// Message types.
+type MessageType = byte
+
 const (
 	// Sent by clients.
-	GET_AVAILIBLE_GAMES byte = iota
-	CREATE_GAME
-	JOIN_GAME
-	GET_GAME
-	LEAVE_GAME
+	CREATE_ROOM MessageType = iota
+	JOIN_ROOM
 	MAKE_MOVE
+
 	// Sent by server.
 	CLIENTS_COUNTER
-	ADD_GAME
-	REMOVE_GAME
-	REDIRECT
-	GAME_INFO
+	ADD_ROOM
+	REMOVE_ROOM
+	CHAT_MESSAGE
+	ROOM_INFO
+	GAME
 	LAST_MOVE
+	RESULT
 )

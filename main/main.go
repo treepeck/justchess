@@ -1,13 +1,11 @@
 package main
 
 import (
+	"justchess/pkg/auth"
+	"justchess/pkg/ws"
 	"log"
 	"net/http"
 	"os"
-
-	"justchess/pkg/auth"
-	"justchess/pkg/middleware"
-	"justchess/pkg/ws"
 )
 
 func main() {
@@ -26,21 +24,32 @@ func main() {
 }
 
 func setupMux() *http.ServeMux {
-	// Setup the chain of middlewares.
-	authStack := middleware.CreateStack(
-		middleware.AllowCors,
-		middleware.LogRequest,
-	)
-
 	mux := http.NewServeMux()
 	mux.Handle("/auth/", http.StripPrefix(
 		"/auth",
-		authStack(auth.AuthMux()),
+		AllowCors(auth.AuthMux()),
 	))
 
 	h := ws.NewHub()
 	go h.EventPump()
 
-	mux.HandleFunc("/ws", h.HandleNewConnection)
+	mux.HandleFunc("/hub", h.HandleNewConnection)
 	return mux
+}
+
+// AllowCors handles the Cross-Origin-Resource-Sharing.
+func AllowCors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
+		rw.Header().Add("Access-Control-Allow-Credentials", "true")
+		rw.Header().Add("Access-Control-Allow-Headers", "origin, content-type, accept, 	authorization")
+		rw.Header().Add("Access-Control-Allow-Methods", "GET,PUT,OPTIONS")
+
+		// handle CORS preflight request
+		if r.Method == "OPTIONS" {
+			rw.WriteHeader(200)
+			return
+		}
+		next.ServeHTTP(rw, r)
+	})
 }
