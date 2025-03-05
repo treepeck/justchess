@@ -12,11 +12,11 @@ import (
 )
 
 type CompletedMove struct {
-	SAN string `json:"san"`
+	SAN string
 	// Biboard state after completing the move.
-	FEN string `json:"fen"`
+	FEN string
 	// Remaining time on a player`s clock in seconds.
-	TimeLeft int `json:"timeLeft"`
+	TimeLeft int
 }
 
 type Game struct {

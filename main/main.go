@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -35,20 +37,19 @@ func setupMux() *http.ServeMux {
 	mux.HandleFunc("/hub", h.HandleNewConnection)
 
 	mux.HandleFunc("/room", func(rw http.ResponseWriter, r *http.Request) {
-		rw.WriteHeader(http.StatusBadRequest)
-		// id, err := uuid.Parse(r.URL.Query().Get("id"))
-		// if err != nil {
-		// 	rw.WriteHeader(http.StatusBadRequest)
-		// 	return
-		// }
+		id, err := uuid.Parse(r.URL.Query().Get("id"))
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-		// room := h.GetRoomByCreatorId(id)
-		// if room == nil {
-		// 	rw.WriteHeader(http.StatusNotFound)
-		// 	return
-		// }
+		room := h.GetRoomById(id)
+		if room == nil {
+			rw.WriteHeader(http.StatusNotFound)
+			return
+		}
 
-		// room.HandleNewConnection(rw, r)
+		room.HandleNewConnection(rw, r)
 	})
 
 	return mux

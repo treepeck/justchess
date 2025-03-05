@@ -21,7 +21,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// The Hub is a global repository of all created rooms and all connected clients.
+// Hub is a global repository of all created rooms and connected clients which are not in the game.
 // To ensure safe concurrent access, the Hub is protected with a Mutex.
 type Hub struct {
 	sync.Mutex
@@ -141,12 +141,12 @@ func (h *Hub) remove(r *Room) {
 // broadcastClientsCounter does not Lock the hub, so it cannot be called in a non-blocking routine!
 func (h *Hub) broadcastClientsCounter() {
 	data, err := json.Marshal(ClientsCounterData{Counter: len(h.clients)})
-
-	msg, err := json.Marshal(Message{Type: CLIENTS_COUNTER, Data: data})
 	if err != nil {
 		log.Printf("cannot Marshal message: %v\n", err)
 		return
 	}
+
+	msg, _ := json.Marshal(Message{Type: CLIENTS_COUNTER, Data: data})
 
 	for c := range h.clients {
 		c.send <- msg
@@ -161,12 +161,12 @@ func (h *Hub) broadcastAddRoom(r *Room) {
 		TimeControl: r.game.TimeControl,
 		TimeBonus:   r.game.TimeBonus,
 	})
-
-	msg, err := json.Marshal(Message{Type: ADD_ROOM, Data: data})
 	if err != nil {
 		log.Printf("cannot Marshal message: %v\n", err)
 		return
 	}
+
+	msg, _ := json.Marshal(Message{Type: ADD_ROOM, Data: data})
 
 	for c := range h.clients {
 		c.send <- msg
@@ -177,12 +177,12 @@ func (h *Hub) broadcastRemoveRoom(roomId uuid.UUID) {
 	data, err := json.Marshal(RemoveRoomData{
 		RoomId: roomId.String(),
 	})
-
-	msg, err := json.Marshal(Message{Type: REMOVE_ROOM, Data: data})
 	if err != nil {
 		log.Printf("cannot Marshal message: %v\n", err)
 		return
 	}
+
+	msg, _ := json.Marshal(Message{Type: REMOVE_ROOM, Data: data})
 
 	for c := range h.clients {
 		c.send <- msg
@@ -205,13 +205,25 @@ func (h *Hub) send10Rooms(c *client) {
 			TimeControl: r.game.TimeControl,
 			TimeBonus:   r.game.TimeBonus,
 		})
-
-		msg, err := json.Marshal(Message{Type: ADD_ROOM, Data: data})
 		if err != nil {
 			log.Printf("cannot Marshal message: %v\n", err)
 			return
 		}
 
+		msg, _ := json.Marshal(Message{Type: ADD_ROOM, Data: data})
+
 		c.send <- msg
 	}
+}
+
+func (h *Hub) GetRoomById(id uuid.UUID) *Room {
+	h.Lock()
+	defer h.Unlock()
+
+	for r := range h.rooms {
+		if r.creatorId == id {
+			return r
+		}
+	}
+	return nil
 }

@@ -2,24 +2,22 @@ package ws
 
 import (
 	"encoding/json"
+	"justchess/pkg/game/enums"
 )
 
 type MessageType = byte
 
 const (
-	// Sent by clients.
 	CREATE_ROOM MessageType = iota
 	MAKE_MOVE
-
-	// Sent by server.
+	CHAT
 	CLIENTS_COUNTER
 	ADD_ROOM
 	REMOVE_ROOM
-	CHAT_MESSAGE
-	ROOM_INFO
-	GAME
+	ROOM_STATUS
 	LAST_MOVE
-	RESULT
+	GAME_RESULT
+	GAME_INFO
 )
 
 // Message contains Data based on the Type.
@@ -28,6 +26,13 @@ type Message struct {
 	Data json.RawMessage `json:"d"`
 }
 
+// Client DTO`s:
+type CreateRoomData struct {
+	TimeControl int `json:"c"`
+	TimeBonus   int `json:"b"`
+}
+
+// Server DTO`s:
 type ClientsCounterData struct {
 	Counter int `json:"c"`
 }
@@ -42,13 +47,37 @@ type RemoveRoomData struct {
 	RoomId string `json:"id"`
 }
 
-type CreateRoomData struct {
-	TimeControl int `json:"c"`
-	TimeBonus   int `json:"b"`
+type RoomStatusData struct {
+	Status  RoomStatus `json:"s"`
+	WhiteId string     `json:"w"`
+	BlackId string     `json:"b"`
+	Clients int        `json:"c"`
 }
 
-type MakeMoveData struct {
-	To   int `json:"to"`
-	From int `json:"from"`
-	Type int `json:"type"`
+type LastMoveData struct {
+	SAN        string     `json:"s"`
+	FEN        string     `json:"f"`
+	TimeLeft   int        `json:"t"`
+	LegalMoves []MoveData `json:"l"`
+}
+
+type GameResultData struct {
+	Result enums.Result `json:"r"`
+}
+
+type GameInfoData struct {
+	CompletedMoves []LastMoveData `json:"c"`
+	WhiteTime      int            `json:"w"`
+	BlackTime      int            `json:"b"`
+}
+
+// Used by both client and server:
+type ChatData struct {
+	Message string `json:"m"`
+}
+
+type MoveData struct {
+	To   int            `json:"s"`
+	From int            `json:"d"`
+	Type enums.MoveType `json:"t"`
 }

@@ -2,12 +2,14 @@ package ws
 
 import (
 	"encoding/json"
+	"justchess/pkg/game/bitboard"
+	"justchess/pkg/game/enums"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
-// The client is a middleman between the frontend and the hub.
+// client is a middleman between the frontend and the hub.
 // Reding and writing messages occurs through the client`s concurrent routines.
 type client struct {
 	id         uuid.UUID
@@ -73,10 +75,17 @@ func (c *client) handleMessage(raw []byte) {
 		}
 
 		r := newRoom(c.hub, c.id, data.TimeControl, data.TimeBonus)
+		go r.handleRoutine()
 		c.hub.add(r)
 
 	case MAKE_MOVE:
+		data := MoveData{}
+		err := json.Unmarshal(msg.Data, &data)
+		if err != nil || c.room == nil {
+			return
+		}
 
+		c.room.move <- bitboard.NewMove(data.To, data.From, enums.MoveType(data.Type))
 	}
 }
 
