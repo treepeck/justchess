@@ -5,6 +5,7 @@ import (
 	"justchess/pkg/auth"
 	"justchess/pkg/game"
 	"justchess/pkg/game/bitboard"
+	"justchess/pkg/game/enums"
 	"log"
 	"math/rand"
 	"net/http"
@@ -116,7 +117,7 @@ func (r *Room) handleRoutine() {
 			r.broadcastChat(msg)
 
 		case <-r.timeout:
-			r.handleTimeout()
+			r.endGame()
 		}
 	}
 }
@@ -140,22 +141,21 @@ func (r *Room) add(c *client) {
 			r.startGame()
 		}
 
-	case IN_PROGRESS:
-		c.send <- r.serialize(GAME_INFO, r.formatGameInfo())
-
 	case WHITE_DISCONNECTED:
 		if r.game.WhiteId == c.id {
 			r.status = IN_PROGRESS
-			c.send <- r.serialize(GAME_INFO, r.formatGameInfo())
 		}
 
 	case BLACK_DISCONNECTED:
 		if r.game.BlackId == c.id {
 			r.status = IN_PROGRESS
-			c.send <- r.serialize(GAME_INFO, r.formatGameInfo())
 		}
 	}
 
+	// Notify the client about all completed moves.
+	for _, m := range r.game.Moves {
+		c.send <- r.serialize(LAST_MOVE, r.formatLastMove(m))
+	}
 	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
 }
 
@@ -171,7 +171,10 @@ func (r *Room) remove(c *client) {
 	log.Printf("client %s unregistered\n", c.id.String())
 
 	if len(r.clients) == 0 {
-		r.game.End <- struct{}{}
+		if r.status != OPEN && r.status != OVER {
+			r.game.End <- struct{}{}
+		}
+
 		r.hub.remove(r)
 	}
 }
@@ -195,12 +198,21 @@ func (r *Room) startGame() {
 		r.game.WhiteId = players[1]
 		r.game.BlackId = players[0]
 	}
-
-	r.broadcast(r.serialize(GAME_INFO, r.formatGameInfo()))
 }
 
 func (r *Room) handle(m bitboard.Move) {
-	log.Printf("incomming move: %v\n", m)
+	if r.status == OPEN || r.status == OVER {
+		return
+	}
+
+	if r.game.ProcessMove(m) {
+		lastMove := r.game.Moves[len(r.game.Moves)-1]
+		r.broadcast(r.serialize(LAST_MOVE, r.formatLastMove(lastMove)))
+
+		if r.game.Result != enums.Unknown {
+			r.endGame()
+		}
+	}
 }
 
 func (r *Room) broadcastChat(message string) {
@@ -217,8 +229,8 @@ func (r *Room) broadcastChat(message string) {
 	}
 }
 
-// handleTimeout ends the game, broadcasts room status and game result.
-func (r *Room) handleTimeout() {
+// endGame ends the game, broadcasts room status and game result.
+func (r *Room) endGame() {
 	r.status = OVER
 	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
 
@@ -248,19 +260,6 @@ func (r *Room) formatLastMove(move game.CompletedMove) LastMoveData {
 		FEN:        move.FEN,
 		TimeLeft:   move.TimeLeft,
 		LegalMoves: legalMoves,
-	}
-}
-
-func (r *Room) formatGameInfo() GameInfoData {
-	completedMoves := make([]LastMoveData, len(r.game.Moves))
-	for i, m := range r.game.Moves {
-		completedMoves[i] = r.formatLastMove(m)
-	}
-
-	return GameInfoData{
-		CompletedMoves: completedMoves,
-		WhiteTime:      r.game.WhiteTime,
-		BlackTime:      r.game.BlackTime,
 	}
 }
 

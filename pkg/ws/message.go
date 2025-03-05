@@ -17,7 +17,6 @@ const (
 	ROOM_STATUS
 	LAST_MOVE
 	GAME_RESULT
-	GAME_INFO
 )
 
 // Message contains Data based on the Type.
@@ -65,19 +64,13 @@ type GameResultData struct {
 	Result enums.Result `json:"r"`
 }
 
-type GameInfoData struct {
-	CompletedMoves []LastMoveData `json:"c"`
-	WhiteTime      int            `json:"w"`
-	BlackTime      int            `json:"b"`
-}
-
 // Used by both client and server:
 type ChatData struct {
 	Message string `json:"m"`
 }
 
 type MoveData struct {
-	To   int            `json:"s"`
-	From int            `json:"d"`
+	To   int            `json:"d"`
+	From int            `json:"s"`
 	Type enums.MoveType `json:"t"`
 }

@@ -9,12 +9,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// client is a middleman between the frontend and the hub.
+// client is a middleman between the frontend and server.
 // Reding and writing messages occurs through the client`s concurrent routines.
 type client struct {
-	id         uuid.UUID
-	hub        *Hub
-	room       *Room
+	id   uuid.UUID
+	hub  *Hub
+	room *Room
+	// send channel must be a buffered one, otherwise if the routine writes to it but the client
+	// drops connection, the routine will wait forever.
 	send       chan []byte
 	connection *websocket.Conn
 }
@@ -22,7 +24,7 @@ type client struct {
 func newClient(id uuid.UUID, conn *websocket.Conn) *client {
 	return &client{
 		id:         id,
-		send:       make(chan []byte),
+		send:       make(chan []byte, 256),
 		connection: conn,
 	}
 }
