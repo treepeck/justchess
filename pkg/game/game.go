@@ -5,32 +5,37 @@ import (
 	"justchess/pkg/game/enums"
 	"justchess/pkg/game/fen"
 	"justchess/pkg/game/san"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type CompletedMove struct {
-	SAN string
+	SAN string `json:"san"`
 	// Biboard state after completing the move.
-	FEN string
+	FEN string `json:"fen"`
+	// Remaining time on a player`s clock in seconds.
+	TimeLeft int `json:"timeLeft"`
 }
 
 type Game struct {
 	Result      enums.Result
-	Status      enums.Status
 	Bitboard    *bitboard.Bitboard
 	Moves       []CompletedMove
 	WhiteId     uuid.UUID
 	BlackId     uuid.UUID
-	WhiteTime   byte
-	BlackTime   byte
-	Timer       *time.Ticker
-	TimeControl byte
-	TimeBonus   byte
+	WhiteTime   int // In seconds.
+	BlackTime   int // In seconds.
+	Clock       *time.Ticker
+	TimeControl int // In minutes.
+	TimeBonus   int // In seconds.
+	// End channel is used to terminate the DecrementTime goroutine is the
+	// game is ended for the reason other than timeout.
+	End chan struct{}
 }
 
-func NewGame(bb *bitboard.Bitboard, control, bonus byte) *Game {
+func NewGame(bb *bitboard.Bitboard, control, bonus int) *Game {
 	if bb == nil {
 		bb = bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
 			0x4200000000000000, 0x24, 0x2400000000000000, 0x81, 0x8100000000000000,
@@ -39,20 +44,19 @@ func NewGame(bb *bitboard.Bitboard, control, bonus byte) *Game {
 	}
 	g := &Game{
 		Result:      enums.Unknown,
-		Status:      enums.NotStarted,
 		Bitboard:    bb,
 		Moves:       make([]CompletedMove, 0),
 		WhiteTime:   control,
 		BlackTime:   control,
-		Timer:       time.NewTicker(time.Second), // The timer will send a signal each second.
+		Clock:       time.NewTicker(time.Second), // The timer will send a signal each second.
 		TimeBonus:   bonus,
 		TimeControl: control,
+		End:         make(chan struct{}),
 	}
 	g.Bitboard.GenLegalMoves()
 	return g
 }
 
-// TODO: refactoring, ProcessMove is too large.
 func (g *Game) ProcessMove(m bitboard.Move) bool {
 	for _, legalMove := range g.Bitboard.LegalMoves {
 		// Check if the move is legal.
@@ -127,13 +131,6 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 		// Switch the active color
 		g.Bitboard.ActiveColor ^= 1
 
-		// To determine if the last m was a check, generate possible moves
-		// for the moved piece.
-		var occupied uint64
-		for _, board := range g.Bitboard.Pieces {
-			occupied |= board
-		}
-
 		isCheck := bitboard.GenAttackedSquares(g.Bitboard.Pieces, c)&
 			g.Bitboard.Pieces[10+g.Bitboard.ActiveColor] != 0
 		if isCheck {
@@ -146,25 +143,41 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 			if isCheck {
 				g.Result = enums.Checkmate
 				SAN = SAN[:len(SAN)-1] + "#"
+
+				g.End <- struct{}{}
 			} else {
 				g.Result = enums.Stalemate
+
+				g.End <- struct{}{}
 			}
 		}
+
+		timeLeft := g.WhiteTime
+		if c == enums.Black {
+			timeLeft = g.BlackTime
+		}
 		g.Moves = append(g.Moves, CompletedMove{
-			SAN: SAN,
-			FEN: fen.Bitboard2FEN(g.Bitboard),
+			SAN:      SAN,
+			FEN:      fen.Bitboard2FEN(g.Bitboard),
+			TimeLeft: timeLeft,
 		})
 
 		if g.isThreefoldRepetition() {
 			g.Result = enums.Repetition
+
+			g.End <- struct{}{}
 		}
 
 		if g.isInsufficientMaterial() {
-			g.Result = enums.InsufficienMaterial
+			g.Result = enums.InsufficientMaterial
+
+			g.End <- struct{}{}
 		}
 
 		if g.Bitboard.HalfmoveCnt == 100 {
 			g.Result = enums.FiftyMoves
+
+			g.End <- struct{}{}
 		}
 
 		return true
@@ -172,22 +185,31 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 	return false
 }
 
-func (g *Game) DecrementTime() {
-	for {
-		// Wait for time ticks.
-		_, ok := <-g.Timer.C
-		if !ok {
-			return
-		}
+func (g *Game) DecrementTime(timeout chan<- struct{}) {
+	defer func() {
+		g.Clock.Stop()
+		log.Printf("clock stoped")
+	}()
 
-		if g.Bitboard.ActiveColor == enums.White {
-			g.WhiteTime--
-		} else {
-			g.BlackTime--
-		}
-		if g.WhiteTime <= 0 || g.BlackTime <= 0 {
-			g.Timer.Stop()
-			g.Result = enums.Timeout
+	for {
+		select {
+		// Wait for time ticks.
+		case <-g.Clock.C:
+
+			if g.Bitboard.ActiveColor == enums.White {
+				g.WhiteTime--
+			} else {
+				g.BlackTime--
+			}
+			log.Printf("white time: %d, black time: %d\n", g.WhiteTime, g.BlackTime)
+
+			if g.WhiteTime <= 0 || g.BlackTime <= 0 {
+				g.Result = enums.Timeout
+				timeout <- struct{}{}
+				return
+			}
+
+		case <-g.End:
 			return
 		}
 	}

@@ -3,7 +3,7 @@ package bitboard
 import (
 	"math/bits"
 
-	"test-ws/pkg/game/enums"
+	"justchess/pkg/game/enums"
 )
 
 // The following block on contants defines the bit masks needed to

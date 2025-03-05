@@ -31,9 +31,26 @@ func setupMux() *http.ServeMux {
 	))
 
 	h := ws.NewHub()
-	go h.EventPump()
 
 	mux.HandleFunc("/hub", h.HandleNewConnection)
+
+	mux.HandleFunc("/room", func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(http.StatusBadRequest)
+		// id, err := uuid.Parse(r.URL.Query().Get("id"))
+		// if err != nil {
+		// 	rw.WriteHeader(http.StatusBadRequest)
+		// 	return
+		// }
+
+		// room := h.GetRoomByCreatorId(id)
+		// if room == nil {
+		// 	rw.WriteHeader(http.StatusNotFound)
+		// 	return
+		// }
+
+		// room.HandleNewConnection(rw, r)
+	})
+
 	return mux
 }
 
@@ -42,10 +59,10 @@ func AllowCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
 		rw.Header().Add("Access-Control-Allow-Credentials", "true")
-		rw.Header().Add("Access-Control-Allow-Headers", "origin, content-type, accept, 	authorization")
+		rw.Header().Add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
 		rw.Header().Add("Access-Control-Allow-Methods", "GET,PUT,OPTIONS")
 
-		// handle CORS preflight request
+		// Handle CORS preflight request.
 		if r.Method == "OPTIONS" {
 			rw.WriteHeader(200)
 			return

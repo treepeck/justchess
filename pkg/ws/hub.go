@@ -1,9 +1,11 @@
 package ws
 
 import (
+	"encoding/json"
 	"justchess/pkg/auth"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -19,24 +21,18 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Hub is responsible for creating and deleting the rooms.
+// The Hub is a global repository of all created rooms and all connected clients.
+// To ensure safe concurrent access, the Hub is protected with a Mutex.
 type Hub struct {
-	register   chan *client
-	unregister chan *client
-	add        chan *Room
-	remove     chan uuid.UUID
-	clients    map[*client]struct{}
-	rooms      map[uuid.UUID]*Room
+	sync.Mutex
+	clients map[*client]struct{}
+	rooms   map[*Room]struct{}
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		register:   make(chan *client),
-		unregister: make(chan *client),
-		add:        make(chan *Room),
-		remove:     make(chan uuid.UUID),
-		clients:    make(map[*client]struct{}),
-		rooms:      make(map[uuid.UUID]*Room),
+		clients: make(map[*client]struct{}),
+		rooms:   make(map[*Room]struct{}),
 	}
 }
 
@@ -69,84 +65,153 @@ func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
 	c := newClient(id, conn)
 	c.hub = h
 
-	go c.readPump()
-	go c.writePump()
+	go c.readRoutine()
+	go c.writeRoutine()
 
-	h.register <- c
+	h.register(c)
 }
 
-func (h *Hub) EventPump() {
-	for {
-		select {
-		case c := <-h.register:
-			h.registerClient(c)
-			h.broadcastClientsCounter()
+// register denies multiple connections from a single peer.
+func (h *Hub) register(c *client) {
+	h.Lock()
+	defer h.Unlock()
 
-		case c := <-h.unregister:
-			if _, ok := h.clients[c]; ok {
-				h.unregisterClient(c)
-			}
-
-		case r := <-h.add:
-			h.addRoom(r)
-			h.broadcastAddRoom(r)
-
-		case id := <-h.remove:
-			if _, ok := h.rooms[id]; ok {
-				h.removeRoom(id)
-			}
-		}
-	}
-}
-
-func (h *Hub) registerClient(c *client) {
 	for connected := range h.clients {
 		if connected.id == c.id {
-			// Deny multiple connections from a single peer.
-			close(c.send)
 			return
 		}
 	}
 
 	h.clients[c] = struct{}{}
-	log.Printf("client %s added\n", c.id.String())
+	log.Printf("client %s registered\n", c.id.String())
+
+	h.broadcastClientsCounter()
+	h.send10Rooms(c)
 }
 
-func (h *Hub) unregisterClient(c *client) {
+// unregister removes the client if it is connected.
+func (h *Hub) unregister(c *client) {
+	h.Lock()
+	defer h.Unlock()
+
+	if _, ok := h.clients[c]; !ok {
+		return
+	}
+
 	delete(h.clients, c)
-	log.Printf("client %s removed\n", c.id.String())
+	log.Printf("client %s unregistered\n", c.id.String())
+
+	h.broadcastClientsCounter()
 }
 
-func (h *Hub) addRoom(r *Room) {
-	h.rooms[r.creatorId] = r
-	log.Printf("user %s created a room\n", r.creatorId.String())
+// add denies multiple room creation.
+func (h *Hub) add(r *Room) {
+	h.Lock()
+	defer h.Unlock()
+
+	for room := range h.rooms {
+		if room.creatorId == r.creatorId {
+			return
+		}
+	}
+
+	h.rooms[r] = struct{}{}
+	log.Printf("client %s created a room\n", r.creatorId.String())
+
+	h.broadcastAddRoom(r)
 }
 
-func (h *Hub) removeRoom(id uuid.UUID) {
-	delete(h.rooms, id)
-	log.Printf("room created by %s removed\n", id.String())
+// remove terminates the room`s handleMessages routine.
+func (h *Hub) remove(r *Room) {
+	h.Lock()
+	defer h.Unlock()
+
+	if _, ok := h.rooms[r]; !ok {
+		return
+	}
+
+	delete(h.rooms, r)
+	log.Printf("room %s removed\n", r.creatorId.String())
+
+	close(r.register)
+
+	h.broadcastRemoveRoom(r.creatorId)
 }
 
-// broadcastClientsCounter sends clients counter to all connected clients.
-// To send larger numbers, such as uint32, the message size is 5 bytes.
+// broadcastClientsCounter does not Lock the hub, so it cannot be called in a non-blocking routine!
 func (h *Hub) broadcastClientsCounter() {
-	// TODO: handle larger numbers, than 256.
-	msg := []byte{byte(len(h.clients)), CLIENTS_COUNTER}
+	data, err := json.Marshal(ClientsCounterData{Counter: len(h.clients)})
+
+	msg, err := json.Marshal(Message{Type: CLIENTS_COUNTER, Data: data})
+	if err != nil {
+		log.Printf("cannot Marshal message: %v\n", err)
+		return
+	}
 
 	for c := range h.clients {
 		c.send <- msg
 	}
 }
 
-// broadcastAddRoom sends room info to all connected clients.
+// broadcastAddRoom does not Lock the hub, so it cannot be called in a non-blocking routine!
+// Room`s game field should not be nil!
 func (h *Hub) broadcastAddRoom(r *Room) {
-	msg := make([]byte, 19)
-	copy(msg[:16], r.creatorId[:])
-	msg[16] = r.game.TimeControl
-	msg[17] = r.game.TimeBonus
-	msg[18] = ADD_ROOM
+	data, err := json.Marshal(AddRoomData{
+		CreatorId:   r.creatorId.String(),
+		TimeControl: r.game.TimeControl,
+		TimeBonus:   r.game.TimeBonus,
+	})
+
+	msg, err := json.Marshal(Message{Type: ADD_ROOM, Data: data})
+	if err != nil {
+		log.Printf("cannot Marshal message: %v\n", err)
+		return
+	}
 
 	for c := range h.clients {
+		c.send <- msg
+	}
+}
+
+func (h *Hub) broadcastRemoveRoom(roomId uuid.UUID) {
+	data, err := json.Marshal(RemoveRoomData{
+		RoomId: roomId.String(),
+	})
+
+	msg, err := json.Marshal(Message{Type: REMOVE_ROOM, Data: data})
+	if err != nil {
+		log.Printf("cannot Marshal message: %v\n", err)
+		return
+	}
+
+	for c := range h.clients {
+		c.send <- msg
+	}
+}
+
+// send10Rooms does not Lock the hub, so it cannot be called in a non-blocking routine!
+// Each room`s game field should not be nil!
+func (h *Hub) send10Rooms(c *client) {
+	cnt := 0
+
+	for r := range h.rooms {
+		cnt++
+		if cnt == 10 {
+			return
+		}
+
+		data, err := json.Marshal(AddRoomData{
+			CreatorId:   r.creatorId.String(),
+			TimeControl: r.game.TimeControl,
+			TimeBonus:   r.game.TimeBonus,
+		})
+
+		msg, err := json.Marshal(Message{Type: ADD_ROOM, Data: data})
+		if err != nil {
+			log.Printf("cannot Marshal message: %v\n", err)
+			return
+		}
+
 		c.send <- msg
 	}
 }

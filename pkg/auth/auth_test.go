@@ -32,7 +32,7 @@ func TestHandleCreateGuest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode response body: %v", err)
 	}
-
+	              
 	hasCookie := false
 	for _, c := range res.Cookies() {
 		if c.Name == "Authorization" {

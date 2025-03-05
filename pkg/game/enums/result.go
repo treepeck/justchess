@@ -7,7 +7,7 @@ const (
 	Checkmate
 	Timeout
 	Stalemate
-	InsufficienMaterial
+	InsufficientMaterial
 	FiftyMoves
 	Repetition
 	Agreement

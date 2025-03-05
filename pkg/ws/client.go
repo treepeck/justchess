@@ -1,17 +1,18 @@
 package ws
 
 import (
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
+// The client is a middleman between the frontend and the hub.
+// Reding and writing messages occurs through the client`s concurrent routines.
 type client struct {
 	id         uuid.UUID
-	room       *Room
 	hub        *Hub
+	room       *Room
 	send       chan []byte
 	connection *websocket.Conn
 }
@@ -19,31 +20,27 @@ type client struct {
 func newClient(id uuid.UUID, conn *websocket.Conn) *client {
 	return &client{
 		id:         id,
-		connection: conn,
 		send:       make(chan []byte),
-		hub:        nil,
-		room:       nil,
+		connection: conn,
 	}
 }
 
-func (c *client) readPump() {
+func (c *client) readRoutine() {
 	defer func() {
 		c.cleanup()
 	}()
 
 	for {
-		msgType, msg, err := c.connection.ReadMessage()
+		_, msg, err := c.connection.ReadMessage()
 		if err != nil {
 			return
 		}
 
-		if msgType == websocket.BinaryMessage {
-			c.handleMessage(msg)
-		}
+		c.handleMessage(msg)
 	}
 }
 
-func (c *client) writePump() {
+func (c *client) writeRoutine() {
 	defer func() {
 		c.cleanup()
 	}()
@@ -54,44 +51,41 @@ func (c *client) writePump() {
 			return
 		}
 
-		if err := c.connection.WriteMessage(websocket.BinaryMessage, msg); err != nil {
+		if err := c.connection.WriteMessage(websocket.TextMessage, msg); err != nil {
 			return
 		}
 	}
 }
 
-func (c *client) handleMessage(msg []byte) {
-	switch msg[len(msg)-1] {
+func (c *client) handleMessage(raw []byte) {
+	msg := Message{}
+	err := json.Unmarshal(raw, &msg)
+	if err != nil {
+		return
+	}
+
+	switch msg.Type {
 	case CREATE_ROOM:
-		c.handleCreateRoom(msg)
+		data := CreateRoomData{}
+		err := json.Unmarshal(msg.Data, &data)
+		if err != nil || data.TimeControl < 1 || data.TimeBonus < 1 {
+			return
+		}
+
+		r := newRoom(c.hub, c.id, data.TimeControl, data.TimeBonus)
+		c.hub.add(r)
 
 	case MAKE_MOVE:
-		c.handleMakeMove(msg)
-	}
-}
 
-func (c *client) handleCreateRoom(msg []byte) {
-	if len(msg) != 3 {
-		return
 	}
-
-	r := NewRoom(c.id, msg[0], msg[1])
-	c.hub.add <- r
-}
-
-func (c *client) handleMakeMove(msg []byte) {
-	if len(msg) != 4 {
-		return
-	}
-	c.room.move <- bitboard.NewMove(int(msg[0]), int(msg[1]), enums.MoveType(msg[2]))
 }
 
 func (c *client) cleanup() {
 	c.connection.Close()
+	if c.hub != nil {
+		c.hub.unregister(c)
+	}
 	if c.room != nil {
 		c.room.unregister <- c
-	}
-	if c.hub != nil {
-		c.hub.unregister <- c
 	}
 }

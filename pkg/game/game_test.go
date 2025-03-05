@@ -1,9 +1,9 @@
 package game
 
 import (
-	"test-ws/pkg/game/bitboard"
-	"test-ws/pkg/game/enums"
-	"test-ws/pkg/game/fen"
+	"justchess/pkg/game/bitboard"
+	"justchess/pkg/game/enums"
+	"justchess/pkg/game/fen"
 	"testing"
 )
 
@@ -87,13 +87,13 @@ func TestIsThreefoldRepetition(t *testing.T) {
 		expected bool
 	}{
 		{[]CompletedMove{
-			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
-			{"", "1kr5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
-			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1"},
-			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1"},
+			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
+			{"", "1kr5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
+			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
 		}, true},
 		{[]CompletedMove{}, false},
 	}
