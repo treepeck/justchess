@@ -47,10 +47,12 @@ type RemoveRoomData struct {
 }
 
 type RoomStatusData struct {
-	Status  RoomStatus `json:"s"`
-	WhiteId string     `json:"w"`
-	BlackId string     `json:"b"`
-	Clients int        `json:"c"`
+	Status    RoomStatus `json:"s"`
+	WhiteId   string     `json:"w"`
+	BlackId   string     `json:"b"`
+	WhiteTime int        `json:"wt"`
+	BlackTime int        `json:"bt"`
+	Clients   int        `json:"c"`
 }
 
 type LastMoveData struct {

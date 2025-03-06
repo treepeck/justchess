@@ -242,10 +242,12 @@ func (r *Room) endGame() {
 
 func (r *Room) formatRoomStatus() RoomStatusData {
 	return RoomStatusData{
-		Status:  r.status,
-		WhiteId: r.game.WhiteId.String(),
-		BlackId: r.game.BlackId.String(),
-		Clients: len(r.clients),
+		Status:    r.status,
+		WhiteId:   r.game.WhiteId.String(),
+		BlackId:   r.game.BlackId.String(),
+		WhiteTime: r.game.WhiteTime,
+		BlackTime: r.game.BlackTime,
+		Clients:   len(r.clients),
 	}
 }
 
