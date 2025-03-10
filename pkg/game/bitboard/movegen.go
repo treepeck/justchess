@@ -280,7 +280,7 @@ func genPseudoLegalMoves(pt enums.PieceType, bb, allies, enemies uint64) (moves 
 			movesBB = genRookAttackDests(from, occupied)
 
 		case enums.WhiteQueen, enums.BlackQueen:
-			// Queen moves is just a concatenation of the rook`s and bishop`s moves.
+			// Queen moves is just a concatenation of the rook's and bishop's moves.
 			movesBB = genQueenAttackDests(from, occupied)
 
 		default:

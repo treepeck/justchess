@@ -190,7 +190,7 @@ func (r *Room) startGame() {
 		i++
 	}
 
-	// Randomly select player`s sides.
+	// Randomly select player's sides.
 	if rand.Intn(2) == 1 {
 		r.game.WhiteId = players[0]
 		r.game.BlackId = players[1]

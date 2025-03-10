@@ -8,6 +8,8 @@ import (
 	"justchess/pkg/game/enums"
 )
 
+// TODO: validate FEN before parsing.
+
 func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
 	FEN += serializePiecePlacement(bb.Pieces)
 	FEN += serializeActiveColor(bb.ActiveColor)
@@ -18,7 +20,6 @@ func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
 	return
 }
 
-// TODO: make serializePiecePlacement more performant.
 func serializePiecePlacement(pieces [12]uint64) (fenPPF string) {
 	mapping := map[enums.PieceType]byte{
 		enums.WhitePawn:   'P',
@@ -117,7 +118,7 @@ func FEN2Bitboard(FEN string) *bitboard.Bitboard {
 		epTarget, halfmoveClk, fullmoveClk)
 }
 
-// parsePiecePlacement parses bitboards from FEN`s piece placement field.
+// parsePiecePlacement parses bitboards from FEN's piece placement field.
 func parsePiecePlacement(fenPPF string) (pieces [12]uint64) {
 	squareIndex := 0
 	rows := strings.Split(fenPPF, "/")
@@ -150,7 +151,7 @@ func parsePiecePlacement(fenPPF string) (pieces [12]uint64) {
 			case 'k':
 				pieces[enums.BlackKing] |= 1 << squareIndex
 			default:
-				squareIndex += int(b - '0') // Convert byte to it`s int representation.
+				squareIndex += int(b - '0') // Convert byte to it's int representation.
 				continue
 			}
 			squareIndex++

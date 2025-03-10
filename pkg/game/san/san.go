@@ -70,7 +70,7 @@ func disambiguate(from, to int, pieces [12]uint64,
 		}
 	}
 	if isCapture {
-		// In case of pawn capture, the pawn`s originating file must be included.
+		// In case of pawn capture, the pawn's originating file must be included.
 		if pt == enums.WhitePawn || pt == enums.BlackPawn {
 			san += file2Str(from % 8)
 		}

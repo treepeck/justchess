@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// generatePair generates a pair of JWT`s: access token and refresh token.
+// generatePair generates a pair of JWTs: access token and refresh token.
 // The os.Args (command-line arguments) must store secrets for safe
 // token signing.
 func generatePair(id uuid.UUID) (at, rt string, err error) {

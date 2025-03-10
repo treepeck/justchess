@@ -14,7 +14,7 @@ type Bitboard struct {
 	// [3] - Black queen castle.
 	CastlingRights [4]bool
 	// The index of a square which a pawn just passed while performing a
-	// double push forward. If there isn`t such square, will be equal to enums.NoSquare (-1).
+	// double push forward. If there isn't such square, will be equal to enums.NoSquare (-1).
 	EPTarget int
 	// Number of half moves since the last capture or pawn move.
 	// Used to implement the fifty-move rule.

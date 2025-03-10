@@ -10,7 +10,7 @@ import (
 )
 
 // client is a middleman between the frontend and server.
-// Reding and writing messages occurs through the client`s concurrent routines.
+// Reding and writing messages occurs through the client's concurrent routines.
 type client struct {
 	id   uuid.UUID
 	hub  *Hub

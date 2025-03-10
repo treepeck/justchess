@@ -27,6 +27,7 @@ func main() {
 
 func setupMux() *http.ServeMux {
 	mux := http.NewServeMux()
+
 	mux.Handle("/auth/", http.StripPrefix(
 		"/auth",
 		AllowCors(auth.AuthMux()),

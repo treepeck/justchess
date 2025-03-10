@@ -15,7 +15,7 @@ type CompletedMove struct {
 	SAN string
 	// Biboard state after completing the move.
 	FEN string
-	// Remaining time on a player`s clock in seconds.
+	// Remaining time on a player's clock in seconds.
 	TimeLeft int
 }
 
@@ -201,7 +201,6 @@ func (g *Game) DecrementTime(timeout chan<- struct{}) {
 			} else {
 				g.BlackTime--
 			}
-			log.Printf("white time: %d, black time: %d\n", g.WhiteTime, g.BlackTime)
 
 			if g.WhiteTime <= 0 || g.BlackTime <= 0 {
 				g.Result = enums.Timeout

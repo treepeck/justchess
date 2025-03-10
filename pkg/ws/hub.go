@@ -121,7 +121,7 @@ func (h *Hub) add(r *Room) {
 	h.broadcastAddRoom(r)
 }
 
-// remove terminates the room`s handleMessages routine.
+// remove terminates the room's handleMessages routine.
 func (h *Hub) remove(r *Room) {
 	h.Lock()
 	defer h.Unlock()
@@ -154,7 +154,7 @@ func (h *Hub) broadcastClientsCounter() {
 }
 
 // broadcastAddRoom does not Lock the hub, so it cannot be called in a non-blocking routine!
-// Room`s game field should not be nil!
+// Room's game field should not be nil!
 func (h *Hub) broadcastAddRoom(r *Room) {
 	data, err := json.Marshal(AddRoomData{
 		CreatorId:   r.creatorId.String(),
@@ -190,7 +190,7 @@ func (h *Hub) broadcastRemoveRoom(roomId uuid.UUID) {
 }
 
 // send10Rooms does not Lock the hub, so it cannot be called in a non-blocking routine!
-// Each room`s game field should not be nil!
+// Each room's game field should not be nil!
 func (h *Hub) send10Rooms(c *client) {
 	cnt := 0
 
