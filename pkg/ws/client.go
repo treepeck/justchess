@@ -72,12 +72,13 @@ func (c *client) handleMessage(raw []byte) {
 	case CREATE_ROOM:
 		data := CreateRoomData{}
 		err := json.Unmarshal(msg.Data, &data)
-		if err != nil || data.TimeControl < 1 || data.TimeBonus < 1 {
+		if err != nil || data.TimeControl < 1 || data.TimeBonus < 0 {
 			return
 		}
 
-		r := newRoom(c.hub, c.id, data.TimeControl, data.TimeBonus)
+		r := newRoom(c.hub, c.id, data.IsVSEngine, data.TimeControl, data.TimeBonus)
 		go r.handleRoutine()
+
 		c.hub.add(r)
 
 	case MAKE_MOVE:
@@ -87,7 +88,8 @@ func (c *client) handleMessage(raw []byte) {
 			return
 		}
 
-		c.room.move <- bitboard.NewMove(data.To, data.From, enums.MoveType(data.Type))
+		m := bitboard.NewMove(data.To, data.From, enums.MoveType(data.Type))
+		c.room.move <- MakeMoveData{move: m, client: c}
 	}
 }
 

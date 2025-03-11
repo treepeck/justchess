@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"justchess/pkg/auth"
 	"justchess/pkg/game"
-	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
 	"log"
 	"math/rand"
@@ -33,12 +32,13 @@ const (
 type Room struct {
 	// The room must be able to remove itself from the Hub.
 	hub        *Hub
+	isVSEngine bool
 	status     RoomStatus
 	game       *game.Game
 	creatorId  uuid.UUID
 	register   chan *client
 	unregister chan *client
-	move       chan bitboard.Move
+	move       chan MakeMoveData
 	chat       chan string
 	// When one of the players runs out of time, the game sends the msg to the timeout
 	// channel, so that the room can notify the players about the game result.
@@ -46,15 +46,16 @@ type Room struct {
 	clients map[*client]struct{}
 }
 
-func newRoom(h *Hub, id uuid.UUID, control, bonus int) *Room {
+func newRoom(h *Hub, id uuid.UUID, isVSEngine bool, control, bonus int) *Room {
 	return &Room{
 		hub:        h,
+		isVSEngine: isVSEngine,
 		status:     OPEN,
 		creatorId:  id,
 		clients:    make(map[*client]struct{}),
 		register:   make(chan *client),
 		unregister: make(chan *client),
-		move:       make(chan bitboard.Move),
+		move:       make(chan MakeMoveData),
 		chat:       make(chan string),
 		timeout:    make(chan struct{}),
 		game:       game.NewGame(nil, control*60, bonus),
@@ -136,8 +137,7 @@ func (r *Room) add(c *client) {
 
 	switch r.status {
 	case OPEN:
-		// Start the game.
-		if len(r.clients) == 2 {
+		if r.isVSEngine || len(r.clients) == 2 {
 			r.startGame()
 		}
 
@@ -176,7 +176,15 @@ func (r *Room) remove(c *client) {
 		}
 
 		r.hub.remove(r)
+		return
 	}
+
+	if c.id == r.game.WhiteId {
+		r.status = WHITE_DISCONNECTED
+	} else if c.id == r.game.BlackId {
+		r.status = BLACK_DISCONNECTED
+	}
+	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
 }
 
 func (r *Room) startGame() {
@@ -190,7 +198,7 @@ func (r *Room) startGame() {
 		i++
 	}
 
-	// Randomly select player's sides.
+	// Randomly select players' sides.
 	if rand.Intn(2) == 1 {
 		r.game.WhiteId = players[0]
 		r.game.BlackId = players[1]
@@ -200,12 +208,19 @@ func (r *Room) startGame() {
 	}
 }
 
-func (r *Room) handle(m bitboard.Move) {
+func (r *Room) handle(m MakeMoveData) {
 	if r.status == OPEN || r.status == OVER {
 		return
 	}
 
-	if r.game.ProcessMove(m) {
+	if !r.isVSEngine {
+		if r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId != m.client.id ||
+			r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId != m.client.id {
+			return
+		}
+	}
+
+	if r.game.ProcessMove(m.move) {
 		lastMove := r.game.Moves[len(r.game.Moves)-1]
 		r.broadcast(r.serialize(LAST_MOVE, r.formatLastMove(lastMove)))
 
@@ -242,12 +257,13 @@ func (r *Room) endGame() {
 
 func (r *Room) formatRoomStatus() RoomStatusData {
 	return RoomStatusData{
-		Status:    r.status,
-		WhiteId:   r.game.WhiteId.String(),
-		BlackId:   r.game.BlackId.String(),
-		WhiteTime: r.game.WhiteTime,
-		BlackTime: r.game.BlackTime,
-		Clients:   len(r.clients),
+		Status:     r.status,
+		WhiteId:    r.game.WhiteId.String(),
+		BlackId:    r.game.BlackId.String(),
+		WhiteTime:  r.game.WhiteTime,
+		BlackTime:  r.game.BlackTime,
+		IsVSEngine: r.isVSEngine,
+		Clients:    len(r.clients),
 	}
 }
 

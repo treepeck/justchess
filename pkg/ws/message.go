@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
 )
 
@@ -25,13 +26,14 @@ type Message struct {
 	Data json.RawMessage `json:"d"`
 }
 
-// Client DTO`s:
+// Client DTOs:
 type CreateRoomData struct {
-	TimeControl int `json:"c"`
-	TimeBonus   int `json:"b"`
+	TimeControl int  `json:"c"`
+	TimeBonus   int  `json:"b"`
+	IsVSEngine  bool `json:"e"`
 }
 
-// Server DTO`s:
+// Server DTOs:
 type ClientsCounterData struct {
 	Counter int `json:"c"`
 }
@@ -47,12 +49,13 @@ type RemoveRoomData struct {
 }
 
 type RoomStatusData struct {
-	Status    RoomStatus `json:"s"`
-	WhiteId   string     `json:"w"`
-	BlackId   string     `json:"b"`
-	WhiteTime int        `json:"wt"`
-	BlackTime int        `json:"bt"`
-	Clients   int        `json:"c"`
+	Status     RoomStatus `json:"s"`
+	WhiteId    string     `json:"w"`
+	BlackId    string     `json:"b"`
+	WhiteTime  int        `json:"wt"`
+	BlackTime  int        `json:"bt"`
+	IsVSEngine bool       `json:"e"`
+	Clients    int        `json:"c"`
 }
 
 type LastMoveData struct {
@@ -75,4 +78,9 @@ type MoveData struct {
 	To   int            `json:"d"`
 	From int            `json:"s"`
 	Type enums.MoveType `json:"t"`
+}
+
+type MakeMoveData struct {
+	move   bitboard.Move
+	client *client
 }
