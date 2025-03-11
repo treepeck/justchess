@@ -120,7 +120,7 @@ func (bb *Bitboard) GenLegalMoves() {
 		bb.EPTarget)...)
 	// Take each piece type except the king and pawns.
 	for i := 2; i < len(bb.Pieces)-2; i++ {
-		if i%2 != int(bb.ActiveColor) {
+		if i%2 != int(bb.ActiveColor) || bb.Pieces[i] == 0 {
 			continue
 		}
 		pseudoLegal = append(pseudoLegal, genPseudoLegalMoves(enums.PieceType(i),

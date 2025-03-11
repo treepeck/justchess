@@ -260,6 +260,22 @@ func TestGenLegalMoves(t *testing.T) {
 				enums.NoSquare, 0, 1),
 			[]Move{},
 		},
+		{
+			"8/K7/1p4p1/7p/1P4k1/8/8/8 w - - 0 44",
+			NewBitboard([12]uint64{
+				0x2000000, 0x428000000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x1000000000000, 0x40000000,
+			}, enums.White, [4]bool{false, false, false, false},
+				enums.NoSquare, 0, 44),
+			[]Move{
+				NewMove(enums.B5, enums.B4, enums.Quiet),
+				NewMove(enums.A6, enums.A7, enums.Quiet),
+				NewMove(enums.B6, enums.A7, enums.Capture),
+				NewMove(enums.B7, enums.A7, enums.Quiet),
+				NewMove(enums.A8, enums.A7, enums.Quiet),
+				NewMove(enums.B8, enums.A7, enums.Quiet),
+			},
+		},
 	}
 	for _, tc := range testcases {
 		t.Logf("passing test: %s\n", tc.fen)

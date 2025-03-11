@@ -44,9 +44,9 @@ func (m Move) Type() enums.MoveType {
 ///////////////////////////////////////////////////////////////
 
 func genKingAttackDests(king uint64) (moves uint64) {
-	moves = (king & notH) >> 9  // South east. (-9 squares)
+	moves = (king & notA) >> 9  // South west. (-9 squares)
 	moves |= king >> 8          // South south. (-8 squares)
-	moves |= (king & notA) >> 7 // South west. (-7 squares)
+	moves |= (king & notH) >> 7 // South east. (-7 squares)
 	moves |= (king & notA) >> 1 // West. (-1 square)
 	moves |= (king & notH) << 1 // East. (+1 square)
 	moves |= (king & notA) << 7 // North west. (+7 squares)

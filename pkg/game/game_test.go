@@ -106,3 +106,69 @@ func TestIsThreefoldRepetition(t *testing.T) {
 		}
 	}
 }
+
+func TestIsInsufficientMaterial(t *testing.T) {
+	testcases := []struct {
+		fen      string
+		pieces   [12]uint64
+		expected bool
+	}{
+		{
+			"8/8/1K4p1/7p/1P4k1/8/8/8 w - - 0 44",
+			[12]uint64{
+				0x2000000, 0x408000000000, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+			},
+			false,
+		},
+		{
+			"8/8/1K6/8/1P4k1/8/8/8 w - - 0 44",
+			[12]uint64{
+				0x20000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0,
+			},
+			false,
+		},
+		{
+			"8/8/1K6/8/2N3k1/8/8/8 w - - 0 44",
+			[12]uint64{
+				0x0, 0x0, 0x4000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0,
+			},
+			true,
+		},
+		{
+			"8/8/1K1N4/8/2N3k1/8/8/8 w - - 0 44",
+			[12]uint64{
+				0x0, 0x0, 0x8004000000, 0x0, 0x0, 0x0, 0x0, 0x0,
+				0x0, 0x0, 0x0, 0x0,
+			},
+			false,
+		},
+		{
+			"8/8/1K4b1/8/1B4k1/8/8/8 w - - 0 44",
+			[12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x2000000, 0x400000000000,
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+			},
+			false,
+		},
+		{
+			"8/5b2/1K6/8/1B4k1/8/8/8 w - - 0 44",
+			[12]uint64{
+				0x0, 0x0, 0x0, 0x0, 0x2000000, 0x40000000000000,
+				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+			},
+			true,
+		},
+	}
+	for _, tc := range testcases {
+		t.Logf("passing test: %s\n", tc.fen)
+		g := NewGame(bitboard.NewBitboard(tc.pieces, enums.White, [4]bool{false, false, false, false},
+			enums.NoSquare, 0, 44), 180, 180)
+
+		if tc.expected != g.isInsufficientMaterial() {
+			t.Fatalf("expected: %t, got: %t\n", tc.expected, !tc.expected)
+		}
+	}
+}

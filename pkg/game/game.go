@@ -237,15 +237,24 @@ func (g *Game) isThreefoldRepetition() bool {
 //  2. one side has a king and a minor piece against a bare king;
 //  3. both sides have a king and a bishop, the bishops being the same color.
 func (g *Game) isInsufficientMaterial() bool {
-	var dark uint64 = 0xAA55AA55AA55AA55 // Mask for all dark squares.
+	// Mask for all dark squares.
+	var dark uint64 = 0xAA55AA55AA55AA55
 	material := g.Bitboard.CalculateMaterial()
 
-	if material == 0 || material == 3 {
+	// Case 1.
+	if material == 0 {
 		return true
-	} else if material == 6 {
-		var wB, bB uint64 = g.Bitboard.Pieces[enums.WhiteBishop],
-			g.Bitboard.Pieces[enums.BlackBishop]
-		if wB != 0 && bB != 0 && wB&dark == bB&dark {
+	}
+	// Case 2.
+	if material == 3 && g.Bitboard.Pieces[enums.WhitePawn] == 0 &&
+		g.Bitboard.Pieces[enums.BlackPawn] == 0 {
+		return true
+	}
+	// Case 3.
+	if material == 6 {
+		wb, bb := g.Bitboard.Pieces[enums.WhiteBishop], g.Bitboard.Pieces[enums.BlackBishop]
+		if wb != 0 && bb != 0 && ((wb&dark > 0 && bb&dark > 0) ||
+			(wb&dark == 0 && bb&dark == 0)) {
 			return true
 		}
 	}
