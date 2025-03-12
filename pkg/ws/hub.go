@@ -133,8 +133,6 @@ func (h *Hub) remove(r *Room) {
 	delete(h.rooms, r)
 	log.Printf("room %s removed\n", r.creatorId.String())
 
-	close(r.register)
-
 	h.broadcastRemoveRoom(r.creatorId)
 }
 

@@ -176,6 +176,7 @@ func (r *Room) remove(c *client) {
 		}
 
 		r.hub.remove(r)
+		close(r.register)
 		return
 	}
 
@@ -253,6 +254,8 @@ func (r *Room) endGame() {
 	data, _ := json.Marshal(GameResultData{Result: r.game.Result})
 	msg, _ := json.Marshal(Message{Type: GAME_RESULT, Data: data})
 	r.broadcast(msg)
+
+	r.hub.remove(r)
 }
 
 func (r *Room) formatRoomStatus() RoomStatusData {

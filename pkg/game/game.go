@@ -152,8 +152,12 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 			}
 		}
 
-		timeLeft := g.WhiteTime
-		if c == enums.Black {
+		timeLeft := 0
+		if c == enums.White {
+			g.WhiteTime += g.TimeBonus
+			timeLeft = g.WhiteTime
+		} else {
+			g.BlackTime += g.TimeBonus
 			timeLeft = g.BlackTime
 		}
 		g.Moves = append(g.Moves, CompletedMove{
