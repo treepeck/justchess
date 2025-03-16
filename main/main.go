@@ -19,7 +19,7 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	mux := setupMux()
-	err := http.ListenAndServe(":3502", mux)
+	err := http.ListenAndServe("localhost:3502", mux)
 	if err != nil {
 		log.Printf("%v\n", err)
 	}

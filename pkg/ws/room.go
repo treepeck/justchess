@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"justchess/pkg/auth"
 	"justchess/pkg/game"
+	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
 	"log"
 	"math/rand"
@@ -38,8 +39,8 @@ type Room struct {
 	creatorId  uuid.UUID
 	register   chan *client
 	unregister chan *client
-	move       chan MakeMoveData
-	chat       chan string
+	move       chan MoveData
+	chat       chan ChatData
 	// When one of the players runs out of time, the game sends the msg to the timeout
 	// channel, so that the room can notify the players about the game result.
 	timeout chan struct{}
@@ -55,8 +56,8 @@ func newRoom(h *Hub, id uuid.UUID, isVSEngine bool, control, bonus int) *Room {
 		clients:    make(map[*client]struct{}),
 		register:   make(chan *client),
 		unregister: make(chan *client),
-		move:       make(chan MakeMoveData),
-		chat:       make(chan string),
+		move:       make(chan MoveData),
+		chat:       make(chan ChatData),
 		timeout:    make(chan struct{}),
 		game:       game.NewGame(nil, control*60, bonus),
 	}
@@ -209,7 +210,7 @@ func (r *Room) startGame() {
 	}
 }
 
-func (r *Room) handle(m MakeMoveData) {
+func (r *Room) handle(m MoveData) {
 	if r.status == OPEN || r.status == OVER {
 		return
 	}
@@ -221,7 +222,7 @@ func (r *Room) handle(m MakeMoveData) {
 		}
 	}
 
-	if r.game.ProcessMove(m.move) {
+	if r.game.ProcessMove(bitboard.NewMove(m.To, m.From, m.Type)) {
 		lastMove := r.game.Moves[len(r.game.Moves)-1]
 		r.broadcast(r.serialize(LAST_MOVE, r.formatLastMove(lastMove)))
 
@@ -231,14 +232,19 @@ func (r *Room) handle(m MakeMoveData) {
 	}
 }
 
-func (r *Room) broadcastChat(message string) {
-	data, err := json.Marshal(ChatData{Message: message})
-	if err != nil {
-		log.Printf("cannot Marshal message: %v\n", err)
+func (r *Room) broadcastChat(data ChatData) {
+	if r.game.WhiteId == data.client.id {
+		data.Message = `"[white] ` + data.Message + `"`
+	} else if r.game.BlackId == data.client.id {
+		data.Message = `"[black] ` + data.Message + `"`
+	} else {
 		return
 	}
 
-	msg, _ := json.Marshal(Message{Type: CHAT, Data: data})
+	msg, err := json.Marshal(Message{Type: CHAT, Data: []byte(data.Message)})
+	if err != nil {
+		return
+	}
 
 	for c := range r.clients {
 		c.send <- msg
@@ -259,10 +265,18 @@ func (r *Room) endGame() {
 }
 
 func (r *Room) formatRoomStatus() RoomStatusData {
+	whiteId, blackId := r.game.WhiteId.String(), r.game.BlackId.String()
+
+	if r.game.WhiteId == uuid.Nil {
+		whiteId = "Stockfish 16"
+	} else if r.game.BlackId == uuid.Nil {
+		blackId = "Stockfish 16"
+	}
+
 	return RoomStatusData{
 		Status:     r.status,
-		WhiteId:    r.game.WhiteId.String(),
-		BlackId:    r.game.BlackId.String(),
+		WhiteId:    whiteId,
+		BlackId:    blackId,
 		WhiteTime:  r.game.WhiteTime,
 		BlackTime:  r.game.BlackTime,
 		IsVSEngine: r.isVSEngine,

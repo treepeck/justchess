@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"justchess/pkg/game/bitboard"
 	"justchess/pkg/game/enums"
 )
 
@@ -71,16 +70,13 @@ type GameResultData struct {
 
 // Used by both client and server:
 type ChatData struct {
-	Message string `json:"m"`
+	Message string  `json:"m"`
+	client  *client `json:"-"`
 }
 
 type MoveData struct {
-	To   int            `json:"d"`
-	From int            `json:"s"`
-	Type enums.MoveType `json:"t"`
-}
-
-type MakeMoveData struct {
-	move   bitboard.Move
-	client *client
+	To     int            `json:"d"`
+	From   int            `json:"s"`
+	Type   enums.MoveType `json:"t"`
+	client *client        `json:"-"`
 }

@@ -2,8 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -72,7 +70,7 @@ func (c *client) handleMessage(raw []byte) {
 	case CREATE_ROOM:
 		data := CreateRoomData{}
 		err := json.Unmarshal(msg.Data, &data)
-		if err != nil || data.TimeControl < 1 || data.TimeBonus < 0 {
+		if err != nil || data.TimeControl < 1 || data.TimeBonus < 0 || c.hub == nil {
 			return
 		}
 
@@ -87,9 +85,19 @@ func (c *client) handleMessage(raw []byte) {
 		if err != nil || c.room == nil {
 			return
 		}
+		data.client = c
 
-		m := bitboard.NewMove(data.To, data.From, enums.MoveType(data.Type))
-		c.room.move <- MakeMoveData{move: m, client: c}
+		c.room.move <- data
+
+	case CHAT:
+		data := ChatData{}
+		err := json.Unmarshal(msg.Data, &data)
+		if err != nil || c.room == nil {
+			return
+		}
+		data.client = c
+
+		c.room.chat <- data
 	}
 }
 
