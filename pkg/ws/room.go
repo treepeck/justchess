@@ -33,22 +33,24 @@ const (
 type Room struct {
 	sync.Mutex
 	// The room must be able to remove itself from the Hub.
-	hub        *Hub
-	isVSEngine bool
-	status     RoomStatus
-	game       *game.Game
-	creatorId  uuid.UUID
-	clients    map[*client]struct{}
+	id          uuid.UUID
+	creatorName string
+	hub         *Hub
+	isVSEngine  bool
+	status      RoomStatus
+	game        *game.Game
+	clients     map[*client]struct{}
 }
 
-func newRoom(h *Hub, id uuid.UUID, isVSEngine bool, control, bonus int) *Room {
+func newRoom(h *Hub, creatorName string, isVSEngine bool, control, bonus int) *Room {
 	return &Room{
-		hub:        h,
-		isVSEngine: isVSEngine,
-		status:     OPEN,
-		creatorId:  id,
-		clients:    make(map[*client]struct{}),
-		game:       game.NewGame(nil, control*60, bonus),
+		id:          uuid.New(),
+		creatorName: creatorName,
+		hub:         h,
+		isVSEngine:  isVSEngine,
+		status:      OPEN,
+		clients:     make(map[*client]struct{}),
+		game:        game.NewGame(nil, control*60, bonus),
 	}
 }
 
@@ -78,7 +80,7 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	c := newClient(id, conn)
+	c := newClient(id, "Guest-"+id.String()[:8], conn)
 	c.room = r
 
 	go c.readRoutine()
@@ -109,12 +111,12 @@ func (r *Room) register(c *client) {
 		}
 
 	case WHITE_DISCONNECTED:
-		if r.game.WhiteId == c.id {
+		if r.game.White == c.name {
 			r.status = IN_PROGRESS
 		}
 
 	case BLACK_DISCONNECTED:
-		if r.game.BlackId == c.id {
+		if r.game.Black == c.name {
 			r.status = IN_PROGRESS
 		}
 	}
@@ -149,9 +151,9 @@ func (r *Room) unregister(c *client) {
 		return
 	}
 
-	if c.id == r.game.WhiteId {
+	if c.name == r.game.White {
 		r.status = WHITE_DISCONNECTED
-	} else if c.id == r.game.BlackId {
+	} else if c.name == r.game.Black {
 		r.status = BLACK_DISCONNECTED
 	}
 	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
@@ -161,20 +163,20 @@ func (r *Room) startGame() {
 	r.status = IN_PROGRESS
 	go r.game.DecrementTime(r.endGame)
 
-	players := [2]uuid.UUID{}
+	players := [2]string{}
 	i := 0
 	for c := range r.clients {
-		players[i] = c.id
+		players[i] = c.name
 		i++
 	}
 
 	// Randomly select players' sides.
 	if rand.Intn(2) == 1 {
-		r.game.WhiteId = players[0]
-		r.game.BlackId = players[1]
+		r.game.White = players[0]
+		r.game.Black = players[1]
 	} else {
-		r.game.WhiteId = players[1]
-		r.game.BlackId = players[0]
+		r.game.White = players[1]
+		r.game.Black = players[0]
 	}
 }
 
@@ -187,8 +189,8 @@ func (r *Room) handle(m MoveData, c *client) {
 	}
 
 	if !r.isVSEngine {
-		if r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId != c.id ||
-			r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId != c.id {
+		if r.game.Bitboard.ActiveColor == enums.White && r.game.White != c.name ||
+			r.game.Bitboard.ActiveColor == enums.Black && r.game.Black != c.name {
 			return
 		}
 	}
@@ -207,13 +209,7 @@ func (r *Room) broadcastChat(data ChatData, c *client) {
 	r.Lock()
 	defer r.Unlock()
 
-	if r.game.WhiteId == c.id {
-		data.Message = `"[white] ` + data.Message + `"`
-	} else if r.game.BlackId == c.id {
-		data.Message = `"[black] ` + data.Message + `"`
-	} else {
-		return
-	}
+	data.Message = `"` + c.name + `: ` + data.Message + `"`
 
 	msg, err := json.Marshal(Message{Type: CHAT, Data: []byte(data.Message)})
 	if err != nil {
@@ -225,16 +221,16 @@ func (r *Room) broadcastChat(data ChatData, c *client) {
 	}
 }
 
-func (r *Room) handleResign(id uuid.UUID) {
+func (r *Room) handleResign(name string) {
 	r.Lock()
 	defer r.Unlock()
 
 	if r.status != OPEN && r.status != OVER {
-		if id == r.game.WhiteId {
+		if name == r.game.White {
 			r.game.Result = enums.Resignation
 			r.game.Winner = enums.Black
 			r.endGame()
-		} else if id == r.game.BlackId {
+		} else if name == r.game.Black {
 			r.game.Result = enums.Resignation
 			r.game.Winner = enums.White
 			r.endGame()
@@ -260,18 +256,18 @@ func (r *Room) endGame() {
 }
 
 func (r *Room) formatRoomStatus() RoomStatusData {
-	whiteId, blackId := r.game.WhiteId.String(), r.game.BlackId.String()
+	white, black := r.game.White, r.game.Black
 
-	if r.game.WhiteId == uuid.Nil {
-		whiteId = "Stockfish 16"
-	} else if r.game.BlackId == uuid.Nil {
-		blackId = "Stockfish 16"
+	if r.game.White == "" {
+		white = "Stockfish 16"
+	} else if r.game.Black == "" {
+		black = "Stockfish 16"
 	}
 
 	return RoomStatusData{
 		Status:     r.status,
-		WhiteId:    whiteId,
-		BlackId:    blackId,
+		White:      white,
+		Black:      black,
 		WhiteTime:  r.game.WhiteTime,
 		BlackTime:  r.game.BlackTime,
 		IsVSEngine: r.isVSEngine,
@@ -313,4 +309,17 @@ func (r *Room) broadcast(msg []byte) {
 	for c := range r.clients {
 		c.send <- msg
 	}
+}
+
+func (r *Room) getClientIds() []uuid.UUID {
+	r.Lock()
+	defer r.Unlock()
+
+	ids := make([]uuid.UUID, len(r.clients))
+	i := 0
+	for c := range r.clients {
+		ids[i] = c.id
+		i++
+	}
+	return ids
 }

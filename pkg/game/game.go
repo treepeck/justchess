@@ -7,8 +7,6 @@ import (
 	"justchess/pkg/game/san"
 	"log"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type CompletedMove struct {
@@ -24,10 +22,10 @@ type Game struct {
 	Winner      enums.Color
 	Bitboard    *bitboard.Bitboard
 	Moves       []CompletedMove
-	WhiteId     uuid.UUID
-	BlackId     uuid.UUID
-	WhiteTime   int // In seconds.
-	BlackTime   int // In seconds.
+	White       string // white username.
+	Black       string // black username.
+	WhiteTime   int    // In seconds.
+	BlackTime   int    // In seconds.
 	Clock       *time.Ticker
 	TimeControl int // In minutes.
 	TimeBonus   int // In seconds.

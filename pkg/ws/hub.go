@@ -62,7 +62,7 @@ func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := newClient(id, conn)
+	c := newClient(id, "Guest-"+id.String()[:8], conn)
 	c.hub = h
 
 	go c.readRoutine()
@@ -109,14 +109,8 @@ func (h *Hub) add(r *Room) {
 	h.Lock()
 	defer h.Unlock()
 
-	for room := range h.rooms {
-		if room.creatorId == r.creatorId {
-			return
-		}
-	}
-
 	h.rooms[r] = struct{}{}
-	log.Printf("client %s created a room\n", r.creatorId.String())
+	log.Printf("room %s added\n", r.id.String())
 
 	h.broadcastAddRoom(r)
 }
@@ -131,9 +125,9 @@ func (h *Hub) remove(r *Room) {
 	}
 
 	delete(h.rooms, r)
-	log.Printf("room %s removed\n", r.creatorId.String())
+	log.Printf("room %s removed\n", r.id.String())
 
-	h.broadcastRemoveRoom(r.creatorId)
+	h.broadcastRemoveRoom(r.id)
 }
 
 // broadcastClientsCounter does not Lock the hub, so it cannot be called in a non-blocking routine!
@@ -155,7 +149,9 @@ func (h *Hub) broadcastClientsCounter() {
 // Room's game field should not be nil!
 func (h *Hub) broadcastAddRoom(r *Room) {
 	data, err := json.Marshal(AddRoomData{
-		CreatorId:   r.creatorId.String(),
+		Id:          r.id,
+		Creator:     r.creatorName,
+		Players:     r.getClientIds(),
 		TimeControl: r.game.TimeControl,
 		TimeBonus:   r.game.TimeBonus,
 	})
@@ -199,7 +195,9 @@ func (h *Hub) send10Rooms(c *client) {
 		}
 
 		data, err := json.Marshal(AddRoomData{
-			CreatorId:   r.creatorId.String(),
+			Id:          r.id,
+			Creator:     r.creatorName,
+			Players:     r.getClientIds(),
 			TimeControl: r.game.TimeControl,
 			TimeBonus:   r.game.TimeBonus,
 		})
@@ -219,7 +217,7 @@ func (h *Hub) GetRoomById(id uuid.UUID) *Room {
 	defer h.Unlock()
 
 	for r := range h.rooms {
-		if r.creatorId == id {
+		if r.id == id {
 			return r
 		}
 	}

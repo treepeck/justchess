@@ -3,6 +3,8 @@ package ws
 import (
 	"encoding/json"
 	"justchess/pkg/game/enums"
+
+	"github.com/google/uuid"
 )
 
 type MessageType = byte
@@ -39,9 +41,11 @@ type ClientsCounterData struct {
 }
 
 type AddRoomData struct {
-	CreatorId   string `json:"id"`
-	TimeControl int    `json:"c"`
-	TimeBonus   int    `json:"b"`
+	Id          uuid.UUID   `json:"id"`
+	Players     []uuid.UUID `json:"p"`
+	Creator     string      `json:"cr"`
+	TimeControl int         `json:"c"`
+	TimeBonus   int         `json:"b"`
 }
 
 type RemoveRoomData struct {
@@ -50,8 +54,8 @@ type RemoveRoomData struct {
 
 type RoomStatusData struct {
 	Status     RoomStatus `json:"s"`
-	WhiteId    string     `json:"w"`
-	BlackId    string     `json:"b"`
+	White      string     `json:"w"`
+	Black      string     `json:"b"`
 	WhiteTime  int        `json:"wt"`
 	BlackTime  int        `json:"bt"`
 	IsVSEngine bool       `json:"e"`

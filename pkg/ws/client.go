@@ -11,6 +11,7 @@ import (
 // Reding and writing messages occurs through the client's concurrent routines.
 type client struct {
 	id   uuid.UUID
+	name string
 	hub  *Hub
 	room *Room
 	// send channel must be a buffered one, otherwise if the routine writes to it but the client
@@ -19,9 +20,10 @@ type client struct {
 	connection *websocket.Conn
 }
 
-func newClient(id uuid.UUID, conn *websocket.Conn) *client {
+func newClient(id uuid.UUID, name string, conn *websocket.Conn) *client {
 	return &client{
 		id:         id,
+		name:       name,
 		send:       make(chan []byte, 256),
 		connection: conn,
 	}
@@ -74,7 +76,7 @@ func (c *client) handleMessage(raw []byte) {
 			return
 		}
 
-		r := newRoom(c.hub, c.id, data.IsVSEngine, data.TimeControl, data.TimeBonus)
+		r := newRoom(c.hub, c.name, data.IsVSEngine, data.TimeControl, data.TimeBonus)
 
 		c.hub.add(r)
 
@@ -100,7 +102,7 @@ func (c *client) handleMessage(raw []byte) {
 		if c.room == nil {
 			return
 		}
-		c.room.handleResign(c.id)
+		c.room.handleResign(c.name)
 	}
 }
 
