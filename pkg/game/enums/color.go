@@ -8,4 +8,6 @@ type Color int
 const (
 	White Color = iota
 	Black
+	// Used only to specify that there is no winner in the game.
+	None
 )

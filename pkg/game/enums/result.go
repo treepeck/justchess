@@ -10,5 +10,5 @@ const (
 	InsufficientMaterial
 	FiftyMoves
 	Repetition
-	Agreement
+	Resignation
 )

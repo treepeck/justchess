@@ -75,7 +75,6 @@ func (c *client) handleMessage(raw []byte) {
 		}
 
 		r := newRoom(c.hub, c.id, data.IsVSEngine, data.TimeControl, data.TimeBonus)
-		go r.handleRoutine()
 
 		c.hub.add(r)
 
@@ -85,9 +84,8 @@ func (c *client) handleMessage(raw []byte) {
 		if err != nil || c.room == nil {
 			return
 		}
-		data.client = c
 
-		c.room.move <- data
+		c.room.handle(data, c)
 
 	case CHAT:
 		data := ChatData{}
@@ -95,9 +93,14 @@ func (c *client) handleMessage(raw []byte) {
 		if err != nil || c.room == nil {
 			return
 		}
-		data.client = c
 
-		c.room.chat <- data
+		c.room.broadcastChat(data, c)
+
+	case RESIGN:
+		if c.room == nil {
+			return
+		}
+		c.room.handleResign(c.id)
 	}
 }
 
@@ -107,6 +110,6 @@ func (c *client) cleanup() {
 		c.hub.unregister(c)
 	}
 	if c.room != nil {
-		c.room.unregister <- c
+		c.room.unregister(c)
 	}
 }

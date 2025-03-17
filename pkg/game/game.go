@@ -21,6 +21,7 @@ type CompletedMove struct {
 
 type Game struct {
 	Result      enums.Result
+	Winner      enums.Color
 	Bitboard    *bitboard.Bitboard
 	Moves       []CompletedMove
 	WhiteId     uuid.UUID
@@ -44,6 +45,7 @@ func NewGame(bb *bitboard.Bitboard, control, bonus int) *Game {
 	}
 	g := &Game{
 		Result:      enums.Unknown,
+		Winner:      enums.None,
 		Bitboard:    bb,
 		Moves:       make([]CompletedMove, 0),
 		WhiteTime:   control,
@@ -143,11 +145,11 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 			if isCheck {
 				g.Result = enums.Checkmate
 				SAN = SAN[:len(SAN)-1] + "#"
-
+				g.Winner = c
 				g.End <- struct{}{}
 			} else {
 				g.Result = enums.Stalemate
-
+				g.Winner = enums.None
 				g.End <- struct{}{}
 			}
 		}
@@ -168,19 +170,19 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 
 		if g.isThreefoldRepetition() {
 			g.Result = enums.Repetition
-
+			g.Winner = enums.None
 			g.End <- struct{}{}
 		}
 
 		if g.isInsufficientMaterial() {
 			g.Result = enums.InsufficientMaterial
-
+			g.Winner = enums.None
 			g.End <- struct{}{}
 		}
 
 		if g.Bitboard.HalfmoveCnt == 100 {
 			g.Result = enums.FiftyMoves
-
+			g.Winner = enums.None
 			g.End <- struct{}{}
 		}
 
@@ -189,7 +191,9 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 	return false
 }
 
-func (g *Game) DecrementTime(timeout chan<- struct{}) {
+// When one of the players runs out of time, the game calls the callback.
+// The callback should be a method which notifies the players about the game result.
+func (g *Game) DecrementTime(callback func()) {
 	defer func() {
 		g.Clock.Stop()
 		log.Printf("clock stoped")
@@ -206,9 +210,15 @@ func (g *Game) DecrementTime(timeout chan<- struct{}) {
 				g.BlackTime--
 			}
 
-			if g.WhiteTime <= 0 || g.BlackTime <= 0 {
+			if g.WhiteTime <= 0 {
 				g.Result = enums.Timeout
-				timeout <- struct{}{}
+				g.Winner = enums.Black
+				callback()
+				return
+			} else if g.BlackTime <= 0 {
+				g.Result = enums.Timeout
+				g.Winner = enums.White
+				callback()
 				return
 			}
 

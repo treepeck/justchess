@@ -11,6 +11,7 @@ const (
 	CREATE_ROOM MessageType = iota
 	MAKE_MOVE
 	CHAT
+	RESIGN
 	CLIENTS_COUNTER
 	ADD_ROOM
 	REMOVE_ROOM
@@ -66,17 +67,16 @@ type LastMoveData struct {
 
 type GameResultData struct {
 	Result enums.Result `json:"r"`
+	Winner enums.Color  `json:"w"`
 }
 
 // Used by both client and server:
 type ChatData struct {
-	Message string  `json:"m"`
-	client  *client `json:"-"`
+	Message string `json:"m"`
 }
 
 type MoveData struct {
-	To     int            `json:"d"`
-	From   int            `json:"s"`
-	Type   enums.MoveType `json:"t"`
-	client *client        `json:"-"`
+	To   int            `json:"d"`
+	From int            `json:"s"`
+	Type enums.MoveType `json:"t"`
 }

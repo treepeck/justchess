@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync"
 
 	"github.com/google/uuid"
 )
@@ -29,22 +30,15 @@ const (
 // After the game is over or all clients are disconnected, the room removes itself from the Hub.
 //
 // Room accepts new connections in each status, except OVER.
-// Room methods cannot be called outside the the r.handleRoutine!
 type Room struct {
+	sync.Mutex
 	// The room must be able to remove itself from the Hub.
 	hub        *Hub
 	isVSEngine bool
 	status     RoomStatus
 	game       *game.Game
 	creatorId  uuid.UUID
-	register   chan *client
-	unregister chan *client
-	move       chan MoveData
-	chat       chan ChatData
-	// When one of the players runs out of time, the game sends the msg to the timeout
-	// channel, so that the room can notify the players about the game result.
-	timeout chan struct{}
-	clients map[*client]struct{}
+	clients    map[*client]struct{}
 }
 
 func newRoom(h *Hub, id uuid.UUID, isVSEngine bool, control, bonus int) *Room {
@@ -54,11 +48,6 @@ func newRoom(h *Hub, id uuid.UUID, isVSEngine bool, control, bonus int) *Room {
 		status:     OPEN,
 		creatorId:  id,
 		clients:    make(map[*client]struct{}),
-		register:   make(chan *client),
-		unregister: make(chan *client),
-		move:       make(chan MoveData),
-		chat:       make(chan ChatData),
-		timeout:    make(chan struct{}),
 		game:       game.NewGame(nil, control*60, bonus),
 	}
 }
@@ -95,37 +84,14 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 	go c.readRoutine()
 	go c.writeRoutine()
 
-	r.register <- c
+	r.register(c)
 }
 
-// handleRoutine handles incomming connections, disconnections and completed moves.
-// Hub is responsible for terminating this routine.
-func (r *Room) handleRoutine() {
-	for {
-		select {
-		case c, ok := <-r.register:
-			if !ok {
-				return
-			}
-			r.add(c)
+// register denies multiple connections from a single peer.
+func (r *Room) register(c *client) {
+	r.Lock()
+	defer r.Unlock()
 
-		case c := <-r.unregister:
-			r.remove(c)
-
-		case m := <-r.move:
-			r.handle(m)
-
-		case msg := <-r.chat:
-			r.broadcastChat(msg)
-
-		case <-r.timeout:
-			r.endGame()
-		}
-	}
-}
-
-// add denies multiple connections from a single peer.
-func (r *Room) add(c *client) {
 	for connected := range r.clients {
 		if connected.id == c.id || r.status == OVER {
 			close(c.send)
@@ -160,8 +126,11 @@ func (r *Room) add(c *client) {
 	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
 }
 
-// remove terminates the game.DecrementTime routine.
-func (r *Room) remove(c *client) {
+// unregister terminates the game.DecrementTime routine.
+func (r *Room) unregister(c *client) {
+	r.Lock()
+	defer r.Unlock()
+
 	if _, ok := r.clients[c]; !ok {
 		return
 	}
@@ -177,7 +146,6 @@ func (r *Room) remove(c *client) {
 		}
 
 		r.hub.remove(r)
-		close(r.register)
 		return
 	}
 
@@ -191,7 +159,7 @@ func (r *Room) remove(c *client) {
 
 func (r *Room) startGame() {
 	r.status = IN_PROGRESS
-	go r.game.DecrementTime(r.timeout)
+	go r.game.DecrementTime(r.endGame)
 
 	players := [2]uuid.UUID{}
 	i := 0
@@ -210,14 +178,17 @@ func (r *Room) startGame() {
 	}
 }
 
-func (r *Room) handle(m MoveData) {
+func (r *Room) handle(m MoveData, c *client) {
+	r.Lock()
+	defer r.Unlock()
+
 	if r.status == OPEN || r.status == OVER {
 		return
 	}
 
 	if !r.isVSEngine {
-		if r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId != m.client.id ||
-			r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId != m.client.id {
+		if r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId != c.id ||
+			r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId != c.id {
 			return
 		}
 	}
@@ -232,10 +203,13 @@ func (r *Room) handle(m MoveData) {
 	}
 }
 
-func (r *Room) broadcastChat(data ChatData) {
-	if r.game.WhiteId == data.client.id {
+func (r *Room) broadcastChat(data ChatData, c *client) {
+	r.Lock()
+	defer r.Unlock()
+
+	if r.game.WhiteId == c.id {
 		data.Message = `"[white] ` + data.Message + `"`
-	} else if r.game.BlackId == data.client.id {
+	} else if r.game.BlackId == c.id {
 		data.Message = `"[black] ` + data.Message + `"`
 	} else {
 		return
@@ -251,13 +225,34 @@ func (r *Room) broadcastChat(data ChatData) {
 	}
 }
 
+func (r *Room) handleResign(id uuid.UUID) {
+	r.Lock()
+	defer r.Unlock()
+
+	if r.status != OPEN && r.status != OVER {
+		if id == r.game.WhiteId {
+			r.game.Result = enums.Resignation
+			r.game.Winner = enums.Black
+			r.endGame()
+		} else if id == r.game.BlackId {
+			r.game.Result = enums.Resignation
+			r.game.Winner = enums.White
+			r.endGame()
+		}
+	}
+}
+
 // endGame ends the game, broadcasts room status and game result.
+// endGame cannot be called from the non-locking function.
 func (r *Room) endGame() {
 	r.status = OVER
 	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
 
 	// Broadcast game result.
-	data, _ := json.Marshal(GameResultData{Result: r.game.Result})
+	data, _ := json.Marshal(GameResultData{
+		Result: r.game.Result,
+		Winner: r.game.Winner,
+	})
 	msg, _ := json.Marshal(Message{Type: GAME_RESULT, Data: data})
 	r.broadcast(msg)
 
