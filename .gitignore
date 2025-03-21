@@ -1,6 +1,8 @@
 .vscode/
 .git/
 README.md
-TODO.txt
 
 schemes/
+
+# Secrets and other parameters.
+.env
