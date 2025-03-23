@@ -55,21 +55,8 @@ func newRoom(h *Hub, creatorName string, isVSEngine bool, control, bonus int) *R
 }
 
 func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
-	encoded := req.URL.Query().Get("access")
-	access, err := auth.DecodeToken(encoded, 1)
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	idStr, err := access.Claims.GetSubject()
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	id, err := uuid.Parse(idStr)
-	if err != nil {
+	s := req.Context().Value(auth.Subj)
+	if s == nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -80,7 +67,7 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	c := newClient(id, "Guest-"+id.String()[:8], conn)
+	c := newClient(s.(auth.Subject).Id, s.(auth.Subject).Name, conn)
 	c.room = r
 
 	go c.readRoutine()

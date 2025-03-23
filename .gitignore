@@ -2,7 +2,5 @@
 .git/
 README.md
 
-schemes/
-
 # Secrets and other parameters.
-.env
+*.env

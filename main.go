@@ -21,7 +21,7 @@ func main() {
 	loadEnv()
 	log.Println("Environment variables successfully loaded.")
 
-	db.Open(os.Getenv("DB_PASSWORD"))
+	db.Open()
 	defer db.Pool.Close()
 
 	mux := setupMux()
@@ -34,12 +34,10 @@ func main() {
 func setupMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /auth/", auth.SignInHandler)
 	mux.HandleFunc("GET /auth/", auth.RefreshHandler)
 
-	mux.HandleFunc("POST /user/", user.SignUpHandler)
-	mux.HandleFunc("GET /user/id", isAuthorized(user.GetUserByIdHandler))
-	mux.HandleFunc("GET /user/name", isAuthorized(user.GetUserByNameHandler))
+	mux.HandleFunc("POST /user/", user.CreateUserHandler)
+	mux.HandleFunc("GET /user/verify", user.VerifyHandler)
 
 	h := ws.NewHub()
 	mux.HandleFunc("/hub", isAuthorized(h.HandleNewConnection))
@@ -101,12 +99,12 @@ func isAuthorized(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// loadEnv reads .env file from the root directory and sets environment
+// loadEnv reads dev.env file from the root directory and sets environment
 // variables for the current process.
-// Accepted format for variable: KEY=VALUE.
+// Accepted format for variable: KEY=VALUE
 // Comments which begin with '#' and empty lines are skipped.
 func loadEnv() {
-	f, err := os.Open(".env")
+	f, err := os.Open("dev.env")
 	if err != nil {
 		log.Fatalf("cannot read .env file: %v\n", err)
 	}

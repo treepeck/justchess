@@ -37,21 +37,8 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
-	encoded := r.URL.Query().Get("access")
-	access, err := auth.DecodeToken(encoded, 1)
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	idStr, err := access.Claims.GetSubject()
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	id, err := uuid.Parse(idStr)
-	if err != nil {
+	subj := r.Context().Value(auth.Subj)
+	if subj == nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -62,7 +49,7 @@ func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := newClient(id, "Guest-"+id.String()[:8], conn)
+	c := newClient(subj.(auth.Subject).Id, subj.(auth.Subject).Name, conn)
 	c.hub = h
 
 	go c.readRoutine()
