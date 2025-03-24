@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"time"
@@ -9,43 +10,71 @@ import (
 	"github.com/google/uuid"
 )
 
-// generatePair generates a pair of JWTs: access token and refresh token.
-// The os.Args (command-line arguments) must store secrets for safe
-// token signing.
-func generatePair(id uuid.UUID) (at, rt string, err error) {
-	at, err = generateToken(id, os.Args[1], time.Minute*30)
-	if err != nil {
-		log.Printf("%v\n", err)
-		return
-	}
-	rt, err = generateToken(id, os.Args[2], (time.Hour*24)*30)
-	if err != nil {
-		log.Printf("%v\n", err)
-		return
-	}
-	return
+type CtxKey string
+
+const (
+	Subj CtxKey = "subj"
+)
+
+type Subject struct {
+	Id   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 // generateToken encodes a token using the provided secret string.
+// Uses Subject type as a token subject.
 // If token cannot be signed, returns error.
-func generateToken(id uuid.UUID, secret string,
-	d time.Duration) (string, error) {
+func generateToken(id uuid.UUID, name, secret string, d time.Duration) (string, error) {
+	s := Subject{
+		Id:   id,
+		Name: name,
+	}
+	payload, err := json.Marshal(s)
+	if err != nil {
+		return "", err
+	}
+
 	unsigned := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Subject:   id.String(),
+		Subject:   string(payload),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(d)),
 	})
 	return unsigned.SignedString([]byte(secret))
 }
 
+// generatePair generates a pair of JWTs: access token and refresh token.
+func generatePair(id uuid.UUID, name string) (at, rt string, err error) {
+	at, err = generateToken(id, name, os.Getenv("ACCESS_TOKEN_SECRET"), time.Minute*30)
+	if err != nil {
+		log.Printf("cannot generate access token: %v\n", err)
+		return
+	}
+	rt, err = generateToken(id, name, os.Getenv("REFRESH_TOKEN_SECRET"), (time.Hour*24)*30)
+	if err != nil {
+		log.Printf("cannot generate refresh token: %v\n", err)
+		return
+	}
+	return
+}
+
 // DecodeToken decodes the provided token using the provided secret.
+// Retunts decode subject, if the token is valid.
 // If the token is not valid, returns an error.
-// secretParam specifies the index of command-line argument.
-// 1 - ACCESS_TOKEN_SECRET_STRING;
-// 2 - REFRESH_TOKEN_SECRET_STRING.
-func DecodeToken(encoded string, secretParam int) (*jwt.Token, error) {
-	return jwt.ParseWithClaims(encoded, &jwt.RegisteredClaims{},
-		func(t *jwt.Token) (interface{}, error) {
-			return []byte(os.Args[secretParam]), nil
+// secret param specifies the key of the environment variable.
+func DecodeToken(encoded, secret string) (s Subject, err error) {
+	t, err := jwt.ParseWithClaims(encoded, &jwt.RegisteredClaims{},
+		func(t *jwt.Token) (any, error) {
+			return []byte(os.Getenv(secret)), nil
 		},
 	)
+	if err != nil {
+		return
+	}
+
+	subj, err := t.Claims.GetSubject()
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal([]byte(subj), &s)
+	return
 }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"justchess/pkg/auth"
 	"justchess/pkg/db"
-	"justchess/pkg/user"
 	"justchess/pkg/ws"
 	"log"
 	"net/http"
@@ -19,7 +18,7 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	loadEnv()
-	log.Println("Environment variables successfully loaded.")
+	log.Println("environment variables are loaded successfully")
 
 	db.Open()
 	defer db.Pool.Close()
@@ -34,10 +33,9 @@ func main() {
 func setupMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /auth/", auth.RefreshHandler)
-
-	mux.HandleFunc("POST /user/", user.CreateUserHandler)
-	mux.HandleFunc("GET /user/verify", user.VerifyHandler)
+	mux.HandleFunc("GET /auth/", allowCors(isAuthorized(auth.RefreshHandler)))
+	mux.HandleFunc("POST /auth/signup", allowCors(auth.SignUpHandler))
+	mux.HandleFunc("GET /auth/verify", allowCors(auth.VerifyMailHandler))
 
 	h := ws.NewHub()
 	mux.HandleFunc("/hub", isAuthorized(h.HandleNewConnection))
@@ -62,20 +60,25 @@ func setupMux() *http.ServeMux {
 }
 
 // allowCors handles the Cross-Origin-Resource-Sharing.
-func allowCors(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+func allowCors(next http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		if r.URL.Host != "http://localhost:3000" {
+			log.Printf("request from unknown host: %s\n", r.URL.Host)
+			return
+		}
+
 		rw.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
 		rw.Header().Add("Access-Control-Allow-Credentials", "true")
 		rw.Header().Add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
-		rw.Header().Add("Access-Control-Allow-Methods", "GET,PUT,OPTIONS")
+		rw.Header().Add("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS")
 
 		// Handle CORS preflight request.
 		if r.Method == "OPTIONS" {
-			rw.WriteHeader(200)
+			rw.WriteHeader(http.StatusOK)
 			return
 		}
 		next.ServeHTTP(rw, r)
-	})
+	}
 }
 
 func isAuthorized(next http.HandlerFunc) http.HandlerFunc {

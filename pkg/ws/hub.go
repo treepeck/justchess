@@ -15,10 +15,7 @@ import (
 var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	ReadBufferSize:  1024,
-	// CheckOrigin accepts all origins since the CORS is handled by the corsAllower middleware.
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+	CheckOrigin:     func(r *http.Request) bool { return r.URL.Host == "http://localhost:3000" },
 }
 
 // Hub is a global repository of all created rooms and connected clients which are not in the game.
