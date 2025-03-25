@@ -3,6 +3,7 @@ package auth
 import (
 	"bufio"
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"justchess/pkg/db"
 	"justchess/pkg/user"
@@ -16,6 +17,9 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// TODO: rewrite those messy tests.
+// TODO: cover PasswordResetHandler with tests.
 
 // All actions are applied to the test database 'justchess_test'.
 // That db must have the same schema as a 'justchess'.
@@ -125,24 +129,18 @@ func TestRefreshHandler(t *testing.T) {
 	db.Open()
 	defer db.Pool.Close()
 
-	id := uuid.New()
-	defer func() {
-		// Delete the created verified user.
-		db.Pool.Exec("DELETE FROM users WHERE id = $1;", id.String())
-		db.Pool.Close()
-	}()
-
 	tx, err := db.Pool.Begin()
 	if err != nil {
 		t.Fatalf("cannot begin transaction: %v\n", err)
 	}
-	_, err = user.InsertUser(id.String(), user.Register{
-		Mail: "test", Name: "test", Password: "test123",
-	}, tx)
+	defer tx.Rollback()
+
+	id := uuid.New()
+	err = insertTestUser(id.String(), tx)
 	if err != nil {
-		t.Fatalf("cannot create verified user: %v\n", err)
+		t.Fatalf("cannot insert test user: %v\n", err)
 	}
-	tx.Commit()
+	defer deleteTestUser(id.String(), db.Pool)
 
 	testcases := []struct {
 		name           string
@@ -210,6 +208,51 @@ func TestRefreshHandler(t *testing.T) {
 	}
 }
 
+func TestPasswordResetHandler(t *testing.T) {
+	loadEnv()
+	db.Open()
+	defer db.Pool.Close()
+
+	tx, err := db.Pool.Begin()
+	if err != nil {
+		t.Fatalf("cannot begin transaction: %v\n", err)
+	}
+	defer tx.Rollback()
+
+	id := uuid.New()
+	err = insertTestUser(id.String(), tx)
+	if err != nil {
+		t.Fatalf("cannot insert test user: %v\n", err)
+	}
+	defer deleteTestUser(id.String(), db.Pool)
+
+	testcases := []struct {
+		name               string
+		mail               string
+		expectedStatusCode int
+	}{
+		{"valid_reset", os.Getenv("SMTP_TEST_MAIL"), 200},
+		{"invalid_reset", "doesnt_matter", 401},
+	}
+
+	for _, tc := range testcases {
+		req, err := http.NewRequest("POST", "localhost:3502/auth/reset",
+			bytes.NewBufferString(tc.mail))
+		if err != nil {
+			t.Fatalf("cannot create request: %v", err)
+		}
+
+		rec := httptest.NewRecorder()
+		PasswordResetIssuer(rec, req)
+
+		res := rec.Result()
+		defer res.Body.Close()
+		if res.StatusCode != tc.expectedStatusCode {
+			t.Fatalf("expected status: %d, got: %d", tc.expectedStatusCode, res.StatusCode)
+		}
+	}
+}
+
 // loadEnv reads test.env file.
 // Accepted format for variable: KEY=VALUE
 // Comments which begin with '#' and empty lines are skipped.
@@ -241,4 +284,19 @@ func loadEnv() {
 	if err := s.Err(); err != nil {
 		log.Fatalf("error while reading .env: %v\n", err)
 	}
+}
+
+func insertTestUser(id string, tx *sql.Tx) error {
+	_, err := user.InsertUser(id, user.Register{
+		Mail: os.Getenv("SMTP_TEST_MAIL"), Name: "test", Password: "test123",
+	}, tx)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func deleteTestUser(id string, pool *sql.DB) {
+	pool.Exec("DELETE FROM users WHERE id = $1;", id)
+	pool.Close()
 }

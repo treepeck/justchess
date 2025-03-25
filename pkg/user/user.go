@@ -1,4 +1,4 @@
-// Package user provides the access to the 'users' and 'unverified' db tables.
+// Package user provides the access to the 'users', 'unverified' and 'resets' db tables.
 //
 // All insert and delete operations are made using Transactions.
 // It is a caller responsibility to end a transaction.
@@ -19,6 +19,7 @@ type User struct {
 	Mail         string    `json:"-"`
 	PasswordHash string    `json:"-"`
 	UpdatedAt    time.Time `json:"-"`
+	ResetToken   string    `json:"-"`
 }
 
 // Used for sign in/up.
@@ -42,7 +43,8 @@ func SelectById(id string) (u User, err error) {
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt, &u.UpdatedAt, &u.Mail)
+		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt, &u.UpdatedAt,
+			&u.Mail, &u.ResetToken)
 	}
 	return
 }
@@ -67,6 +69,20 @@ func IsUnverifiedId(id string) bool {
 	defer rows.Close()
 
 	return rows.Next()
+}
+
+func IsPendingReset(resetId string) (userId string, err error) {
+	query := "SELECT user_id FROM resets WHERE id = $1;"
+	rows, err := db.Pool.Query(query, resetId)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		rows.Scan(&userId)
+	}
+	return
 }
 
 ///////////////////////////////////////////////////////////////
@@ -101,10 +117,35 @@ func InsertUser(id string, r Register, tx *sql.Tx) (u User, err error) {
 
 	if rows.Next() {
 		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
-			&u.UpdatedAt, &u.Mail,
+			&u.UpdatedAt, &u.Mail, &u.ResetToken,
 		)
 	}
 	return
+}
+
+///////////////////////////////////////////////////////////////
+//                          UPDATE                           //
+///////////////////////////////////////////////////////////////
+
+// UpdateResetToken returns the name of the user. The caller must ensure that name is not empty.
+func UpdateResetToken(token, mail string) (name string, err error) {
+	query := "UPDATE users SET reset_token = $1 WHERE mail = $2 RETURNING user_name;"
+	rows, err := db.Pool.Query(query, token, mail)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		rows.Scan(&name)
+	}
+	return
+}
+
+func UpdatePasswordHash(hash, mail string) error {
+	query := "UPDATE users SET password_hash = $1 WHERE mail = $2;"
+	_, err := db.Pool.Exec(query, hash, mail)
+	return err
 }
 
 ///////////////////////////////////////////////////////////////

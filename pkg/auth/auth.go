@@ -3,17 +3,31 @@
 package auth
 
 import (
+	"bytes"
+	"crypto/rand"
 	"encoding/json"
+	"io"
 	"justchess/pkg/db"
 	"justchess/pkg/user"
 	"log"
 	"net/http"
 	"net/smtp"
 	"os"
+	"text/template"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type MailData struct {
+	Name            string
+	VerificationURL string
+}
+
+type PasswordReset struct {
+	Mail     string `json:"mail"`
+	Password string `json:"password"`
+}
 
 ///////////////////////////////////////////////////////////////
 //                       AUTHENTICATION                      //
@@ -24,11 +38,6 @@ import (
 // confirmation mail.
 // If the confirmation mail cannot be sent, the transaction will be rolled-back.
 func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
-	if r.ContentLength == 0 {
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	var req user.Register
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -53,7 +62,8 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	// Covert plain password to a hash to store in a db.
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
+		log.Printf("cannot generate password hash: %v\n", err)
+		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	req.Password = string(hash)
@@ -73,7 +83,13 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = sendMailVerification(req.Mail, id)
+	data := MailData{
+		Name:            req.Name,
+		VerificationURL: os.Getenv("DOMAIN") + "auth/verify?id=" + id,
+	}
+
+	err = sendMail(req.Mail, "Subject: Email Verification\r\n",
+		"../../templates/mail-verify.html", data)
 	if err != nil {
 		log.Printf("cannot send verification email: %v\n", err)
 		rw.WriteHeader(http.StatusBadRequest)
@@ -130,12 +146,64 @@ func VerifyMailHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// sendMailVerification assumes that dev.env file contains such variables:
+// PasswordResetIssuer sends password reset confirmation link.
+func PasswordResetIssuer(rw http.ResponseWriter, r *http.Request) {
+	mail, err := io.ReadAll(r.Body)
+	if err != nil || len(mail) < 6 {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	token := rand.Text()
+
+	name, err := user.UpdateResetToken(string(token), string(mail))
+	if err != nil || name == "" {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	data := MailData{
+		Name:            name,
+		VerificationURL: os.Getenv("DOMAIN") + "auth/reset-confirm?token=" + string(token),
+	}
+
+	err = sendMail(string(mail), "Subject: Password Reset\r\n",
+		"../../templates/password-reset.html", data)
+	if err != nil {
+		log.Printf("cannot send mail: %v\n", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
+	var req PasswordReset
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil || len(req.Password) < 5 || len(req.Password) < 72 {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("cannot generate password hash: %v\n", err)
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = user.UpdatePasswordHash(string(hash), req.Mail)
+	if err != nil {
+		log.Printf("cannot update password: %v\n", err)
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+// sendMail assumes that dev.env file contains such variables:
 //
 //  1. mail of the sender (SMTP_MAIL);
-//  2. password for that email (SMTP_PASSWORD);
-//  3. server domain (DOMAIN).
-func sendMailVerification(addr, id string) error {
+//  2. password for that email (SMTP_PASSWORD).
+func sendMail(addr, subject, templatePath string, data MailData) error {
 	auth := smtp.PlainAuth(
 		"",
 		os.Getenv("SMTP_MAIL"),
@@ -143,13 +211,16 @@ func sendMailVerification(addr, id string) error {
 		"smtp.gmail.com",
 	)
 
-	msg := []byte("Subject: Welcome to Justchess!\r\n" +
-		"\r\n" +
-		"This email was sent due to a new account creation on justchess.org.\r\n" +
-		"If it wasn't you, simply ignore this email.\r\n" +
-		"\r\n" +
-		"To confirm the registration, follow the link below:\r\n" +
-		os.Getenv("DOMAIN") + "auth/verify?id=" + id + "\r\n")
+	mime := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+	body, err := genTemplate(
+		templatePath,
+		data,
+	)
+	if err != nil {
+		return err
+	}
+
+	msg := []byte(subject + mime + body)
 
 	return smtp.SendMail(
 		"smtp.gmail.com:587",
@@ -158,6 +229,18 @@ func sendMailVerification(addr, id string) error {
 		[]string{addr},
 		msg,
 	)
+}
+
+// genTemplate generates the mail html templates.
+func genTemplate(path string, data any) (string, error) {
+	t, err := template.ParseFiles(path)
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = t.Execute(&buff, data)
+	return buff.String(), err
 }
 
 ///////////////////////////////////////////////////////////////
@@ -179,6 +262,7 @@ func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch updated user info since the user_name may have been changed.
+	log.Printf("id: %s\n", subj.Id.String())
 	u, err := user.SelectById(subj.Id.String())
 	if err != nil || u.Id == uuid.Nil {
 		rw.WriteHeader(http.StatusUnauthorized)
