@@ -46,7 +46,7 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate the provided data.
-	if len(req.Name) < 1 || len(req.Name) > 36 ||
+	if len(req.Name) < 2 || len(req.Name) > 36 ||
 		len(req.Password) < 5 || len(req.Password) > 72 {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
@@ -85,11 +85,11 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 
 	data := MailData{
 		Name:            req.Name,
-		VerificationURL: os.Getenv("DOMAIN") + "auth/verify?id=" + id,
+		VerificationURL: os.Getenv("DOMAIN") + "auth/verify/" + id,
 	}
 
 	err = sendMail(req.Mail, "Subject: Email Verification\r\n",
-		"../../templates/mail-verify.html", data)
+		"./templates/mail-verify.html", data)
 	if err != nil {
 		log.Printf("cannot send verification email: %v\n", err)
 		rw.WriteHeader(http.StatusBadRequest)
@@ -168,7 +168,7 @@ func PasswordResetIssuer(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	err = sendMail(string(mail), "Subject: Password Reset\r\n",
-		"../../templates/password-reset.html", data)
+		"./templates/password-reset.html", data)
 	if err != nil {
 		log.Printf("cannot send mail: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)

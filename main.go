@@ -64,15 +64,10 @@ func setupMux() *http.ServeMux {
 // allowCors handles the Cross-Origin-Resource-Sharing.
 func allowCors(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		if r.URL.Host != "http://localhost:3000" {
-			log.Printf("request from unknown host: %s\n", r.URL.Host)
-			return
-		}
-
 		rw.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
 		rw.Header().Add("Access-Control-Allow-Credentials", "true")
-		rw.Header().Add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
-		rw.Header().Add("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS")
+		rw.Header().Add("Access-Control-Allow-Headers", "*")
+		rw.Header().Add("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 
 		// Handle CORS preflight request.
 		if r.Method == "OPTIONS" {
