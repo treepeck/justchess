@@ -60,6 +60,13 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	subj := s.(auth.Subject)
+
+	// Guest users cannot play with other users, only vs engine.
+	if !r.isVSEngine && subj.Role == auth.RoleGuest {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	conn, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
@@ -67,7 +74,7 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	c := newClient(s.(auth.Subject).Id, s.(auth.Subject).Name, conn)
+	c := newClient(subj.Id, subj.Name, subj.Role == auth.RoleGuest, conn)
 	c.room = r
 
 	go c.readRoutine()

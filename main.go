@@ -33,6 +33,7 @@ func main() {
 func setupMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("GET /auth/guest", allowCors(auth.GuestHandler))
 	mux.HandleFunc("POST /auth/signup", allowCors(auth.SignUpHandler))
 	mux.HandleFunc("GET /auth/verify", allowCors(auth.VerifyMailHandler))
 	mux.HandleFunc("GET /auth/", allowCors(isAuthorized(auth.RefreshHandler)))
@@ -78,6 +79,8 @@ func allowCors(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// isAuthorized accepts requests from every role.
+// Protected endpoints must check the subject's role further.
 func isAuthorized(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		h := r.Header.Get("Authorization")

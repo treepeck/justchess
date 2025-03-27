@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
+	"regexp"
 	"text/template"
 
 	"github.com/google/uuid"
@@ -28,6 +29,12 @@ type PasswordReset struct {
 	Mail     string `json:"mail"`
 	Password string `json:"password"`
 }
+
+// Regular expressions for validating registration data.
+var (
+	nameRE = regexp.MustCompile(`[a-zA-Z]{1}[a-zA-Z0-9_]+`)
+	mailRE = regexp.MustCompile(`[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+`)
+)
 
 ///////////////////////////////////////////////////////////////
 //                       AUTHENTICATION                      //
@@ -46,7 +53,7 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate the provided data.
-	if len(req.Name) < 2 || len(req.Name) > 36 ||
+	if !nameRE.Match([]byte(req.Name)) || !mailRE.Match([]byte(req.Mail)) ||
 		len(req.Password) < 5 || len(req.Password) > 72 {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
@@ -85,7 +92,7 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 
 	data := MailData{
 		Name:            req.Name,
-		VerificationURL: os.Getenv("DOMAIN") + "auth/verify/" + id,
+		VerificationURL: os.Getenv("DOMAIN") + "verify/" + id,
 	}
 
 	err = sendMail(req.Mail, "Subject: Email Verification\r\n",
@@ -138,7 +145,7 @@ func VerifyMailHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	completeAuth(rw, u.Id, u.Name)
+	completeAuth(rw, u.Id, u.Name, RoleUser)
 
 	if err = tx.Commit(); err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -247,6 +254,12 @@ func genTemplate(path string, data any) (string, error) {
 //                       AUTHORIZATION                       //
 ///////////////////////////////////////////////////////////////
 
+// GuestHandler generates JWTs for the guest user.
+func GuestHandler(rw http.ResponseWriter, r *http.Request) {
+	guestId := uuid.New()
+	completeAuth(rw, guestId, "Guest-"+guestId.String()[:8], RoleGuest)
+}
+
 // RefreshHandler is used when the access token becomes invalid.
 func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 	encoded, err := parseRefreshTokenCookie(r)
@@ -269,13 +282,13 @@ func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	completeAuth(rw, u.Id, u.Name)
+	completeAuth(rw, u.Id, u.Name, RoleUser)
 }
 
 // completeAuth generates the JWT pair and sends the refresh token
 // as a HTTP-Only Secure Cookie and access token as a plain/text response body.
-func completeAuth(rw http.ResponseWriter, id uuid.UUID, name string) {
-	at, rt, err := generatePair(id, name)
+func completeAuth(rw http.ResponseWriter, id uuid.UUID, name string, r Role) {
+	at, rt, err := generatePair(id, name, r)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return

@@ -8,22 +8,24 @@ import (
 )
 
 // client is a middleman between the frontend and server.
-// Reding and writing messages occurs through the client's concurrent routines.
+// Reading and writing messages occurs through the client's concurrent routines.
 type client struct {
-	id   uuid.UUID
-	name string
-	hub  *Hub
-	room *Room
+	id      uuid.UUID
+	name    string
+	isGuest bool
+	hub     *Hub
+	room    *Room
 	// send channel must be a buffered one, otherwise if the routine writes to it but the client
 	// drops connection, the routine will wait forever.
 	send       chan []byte
 	connection *websocket.Conn
 }
 
-func newClient(id uuid.UUID, name string, conn *websocket.Conn) *client {
+func newClient(id uuid.UUID, name string, isGuest bool, conn *websocket.Conn) *client {
 	return &client{
 		id:         id,
 		name:       name,
+		isGuest:    isGuest,
 		send:       make(chan []byte, 256),
 		connection: conn,
 	}
@@ -72,7 +74,8 @@ func (c *client) handleMessage(raw []byte) {
 	case CREATE_ROOM:
 		data := CreateRoomData{}
 		err := json.Unmarshal(msg.Data, &data)
-		if err != nil || data.TimeControl < 1 || data.TimeBonus < 0 || c.hub == nil {
+		if err != nil || data.TimeControl < 1 || data.TimeBonus < 0 || c.hub == nil ||
+			(!data.IsVSEngine && c.isGuest) {
 			return
 		}
 

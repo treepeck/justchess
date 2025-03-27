@@ -10,24 +10,29 @@ import (
 	"github.com/google/uuid"
 )
 
+type Role int
 type CtxKey string
 
 const (
+	RoleGuest Role = iota
+	RoleUser
 	Subj CtxKey = "subj"
 )
 
 type Subject struct {
 	Id   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
+	Role Role      `json:"role"`
 }
 
 // generateToken encodes a token using the provided secret string.
 // Uses Subject type as a token subject.
 // If token cannot be signed, returns error.
-func generateToken(id uuid.UUID, name, secret string, d time.Duration) (string, error) {
+func generateToken(id uuid.UUID, name, secret string, r Role, d time.Duration) (string, error) {
 	s := Subject{
 		Id:   id,
 		Name: name,
+		Role: r,
 	}
 	payload, err := json.Marshal(s)
 	if err != nil {
@@ -42,13 +47,13 @@ func generateToken(id uuid.UUID, name, secret string, d time.Duration) (string, 
 }
 
 // generatePair generates a pair of JWTs: access token and refresh token.
-func generatePair(id uuid.UUID, name string) (at, rt string, err error) {
-	at, err = generateToken(id, name, os.Getenv("ACCESS_TOKEN_SECRET"), time.Minute*30)
+func generatePair(id uuid.UUID, name string, r Role) (at, rt string, err error) {
+	at, err = generateToken(id, name, os.Getenv("ACCESS_TOKEN_SECRET"), r, time.Minute*30)
 	if err != nil {
 		log.Printf("cannot generate access token: %v\n", err)
 		return
 	}
-	rt, err = generateToken(id, name, os.Getenv("REFRESH_TOKEN_SECRET"), (time.Hour*24)*30)
+	rt, err = generateToken(id, name, os.Getenv("REFRESH_TOKEN_SECRET"), r, time.Hour*24*30)
 	if err != nil {
 		log.Printf("cannot generate refresh token: %v\n", err)
 		return
