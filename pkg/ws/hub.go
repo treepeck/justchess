@@ -15,7 +15,7 @@ import (
 var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	ReadBufferSize:  1024,
-	CheckOrigin:     func(r *http.Request) bool { return r.URL.Host == "http://localhost:3000" },
+	CheckOrigin:     func(r *http.Request) bool { return r.Header.Get("Origin") == "http://localhost:3000" },
 }
 
 // Hub is a global repository of all created rooms and connected clients which are not in the game.
@@ -43,6 +43,7 @@ func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
+		log.Printf("request from: %s\n", r.Header.Get("Origin"))
 		log.Printf("%v\n", err)
 		return
 	}

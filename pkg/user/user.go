@@ -22,7 +22,6 @@ type User struct {
 	ResetToken   string    `json:"-"`
 }
 
-// Used for sign in/up.
 type Register struct {
 	Mail     string `json:"mail"`
 	Name     string `json:"username"`
@@ -60,27 +59,18 @@ func IsTakenUsernameOrMail(name, mail string) bool {
 	return rows.Next()
 }
 
-func IsUnverifiedId(id string) bool {
-	query := "SELECT user_name FROM unverified WHERE id = $1;"
-	rows, err := db.Pool.Query(query, id)
-	if err != nil {
-		return false
-	}
-	defer rows.Close()
-
-	return rows.Next()
-}
-
-func IsPendingReset(resetId string) (userId string, err error) {
-	query := "SELECT user_id FROM resets WHERE id = $1;"
-	rows, err := db.Pool.Query(query, resetId)
+// SelectByLogin selects the user by user_name or mail. The caller must ensure that u.Id != uuid.Nil.
+func SelectByLogin(login string) (u User, err error) {
+	query := "SELECT * FROM users WHERE user_name = $1 OR mail = $1;"
+	rows, err := db.Pool.Query(query, login)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&userId)
+		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt, &u.UpdatedAt,
+			&u.Mail, &u.ResetToken)
 	}
 	return
 }

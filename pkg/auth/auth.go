@@ -4,9 +4,7 @@ package auth
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/json"
-	"io"
 	"justchess/pkg/db"
 	"justchess/pkg/user"
 	"log"
@@ -15,19 +13,27 @@ import (
 	"os"
 	"regexp"
 	"text/template"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type SignIn struct {
+	// Login represents username or mail.
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
 
 type MailData struct {
 	Name            string
 	VerificationURL string
 }
 
-type PasswordReset struct {
-	Mail     string `json:"mail"`
-	Password string `json:"password"`
+type UserDTO struct {
+	User        user.User `json:"user"`
+	AccessToken string    `json:"accessToken"`
+	Role        Role      `json:"role"`
 }
 
 // Regular expressions for validating registration data.
@@ -59,13 +65,12 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Are name and mail unique?
+	// Are the name and mail unique?
 	if user.IsTakenUsernameOrMail(req.Name, req.Mail) {
 		rw.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	// Store the user data in a special table for unverified users.
 	// Covert plain password to a hash to store in a db.
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -75,7 +80,7 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	req.Password = string(hash)
 
-	// Begin a new transaction to be able to roll-back the insert in case the email cannot be sent.
+	// Begin a new transaction to be able to roll-back the insert in case the email sending will go wrong.
 	tx, err := db.Pool.Begin()
 	if err != nil {
 		log.Printf("Cannot begin a new transaction: %v\n", err)
@@ -120,11 +125,6 @@ func VerifyMailHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	idStr := id.String()
 
-	if !user.IsUnverifiedId(idStr) {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
 	tx, err := db.Pool.Begin()
 	if err != nil {
 		log.Printf("cannot begin a new transaction: %v\n", err)
@@ -145,65 +145,30 @@ func VerifyMailHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	completeAuth(rw, u.Id, u.Name, RoleUser)
-
 	if err = tx.Commit(); err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	completeAuth(rw, u, RoleUser)
 }
 
-// PasswordResetIssuer sends password reset confirmation link.
-func PasswordResetIssuer(rw http.ResponseWriter, r *http.Request) {
-	mail, err := io.ReadAll(r.Body)
-	if err != nil || len(mail) < 6 {
+func SignInHandler(rw http.ResponseWriter, r *http.Request) {
+	var req SignIn
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	token := rand.Text()
-
-	name, err := user.UpdateResetToken(string(token), string(mail))
-	if err != nil || name == "" {
+	u, err := user.SelectByLogin(req.Login)
+	// TODO: add bruteforce protection.
+	if err != nil || u.Id == uuid.Nil ||
+		bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)) != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	data := MailData{
-		Name:            name,
-		VerificationURL: os.Getenv("DOMAIN") + "auth/reset-confirm?token=" + string(token),
-	}
-
-	err = sendMail(string(mail), "Subject: Password Reset\r\n",
-		"./templates/password-reset.html", data)
-	if err != nil {
-		log.Printf("cannot send mail: %v\n", err)
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-}
-
-func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
-	var req PasswordReset
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil || len(req.Password) < 5 || len(req.Password) < 72 {
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Printf("cannot generate password hash: %v\n", err)
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	err = user.UpdatePasswordHash(string(hash), req.Mail)
-	if err != nil {
-		log.Printf("cannot update password: %v\n", err)
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	completeAuth(rw, u, RoleUser)
 }
 
 // sendMail assumes that dev.env file contains such variables:
@@ -254,12 +219,6 @@ func genTemplate(path string, data any) (string, error) {
 //                       AUTHORIZATION                       //
 ///////////////////////////////////////////////////////////////
 
-// GuestHandler generates JWTs for the guest user.
-func GuestHandler(rw http.ResponseWriter, r *http.Request) {
-	guestId := uuid.New()
-	completeAuth(rw, guestId, "Guest-"+guestId.String()[:8], RoleGuest)
-}
-
 // RefreshHandler is used when the access token becomes invalid.
 func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 	encoded, err := parseRefreshTokenCookie(r)
@@ -274,7 +233,7 @@ func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch updated user info since the user_name may have been changed.
+	// Select updated user info since the user_name may have been changed.
 	log.Printf("id: %s\n", subj.Id.String())
 	u, err := user.SelectById(subj.Id.String())
 	if err != nil || u.Id == uuid.Nil {
@@ -282,14 +241,26 @@ func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	completeAuth(rw, u.Id, u.Name, RoleUser)
+	completeAuth(rw, u, RoleUser)
+}
+
+// GuestHandler creates a guest user and sends back guest JWT.
+func GuestHandler(rw http.ResponseWriter, r *http.Request) {
+	id := uuid.New()
+	guest := user.User{
+		Id:           id,
+		Name:         "Guest-" + id.String()[0:8],
+		RegisteredAt: time.Now(),
+	}
+	completeAuth(rw, guest, RoleGuest)
 }
 
 // completeAuth generates the JWT pair and sends the refresh token
 // as a HTTP-Only Secure Cookie and access token as a plain/text response body.
-func completeAuth(rw http.ResponseWriter, id uuid.UUID, name string, r Role) {
-	at, rt, err := generatePair(id, name, r)
+func completeAuth(rw http.ResponseWriter, u user.User, r Role) {
+	at, rt, err := generatePair(u.Id, u.Name, r)
 	if err != nil {
+		log.Printf("cannot generate pair: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -297,7 +268,12 @@ func completeAuth(rw http.ResponseWriter, id uuid.UUID, name string, r Role) {
 	setRefreshTokenCookie(rw, rt)
 	// Send access token as a response.
 	rw.Header().Add("Content-Type", "text/plain")
-	rw.Write([]byte(at))
+	err = json.NewEncoder(rw).Encode(UserDTO{User: u, AccessToken: at})
+	if err != nil {
+		log.Printf("cannot decode response: %v\n", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func setRefreshTokenCookie(rw http.ResponseWriter, et string) {

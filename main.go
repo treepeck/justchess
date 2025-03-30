@@ -33,17 +33,16 @@ func main() {
 func setupMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /auth/guest", allowCors(auth.GuestHandler))
+	mux.HandleFunc("GET /auth/", allowCors(auth.RefreshHandler))
 	mux.HandleFunc("POST /auth/signup", allowCors(auth.SignUpHandler))
+	mux.HandleFunc("POST /auth/signin", allowCors(auth.SignInHandler))
 	mux.HandleFunc("GET /auth/verify", allowCors(auth.VerifyMailHandler))
-	mux.HandleFunc("GET /auth/", allowCors(isAuthorized(auth.RefreshHandler)))
-	mux.HandleFunc("POST /auth/reset", allowCors(auth.PasswordResetIssuer))
-	mux.HandleFunc("POST /auth/reset-confirm", allowCors(auth.PasswordResetHandler))
+	mux.HandleFunc("GET /auth/guest", allowCors(auth.GuestHandler))
 
 	h := ws.NewHub()
-	mux.HandleFunc("/hub", isAuthorized(h.HandleNewConnection))
+	mux.HandleFunc("/hub", isAuthorizedWS(h.HandleNewConnection))
 
-	mux.HandleFunc("/room", isAuthorized(func(rw http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/room", isAuthorizedWS(func(rw http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(r.URL.Query().Get("id"))
 		if err != nil {
 			rw.WriteHeader(http.StatusBadRequest)
@@ -81,6 +80,7 @@ func allowCors(next http.HandlerFunc) http.HandlerFunc {
 
 // isAuthorized accepts requests from every role.
 // Protected endpoints must check the subject's role further.
+// Cannot be used to authenticate the WebSocket connection, since it does not support request headers.
 func isAuthorized(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		h := r.Header.Get("Authorization")
@@ -97,7 +97,21 @@ func isAuthorized(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		ctx := context.WithValue(r.Context(), auth.Subj, subj)
+		next.ServeHTTP(rw, r.WithContext(ctx))
+	}
+}
 
+// isAuthorizedWS decodes the access token url parameter.
+func isAuthorizedWS(next http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		encoded := r.URL.Query().Get("access")
+		subj, err := auth.DecodeToken(encoded, "ACCESS_TOKEN_SECRET")
+		if err != nil {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), auth.Subj, subj)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
