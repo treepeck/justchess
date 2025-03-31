@@ -55,15 +55,15 @@ func newRoom(h *Hub, creatorName string, isVSEngine bool, control, bonus int) *R
 }
 
 func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
-	s := req.Context().Value(auth.Subj)
-	if s == nil {
+	ctx := req.Context().Value(auth.Cms)
+	if ctx == nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	subj := s.(auth.Subject)
+	cms := ctx.(auth.Claims)
 
 	// Guest users cannot play with other users, only vs engine.
-	if !r.isVSEngine && subj.Role == auth.RoleGuest {
+	if !r.isVSEngine && cms.Role == auth.RoleGuest {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -74,7 +74,7 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	c := newClient(subj.Id, subj.Name, subj.Role == auth.RoleGuest, conn)
+	c := newClient(cms.Id, cms.Name, cms.Role == auth.RoleGuest, conn)
 	c.room = r
 
 	go c.readRoutine()

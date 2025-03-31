@@ -19,7 +19,6 @@ type User struct {
 	Mail         string    `json:"-"`
 	PasswordHash string    `json:"-"`
 	UpdatedAt    time.Time `json:"-"`
-	ResetToken   string    `json:"-"`
 }
 
 type Register struct {
@@ -42,8 +41,8 @@ func SelectById(id string) (u User, err error) {
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt, &u.UpdatedAt,
-			&u.Mail, &u.ResetToken)
+		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
+			&u.UpdatedAt, &u.Mail)
 	}
 	return
 }
@@ -69,8 +68,23 @@ func SelectByLogin(login string) (u User, err error) {
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt, &u.UpdatedAt,
-			&u.Mail, &u.ResetToken)
+		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
+			&u.UpdatedAt, &u.Mail)
+	}
+	return
+}
+
+func SelectByMail(mail string) (u User, err error) {
+	query := "SELECT * FROM users WHERE mail = $1;"
+	rows, err := db.Pool.Query(query, mail)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
+			&u.UpdatedAt, &u.Mail)
 	}
 	return
 }
@@ -107,10 +121,16 @@ func InsertUser(id string, r Register, tx *sql.Tx) (u User, err error) {
 
 	if rows.Next() {
 		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
-			&u.UpdatedAt, &u.Mail, &u.ResetToken,
-		)
+			&u.UpdatedAt, &u.Mail)
 	}
 	return
+}
+
+func InsertTokenReset(token, userId, hash string, tx *sql.Tx) error {
+	query := "INSERT INTO tokenreset (token, user_id, password_hash)\n" +
+		"VALUES ($1, $2, $3);"
+	_, err := tx.Exec(query, token, userId, hash)
+	return err
 }
 
 ///////////////////////////////////////////////////////////////

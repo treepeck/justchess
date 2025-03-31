@@ -4,6 +4,7 @@ package auth
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"justchess/pkg/db"
 	"justchess/pkg/user"
@@ -28,6 +29,11 @@ type SignIn struct {
 type MailData struct {
 	Name            string
 	VerificationURL string
+}
+
+type PasswordReset struct {
+	Mail     string `json:"mail"`
+	Password string `json:"password"` // New password.
 }
 
 type UserDTO struct {
@@ -171,6 +177,61 @@ func SignInHandler(rw http.ResponseWriter, r *http.Request) {
 	completeAuth(rw, u, RoleUser)
 }
 
+func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
+	var req PasswordReset
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil || len(req.Password) < 5 || len(req.Password) > 72 {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	u, err := user.SelectByMail(req.Mail)
+	if err != nil || u.Id == uuid.Nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	token := rand.Text()
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("cannot generate hash: %v\n", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	tx, err := db.Pool.Begin()
+	if err != nil {
+		log.Printf("cannot begin transaction: %v\n", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	err = user.InsertTokenReset(token, u.Id.String(), string(hash), tx)
+	if err != nil {
+		log.Printf("cannot insert token reset: %v\n", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	data := MailData{
+		Name:            u.Name,
+		VerificationURL: os.Getenv("DOMAIN") + "reset/" + token,
+	}
+
+	if err = sendMail(u.Mail, "Subject: Password Reset\r\n",
+		"./templates/password-reset.html", data); err != nil {
+		log.Printf("cannot send mail: %v\n", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 // sendMail assumes that dev.env file contains such variables:
 //
 //  1. mail of the sender (SMTP_MAIL);
@@ -227,15 +288,14 @@ func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subj, err := DecodeToken(encoded, "REFRESH_TOKEN_SECRET")
+	cms, err := DecodeToken(encoded, "REFRESH_TOKEN_SECRET")
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	// Select updated user info since the user_name may have been changed.
-	log.Printf("id: %s\n", subj.Id.String())
-	u, err := user.SelectById(subj.Id.String())
+	u, err := user.SelectById(cms.Id.String())
 	if err != nil || u.Id == uuid.Nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
@@ -267,8 +327,8 @@ func completeAuth(rw http.ResponseWriter, u user.User, r Role) {
 
 	setRefreshTokenCookie(rw, rt)
 	// Send access token as a response.
-	rw.Header().Add("Content-Type", "text/plain")
-	err = json.NewEncoder(rw).Encode(UserDTO{User: u, AccessToken: at})
+	rw.Header().Add("Content-Type", "application/json")
+	err = json.NewEncoder(rw).Encode(UserDTO{User: u, AccessToken: at, Role: r})
 	if err != nil {
 		log.Printf("cannot decode response: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)

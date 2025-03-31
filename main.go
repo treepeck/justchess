@@ -33,11 +33,12 @@ func main() {
 func setupMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /auth/", allowCors(auth.RefreshHandler))
+	mux.HandleFunc("GET /auth", allowCors(auth.RefreshHandler))
+	mux.HandleFunc("GET /auth/guest", allowCors(auth.GuestHandler))
 	mux.HandleFunc("POST /auth/signup", allowCors(auth.SignUpHandler))
 	mux.HandleFunc("POST /auth/signin", allowCors(auth.SignInHandler))
 	mux.HandleFunc("GET /auth/verify", allowCors(auth.VerifyMailHandler))
-	mux.HandleFunc("GET /auth/guest", allowCors(auth.GuestHandler))
+	mux.HandleFunc("POST /auth/reset", allowCors(auth.PasswordResetHandler))
 
 	h := ws.NewHub()
 	mux.HandleFunc("/hub", isAuthorizedWS(h.HandleNewConnection))
@@ -96,7 +97,7 @@ func isAuthorized(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), auth.Subj, subj)
+		ctx := context.WithValue(r.Context(), auth.Cms, subj)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
@@ -105,13 +106,13 @@ func isAuthorized(next http.HandlerFunc) http.HandlerFunc {
 func isAuthorizedWS(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		encoded := r.URL.Query().Get("access")
-		subj, err := auth.DecodeToken(encoded, "ACCESS_TOKEN_SECRET")
+		cms, err := auth.DecodeToken(encoded, "ACCESS_TOKEN_SECRET")
 		if err != nil {
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), auth.Subj, subj)
+		ctx := context.WithValue(r.Context(), auth.Cms, cms)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }

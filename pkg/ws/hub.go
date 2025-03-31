@@ -34,12 +34,12 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
-	s := r.Context().Value(auth.Subj)
-	if s == nil {
+	ctx := r.Context().Value(auth.Cms)
+	if ctx == nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	subj := s.(auth.Subject)
+	cms := ctx.(auth.Claims)
 
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
@@ -48,7 +48,7 @@ func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := newClient(subj.Id, subj.Name, subj.Role == auth.RoleGuest, conn)
+	c := newClient(cms.Id, cms.Name, cms.Role == auth.RoleGuest, conn)
 	c.hub = h
 
 	go c.readRoutine()
