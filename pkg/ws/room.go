@@ -178,7 +178,8 @@ func (r *Room) handle(m MoveData, c *client) {
 	r.Lock()
 	defer r.Unlock()
 
-	if r.status == OPEN || r.status == OVER {
+	if r.status == OPEN || r.status == OVER ||
+		(r.game.White != c.name && r.game.Black != c.name) {
 		return
 	}
 
