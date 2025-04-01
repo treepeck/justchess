@@ -1,4 +1,5 @@
-// Package user provides the access to the 'users', 'unverified' and 'resets' db tables.
+// Package user provides the access to the user-related tables.
+// See "schema.sql" for table details.
 //
 // All insert and delete operations are made using Transactions.
 // It is a caller responsibility to end a transaction.
@@ -31,8 +32,10 @@ type Register struct {
 //                          SELECT                           //
 ///////////////////////////////////////////////////////////////
 
-// SelectById may return an empty user. The caller must ensure that u.Id != uuid.Nil.
-func SelectById(id string) (u User, err error) {
+// SelectUserByXXX functions may return an empty user.
+// The caller must ensure that u.Id != uuid.Nil.
+
+func SelectUserById(id string) (u User, err error) {
 	query := "SELECT * FROM users WHERE id = $1;"
 	rows, err := db.Pool.Query(query, id)
 	if err != nil {
@@ -41,12 +44,44 @@ func SelectById(id string) (u User, err error) {
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
+		err = rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
 			&u.UpdatedAt, &u.Mail)
 	}
 	return
 }
 
+// SelectUserByLogin excepts login to be either the user_name or mail.
+func SelectUserByLogin(login string) (u User, err error) {
+	query := "SELECT * FROM users WHERE user_name = $1 OR mail = $1;"
+	rows, err := db.Pool.Query(query, login)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err = rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
+			&u.UpdatedAt, &u.Mail)
+	}
+	return
+}
+
+func SelectUserByMail(mail string) (u User, err error) {
+	query := "SELECT * FROM users WHERE mail = $1;"
+	rows, err := db.Pool.Query(query, mail)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err = rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
+			&u.UpdatedAt, &u.Mail)
+	}
+	return
+}
+
+// IsTakenUsernameOrMail is a helper function to quickly check if the user_name and mail are unique.
 func IsTakenUsernameOrMail(name, mail string) bool {
 	query := "SELECT id FROM users WHERE user_name = $1 OR mail = $2;"
 	rows, err := db.Pool.Query(query, name, mail)
@@ -58,33 +93,34 @@ func IsTakenUsernameOrMail(name, mail string) bool {
 	return rows.Next()
 }
 
-// SelectByLogin selects the user by user_name or mail. The caller must ensure that u.Id != uuid.Nil.
-func SelectByLogin(login string) (u User, err error) {
-	query := "SELECT * FROM users WHERE user_name = $1 OR mail = $1;"
-	rows, err := db.Pool.Query(query, login)
+// SelectTokenRegistration returns user registration info by token.
+func SelectTokenRegistration(token string) (r Register, err error) {
+	query := "SELECT mail, password_hash, user_name FROM tokenregistration WHERE token = $1\n" +
+		"AND created_at >= NOW() - INTERVAL '20 minutes';"
+	rows, err := db.Pool.Query(query, token)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
-			&u.UpdatedAt, &u.Mail)
+		err = rows.Scan(&r.Mail, &r.Password, &r.Name)
 	}
 	return
 }
 
-func SelectByMail(mail string) (u User, err error) {
-	query := "SELECT * FROM users WHERE mail = $1;"
-	rows, err := db.Pool.Query(query, mail)
+// SelectTokenReset returns user id and password by token.
+func SelectTokenReset(token string) (id, passwordHash string, err error) {
+	query := "SELECT user_id, password_hash FROM tokenreset WHERE token = $1\n" +
+		"AND created_at >= NOW() - INTERVAL '20 minutes';"
+	rows, err := db.Pool.Query(query, token)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
-			&u.UpdatedAt, &u.Mail)
+		err = rows.Scan(&id, &passwordHash)
 	}
 	return
 }
@@ -93,37 +129,18 @@ func SelectByMail(mail string) (u User, err error) {
 //                          INSERT                           //
 ///////////////////////////////////////////////////////////////
 
-// InsertUnverified returns the new unverified user ID.
-func InsertUnverified(r Register, tx *sql.Tx) (id string, err error) {
-	query := "INSERT INTO unverified (mail, password_hash, user_name)\n" +
-		"VALUES ($1, $2, $3) RETURNING id;"
-	rows, err := tx.Query(query, r.Mail, r.Password, r.Name)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		rows.Scan(&id)
-	}
-	return
+func InsertTokenRegistration(token string, r Register, tx *sql.Tx) error {
+	query := "INSERT INTO tokenregistration (token, mail, password_hash, user_name)\n" +
+		"VALUES ($1, $2, $3, $4);"
+	_, err := tx.Exec(query, token, r.Mail, r.Password, r.Name)
+	return err
 }
 
-// InsertUser may return an empty user. The called must ensure that u.Id != uuid.Nil.
-func InsertUser(id string, r Register, tx *sql.Tx) (u User, err error) {
-	query := "INSERT INTO users (id, mail, password_hash, user_name)\n" +
-		"VALUES ($1, $2, $3, $4) RETURNING *;"
-	rows, err := tx.Query(query, id, r.Mail, r.Password, r.Name)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
-			&u.UpdatedAt, &u.Mail)
-	}
-	return
+func InsertUser(id string, r Register) error {
+	query := "INSERT INTO users (id, mail, password_hash, user_name) \n" +
+		"VALUES ($1, $2, $3, $4);"
+	_, err := db.Pool.Exec(query, id, r.Mail, r.Password, r.Name)
+	return err
 }
 
 func InsertTokenReset(token, userId, hash string, tx *sql.Tx) error {
@@ -137,42 +154,17 @@ func InsertTokenReset(token, userId, hash string, tx *sql.Tx) error {
 //                          UPDATE                           //
 ///////////////////////////////////////////////////////////////
 
-// UpdateResetToken returns the name of the user. The caller must ensure that name is not empty.
-func UpdateResetToken(token, mail string) (name string, err error) {
-	query := "UPDATE users SET reset_token = $1 WHERE mail = $2 RETURNING user_name;"
-	rows, err := db.Pool.Query(query, token, mail)
+func UpdatePasswordHash(hash, id string) (u User, err error) {
+	query := "UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING *;"
+	rows, err := db.Pool.Query(query, hash, id)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		rows.Scan(&name)
-	}
-	return
-}
-
-func UpdatePasswordHash(hash, mail string) error {
-	query := "UPDATE users SET password_hash = $1 WHERE mail = $2;"
-	_, err := db.Pool.Exec(query, hash, mail)
-	return err
-}
-
-///////////////////////////////////////////////////////////////
-//                          DELETE                           //
-///////////////////////////////////////////////////////////////
-
-// DeleteUnverified returns the deleted record data.
-func DeleteUnverified(id string, tx *sql.Tx) (r Register, err error) {
-	query := "DELETE FROM unverified WHERE id = $1 RETURNING mail, user_name, password_hash;"
-	rows, err := tx.Query(query, id)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		rows.Scan(&r.Mail, &r.Name, &r.Password)
+		err = rows.Scan(&u.Id, &u.Name, &u.PasswordHash, &u.RegisteredAt,
+			&u.UpdatedAt, &u.Mail)
 	}
 	return
 }

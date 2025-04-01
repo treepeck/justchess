@@ -38,8 +38,8 @@ type PasswordReset struct {
 
 type UserDTO struct {
 	User        user.User `json:"user"`
-	AccessToken string    `json:"accessToken"`
 	Role        Role      `json:"role"`
+	AccessToken string    `json:"accessToken"`
 }
 
 // Regular expressions for validating registration data.
@@ -52,10 +52,7 @@ var (
 //                       AUTHENTICATION                      //
 ///////////////////////////////////////////////////////////////
 
-// SignUpHandler validates that the provided mail and name are unique,
-// stores the profile data in the 'unverified' DB table and sends the
-// confirmation mail.
-// If the confirmation mail cannot be sent, the transaction will be rolled-back.
+// SignUpHandler rollbacks the insert if the confirmation mail cannot be sent.
 func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	var req user.Register
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -94,16 +91,18 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := user.InsertUnverified(req, tx)
+	// Generate unique token to safely confirm the registration.
+	token := rand.Text()
+	err = user.InsertTokenRegistration(token, req, tx)
 	defer tx.Rollback()
-	if err != nil || len(id) == 0 {
+	if err != nil {
 		rw.WriteHeader(http.StatusConflict)
 		return
 	}
 
 	data := MailData{
 		Name:            req.Name,
-		VerificationURL: os.Getenv("DOMAIN") + "verify/" + id,
+		VerificationURL: os.Getenv("DOMAIN") + "verify?action=registration&token=" + token,
 	}
 
 	err = sendMail(req.Mail, "Subject: Email Verification\r\n",
@@ -115,47 +114,32 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = tx.Commit(); err != nil {
+		log.Printf("cannot commit transaction: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 }
 
-// VerifyMailHandler ensures that the mail is not verified yet.
-// Is it doesn't, the profile data is moved from the 'unverified' table to the
-// 'users' table and a pair of JWTs are generated for a newly created user.
-func VerifyMailHandler(rw http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.URL.Query().Get("id"))
-	if err != nil {
+// VerifyHandler verifies email registration and password resets.
+// Info about email registrations is stored in the 'unverified' table.
+// Info about pending password resets is stored in the 'tokenreset' table.
+func VerifyHandler(rw http.ResponseWriter, r *http.Request) {
+	action := r.URL.Query().Get("action")
+	token := r.URL.Query().Get("token")
+	if token == "" {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	idStr := id.String()
 
-	tx, err := db.Pool.Begin()
-	if err != nil {
-		log.Printf("cannot begin a new transaction: %v\n", err)
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer tx.Rollback()
+	switch action {
+	case "reset":
+		completeReset(rw, token)
 
-	data, err := user.DeleteUnverified(idStr, tx)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	case "registration":
+		completeSignUp(rw, token)
 
-	u, err := user.InsertUser(idStr, data, tx)
-	if err != nil {
-		rw.WriteHeader(http.StatusConflict)
-		return
+	default:
+		rw.WriteHeader(http.StatusBadRequest)
 	}
-
-	if err = tx.Commit(); err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	completeAuth(rw, u, RoleUser)
 }
 
 func SignInHandler(rw http.ResponseWriter, r *http.Request) {
@@ -166,7 +150,7 @@ func SignInHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := user.SelectByLogin(req.Login)
+	u, err := user.SelectUserByLogin(req.Login)
 	// TODO: add bruteforce protection.
 	if err != nil || u.Id == uuid.Nil ||
 		bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)) != nil {
@@ -185,7 +169,7 @@ func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := user.SelectByMail(req.Mail)
+	u, err := user.SelectUserByMail(req.Mail)
 	if err != nil || u.Id == uuid.Nil {
 		rw.WriteHeader(http.StatusNotFound)
 		return
@@ -216,7 +200,7 @@ func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
 
 	data := MailData{
 		Name:            u.Name,
-		VerificationURL: os.Getenv("DOMAIN") + "reset/" + token,
+		VerificationURL: os.Getenv("DOMAIN") + "verify?action=reset&token=" + token,
 	}
 
 	if err = sendMail(u.Mail, "Subject: Password Reset\r\n",
@@ -230,6 +214,41 @@ func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func completeSignUp(rw http.ResponseWriter, token string) {
+	r, err := user.SelectTokenRegistration(token)
+	if err != nil || r.Mail == "" {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	id := uuid.New()
+	err = user.InsertUser(id.String(), r)
+	if err != nil {
+		log.Printf("cannot insert user %s: %v\n", r.Mail, err)
+		rw.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	completeAuth(rw, user.User{Id: id, Name: r.Name, RegisteredAt: time.Now()}, RoleUser)
+}
+
+// completeReset authenticates the user after password reset.
+func completeReset(rw http.ResponseWriter, token string) {
+	id, hash, err := user.SelectTokenReset(token)
+	if err != nil || hash == "" {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	u, err := user.UpdatePasswordHash(hash, id)
+	if err != nil || u.Id == uuid.Nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	completeAuth(rw, u, RoleUser)
 }
 
 // sendMail assumes that dev.env file contains such variables:
@@ -295,7 +314,7 @@ func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Select updated user info since the user_name may have been changed.
-	u, err := user.SelectById(cms.Id.String())
+	u, err := user.SelectUserById(cms.Id.String())
 	if err != nil || u.Id == uuid.Nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return

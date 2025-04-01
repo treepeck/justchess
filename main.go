@@ -35,9 +35,9 @@ func setupMux() *http.ServeMux {
 
 	mux.HandleFunc("GET /auth", allowCors(auth.RefreshHandler))
 	mux.HandleFunc("GET /auth/guest", allowCors(auth.GuestHandler))
+	mux.HandleFunc("GET /auth/verify", allowCors(auth.VerifyHandler))
 	mux.HandleFunc("POST /auth/signup", allowCors(auth.SignUpHandler))
 	mux.HandleFunc("POST /auth/signin", allowCors(auth.SignInHandler))
-	mux.HandleFunc("GET /auth/verify", allowCors(auth.VerifyMailHandler))
 	mux.HandleFunc("POST /auth/reset", allowCors(auth.PasswordResetHandler))
 
 	h := ws.NewHub()
