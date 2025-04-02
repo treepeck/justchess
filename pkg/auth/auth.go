@@ -1,4 +1,4 @@
-// Package auth implements user authentication and authorization.
+// Package auth implements player authentication and authorization.
 // Sign up and Sign in are both considered as authentication.
 package auth
 
@@ -7,7 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"justchess/pkg/db"
-	"justchess/pkg/user"
+	"justchess/pkg/player"
 	"log"
 	"net/http"
 	"net/smtp"
@@ -20,26 +20,26 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type SignIn struct {
+type signIn struct {
 	// Login represents username or mail.
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
-type MailData struct {
+type mailData struct {
 	Name            string
 	VerificationURL string
 }
 
-type PasswordReset struct {
+type passwordReset struct {
 	Mail     string `json:"mail"`
 	Password string `json:"password"` // New password.
 }
 
-type UserDTO struct {
-	User        user.User `json:"user"`
-	Role        Role      `json:"role"`
-	AccessToken string    `json:"accessToken"`
+type PlayerDTO struct {
+	Player      player.Player `json:"player"`
+	Role        Role          `json:"role"`
+	AccessToken string        `json:"accessToken"`
 }
 
 // Regular expressions for validating registration data.
@@ -48,13 +48,24 @@ var (
 	mailRE = regexp.MustCompile(`[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+`)
 )
 
+func Mux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /auth/refresh", refreshHandler)
+	mux.HandleFunc("GET /auth/guest", guestHandler)
+	mux.HandleFunc("GET /auth/verify", verifyHandler)
+	mux.HandleFunc("POST /auth/signup", signUpHandler)
+	mux.HandleFunc("POST /auth/signin", signInHandler)
+	mux.HandleFunc("POST /auth/reset", passwordResetHandler)
+	return mux
+}
+
 ///////////////////////////////////////////////////////////////
 //                       AUTHENTICATION                      //
 ///////////////////////////////////////////////////////////////
 
-// SignUpHandler rollbacks the insert if the confirmation mail cannot be sent.
-func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
-	var req user.Register
+// signUpHandler rollbacks the insert if the confirmation mail cannot be sent.
+func signUpHandler(rw http.ResponseWriter, r *http.Request) {
+	var req player.Register
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
@@ -69,7 +80,7 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Are the name and mail unique?
-	if user.IsTakenUsernameOrMail(req.Name, req.Mail) {
+	if player.IsTakenNameOrMail(req.Name, req.Mail) {
 		rw.WriteHeader(http.StatusConflict)
 		return
 	}
@@ -93,16 +104,16 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 
 	// Generate unique token to safely confirm the registration.
 	token := rand.Text()
-	err = user.InsertTokenRegistration(token, req, tx)
+	err = player.InsertTokenRegistration(token, req, tx)
 	defer tx.Rollback()
 	if err != nil {
 		rw.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	data := MailData{
+	data := mailData{
 		Name:            req.Name,
-		VerificationURL: os.Getenv("DOMAIN") + "verify?action=registration&token=" + token,
+		VerificationURL: os.Getenv("DOMAIN") + "/verify?action=registration&token=" + token,
 	}
 
 	err = sendMail(req.Mail, "Subject: Email Verification\r\n",
@@ -119,10 +130,10 @@ func SignUpHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// VerifyHandler verifies email registration and password resets.
+// verifyHandler verifies email registration and password resets.
 // Info about email registrations is stored in the 'unverified' table.
 // Info about pending password resets is stored in the 'tokenreset' table.
-func VerifyHandler(rw http.ResponseWriter, r *http.Request) {
+func verifyHandler(rw http.ResponseWriter, r *http.Request) {
 	action := r.URL.Query().Get("action")
 	token := r.URL.Query().Get("token")
 	if token == "" {
@@ -142,35 +153,35 @@ func VerifyHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func SignInHandler(rw http.ResponseWriter, r *http.Request) {
-	var req SignIn
+func signInHandler(rw http.ResponseWriter, r *http.Request) {
+	var req signIn
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	u, err := user.SelectUserByLogin(req.Login)
+	p, err := player.SelectPlayerByLogin(req.Login)
 	// TODO: add bruteforce protection.
-	if err != nil || u.Id == uuid.Nil ||
-		bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)) != nil {
+	if err != nil ||
+		bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(req.Password)) != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	completeAuth(rw, u, RoleUser)
+	completeAuth(rw, p, RolePlayer)
 }
 
-func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
-	var req PasswordReset
+func passwordResetHandler(rw http.ResponseWriter, r *http.Request) {
+	var req passwordReset
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil || len(req.Password) < 5 || len(req.Password) > 72 {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	u, err := user.SelectUserByMail(req.Mail)
-	if err != nil || u.Id == uuid.Nil {
+	p, err := player.SelectPlayerByMail(req.Mail)
+	if err != nil || p.Id == uuid.Nil {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -191,19 +202,19 @@ func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	err = user.InsertTokenReset(token, u.Id.String(), string(hash), tx)
+	err = player.InsertTokenReset(token, p.Id.String(), string(hash), tx)
 	if err != nil {
 		log.Printf("cannot insert token reset: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	data := MailData{
-		Name:            u.Name,
-		VerificationURL: os.Getenv("DOMAIN") + "verify?action=reset&token=" + token,
+	data := mailData{
+		Name:            p.Name,
+		VerificationURL: os.Getenv("DOMAIN") + "/verify?action=reset&token=" + token,
 	}
 
-	if err = sendMail(u.Mail, "Subject: Password Reset\r\n",
+	if err = sendMail(p.Mail, "Subject: Password Reset\r\n",
 		"./templates/password-reset.html", data); err != nil {
 		log.Printf("cannot send mail: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -217,45 +228,45 @@ func PasswordResetHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func completeSignUp(rw http.ResponseWriter, token string) {
-	r, err := user.SelectTokenRegistration(token)
+	r, err := player.SelectTokenRegistration(token)
 	if err != nil || r.Mail == "" {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	id := uuid.New()
-	err = user.InsertUser(id.String(), r)
+	err = player.InsertPlayer(id.String(), r)
 	if err != nil {
-		log.Printf("cannot insert user %s: %v\n", r.Mail, err)
+		log.Printf("cannot insert player %s: %v\n", r.Mail, err)
 		rw.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	completeAuth(rw, user.User{Id: id, Name: r.Name, RegisteredAt: time.Now()}, RoleUser)
+	completeAuth(rw, player.Player{Id: id, Name: r.Name, CreatedAt: time.Now()}, RolePlayer)
 }
 
-// completeReset authenticates the user after password reset.
+// completeReset authenticates the player after password reset.
 func completeReset(rw http.ResponseWriter, token string) {
-	id, hash, err := user.SelectTokenReset(token)
+	id, hash, err := player.SelectTokenReset(token)
 	if err != nil || hash == "" {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	u, err := user.UpdatePasswordHash(hash, id)
-	if err != nil || u.Id == uuid.Nil {
+	p, err := player.UpdatePasswordHash(hash, id)
+	if err != nil || p.Id == uuid.Nil {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	completeAuth(rw, u, RoleUser)
+	completeAuth(rw, p, RolePlayer)
 }
 
 // sendMail assumes that dev.env file contains such variables:
 //
 //  1. mail of the sender (SMTP_MAIL);
 //  2. password for that email (SMTP_PASSWORD).
-func sendMail(addr, subject, templatePath string, data MailData) error {
+func sendMail(addr, subject, templatePath string, data mailData) error {
 	auth := smtp.PlainAuth(
 		"",
 		os.Getenv("SMTP_MAIL"),
@@ -299,8 +310,8 @@ func genTemplate(path string, data any) (string, error) {
 //                       AUTHORIZATION                       //
 ///////////////////////////////////////////////////////////////
 
-// RefreshHandler is used when the access token becomes invalid.
-func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
+// refreshHandler is used when the access token becomes invalid.
+func refreshHandler(rw http.ResponseWriter, r *http.Request) {
 	encoded, err := parseRefreshTokenCookie(r)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
@@ -313,31 +324,31 @@ func RefreshHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Select updated user info since the user_name may have been changed.
-	u, err := user.SelectUserById(cms.Id.String())
-	if err != nil || u.Id == uuid.Nil {
+	// Select updated player info since the user_name may have been changed.
+	p, err := player.SelectPlayerById(cms.Id.String())
+	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	completeAuth(rw, u, RoleUser)
+	completeAuth(rw, p, RolePlayer)
 }
 
-// GuestHandler creates a guest user and sends back guest JWT.
-func GuestHandler(rw http.ResponseWriter, r *http.Request) {
+// guestHandler creates a guest player and sends back guest JWT.
+func guestHandler(rw http.ResponseWriter, r *http.Request) {
 	id := uuid.New()
-	guest := user.User{
-		Id:           id,
-		Name:         "Guest-" + id.String()[0:8],
-		RegisteredAt: time.Now(),
+	guest := player.Player{
+		Id:        id,
+		Name:      "Guest-" + id.String()[0:8],
+		CreatedAt: time.Now(),
 	}
 	completeAuth(rw, guest, RoleGuest)
 }
 
 // completeAuth generates the JWT pair and sends the refresh token
 // as a HTTP-Only Secure Cookie and access token as a plain/text response body.
-func completeAuth(rw http.ResponseWriter, u user.User, r Role) {
-	at, rt, err := generatePair(u.Id, u.Name, r)
+func completeAuth(rw http.ResponseWriter, p player.Player, r Role) {
+	at, rt, err := generatePair(p.Id, p.Name, r)
 	if err != nil {
 		log.Printf("cannot generate pair: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -347,7 +358,7 @@ func completeAuth(rw http.ResponseWriter, u user.User, r Role) {
 	setRefreshTokenCookie(rw, rt)
 	// Send access token as a response.
 	rw.Header().Add("Content-Type", "application/json")
-	err = json.NewEncoder(rw).Encode(UserDTO{User: u, AccessToken: at, Role: r})
+	err = json.NewEncoder(rw).Encode(PlayerDTO{Player: p, AccessToken: at, Role: r})
 	if err != nil {
 		log.Printf("cannot decode response: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)

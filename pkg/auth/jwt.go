@@ -15,13 +15,13 @@ type CtxKey string
 
 const (
 	RoleGuest Role = iota
-	RoleUser
+	RolePlayer
 	Cms CtxKey = "claims" // Claims context key.
 )
 
 type Claims struct {
 	Id   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+	Name string    `json:"username"`
 	Role Role      `json:"role"`
 	jwt.RegisteredClaims
 }

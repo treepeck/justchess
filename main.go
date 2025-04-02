@@ -5,6 +5,7 @@ import (
 	"context"
 	"justchess/pkg/auth"
 	"justchess/pkg/db"
+	"justchess/pkg/player"
 	"justchess/pkg/ws"
 	"log"
 	"net/http"
@@ -33,12 +34,9 @@ func main() {
 func setupMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /auth", allowCors(auth.RefreshHandler))
-	mux.HandleFunc("GET /auth/guest", allowCors(auth.GuestHandler))
-	mux.HandleFunc("GET /auth/verify", allowCors(auth.VerifyHandler))
-	mux.HandleFunc("POST /auth/signup", allowCors(auth.SignUpHandler))
-	mux.HandleFunc("POST /auth/signin", allowCors(auth.SignInHandler))
-	mux.HandleFunc("POST /auth/reset", allowCors(auth.PasswordResetHandler))
+	mux.Handle("/auth/", allowCors(auth.Mux()))
+
+	mux.Handle("/player/", allowCors(isAuthorized(player.Mux())))
 
 	h := ws.NewHub()
 	mux.HandleFunc("/hub", isAuthorizedWS(h.HandleNewConnection))
@@ -63,9 +61,9 @@ func setupMux() *http.ServeMux {
 }
 
 // allowCors handles the Cross-Origin-Resource-Sharing.
-func allowCors(next http.HandlerFunc) http.HandlerFunc {
+func allowCors(next http.Handler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		rw.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
+		rw.Header().Add("Access-Control-Allow-Origin", os.Getenv("DOMAIN"))
 		rw.Header().Add("Access-Control-Allow-Credentials", "true")
 		rw.Header().Add("Access-Control-Allow-Headers", "*")
 		rw.Header().Add("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
@@ -79,25 +77,27 @@ func allowCors(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// isAuthorized accepts requests from every role.
+// isAuthorized accepts requests from every role!
 // Protected endpoints must check the subject's role further.
 // Cannot be used to authenticate the WebSocket connection, since it does not support request headers.
-func isAuthorized(next http.HandlerFunc) http.HandlerFunc {
+func isAuthorized(next http.Handler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		h := r.Header.Get("Authorization")
 
 		if len(h) < 100 || h[:7] != "Bearer " {
+			log.Printf("unauthorized request: %s\n", r.RemoteAddr)
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		subj, err := auth.DecodeToken(h[7:], "ACCESS_TOKEN_SECRET")
+		cms, err := auth.DecodeToken(h[7:], "ACCESS_TOKEN_SECRET")
 		if err != nil {
+			log.Printf("unauthorized request: %s\n", r.RemoteAddr)
 			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), auth.Cms, subj)
+		ctx := context.WithValue(r.Context(), auth.Cms, cms)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
