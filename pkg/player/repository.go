@@ -14,6 +14,7 @@ type Player struct {
 	Mail         string    `json:"-"`
 	Name         string    `json:"username"`
 	PasswordHash string    `json:"-"`
+	IsEngine     bool      `json:"isEngine"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"-"`
 }
@@ -29,29 +30,29 @@ type Register struct {
 ///////////////////////////////////////////////////////////////
 
 func SelectPlayerById(id string) (p Player, err error) {
-	query := "SELECT * FROM player WHERE id = $1;"
+	query := "SELECT * FROM player WHERE id = $1 AND is_engine = false;"
 	return selectPlayer(query, id)
 }
 
 // SelectPlayerByLogin excepts login to be either the name or mail.
 func SelectPlayerByLogin(login string) (p Player, err error) {
-	query := "SELECT * FROM player WHERE name = $1 OR mail = $1;"
+	query := "SELECT * FROM player WHERE name = $1 OR mail = $1 AND is_engine = false;"
 	return selectPlayer(query, login)
 }
 
 func SelectPlayerByMail(mail string) (p Player, err error) {
-	query := "SELECT * FROM player WHERE mail = $1;"
+	query := "SELECT * FROM player WHERE mail = $1 AND is_engine = false;"
 	return selectPlayer(query, mail)
 }
 
 func SelectPlayerByName(name string) (p Player, err error) {
-	query := "SELECT * FROM player WHERE name = $1;"
+	query := "SELECT * FROM player WHERE name = $1 AND is_engine = false;"
 	return selectPlayer(query, name)
 }
 
 // IsTakenNameOrMail is a helper to quickly check are the name and mail unique.
 func IsTakenNameOrMail(name, mail string) bool {
-	query := "SELECT id FROM player WHERE name = $1 OR mail = $2;"
+	query := "SELECT id FROM player WHERE name = $1 OR mail = $2 AND is_engine = false;"
 	rows, err := db.Pool.Query(query, name, mail)
 	if err != nil {
 		return false
@@ -106,8 +107,8 @@ func selectPlayer(query, arg string) (p Player, err error) {
 	if !rows.Next() {
 		return p, errors.New("player not found")
 	}
-	err = rows.Scan(&p.Id, &p.Mail, &p.Name, &p.PasswordHash, &p.CreatedAt,
-		&p.UpdatedAt)
+	err = rows.Scan(&p.Id, &p.Mail, &p.Name, &p.PasswordHash, &p.IsEngine,
+		&p.CreatedAt, &p.UpdatedAt)
 	return
 }
 
@@ -149,8 +150,8 @@ func UpdatePasswordHash(hash, id string) (p Player, err error) {
 	defer rows.Close()
 
 	if rows.Next() {
-		err = rows.Scan(&p.Id, &p.Name, &p.PasswordHash, &p.CreatedAt,
-			&p.UpdatedAt, &p.Mail)
+		err = rows.Scan(&p.Id, &p.Mail, &p.Name, &p.PasswordHash, &p.IsEngine,
+			&p.CreatedAt, &p.UpdatedAt)
 	}
 	return
 }

@@ -1,8 +1,8 @@
 package san
 
 import (
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
+	"justchess/pkg/chess/bitboard"
+	"justchess/pkg/chess/enums"
 )
 
 var pieceSymbols = [12]string{"", "", "N", "N", "B", "B", "R", "R", "Q", "Q", "K", "K"}

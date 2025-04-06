@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
+	"justchess/pkg/chess/bitboard"
+	"justchess/pkg/chess/enums"
 )
 
 // TODO: validate FEN before parsing.

@@ -11,4 +11,5 @@ const (
 	FiftyMoves
 	Repetition
 	Resignation
+	Agreement
 )

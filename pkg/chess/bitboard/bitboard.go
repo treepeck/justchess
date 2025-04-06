@@ -1,7 +1,7 @@
 package bitboard
 
 import (
-	"justchess/pkg/game/enums"
+	"justchess/pkg/chess/enums"
 )
 
 // Bitboard stores the chessboard state which can be converted to a FEN.

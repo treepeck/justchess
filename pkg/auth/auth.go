@@ -172,6 +172,7 @@ func signInHandler(rw http.ResponseWriter, r *http.Request) {
 	completeAuth(rw, p, RolePlayer)
 }
 
+// TODO: deny reset if there is another pending reset request from that player.
 func passwordResetHandler(rw http.ResponseWriter, r *http.Request) {
 	var req passwordReset
 	err := json.NewDecoder(r.Body).Decode(&req)

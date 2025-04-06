@@ -80,7 +80,6 @@ func (c *client) handleMessage(raw []byte) {
 		}
 
 		r := newRoom(c.hub, c.name, data.IsVSEngine, data.TimeControl, data.TimeBonus)
-
 		c.hub.add(r)
 
 	case MAKE_MOVE:
@@ -89,11 +88,10 @@ func (c *client) handleMessage(raw []byte) {
 		if err != nil || c.room == nil {
 			return
 		}
-
 		c.room.handle(data, c)
 
 	case CHAT:
-		data := ChatData{}
+		var data ChatData
 		err := json.Unmarshal(msg.Data, &data)
 		if err != nil || c.room == nil {
 			return
@@ -102,10 +100,10 @@ func (c *client) handleMessage(raw []byte) {
 		c.room.broadcastChat(data, c)
 
 	case RESIGN:
-		if c.room == nil {
+		if c.room == nil || c.room.status == OPEN || c.room.status == OVER {
 			return
 		}
-		c.room.handleResign(c.name)
+		c.room.handleResign(c.id)
 	}
 }
 

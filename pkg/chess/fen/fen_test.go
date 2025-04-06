@@ -3,8 +3,8 @@ package fen
 import (
 	"testing"
 
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
+	"justchess/pkg/chess/bitboard"
+	"justchess/pkg/chess/enums"
 )
 
 var dummyBitboard = bitboard.NewBitboard([12]uint64{

@@ -1,20 +1,19 @@
 // Package player implements player-data related endpoints and
 // provides the access to the player-related tables.
-//
-// All insert and delete operations are made using Transactions.
-// It is a caller responsibility to end a transaction.
 package player
 
 import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 func Mux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /player/{name}", getByNameHandler)
-	// mux.HandleFunc("POST /player/comment", commentHandler)
+	mux.HandleFunc("GET /player/id/{id}", getByIdHandler)
+	mux.HandleFunc("GET /player/name/{name}", getByNameHandler)
 	return mux
 }
 
@@ -25,14 +24,36 @@ func getByNameHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := SelectPlayerByName(name)
+	p, err := SelectPlayerByName(name)
 	if err != nil {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	rw.Header().Add("Content-Type", "application/json")
-	err = json.NewEncoder(rw).Encode(u)
+	err = json.NewEncoder(rw).Encode(p)
+	if err != nil {
+		log.Printf("cannot encode response: %v\n", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func getByIdHandler(rw http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	p, err := SelectPlayerById(id.String())
+	if err != nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	rw.Header().Add("Content-Type", "application/json")
+	err = json.NewEncoder(rw).Encode(p)
 	if err != nil {
 		log.Printf("cannot encode response: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)

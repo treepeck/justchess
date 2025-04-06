@@ -139,7 +139,6 @@ func (h *Hub) broadcastAddRoom(r *Room) {
 	data, err := json.Marshal(AddRoomData{
 		Id:          r.id,
 		Creator:     r.creatorName,
-		Players:     r.getClientIds(),
 		TimeControl: r.game.TimeControl,
 		TimeBonus:   r.game.TimeBonus,
 	})
@@ -185,7 +184,6 @@ func (h *Hub) send10Rooms(c *client) {
 		data, err := json.Marshal(AddRoomData{
 			Id:          r.id,
 			Creator:     r.creatorName,
-			Players:     r.getClientIds(),
 			TimeControl: r.game.TimeControl,
 			TimeBonus:   r.game.TimeBonus,
 		})

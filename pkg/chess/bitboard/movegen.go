@@ -3,7 +3,7 @@ package bitboard
 import (
 	"math/bits"
 
-	"justchess/pkg/game/enums"
+	"justchess/pkg/chess/enums"
 )
 
 // The following block on contants defines the bit masks needed to
@@ -59,7 +59,7 @@ func genKingLegalMoves(king, allies, enemies, attacked uint64,
 	canOO, canOOO bool, c enums.Color) (moves []Move) {
 	kingPos := GetLSB(king)
 
-	// Exclude all attacked and occupied by the allied pieces squares, the king can not move on them.
+	// Exclude all attacked and occupied by the allied pieces squares, the king cannot move on them.
 	movesBB := genKingAttackDests(king) & ^allies & ^attacked
 
 	for ; movesBB > 0; movesBB &= movesBB - 1 {

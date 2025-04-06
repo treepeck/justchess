@@ -1,10 +1,12 @@
-package game
+package chess
 
 import (
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
-	"justchess/pkg/game/fen"
+	"justchess/pkg/chess/bitboard"
+	"justchess/pkg/chess/enums"
+	"justchess/pkg/chess/fen"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestProcessMove(t *testing.T) {
@@ -59,7 +61,7 @@ func TestProcessMove(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Logf("Passing test: %s\n", tc.san)
-		game := NewGame(fen.FEN2Bitboard(tc.beforeFEN), 180, 180)
+		game := NewGame(uuid.New(), fen.FEN2Bitboard(tc.beforeFEN), 180, 180)
 		game.ProcessMove(tc.move)
 		got := fen.Bitboard2FEN(game.Bitboard)
 		if got != tc.expectedFEN {
@@ -72,7 +74,7 @@ func TestProcessMove(t *testing.T) {
 }
 
 func BenchmarkProcessMove(b *testing.B) {
-	game := NewGame(nil, 180, 180)
+	game := NewGame(uuid.New(), nil, 180, 180)
 	before := fen.Bitboard2FEN(game.Bitboard)
 	for i := 0; i < b.N; i++ {
 		game.ProcessMove(bitboard.NewMove(enums.E4, enums.E2, enums.DoublePawnPush))
@@ -87,18 +89,18 @@ func TestIsThreefoldRepetition(t *testing.T) {
 		expected bool
 	}{
 		{[]CompletedMove{
-			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
-			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
-			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
-			{"", "1kr5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
-			{"", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
-			{"", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
-			{"", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
+			{0, "", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{0, "", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{0, "", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
+			{0, "", "1kr5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
+			{0, "", "1kr5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{0, "", "k1r5/Bb3R2/4p3/4Pn1p/R7/2P3p1/1KP4r/8 w - - 0 1", 0},
+			{0, "", "k1r5/1b3R2/4p3/4Pn1p/R7/2P3p1/1KP2B1r/8 w - - 0 1", 0},
 		}, true},
 		{[]CompletedMove{}, false},
 	}
 	for _, tc := range testcases {
-		g := NewGame(nil, 180, 0)
+		g := NewGame(uuid.New(), nil, 180, 0)
 		g.Moves = tc.moves
 		got := g.isThreefoldRepetition()
 		if got != tc.expected {
@@ -164,7 +166,8 @@ func TestIsInsufficientMaterial(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Logf("passing test: %s\n", tc.fen)
-		g := NewGame(bitboard.NewBitboard(tc.pieces, enums.White, [4]bool{false, false, false, false},
+		g := NewGame(uuid.New(), bitboard.NewBitboard(tc.pieces, enums.White,
+			[4]bool{false, false, false, false},
 			enums.NoSquare, 0, 44), 180, 180)
 
 		if tc.expected != g.isInsufficientMaterial() {

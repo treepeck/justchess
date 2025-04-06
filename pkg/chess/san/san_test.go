@@ -1,9 +1,9 @@
 package san
 
 import (
-	"justchess/pkg/game/bitboard"
-	"justchess/pkg/game/enums"
-	"justchess/pkg/game/fen"
+	"justchess/pkg/chess/bitboard"
+	"justchess/pkg/chess/enums"
+	"justchess/pkg/chess/fen"
 	"testing"
 )
 
