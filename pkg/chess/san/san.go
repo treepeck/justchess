@@ -45,12 +45,12 @@ func Move2SAN(m bitboard.Move, pieces [12]uint64,
 // http://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c8.2.3
 func disambiguate(from, to int, pieces [12]uint64,
 	lm []bitboard.Move, isCapture bool) (san string) {
-	pt := bitboard.GetPieceTypeFromSquare(1<<from, pieces)
+	pt := bitboard.GetPieceOnSquare(1<<from, pieces)
 
 	if pt != enums.WhitePawn && pt != enums.BlackPawn {
 		// Ambiguity arises when multiple pieces of the same type can move to the same square.
 		for _, move := range lm {
-			if bitboard.GetPieceTypeFromSquare(1<<move.From(), pieces) == pt &&
+			if bitboard.GetPieceOnSquare(1<<move.From(), pieces) == pt &&
 				from != move.From() && to == move.To() {
 				// Step 1: If the moving pieces can be distinguished by their originating files,
 				// the originating file letter of the moving piece is inserted immediately after

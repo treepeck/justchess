@@ -20,7 +20,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type signIn struct {
+type signInDTO struct {
 	// Login represents username or mail.
 	Login    string `json:"login"`
 	Password string `json:"password"`
@@ -31,7 +31,7 @@ type mailData struct {
 	VerificationURL string
 }
 
-type passwordReset struct {
+type passwordResetDTO struct {
 	Mail     string `json:"mail"`
 	Password string `json:"password"` // New password.
 }
@@ -50,12 +50,12 @@ var (
 
 func Mux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /auth/refresh", refreshHandler)
-	mux.HandleFunc("GET /auth/guest", guestHandler)
-	mux.HandleFunc("GET /auth/verify", verifyHandler)
-	mux.HandleFunc("POST /auth/signup", signUpHandler)
-	mux.HandleFunc("POST /auth/signin", signInHandler)
-	mux.HandleFunc("POST /auth/reset", passwordResetHandler)
+	mux.HandleFunc("GET /auth/refresh", refresh)
+	mux.HandleFunc("GET /auth/guest", guest)
+	mux.HandleFunc("GET /auth/verify", verify)
+	mux.HandleFunc("POST /auth/signup", signUp)
+	mux.HandleFunc("POST /auth/signin", signIn)
+	mux.HandleFunc("POST /auth/reset", passwordReset)
 	return mux
 }
 
@@ -63,8 +63,8 @@ func Mux() *http.ServeMux {
 //                       AUTHENTICATION                      //
 ///////////////////////////////////////////////////////////////
 
-// signUpHandler rollbacks the insert if the confirmation mail cannot be sent.
-func signUpHandler(rw http.ResponseWriter, r *http.Request) {
+// signUp rollbacks the insert if the confirmation mail cannot be sent.
+func signUp(rw http.ResponseWriter, r *http.Request) {
 	var req player.Register
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -130,10 +130,10 @@ func signUpHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// verifyHandler verifies email registration and password resets.
+// verify verifies email registration and password resets.
 // Info about email registrations is stored in the 'unverified' table.
 // Info about pending password resets is stored in the 'tokenreset' table.
-func verifyHandler(rw http.ResponseWriter, r *http.Request) {
+func verify(rw http.ResponseWriter, r *http.Request) {
 	action := r.URL.Query().Get("action")
 	token := r.URL.Query().Get("token")
 	if token == "" {
@@ -153,8 +153,8 @@ func verifyHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func signInHandler(rw http.ResponseWriter, r *http.Request) {
-	var req signIn
+func signIn(rw http.ResponseWriter, r *http.Request) {
+	var req signInDTO
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
@@ -172,9 +172,9 @@ func signInHandler(rw http.ResponseWriter, r *http.Request) {
 	completeAuth(rw, p, RolePlayer)
 }
 
-// TODO: deny reset if there is another pending reset request from that player.
-func passwordResetHandler(rw http.ResponseWriter, r *http.Request) {
-	var req passwordReset
+// TODO: deny reset if there is another pending reset from that player.
+func passwordReset(rw http.ResponseWriter, r *http.Request) {
+	var req passwordResetDTO
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil || len(req.Password) < 5 || len(req.Password) > 72 {
 		rw.WriteHeader(http.StatusBadRequest)
@@ -311,8 +311,8 @@ func genTemplate(path string, data any) (string, error) {
 //                       AUTHORIZATION                       //
 ///////////////////////////////////////////////////////////////
 
-// refreshHandler is used when the access token becomes invalid.
-func refreshHandler(rw http.ResponseWriter, r *http.Request) {
+// refresh is used when the access token becomes invalid.
+func refresh(rw http.ResponseWriter, r *http.Request) {
 	encoded, err := parseRefreshTokenCookie(r)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
@@ -335,8 +335,8 @@ func refreshHandler(rw http.ResponseWriter, r *http.Request) {
 	completeAuth(rw, p, RolePlayer)
 }
 
-// guestHandler creates a guest player and sends back guest JWT.
-func guestHandler(rw http.ResponseWriter, r *http.Request) {
+// guest creates a guest player and sends back guest JWT.
+func guest(rw http.ResponseWriter, r *http.Request) {
 	id := uuid.New()
 	guest := player.Player{
 		Id:        id,

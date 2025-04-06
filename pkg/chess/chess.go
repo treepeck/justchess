@@ -21,49 +21,39 @@ type CompletedMove struct {
 	TimeLeft int
 }
 
-type GameMode int
-
-const (
-	ModeBasic GameMode = iota
-	ModeEngine
-)
-
 // Game represents a single chess game. All time values are stored in seconds.
 type Game struct {
 	// Used only in the database. Must be equal to the [ws.Room] id.
-	Id       uuid.UUID          `json:"id"`
-	Result   enums.Result       `json:"r"`
-	Winner   enums.Color        `json:"w"`
-	Bitboard *bitboard.Bitboard `json:"-"`
-	Moves    []CompletedMove    `json:"m"`
+	Id         uuid.UUID          `json:"id"`
+	Result     enums.Result       `json:"r"`
+	Winner     enums.Color        `json:"w"`
+	Bitboard   *bitboard.Bitboard `json:"-"`
+	InitialFEN string             `json:"-"`
+	Moves      []CompletedMove    `json:"m"`
 	// Used only in the database.
-	WhiteId uuid.UUID
+	WhiteId uuid.UUID `json:"wid"`
 	// Used only in the database.
-	BlackId     uuid.UUID
-	WhiteTime   int
-	BlackTime   int
-	Clock       *time.Ticker
-	TimeControl int
-	TimeBonus   int
-	// Used only in the database.
-	Mode GameMode
+	BlackId     uuid.UUID    `json:"bid"`
+	WhiteTime   int          `json:"-"`
+	BlackTime   int          `json:"-"`
+	Clock       *time.Ticker `json:"-"`
+	TimeControl int          `json:"tc"`
+	TimeBonus   int          `json:"tb"`
 	// End channel is used to terminate the DecrementTime goroutine when the
 	// game was ended for the reason different from timeout.
-	End chan struct{}
+	End chan struct{} `json:"-"`
 }
 
 func NewGame(id uuid.UUID, bb *bitboard.Bitboard, control, bonus int) *Game {
 	if bb == nil {
-		bb = bitboard.NewBitboard([12]uint64{0xFF00, 0xFF000000000000, 0x42,
-			0x4200000000000000, 0x24, 0x2400000000000000, 0x81, 0x8100000000000000,
-			0x8, 0x800000000000000, 0x10, 0x1000000000000000}, enums.White,
-			[4]bool{true, true, true, true}, -1, 0, 0)
+		bb = fen.FEN2Bitboard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 	}
 	g := &Game{
 		Id:          id,
 		Result:      enums.Unknown,
 		Winner:      enums.None,
 		Bitboard:    bb,
+		InitialFEN:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 		Moves:       make([]CompletedMove, 0),
 		WhiteTime:   control,
 		BlackTime:   control,
@@ -98,7 +88,7 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 			g.Bitboard.FullmoveCnt++
 		}
 
-		movedPT := bitboard.GetPieceTypeFromSquare(1<<m.From(), g.Bitboard.Pieces)
+		movedPT := bitboard.GetPieceOnSquare(1<<m.From(), g.Bitboard.Pieces)
 		var SAN = san.Move2SAN(m, g.Bitboard.Pieces, g.Bitboard.LegalMoves, movedPT)
 		g.Bitboard.MakeMove(legalMove)
 

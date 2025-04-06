@@ -5,6 +5,7 @@ import (
 	"context"
 	"justchess/pkg/auth"
 	"justchess/pkg/db"
+	"justchess/pkg/game"
 	"justchess/pkg/player"
 	"justchess/pkg/ws"
 	"log"
@@ -38,6 +39,8 @@ func setupMux() *http.ServeMux {
 
 	mux.Handle("/player/", allowCors(isAuthorized(player.Mux())))
 
+	mux.Handle("/game/", allowCors(isAuthorized(game.Mux())))
+
 	h := ws.NewHub()
 	mux.HandleFunc("/hub", isAuthorizedWS(h.HandleNewConnection))
 
@@ -65,7 +68,7 @@ func allowCors(next http.Handler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Add("Access-Control-Allow-Origin", os.Getenv("DOMAIN"))
 		rw.Header().Add("Access-Control-Allow-Credentials", "true")
-		rw.Header().Add("Access-Control-Allow-Headers", "*")
+		rw.Header().Add("Access-Control-Allow-Headers", "Authorization")
 		rw.Header().Add("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 
 		// Handle CORS preflight request.

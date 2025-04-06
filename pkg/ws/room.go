@@ -6,6 +6,7 @@ import (
 	"justchess/pkg/chess"
 	"justchess/pkg/chess/bitboard"
 	"justchess/pkg/chess/enums"
+	"justchess/pkg/game"
 	"log"
 	"math/rand"
 	"net/http"
@@ -256,6 +257,12 @@ func (r *Room) endGame() {
 	r.broadcast(msg)
 
 	r.hub.remove(r)
+
+	err := game.Insert(*r.game)
+	if err != nil {
+		log.Printf("cannot store game in db: %v, game: %v\n", err, *r.game)
+		return
+	}
 }
 
 func (r *Room) formatRoomStatus() RoomStatusData {

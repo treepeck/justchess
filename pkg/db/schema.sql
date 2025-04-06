@@ -53,14 +53,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- 0 - Basic;
--- 1 - Engine.
-DO $$ BEGIN 
-	CREATE DOMAIN GAME_MODE AS SMALLINT
-	CHECK (VALUE IN (0, 1));
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
 -- Represents completed game.
 CREATE TABLE IF NOT EXISTS game (
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -70,9 +62,9 @@ CREATE TABLE IF NOT EXISTS game (
 	time_bonus SMALLINT NOT NULL,
 	result GAME_RESULT NOT NULL,
 	winner COLOR NOT NULL,
+	initial_fen TEXT NOT NULL, 
 	-- Each moves take 32 bits:
-	--   0-15: Move (see movegen.go);
+	--   0-15: Move see [movegen.go];
 	--   16-31: Remaining time on a player's clock in seconds.
-	moves INTEGER[] NOT NULL,
-	mode GAME_MODE NOT NULL
+	moves INTEGER[] NOT NULL
 );

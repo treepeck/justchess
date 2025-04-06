@@ -42,11 +42,11 @@ func NewBitboard(pieces [12]uint64, ac enums.Color,
 func (bb *Bitboard) MakeMove(m Move) {
 	var from, to uint64 = 1 << m.From(), 1 << m.To()
 	fromTo := from ^ to
-	movedPT := GetPieceTypeFromSquare(from, bb.Pieces)
+	movedPT := GetPieceOnSquare(from, bb.Pieces)
 
 	switch m.Type() {
 	case enums.Capture:
-		bb.Pieces[GetPieceTypeFromSquare(to, bb.Pieces)] ^= to
+		bb.Pieces[GetPieceOnSquare(to, bb.Pieces)] ^= to
 
 	case enums.EPCapture:
 		if movedPT == enums.WhitePawn {
@@ -80,22 +80,22 @@ func (bb *Bitboard) MakeMove(m Move) {
 		bb.Pieces[movedPT+enums.WhiteQueen] ^= to
 
 	case enums.KnightPromoCapture:
-		bb.Pieces[GetPieceTypeFromSquare(to, bb.Pieces)] ^= to
+		bb.Pieces[GetPieceOnSquare(to, bb.Pieces)] ^= to
 		bb.Pieces[movedPT] ^= to
 		bb.Pieces[movedPT+enums.WhiteKnight] ^= to
 
 	case enums.BishopPromoCapture:
-		bb.Pieces[GetPieceTypeFromSquare(to, bb.Pieces)] ^= to
+		bb.Pieces[GetPieceOnSquare(to, bb.Pieces)] ^= to
 		bb.Pieces[movedPT] ^= to
 		bb.Pieces[movedPT+enums.WhiteBishop] ^= to
 
 	case enums.RookPromoCapture:
-		bb.Pieces[GetPieceTypeFromSquare(to, bb.Pieces)] ^= to
+		bb.Pieces[GetPieceOnSquare(to, bb.Pieces)] ^= to
 		bb.Pieces[movedPT] ^= to
 		bb.Pieces[movedPT+enums.WhiteRook] ^= to
 
 	case enums.QueenPromoCapture:
-		bb.Pieces[GetPieceTypeFromSquare(to, bb.Pieces)] ^= to
+		bb.Pieces[GetPieceOnSquare(to, bb.Pieces)] ^= to
 		bb.Pieces[movedPT] ^= to
 		bb.Pieces[movedPT+enums.WhiteQueen] ^= to
 	}
@@ -159,9 +159,9 @@ func (bb *Bitboard) filterIllegalMoves(pseudoLegal []Move) (legal []Move) {
 	return
 }
 
-// GetPieceTypeFromSquare returns the type of the piece that stands on the specified square.
+// GetPieceOnSquare returns the type of the piece that stands on the specified square.
 // If there is no piece on the square, returns WhitePawn.
-func GetPieceTypeFromSquare(square uint64, pieces [12]uint64) enums.PieceType {
+func GetPieceOnSquare(square uint64, pieces [12]uint64) enums.PieceType {
 	for pt, bitboard := range pieces {
 		if square&bitboard != 0 {
 			return enums.PieceType(pt)

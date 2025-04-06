@@ -12,12 +12,12 @@ import (
 
 func Mux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /player/id/{id}", getByIdHandler)
-	mux.HandleFunc("GET /player/name/{name}", getByNameHandler)
+	mux.HandleFunc("GET /player/id/{id}", getById)
+	mux.HandleFunc("GET /player/name/{name}", getByName)
 	return mux
 }
 
-func getByNameHandler(rw http.ResponseWriter, r *http.Request) {
+func getByName(rw http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if len(name) < 2 { // Minimal length of username.
 		rw.WriteHeader(http.StatusBadRequest)
@@ -39,7 +39,7 @@ func getByNameHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getByIdHandler(rw http.ResponseWriter, r *http.Request) {
+func getById(rw http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
