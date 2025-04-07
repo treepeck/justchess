@@ -66,5 +66,6 @@ CREATE TABLE IF NOT EXISTS game (
 	-- Each moves take 32 bits:
 	--   0-15: Move see [movegen.go];
 	--   16-31: Remaining time on a player's clock in seconds.
-	moves INTEGER[] NOT NULL
+	moves INTEGER[] NOT NULL,
+	created_at TIMESTAMP NOT NULL DEFAULT now()
 );

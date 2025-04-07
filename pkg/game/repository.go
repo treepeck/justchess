@@ -8,6 +8,7 @@ import (
 	"justchess/pkg/chess/fen"
 	"justchess/pkg/chess/san"
 	"justchess/pkg/db"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -19,14 +20,24 @@ type shortGameDTO struct {
 	Result      enums.Result `json:"r"`
 	Winner      enums.Color  `json:"w"`
 	MovesLen    int          `json:"m"`
+	WhiteName   string       `json:"wn"`
+	BlackName   string       `json:"bn"`
 	WhiteId     uuid.UUID    `json:"wid"`
 	BlackId     uuid.UUID    `json:"bid"`
 	TimeControl int          `json:"tc"`
 	TimeBonus   int          `json:"tb"`
+	CreatedAt   time.Time    `json:"ca"`
 }
 
 func selectById(id string) (g chess.Game, err error) {
-	query := "SELECT * FROM game WHERE id = $1;"
+	query :=
+		`SELECT
+			game.*,
+			white_player.name AS white_name,
+			black_player_name AS black_name
+		FROM game
+		WHERE id = $1;`
+
 	rows, err := db.Pool.Query(query, id)
 	if err != nil {
 		return
@@ -43,7 +54,16 @@ func selectById(id string) (g chess.Game, err error) {
 }
 
 func selectByPlayerId(id string) (games []shortGameDTO, err error) {
-	query := "SELECT * FROM game WHERE white_id = $1 OR black_id = $1;"
+	query :=
+		`SELECT
+			game.*,
+			white_player.name AS white_name,
+			black_player.name AS black_name
+		FROM game
+		JOIN player AS white_player ON game.white_id = white_player.id
+		JOIN player AS black_player ON game.black_id = black_player.id
+		WHERE game.white_id = $1 OR game.black_id = $1;`
+
 	rows, err := db.Pool.Query(query, id)
 	if err != nil {
 		return
@@ -54,7 +74,8 @@ func selectByPlayerId(id string) (games []shortGameDTO, err error) {
 		var initFEN string
 		var compressedMoves []int32
 		err = rows.Scan(&g.Id, &g.WhiteId, &g.BlackId, &g.TimeControl, &g.TimeBonus,
-			&g.Result, &g.Winner, &initFEN, pq.Array(&compressedMoves))
+			&g.Result, &g.Winner, &initFEN, pq.Array(&compressedMoves), &g.CreatedAt,
+			&g.WhiteName, &g.BlackName)
 		g.MovesLen = len(compressedMoves)
 		if err != nil {
 			return
