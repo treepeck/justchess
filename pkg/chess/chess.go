@@ -89,7 +89,8 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 		}
 
 		movedPT := bitboard.GetPieceOnSquare(1<<m.From(), g.Bitboard.Pieces)
-		var SAN = san.Move2SAN(m, g.Bitboard.Pieces, g.Bitboard.LegalMoves, movedPT)
+		piecesBefore := g.Bitboard.Pieces
+		lm := g.Bitboard.LegalMoves[:]
 		g.Bitboard.MakeMove(legalMove)
 
 		// Castling is no more possible if the king has moved, or the rooks are not on their standart
@@ -142,22 +143,16 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 
 		isCheck := bitboard.GenAttackedSquares(g.Bitboard.Pieces, c)&
 			g.Bitboard.Pieces[10+g.Bitboard.ActiveColor] != 0
-		if isCheck {
-			SAN += "+"
-		}
 
 		// Generate legal moves for the next color.
 		g.Bitboard.GenLegalMoves()
 		if len(g.Bitboard.LegalMoves) == 0 {
 			if isCheck {
 				g.Result = enums.Checkmate
-				SAN = SAN[:len(SAN)-1] + "#"
 				g.Winner = c
-				g.End <- struct{}{}
 			} else {
 				g.Result = enums.Stalemate
 				g.Winner = enums.None
-				g.End <- struct{}{}
 			}
 		}
 
@@ -169,9 +164,11 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 			g.BlackTime += g.TimeBonus
 			timeLeft = g.BlackTime
 		}
+
+		isCheckmate := g.Result == enums.Checkmate
 		g.Moves = append(g.Moves, CompletedMove{
 			Move:     m,
-			SAN:      SAN,
+			SAN:      san.Move2SAN(m, piecesBefore, lm, movedPT, isCheck, isCheckmate),
 			FEN:      fen.Bitboard2FEN(g.Bitboard),
 			TimeLeft: timeLeft,
 		})
@@ -179,19 +176,16 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 		if g.isThreefoldRepetition() {
 			g.Result = enums.Repetition
 			g.Winner = enums.None
-			g.End <- struct{}{}
 		}
 
 		if g.isInsufficientMaterial() {
 			g.Result = enums.InsufficientMaterial
 			g.Winner = enums.None
-			g.End <- struct{}{}
 		}
 
 		if g.Bitboard.HalfmoveCnt == 100 {
 			g.Result = enums.FiftyMoves
 			g.Winner = enums.None
-			g.End <- struct{}{}
 		}
 
 		return true

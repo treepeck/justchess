@@ -175,8 +175,7 @@ func (r *Room) startGame() {
 		r.game.BlackId = players[0]
 	}
 
-	// TODO: unsafe code, the stockfish uuid cannot ever change without breaking this
-	// block.
+	// TODO: unsafe code, the stockfish' uuid cannot ever change without breaking this.
 	if r.game.WhiteId == uuid.Nil {
 		r.game.WhiteId = uuid.MustParse("ccaf962b-855e-49da-b85f-7e8bba0edae2")
 	} else if r.game.BlackId == uuid.Nil {
@@ -245,6 +244,7 @@ func (r *Room) handleResign(id uuid.UUID) {
 // endGame cannot be called from the non-locking function.
 // Game data is stored in the db 'game' table.
 func (r *Room) endGame() {
+	r.game.End <- struct{}{}
 	r.status = OVER
 	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
 

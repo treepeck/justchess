@@ -6,7 +6,6 @@ import (
 	"justchess/pkg/chess/bitboard"
 	"justchess/pkg/chess/enums"
 	"justchess/pkg/chess/fen"
-	"justchess/pkg/chess/san"
 	"justchess/pkg/db"
 	"time"
 
@@ -121,22 +120,11 @@ func compressMoves(moves []chess.CompletedMove) []int {
 	return compressed
 }
 
-func decompressMoves(moves []int32, FEN string) []chess.CompletedMove {
-	decompressed := make([]chess.CompletedMove, len(moves))
-	for i, m := range moves {
-		bb := fen.FEN2Bitboard(FEN)
-		bb.GenLegalMoves()
-		move := bitboard.Move(m & 0xFFFF)
-		bb.MakeMove(move)
-
-		FEN = fen.Bitboard2FEN(bb)
-		decompressed[i] = chess.CompletedMove{
-			Move: move,
-			SAN: san.Move2SAN(move, bb.Pieces, bb.LegalMoves,
-				bitboard.GetPieceOnSquare(1<<move.To(), bb.Pieces)),
-			FEN:      fen.Bitboard2FEN(bb),
-			TimeLeft: int(m >> 16),
-		}
+func decompressMoves(moves []int32, fenStr string) []chess.CompletedMove {
+	g := chess.NewGame(uuid.New(), fen.FEN2Bitboard(fenStr), 10, 10)
+	for _, comp := range moves {
+		m := bitboard.Move(comp & 0xFFFF)
+		g.ProcessMove(m)
 	}
-	return decompressed
+	return g.Moves
 }

@@ -39,6 +39,7 @@ func NewBitboard(pieces [12]uint64, ac enums.Color,
 }
 
 // MakeMove performs the move on a bitboard. Only affects piece placement.
+// TODO: rewrite this copy paste.
 func (bb *Bitboard) MakeMove(m Move) {
 	var from, to uint64 = 1 << m.From(), 1 << m.To()
 	fromTo := from ^ to
