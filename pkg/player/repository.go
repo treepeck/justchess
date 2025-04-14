@@ -30,7 +30,7 @@ type Register struct {
 ///////////////////////////////////////////////////////////////
 
 func SelectPlayerById(id string) (p Player, err error) {
-	query := "SELECT * FROM player WHERE id = $1 AND is_engine = false;"
+	query := "SELECT * FROM player WHERE id = $1;"
 	return selectPlayer(query, id)
 }
 

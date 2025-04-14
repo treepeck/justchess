@@ -4,3 +4,6 @@ README.md
 
 # Secrets and other parameters.
 *.env
+
+# Logs.
+log.txt

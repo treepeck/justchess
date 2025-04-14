@@ -17,7 +17,13 @@ import (
 )
 
 func main() {
+	logFile, err := os.OpenFile("./log.txt", os.O_RDWR|os.O_APPEND, os.ModeAppend)
+	if err != nil {
+		log.Fatalf("cannot open 'log.txt' file for writing: %v\n", err)
+	}
+
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.SetOutput(logFile)
 
 	loadEnv()
 	log.Println("environment variables are loaded successfully")
@@ -26,7 +32,7 @@ func main() {
 	defer db.Pool.Close()
 
 	mux := setupMux()
-	err := http.ListenAndServe("localhost:3502", mux)
+	err = http.ListenAndServe("localhost:3502", mux)
 	if err != nil {
 		log.Printf("%v\n", err)
 	}

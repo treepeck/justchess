@@ -258,10 +258,11 @@ func (r *Room) endGame() {
 
 	r.hub.remove(r)
 
-	err := game.Insert(*r.game)
-	if err != nil {
-		log.Printf("cannot store game in db: %v, game: %v\n", err, *r.game)
-		return
+	if len(r.game.Moves) > 1 {
+		err := game.Insert(*r.game)
+		if err != nil {
+			log.Printf("cannot store game in db: %v, game: %v\n", err, *r.game)
+		}
 	}
 }
 

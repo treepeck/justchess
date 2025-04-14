@@ -14,29 +14,45 @@ import (
 	"github.com/lib/pq"
 )
 
-// shortGameDTO represents a completed game without detailed game info.
+type GameDTO struct {
+	Id          uuid.UUID             `json:"id"`
+	WhiteId     uuid.UUID             `json:"whiteId"`
+	BlackId     uuid.UUID             `json:"blackId"`
+	TimeControl int                   `json:"timeControl"`
+	TimeBonus   int                   `json:"timeBonus"`
+	Result      enums.Result          `json:"result"`
+	Winner      enums.Color           `json:"winner"`
+	Moves       []chess.CompletedMove `json:"moves"`
+	CreatedAt   time.Time             `json:"createdAt"`
+	WhiteName   string                `json:"whiteName"`
+	BlackName   string                `json:"blackName"`
+}
+
+// shortGameDTO represents a completed game without completed moves.
 type shortGameDTO struct {
 	Id          uuid.UUID    `json:"id"`
+	WhiteId     uuid.UUID    `json:"wid"`
+	BlackId     uuid.UUID    `json:"bid"`
 	Result      enums.Result `json:"r"`
 	Winner      enums.Color  `json:"w"`
 	MovesLen    int          `json:"m"`
 	WhiteName   string       `json:"wn"`
 	BlackName   string       `json:"bn"`
-	WhiteId     uuid.UUID    `json:"wid"`
-	BlackId     uuid.UUID    `json:"bid"`
 	TimeControl int          `json:"tc"`
 	TimeBonus   int          `json:"tb"`
 	CreatedAt   time.Time    `json:"ca"`
 }
 
-func selectById(id string) (g chess.Game, err error) {
+func selectById(id string) (g GameDTO, err error) {
 	query :=
 		`SELECT
 			game.*,
 			white_player.name AS white_name,
-			black_player_name AS black_name
+			black_player.name AS black_name
 		FROM game
-		WHERE id = $1;`
+		JOIN player AS white_player ON game.white_id = white_player.id
+		JOIN player AS black_player ON game.black_id = black_player.id 
+		WHERE game.id = $1;`
 
 	rows, err := db.Pool.Query(query, id)
 	if err != nil {
@@ -47,9 +63,11 @@ func selectById(id string) (g chess.Game, err error) {
 		return g, errors.New("game not found")
 	}
 	var compressedMoves []int32
+	var initFEN string
 	err = rows.Scan(&g.Id, &g.WhiteId, &g.BlackId, &g.TimeControl, &g.TimeBonus,
-		&g.Result, &g.Winner, &g.InitialFEN, pq.Array(&compressedMoves))
-	g.Moves = decompressMoves(compressedMoves, g.InitialFEN)
+		&g.Result, &g.Winner, &initFEN, pq.Array(&compressedMoves), &g.CreatedAt,
+		&g.WhiteName, &g.BlackName)
+	g.Moves = decompressMoves(compressedMoves, initFEN)
 	return
 }
 

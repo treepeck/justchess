@@ -13,12 +13,12 @@ import (
 )
 
 type CompletedMove struct {
-	Move bitboard.Move
-	SAN  string
+	Move bitboard.Move `json:"m"`
+	SAN  string        `json:"s"`
 	// Bitboard state after completing the move.
-	FEN string
+	FEN string `json:"f"`
 	// Remaining time on a player's clock in seconds.
-	TimeLeft int
+	TimeLeft int `json:"t"`
 }
 
 // Game represents a single chess game. All time values are stored in seconds.
