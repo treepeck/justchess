@@ -6,8 +6,8 @@ type MoveType int
 const (
 	Quiet MoveType = iota
 	DoublePawnPush
-	KingCastle  // 0-0
-	QueenCastle // 0-0-0
+	KingCastle  // O-O
+	QueenCastle // O-O-O
 	Capture
 	EPCapture // En passant.
 	KnightPromo

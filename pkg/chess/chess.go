@@ -39,8 +39,10 @@ type Game struct {
 	Clock       *time.Ticker `json:"-"`
 	TimeControl int          `json:"tc"`
 	TimeBonus   int          `json:"tb"`
-	// End channel is used to terminate the DecrementTime goroutine when the
-	// game was ended for the reason different from timeout.
+	// Move chan to handle incomming players' moves.
+	Move chan bitboard.Move `json:"-"`
+	// End channel is used by Room to be able to terminate the
+	// Run goroutine in case both players are disconnected.
 	End chan struct{} `json:"-"`
 }
 
@@ -60,142 +62,16 @@ func NewGame(id uuid.UUID, bb *bitboard.Bitboard, control, bonus int) *Game {
 		Clock:       time.NewTicker(time.Second), // The timer will send a signal each second.
 		TimeBonus:   bonus,
 		TimeControl: control,
+		Move:        make(chan bitboard.Move),
 		End:         make(chan struct{}),
 	}
 	g.Bitboard.GenLegalMoves()
 	return g
 }
 
-func (g *Game) ProcessMove(m bitboard.Move) bool {
-	for _, legalMove := range g.Bitboard.LegalMoves {
-		// Check if the move is legal.
-		if m.To() != legalMove.To() || m.From() != legalMove.From() {
-			continue
-		}
-		// The default move type for a promotion is QueenPromo, but the player might
-		// want to promote to the other piece.
-		if m.Type() >= enums.KnightPromo && m.Type() <= enums.QueenPromo &&
-			legalMove.Type() == enums.QueenPromo {
-			legalMove = m
-			// Same for capture promotion.
-		} else if m.Type() >= enums.KnightPromoCapture && m.Type() <=
-			enums.QueenPromoCapture && legalMove.Type() == enums.QueenPromoCapture {
-			legalMove = m
-		}
-		c := g.Bitboard.ActiveColor
-		if c == enums.Black {
-			// After the black moves, the fullmove counter increments.
-			g.Bitboard.FullmoveCnt++
-		}
-
-		movedPT := bitboard.GetPieceOnSquare(1<<m.From(), g.Bitboard.Pieces)
-		piecesBefore := g.Bitboard.Pieces
-		lm := g.Bitboard.LegalMoves[:]
-		g.Bitboard.MakeMove(legalMove)
-
-		// Castling is no more possible if the king has moved, or the rooks are not on their standart
-		// positions.
-		if movedPT == enums.WhiteKing || movedPT == enums.BlackKing {
-			g.Bitboard.CastlingRights[0+c] = false
-			g.Bitboard.CastlingRights[2+c] = false
-		}
-		if g.Bitboard.Pieces[enums.WhiteRook]&0x1 == 0 {
-			g.Bitboard.CastlingRights[2] = false
-		}
-		if g.Bitboard.Pieces[enums.WhiteRook]&0x80 == 0 {
-			g.Bitboard.CastlingRights[0] = false
-		}
-		if g.Bitboard.Pieces[enums.BlackRook]&0x100000000000000 == 0 {
-			g.Bitboard.CastlingRights[3] = false
-		}
-		if g.Bitboard.Pieces[enums.BlackRook]&0x8000000000000000 == 0 {
-			g.Bitboard.CastlingRights[1] = false
-		}
-
-		// Reset the en passant target since the en passant capture is possible only
-		// for 1 move.
-		g.Bitboard.EPTarget = enums.NoSquare
-
-		switch m.Type() {
-		// After double pawn push, set the en passant target.
-		case enums.DoublePawnPush:
-			if c == enums.White {
-				g.Bitboard.EPTarget = m.To() - 8
-			} else {
-				g.Bitboard.EPTarget = m.To() + 8
-			}
-
-		// After altering material, the halfmove counter resets.
-		case enums.Capture, enums.KnightPromo, enums.BishopPromo, enums.RookPromo,
-			enums.QueenPromo, enums.KnightPromoCapture, enums.BishopPromoCapture,
-			enums.RookPromoCapture, enums.QueenPromoCapture:
-			g.Bitboard.HalfmoveCnt = 0
-
-		// Increment halfmove counter if the move is not a capture or a pawn advance.
-		default:
-			if movedPT != enums.WhitePawn && movedPT != enums.BlackPawn {
-				g.Bitboard.HalfmoveCnt++
-			}
-		}
-
-		// Switch the active color
-		g.Bitboard.ActiveColor ^= 1
-
-		isCheck := bitboard.GenAttackedSquares(g.Bitboard.Pieces, c)&
-			g.Bitboard.Pieces[10+g.Bitboard.ActiveColor] != 0
-
-		// Generate legal moves for the next color.
-		g.Bitboard.GenLegalMoves()
-		if len(g.Bitboard.LegalMoves) == 0 {
-			if isCheck {
-				g.Result = enums.Checkmate
-				g.Winner = c
-			} else {
-				g.Result = enums.Stalemate
-				g.Winner = enums.None
-			}
-		}
-
-		timeLeft := 0
-		if c == enums.White {
-			g.WhiteTime += g.TimeBonus
-			timeLeft = g.WhiteTime
-		} else {
-			g.BlackTime += g.TimeBonus
-			timeLeft = g.BlackTime
-		}
-
-		isCheckmate := g.Result == enums.Checkmate
-		g.Moves = append(g.Moves, CompletedMove{
-			Move:     m,
-			SAN:      san.Move2SAN(m, piecesBefore, lm, movedPT, isCheck, isCheckmate),
-			FEN:      fen.Bitboard2FEN(g.Bitboard),
-			TimeLeft: timeLeft,
-		})
-
-		if g.isThreefoldRepetition() {
-			g.Result = enums.Repetition
-			g.Winner = enums.None
-		}
-
-		if g.isInsufficientMaterial() {
-			g.Result = enums.InsufficientMaterial
-			g.Winner = enums.None
-		}
-
-		if g.Bitboard.HalfmoveCnt == 100 {
-			g.Result = enums.FiftyMoves
-			g.Winner = enums.None
-		}
-
-		return true
-	}
-	return false
-}
-
-// When one of the players runs out of time, the game calls the callback.
-// The callback should be a method which notifies the players about the game result.
-func (g *Game) DecrementTime(callback func()) {
+// Run handles incomming game events, such as players' moves and clock ticks.
+// TODO: escape callbacks.
+func (g *Game) Run(moveCallback func(m CompletedMove), timeoutCallback func()) {
 	defer func() {
 		g.Clock.Stop()
 		log.Printf("clock stoped")
@@ -203,9 +79,15 @@ func (g *Game) DecrementTime(callback func()) {
 
 	for {
 		select {
-		// Wait for time ticks.
-		case <-g.Clock.C:
+		case m := <-g.Move:
+			if g.ProcessMove(m) {
+				moveCallback(g.Moves[len(g.Moves)-1])
+				if g.Result != enums.Unknown {
+					return
+				}
+			}
 
+		case <-g.Clock.C:
 			if g.Bitboard.ActiveColor == enums.White {
 				g.WhiteTime--
 			} else {
@@ -213,14 +95,12 @@ func (g *Game) DecrementTime(callback func()) {
 			}
 
 			if g.WhiteTime <= 0 {
-				g.Result = enums.Timeout
-				g.Winner = enums.Black
-				callback()
+				g.setEndInfo(enums.Timeout, enums.Black)
+				timeoutCallback()
 				return
 			} else if g.BlackTime <= 0 {
-				g.Result = enums.Timeout
-				g.Winner = enums.White
-				callback()
+				g.setEndInfo(enums.Timeout, enums.White)
+				timeoutCallback()
 				return
 			}
 
@@ -228,6 +108,81 @@ func (g *Game) DecrementTime(callback func()) {
 			return
 		}
 	}
+}
+
+func (g *Game) ProcessMove(m bitboard.Move) bool {
+	if !g.Bitboard.IsMoveLegal(m) || g.Result != enums.Unknown {
+		return false
+	}
+
+	c := g.Bitboard.ActiveColor
+	movedPT := bitboard.GetPieceOnSquare(1<<m.From(), g.Bitboard.Pieces)
+	piecesBefore := g.Bitboard.Pieces
+	lm := g.Bitboard.LegalMoves[:]
+
+	g.Bitboard.MakeMove(m)
+
+	g.Bitboard.SetCastlingRights(movedPT)
+
+	g.Bitboard.SetEPTarget(m)
+
+	// Switch the active color
+	g.Bitboard.ActiveColor ^= 1
+
+	// Generate legal moves for the next color.
+	g.Bitboard.GenLegalMoves()
+
+	timeLeft := 0
+	if c == enums.White {
+		g.WhiteTime += g.TimeBonus
+		timeLeft = g.WhiteTime
+	} else {
+		g.BlackTime += g.TimeBonus
+		timeLeft = g.BlackTime
+	}
+
+	g.Bitboard.SetHalfmoveCnt(movedPT, m.Type())
+
+	// After the black moves, increment the full move counter.
+	if c == enums.Black {
+		g.Bitboard.FullmoveCnt++
+	}
+
+	isCheck := bitboard.GenAttackedSquares(g.Bitboard.Pieces, c)&
+		g.Bitboard.Pieces[10+g.Bitboard.ActiveColor] != 0
+
+	isCheckmate := isCheck && len(g.Bitboard.LegalMoves) == 0
+	g.Moves = append(g.Moves, CompletedMove{
+		Move:     m,
+		SAN:      san.Move2SAN(m, piecesBefore, lm, movedPT, isCheck, isCheckmate),
+		FEN:      fen.Bitboard2FEN(g.Bitboard),
+		TimeLeft: timeLeft,
+	})
+
+	if isCheckmate {
+		g.setEndInfo(enums.Checkmate, c)
+		return true
+	} else if len(g.Bitboard.LegalMoves) == 0 {
+		g.setEndInfo(enums.Stalemate, enums.None)
+		return true
+	}
+
+	if g.isThreefoldRepetition() {
+		g.setEndInfo(enums.Repetition, enums.None)
+		return true
+	}
+
+	if g.isInsufficientMaterial() {
+		g.setEndInfo(enums.InsufficientMaterial, enums.None)
+		return true
+	}
+
+	if g.Bitboard.HalfmoveCnt == 100 {
+		g.setEndInfo(enums.FiftyMoves, enums.None)
+		return true
+	}
+
+	return true
 }
 
 func (g *Game) isThreefoldRepetition() bool {
@@ -253,20 +208,19 @@ func (g *Game) isThreefoldRepetition() bool {
 //  2. one side has a king and a minor piece against a bare king;
 //  3. both sides have a king and a bishop, the bishops being the same color.
 func (g *Game) isInsufficientMaterial() bool {
-	// Mask for all dark squares.
+	// Bitmask for all dark squares.
 	var dark uint64 = 0xAA55AA55AA55AA55
 	material := g.Bitboard.CalculateMaterial()
 
-	// Case 1.
 	if material == 0 {
 		return true
 	}
-	// Case 2.
+
 	if material == 3 && g.Bitboard.Pieces[enums.WhitePawn] == 0 &&
 		g.Bitboard.Pieces[enums.BlackPawn] == 0 {
 		return true
 	}
-	// Case 3.
+
 	if material == 6 {
 		wb, bb := g.Bitboard.Pieces[enums.WhiteBishop], g.Bitboard.Pieces[enums.BlackBishop]
 		if wb != 0 && bb != 0 && ((wb&dark > 0 && bb&dark > 0) ||
@@ -275,4 +229,9 @@ func (g *Game) isInsufficientMaterial() bool {
 		}
 	}
 	return false
+}
+
+func (g *Game) setEndInfo(r enums.Result, w enums.Color) {
+	g.Result = r
+	g.Winner = w
 }

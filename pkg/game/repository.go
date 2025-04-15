@@ -122,9 +122,11 @@ func compressMoves(moves []chess.CompletedMove) []int {
 
 func decompressMoves(moves []int32, fenStr string) []chess.CompletedMove {
 	g := chess.NewGame(uuid.New(), fen.FEN2Bitboard(fenStr), 10, 10)
+
 	for _, comp := range moves {
 		m := bitboard.Move(comp & 0xFFFF)
 		g.ProcessMove(m)
 	}
+
 	return g.Moves
 }

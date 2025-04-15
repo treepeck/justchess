@@ -157,7 +157,7 @@ func (r *Room) unregister(c *client) {
 
 func (r *Room) startGame() {
 	r.status = IN_PROGRESS
-	go r.game.DecrementTime(r.endGame)
+	go r.game.Run(r.broadcastMove, r.endGame)
 
 	players := [2]uuid.UUID{}
 	i := 0
@@ -199,14 +199,7 @@ func (r *Room) handle(m MoveData, c *client) {
 		}
 	}
 
-	if r.game.ProcessMove(bitboard.NewMove(m.To, m.From, m.Type)) {
-		lastMove := r.game.Moves[len(r.game.Moves)-1]
-		r.broadcast(r.serialize(LAST_MOVE, r.formatLastMove(lastMove)))
-
-		if r.game.Result != enums.Unknown {
-			r.endGame()
-		}
-	}
+	r.game.Move <- bitboard.NewMove(m.To, m.From, m.Type)
 }
 
 func (r *Room) broadcastChat(data ChatData, c *client) {
@@ -225,6 +218,13 @@ func (r *Room) broadcastChat(data ChatData, c *client) {
 	}
 }
 
+func (r *Room) broadcastMove(m chess.CompletedMove) {
+	r.broadcast(r.serialize(LAST_MOVE, r.formatLastMove(m)))
+	if r.game.Result != enums.Unknown {
+		r.endGame()
+	}
+}
+
 func (r *Room) handleResign(id uuid.UUID) {
 	r.Lock()
 	defer r.Unlock()
@@ -240,11 +240,10 @@ func (r *Room) handleResign(id uuid.UUID) {
 	}
 }
 
-// endGame ends the game, broadcasts room status and game result.
+// endGame broadcasts room status and game result.
 // endGame cannot be called from the non-locking function.
 // Game data is stored in the db 'game' table.
 func (r *Room) endGame() {
-	r.game.End <- struct{}{}
 	r.status = OVER
 	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
 
@@ -258,7 +257,7 @@ func (r *Room) endGame() {
 
 	r.hub.remove(r)
 
-	if len(r.game.Moves) > 1 {
+	if len(r.game.Moves) > 2 {
 		err := game.Insert(*r.game)
 		if err != nil {
 			log.Printf("cannot store game in db: %v, game: %v\n", err, *r.game)

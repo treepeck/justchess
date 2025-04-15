@@ -3,6 +3,7 @@ package san
 import (
 	"justchess/pkg/chess/bitboard"
 	"justchess/pkg/chess/enums"
+	"log"
 )
 
 var files = [8]string{"a", "b", "c", "d", "e", "f", "g", "h"}
@@ -78,7 +79,8 @@ func disambiguate(fromA, fromB int) string {
 	if fromA/8 != fromB/8 {
 		return string(rune(fromA/8 + 1 + '0'))
 	}
-	panic("cannot disambiguate move")
+	log.Printf("ERROR: cannot disambiguate move")
+	return ""
 }
 
 func formatPromo(mt enums.MoveType) string {

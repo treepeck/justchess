@@ -6,14 +6,17 @@ import (
 	"justchess/pkg/chess/enums"
 )
 
-// The following block on contants defines the bit masks needed to
-// correctly calculate possible moves by performing bitwise
-// operations on a bitboard.
+// The following block on contants defines the bitmasks needed to
+// correctly calculate possible moves by performing bitwise operations on a bitboard.
 const (
-	notA  uint64 = 0xFEFEFEFEFEFEFEFE // Mask for all files except the A.
-	notH  uint64 = 0x7F7F7F7F7F7F7F7F // Mask for all files except the H.
-	notAB uint64 = 0xFCFCFCFCFCFCFCFC // Mask for all files except the A and B.
-	notGH uint64 = 0x3F3F3F3F3F3F3F3F // Mask for all files except the G and H.
+	notA  uint64 = 0xFEFEFEFEFEFEFEFE // All files except the A.
+	notH  uint64 = 0x7F7F7F7F7F7F7F7F // All files except the H.
+	notAB uint64 = 0xFCFCFCFCFCFCFCFC // All files except the A and B.
+	notGH uint64 = 0x3F3F3F3F3F3F3F3F // All files except the G and H.
+	wkr   uint64 = 0x1                // The initial position of a white king's rook.
+	wqr   uint64 = 0x80               // The initial position of a white queen's rook.
+	bkr   uint64 = 0x100000000000000  // The initial position of a black king's rook.
+	bqr   uint64 = 0x8000000000000000 // The initial position of a black queen's rook.
 )
 
 var GetLSB = bits.TrailingZeros64
