@@ -71,6 +71,7 @@ func (c *client) handleMessage(raw []byte) {
 	}
 
 	switch msg.Type {
+
 	case CREATE_ROOM:
 		data := CreateRoomData{}
 		err := json.Unmarshal(msg.Data, &data)
@@ -97,13 +98,29 @@ func (c *client) handleMessage(raw []byte) {
 			return
 		}
 
-		c.room.broadcastChat(data, c)
+		c.room.broadcastChat(data, c.name)
 
 	case RESIGN:
-		if c.room == nil || c.room.status == OPEN || c.room.status == OVER {
+		if c.room == nil || c.room.status == OPEN || c.room.status == OVER ||
+			len(c.room.game.Moves) < 2 {
 			return
 		}
 		c.room.handleResign(c.id)
+
+	case DRAW_OFFER:
+		if c.room == nil || c.room.status == OPEN || c.room.status == OVER ||
+			len(c.room.game.Moves) < 2 {
+			return
+		}
+		c.room.handleDrawOffer(c.id)
+
+	case DECLINE_DRAW:
+		if c.room == nil || c.room.status == OPEN || c.room.status == OVER ||
+			len(c.room.game.Moves) < 2 {
+			return
+		}
+
+		c.room.handleDeclineDraw(c.id)
 	}
 }
 

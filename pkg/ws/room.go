@@ -34,13 +34,14 @@ const (
 type Room struct {
 	sync.Mutex
 	// The room must be able to remove itself from the Hub.
-	id          uuid.UUID
-	creatorName string
-	hub         *Hub
-	isVSEngine  bool
-	status      RoomStatus
-	game        *chess.Game
-	clients     map[*client]struct{}
+	id                uuid.UUID
+	creatorName       string
+	hub               *Hub
+	isVSEngine        bool
+	pendingDrawIssuer uuid.UUID
+	status            RoomStatus
+	game              *chess.Game
+	clients           map[*client]struct{}
 }
 
 func newRoom(h *Hub, creatorName string, isVSEngine bool, control, bonus int) *Room {
@@ -202,11 +203,11 @@ func (r *Room) handle(m MoveData, c *client) {
 	r.game.Move <- bitboard.NewMove(m.To, m.From, m.Type)
 }
 
-func (r *Room) broadcastChat(data ChatData, c *client) {
+func (r *Room) broadcastChat(data ChatData, senderName string) {
 	r.Lock()
 	defer r.Unlock()
 
-	data.Message = `"` + c.name + `: ` + data.Message + `"`
+	data.Message = `"` + senderName + `: ` + data.Message + `"`
 
 	msg, err := json.Marshal(Message{Type: CHAT, Data: []byte(data.Message)})
 	if err != nil {
@@ -230,14 +231,71 @@ func (r *Room) handleResign(id uuid.UUID) {
 	defer r.Unlock()
 
 	if id == r.game.WhiteId {
-		r.game.Result = enums.Resignation
-		r.game.Winner = enums.Black
+		r.game.SetEndInfo(enums.Resignation, enums.Black)
+		r.game.End <- struct{}{}
 		r.endGame()
 	} else if id == r.game.BlackId {
-		r.game.Result = enums.Resignation
-		r.game.Winner = enums.White
+		r.game.SetEndInfo(enums.Resignation, enums.White)
+		r.game.End <- struct{}{}
 		r.endGame()
 	}
+}
+
+// handleDrawOffer handles both draw offers and draw accepts.
+func (r *Room) handleDrawOffer(id uuid.UUID) {
+	r.Lock()
+	defer r.Unlock()
+
+	if r.pendingDrawIssuer == uuid.Nil {
+
+		var oppId uuid.UUID
+		var msg []byte
+		if id == r.game.WhiteId {
+			oppId = r.game.BlackId
+			msg, _ = json.Marshal(Message{Type: CHAT, Data: []byte(`"White offers draw"`)})
+		} else if id == r.game.BlackId {
+			oppId = r.game.WhiteId
+			msg, _ = json.Marshal(Message{Type: CHAT, Data: []byte(`"Black offers draw"`)})
+		} else { // Deny draw offers from viewers.
+			return
+		}
+		for c := range r.clients {
+			c.send <- msg
+		}
+		r.pendingDrawIssuer = id
+
+		msg, _ = json.Marshal(Message{Type: DRAW_OFFER, Data: nil})
+		for c := range r.clients {
+			if c.id == oppId {
+				c.send <- msg
+			}
+		}
+	} else if r.pendingDrawIssuer != id {
+		msg, _ := json.Marshal(Message{Type: CHAT, Data: []byte(`"Draw accpeted"`)})
+		for c := range r.clients {
+			c.send <- msg
+		}
+
+		r.game.SetEndInfo(enums.Agreement, enums.None)
+		r.game.End <- struct{}{}
+		r.endGame()
+	}
+}
+
+func (r *Room) handleDeclineDraw(id uuid.UUID) {
+	r.Lock()
+	defer r.Unlock()
+
+	if id == r.pendingDrawIssuer || r.pendingDrawIssuer == uuid.Nil {
+		return
+	}
+
+	msg, _ := json.Marshal(Message{Type: CHAT, Data: []byte(`"Draw declined"`)})
+	for c := range r.clients {
+		c.send <- msg
+	}
+
+	r.pendingDrawIssuer = uuid.Nil
 }
 
 // endGame broadcasts room status and game result.

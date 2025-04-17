@@ -95,11 +95,11 @@ func (g *Game) Run(moveCallback func(m CompletedMove), timeoutCallback func()) {
 			}
 
 			if g.WhiteTime <= 0 {
-				g.setEndInfo(enums.Timeout, enums.Black)
+				g.SetEndInfo(enums.Timeout, enums.Black)
 				timeoutCallback()
 				return
 			} else if g.BlackTime <= 0 {
-				g.setEndInfo(enums.Timeout, enums.White)
+				g.SetEndInfo(enums.Timeout, enums.White)
 				timeoutCallback()
 				return
 			}
@@ -160,25 +160,25 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 	})
 
 	if isCheckmate {
-		g.setEndInfo(enums.Checkmate, c)
+		g.SetEndInfo(enums.Checkmate, c)
 		return true
 	} else if len(g.Bitboard.LegalMoves) == 0 {
-		g.setEndInfo(enums.Stalemate, enums.None)
+		g.SetEndInfo(enums.Stalemate, enums.None)
 		return true
 	}
 
 	if g.isThreefoldRepetition() {
-		g.setEndInfo(enums.Repetition, enums.None)
+		g.SetEndInfo(enums.Repetition, enums.None)
 		return true
 	}
 
 	if g.isInsufficientMaterial() {
-		g.setEndInfo(enums.InsufficientMaterial, enums.None)
+		g.SetEndInfo(enums.InsufficientMaterial, enums.None)
 		return true
 	}
 
 	if g.Bitboard.HalfmoveCnt == 100 {
-		g.setEndInfo(enums.FiftyMoves, enums.None)
+		g.SetEndInfo(enums.FiftyMoves, enums.None)
 		return true
 	}
 
@@ -231,7 +231,7 @@ func (g *Game) isInsufficientMaterial() bool {
 	return false
 }
 
-func (g *Game) setEndInfo(r enums.Result, w enums.Color) {
+func (g *Game) SetEndInfo(r enums.Result, w enums.Color) {
 	g.Result = r
 	g.Winner = w
 }
