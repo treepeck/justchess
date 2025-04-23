@@ -23,17 +23,20 @@ var upgrader = websocket.Upgrader{
 // To ensure safe concurrent access, the Hub is protected with a Mutex.
 type Hub struct {
 	sync.Mutex
-	clients map[*client]struct{}
 	rooms   map[*Room]struct{}
+	clients map[*client]struct{}
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		clients: make(map[*client]struct{}),
 		rooms:   make(map[*Room]struct{}),
+		clients: make(map[*client]struct{}),
 	}
 }
 
+// HandleNewConnection registers a new client in the Hub. The client will recieve the
+// messages about room creation and deletion and send messages about joining or creating
+// the room.
 func (h *Hub) HandleNewConnection(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(auth.Cms)
 	if ctx == nil {
@@ -97,8 +100,10 @@ func (h *Hub) add(r *Room) {
 	h.Lock()
 	defer h.Unlock()
 
+	go r.runRoutine()
+
 	h.rooms[r] = struct{}{}
-	log.Printf("room %s added\n", r.id.String())
+	log.Printf("room %s added\n", r.Id.String())
 
 	h.broadcastAddRoom(r)
 }
@@ -113,14 +118,14 @@ func (h *Hub) remove(r *Room) {
 	}
 
 	delete(h.rooms, r)
-	log.Printf("room %s removed\n", r.id.String())
+	log.Printf("room %s removed\n", r.Id.String())
 
-	h.broadcastRemoveRoom(r.id)
+	h.broadcastRemoveRoom(r.Id)
 }
 
 // broadcastClientsCounter does not Lock the hub, so it cannot be called in a non-blocking routine!
 func (h *Hub) broadcastClientsCounter() {
-	data, err := json.Marshal(ClientsCounterData{Counter: len(h.clients)})
+	data, err := json.Marshal(ClientsCounterDTO{Counter: len(h.clients)})
 	if err != nil {
 		log.Printf("cannot Marshal message: %v\n", err)
 		return
@@ -136,9 +141,9 @@ func (h *Hub) broadcastClientsCounter() {
 // broadcastAddRoom does not Lock the hub, so it cannot be called in a non-blocking routine!
 // Room's game field should not be nil!
 func (h *Hub) broadcastAddRoom(r *Room) {
-	data, err := json.Marshal(AddRoomData{
-		Id:          r.id,
-		Creator:     r.creatorName,
+	data, err := json.Marshal(AddRoomDTO{
+		Id:          r.Id,
+		Creator:     r.CreatorName,
 		TimeControl: r.game.TimeControl,
 		TimeBonus:   r.game.TimeBonus,
 	})
@@ -155,7 +160,7 @@ func (h *Hub) broadcastAddRoom(r *Room) {
 }
 
 func (h *Hub) broadcastRemoveRoom(roomId uuid.UUID) {
-	data, err := json.Marshal(RemoveRoomData{
+	data, err := json.Marshal(RemoveRoomDTO{
 		RoomId: roomId.String(),
 	})
 	if err != nil {
@@ -181,11 +186,11 @@ func (h *Hub) send10Rooms(c *client) {
 			return
 		}
 
-		data, err := json.Marshal(AddRoomData{
-			Id:          r.id,
-			Creator:     r.creatorName,
-			TimeControl: r.game.TimeControl,
+		data, err := json.Marshal(AddRoomDTO{
+			Id:          r.Id,
+			Creator:     r.CreatorName,
 			TimeBonus:   r.game.TimeBonus,
+			TimeControl: r.game.TimeControl,
 		})
 		if err != nil {
 			log.Printf("cannot Marshal message: %v\n", err)
@@ -203,7 +208,7 @@ func (h *Hub) GetRoomById(id uuid.UUID) *Room {
 	defer h.Unlock()
 
 	for r := range h.rooms {
-		if r.id == id {
+		if r.Id == id {
 			return r
 		}
 	}

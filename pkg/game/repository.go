@@ -62,11 +62,10 @@ func selectById(id string) (g GameDTO, err error) {
 		return g, errors.New("game not found")
 	}
 	var compressedMoves []int32
-	var initFEN string
 	err = rows.Scan(&g.Id, &g.WhiteId, &g.BlackId, &g.TimeControl, &g.TimeBonus,
-		&g.Result, &g.Winner, &initFEN, pq.Array(&compressedMoves), &g.CreatedAt,
+		&g.Result, &g.Winner, pq.Array(&compressedMoves), &g.CreatedAt,
 		&g.WhiteName, &g.BlackName)
-	g.Moves = decompressMoves(compressedMoves, initFEN)
+	g.Moves = decompressMoves(compressedMoves, fen.DefaultFEN, g.TimeControl)
 	return
 }
 
@@ -89,10 +88,10 @@ func selectByPlayerId(id string) (games []shortGameDTO, err error) {
 
 	for i := 0; rows.Next(); i++ {
 		var g shortGameDTO
-		var initFEN string
 		var compressedMoves []int32
+
 		err = rows.Scan(&g.Id, &g.WhiteId, &g.BlackId, &g.TimeControl, &g.TimeBonus,
-			&g.Result, &g.Winner, &initFEN, pq.Array(&compressedMoves), &g.CreatedAt,
+			&g.Result, &g.Winner, pq.Array(&compressedMoves), &g.CreatedAt,
 			&g.WhiteName, &g.BlackName)
 		g.MovesLen = len(compressedMoves)
 		if err != nil {
@@ -103,12 +102,12 @@ func selectByPlayerId(id string) (games []shortGameDTO, err error) {
 	return
 }
 
-func Insert(g chess.Game) error {
-	query := "INSERT INTO game (id, white_id, black_id, initial_fen,\n" +
+func Insert(id string, g chess.Game) error {
+	query := "INSERT INTO game (id, white_id, black_id,\n" +
 		"time_control, time_bonus, result, winner, moves)\n" +
-		"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);"
-	_, err := db.Pool.Exec(query, g.Id, g.WhiteId, g.BlackId,
-		g.InitialFEN, g.TimeControl, g.TimeBonus, g.Result, g.Winner,
+		"VALUES ($1, $2, $3, $4, $5, $6, $7, $8);"
+	_, err := db.Pool.Exec(query, id, g.WhiteId, g.BlackId,
+		g.TimeControl, g.TimeBonus, g.Result, g.Winner,
 		pq.Array(compressMoves(g.Moves)))
 	return err
 }
@@ -121,13 +120,18 @@ func compressMoves(moves []chess.CompletedMove) []int {
 	return compressed
 }
 
-func decompressMoves(moves []int32, fenStr string) []chess.CompletedMove {
-	g := chess.NewGame(uuid.New(), fen.FEN2Bitboard(fenStr), 10, 10)
+func decompressMoves(moves []int32, fenStr string, control int) []chess.CompletedMove {
+	g := chess.NewGame(fenStr, control, 0)
 
-	for _, comp := range moves {
+	for i, comp := range moves {
 		m := bitboard.Move(comp & 0xFFFF)
+		if i%2 == 0 {
+			g.WhiteTime = int(comp >> 16)
+		} else {
+			g.BlackTime = int(comp >> 16)
+		}
+
 		g.ProcessMove(m)
 	}
-
 	return g.Moves
 }

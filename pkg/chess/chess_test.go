@@ -5,8 +5,6 @@ import (
 	"justchess/pkg/chess/enums"
 	"justchess/pkg/chess/fen"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestProcessMove(t *testing.T) {
@@ -61,7 +59,7 @@ func TestProcessMove(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Logf("Passing test: %s\n", tc.san)
-		game := NewGame(uuid.New(), fen.FEN2Bitboard(tc.beforeFEN), 180, 180)
+		game := NewGame(tc.beforeFEN, 180, 180)
 		game.ProcessMove(tc.move)
 		got := fen.Bitboard2FEN(game.Bitboard)
 		if got != tc.expectedFEN {
@@ -74,7 +72,7 @@ func TestProcessMove(t *testing.T) {
 }
 
 func BenchmarkProcessMove(b *testing.B) {
-	game := NewGame(uuid.New(), nil, 180, 180)
+	game := NewGame("", 180, 180)
 	before := fen.Bitboard2FEN(game.Bitboard)
 	for i := 0; i < b.N; i++ {
 		game.ProcessMove(bitboard.NewMove(enums.E4, enums.E2, enums.DoublePawnPush))
@@ -100,7 +98,7 @@ func TestIsThreefoldRepetition(t *testing.T) {
 		{[]CompletedMove{}, false},
 	}
 	for _, tc := range testcases {
-		g := NewGame(uuid.New(), nil, 180, 0)
+		g := NewGame("", 180, 0)
 		g.Moves = tc.moves
 		got := g.isThreefoldRepetition()
 		if got != tc.expected {
@@ -112,63 +110,18 @@ func TestIsThreefoldRepetition(t *testing.T) {
 func TestIsInsufficientMaterial(t *testing.T) {
 	testcases := []struct {
 		fen      string
-		pieces   [12]uint64
 		expected bool
 	}{
-		{
-			"8/8/1K4p1/7p/1P4k1/8/8/8 w - - 0 44",
-			[12]uint64{
-				0x2000000, 0x408000000000, 0x0, 0x0, 0x0, 0x0,
-				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-			},
-			false,
-		},
-		{
-			"8/8/1K6/8/1P4k1/8/8/8 w - - 0 44",
-			[12]uint64{
-				0x20000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-				0x0, 0x0, 0x0, 0x0,
-			},
-			false,
-		},
-		{
-			"8/8/1K6/8/2N3k1/8/8/8 w - - 0 44",
-			[12]uint64{
-				0x0, 0x0, 0x4000000, 0x0, 0x0, 0x0, 0x0, 0x0,
-				0x0, 0x0, 0x0, 0x0,
-			},
-			true,
-		},
-		{
-			"8/8/1K1N4/8/2N3k1/8/8/8 w - - 0 44",
-			[12]uint64{
-				0x0, 0x0, 0x8004000000, 0x0, 0x0, 0x0, 0x0, 0x0,
-				0x0, 0x0, 0x0, 0x0,
-			},
-			false,
-		},
-		{
-			"8/8/1K4b1/8/1B4k1/8/8/8 w - - 0 44",
-			[12]uint64{
-				0x0, 0x0, 0x0, 0x0, 0x2000000, 0x400000000000,
-				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-			},
-			false,
-		},
-		{
-			"8/5b2/1K6/8/1B4k1/8/8/8 w - - 0 44",
-			[12]uint64{
-				0x0, 0x0, 0x0, 0x0, 0x2000000, 0x40000000000000,
-				0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-			},
-			true,
-		},
+		{"8/8/1K4p1/7p/1P4k1/8/8/8 w - - 0 44", false},
+		{"8/8/1K6/8/1P4k1/8/8/8 w - - 0 44", false},
+		{"8/8/1K6/8/2N3k1/8/8/8 w - - 0 44", true},
+		{"8/8/1K1N4/8/2N3k1/8/8/8 w - - 0 44", false},
+		{"8/8/1K4b1/8/1B4k1/8/8/8 w - - 0 44", false},
+		{"8/6b1/1K6/8/1B4k1/8/8/8 w - - 0 44", true},
 	}
 	for _, tc := range testcases {
 		t.Logf("passing test: %s\n", tc.fen)
-		g := NewGame(uuid.New(), bitboard.NewBitboard(tc.pieces, enums.White,
-			[4]bool{false, false, false, false},
-			enums.NoSquare, 0, 44), 180, 180)
+		g := NewGame(tc.fen, 180, 180)
 
 		if tc.expected != g.isInsufficientMaterial() {
 			t.Fatalf("expected: %t, got: %t\n", tc.expected, !tc.expected)

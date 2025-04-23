@@ -71,9 +71,8 @@ func (c *client) handleMessage(raw []byte) {
 	}
 
 	switch msg.Type {
-
 	case CREATE_ROOM:
-		data := CreateRoomData{}
+		data := CreateRoomDTO{}
 		err := json.Unmarshal(msg.Data, &data)
 		if err != nil || data.TimeControl < 1 || data.TimeBonus < 0 || c.hub == nil ||
 			(!data.IsVSEngine && c.isGuest) {
@@ -84,43 +83,34 @@ func (c *client) handleMessage(raw []byte) {
 		c.hub.add(r)
 
 	case MAKE_MOVE:
-		data := MoveData{}
-		err := json.Unmarshal(msg.Data, &data)
-		if err != nil || c.room == nil {
+		var move MoveDTO
+		err = json.Unmarshal(msg.Data, &move)
+		if c.room == nil || err != nil {
 			return
 		}
-		c.room.handle(data, c)
+		c.room.move <- moveEvent{client: c, move: move}
 
 	case CHAT:
-		var data ChatData
+		data := ChatDTO{}
 		err := json.Unmarshal(msg.Data, &data)
-		if err != nil || c.room == nil {
-			return
+		if err != nil || c.room != nil {
+			c.room.chat <- chatEvent{data: data, client: c}
 		}
-
-		c.room.broadcastChat(data, c.name)
 
 	case RESIGN:
-		if c.room == nil || c.room.status == OPEN || c.room.status == OVER ||
-			len(c.room.game.Moves) < 2 {
-			return
+		if c.room != nil {
+			c.room.clientEvents <- clientEvent{client: c, eType: typeResign}
 		}
-		c.room.handleResign(c.id)
 
 	case DRAW_OFFER:
-		if c.room == nil || c.room.status == OPEN || c.room.status == OVER ||
-			len(c.room.game.Moves) < 2 {
-			return
+		if c.room != nil {
+			c.room.clientEvents <- clientEvent{client: c, eType: typeOfferDraw}
 		}
-		c.room.handleDrawOffer(c.id)
 
 	case DECLINE_DRAW:
-		if c.room == nil || c.room.status == OPEN || c.room.status == OVER ||
-			len(c.room.game.Moves) < 2 {
-			return
+		if c.room != nil {
+			c.room.clientEvents <- clientEvent{client: c, eType: typeDeclineDraw}
 		}
-
-		c.room.handleDeclineDraw(c.id)
 	}
 }
 

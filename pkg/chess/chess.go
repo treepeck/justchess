@@ -1,4 +1,3 @@
-// Package chess implements chess logic.
 package chess
 
 import (
@@ -12,99 +11,93 @@ import (
 	"github.com/google/uuid"
 )
 
-type CompletedMove struct {
-	Move bitboard.Move `json:"m"`
-	SAN  string        `json:"s"`
-	// Bitboard state after completing the move.
-	FEN string `json:"f"`
-	// Remaining time on a player's clock in seconds.
-	TimeLeft int `json:"t"`
-}
-
-// Game represents a single chess game. All time values are stored in seconds.
 type Game struct {
-	// Used only in the database. Must be equal to the [ws.Room] id.
-	Id         uuid.UUID          `json:"id"`
-	Result     enums.Result       `json:"r"`
-	Winner     enums.Color        `json:"w"`
-	Bitboard   *bitboard.Bitboard `json:"-"`
-	InitialFEN string             `json:"-"`
-	Moves      []CompletedMove    `json:"m"`
-	// Used only in the database.
-	WhiteId uuid.UUID `json:"wid"`
-	// Used only in the database.
-	BlackId     uuid.UUID    `json:"bid"`
-	WhiteTime   int          `json:"-"`
-	BlackTime   int          `json:"-"`
-	Clock       *time.Ticker `json:"-"`
-	TimeControl int          `json:"tc"`
-	TimeBonus   int          `json:"tb"`
-	// Move chan to handle incomming players' moves.
-	Move chan bitboard.Move `json:"-"`
+	Result      enums.Result
+	Winner      enums.Color
+	Bitboard    *bitboard.Bitboard
+	WhiteTime   int
+	BlackTime   int
+	WhiteId     uuid.UUID
+	BlackId     uuid.UUID
+	TimeControl int
+	TimeBonus   int
+	Moves       []CompletedMove
+	clock       *time.Ticker
+	// To handle incomming players' moves.
+	Move chan MoveEvent
+	// To safely get game info.
+	Info chan GameInfoEvent
 	// End channel is used by Room to be able to terminate the
-	// Run goroutine in case both players are disconnected.
-	End chan struct{} `json:"-"`
+	// RunRoutine if either both players are disconnected, one of them resigns,
+	// or they both agreeded to a draw.
+	End chan EndGameInfo
 }
 
-func NewGame(id uuid.UUID, bb *bitboard.Bitboard, control, bonus int) *Game {
-	if bb == nil {
-		bb = fen.FEN2Bitboard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+func NewGame(fenStr string, control, bonus int) *Game {
+	var bb *bitboard.Bitboard
+	if fenStr == "" {
+		bb = fen.DefaultBB
+	} else {
+		bb = fen.FEN2Bitboard(fenStr)
 	}
+
 	g := &Game{
-		Id:          id,
 		Result:      enums.Unknown,
 		Winner:      enums.None,
 		Bitboard:    bb,
-		InitialFEN:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 		Moves:       make([]CompletedMove, 0),
 		WhiteTime:   control,
 		BlackTime:   control,
-		Clock:       time.NewTicker(time.Second), // The timer will send a signal each second.
-		TimeBonus:   bonus,
+		clock:       time.NewTicker(time.Second),
 		TimeControl: control,
-		Move:        make(chan bitboard.Move),
-		End:         make(chan struct{}),
+		TimeBonus:   bonus,
+		Move:        make(chan MoveEvent),
+		Info:        make(chan GameInfoEvent),
+		End:         make(chan EndGameInfo),
 	}
+
 	g.Bitboard.GenLegalMoves()
+
 	return g
 }
 
-// Run handles incomming game events, such as players' moves and clock ticks.
-// TODO: escape callbacks.
-func (g *Game) Run(moveCallback func(m CompletedMove), timeoutCallback func()) {
+func (g *Game) RunRoutine(timeout chan<- struct{}) {
 	defer func() {
-		g.Clock.Stop()
+		g.clock.Stop()
 		log.Printf("clock stoped")
 	}()
 
 	for {
 		select {
-		case m := <-g.Move:
-			if g.ProcessMove(m) {
-				moveCallback(g.Moves[len(g.Moves)-1])
-				if g.Result != enums.Unknown {
-					return
-				}
+		case me := <-g.Move:
+			me.Response <- g.ProcessMove(me.Move)
+			if g.Result != enums.Unknown {
+				return
 			}
 
-		case <-g.Clock.C:
-			if g.Bitboard.ActiveColor == enums.White {
-				g.WhiteTime--
-			} else {
-				g.BlackTime--
-			}
+		case <-g.clock.C:
+			g.handleTimeTick()
 
-			if g.WhiteTime <= 0 {
+			if g.WhiteTime == 0 {
 				g.SetEndInfo(enums.Timeout, enums.Black)
-				timeoutCallback()
+				timeout <- struct{}{}
 				return
-			} else if g.BlackTime <= 0 {
+			} else if g.BlackTime == 0 {
 				g.SetEndInfo(enums.Timeout, enums.White)
-				timeoutCallback()
+				timeout <- struct{}{}
 				return
 			}
 
-		case <-g.End:
+		case gie := <-g.Info:
+			gie.Response <- GameInfo{
+				WhiteTime: g.WhiteTime, BlackTime: g.BlackTime,
+				Result: g.Result, Winner: g.Winner, Moves: g.Moves[:],
+				LegalMoves: g.Bitboard.LegalMoves[:],
+			}
+
+		case info := <-g.End:
+			g.Result = info.Result
+			g.Winner = info.Winner
 			return
 		}
 	}
@@ -185,6 +178,14 @@ func (g *Game) ProcessMove(m bitboard.Move) bool {
 	return true
 }
 
+func (g *Game) handleTimeTick() {
+	if g.Bitboard.ActiveColor == enums.White {
+		g.WhiteTime--
+	} else {
+		g.BlackTime--
+	}
+}
+
 func (g *Game) isThreefoldRepetition() bool {
 	duplicates := make(map[string]int)
 	cnt := 0
@@ -234,4 +235,36 @@ func (g *Game) isInsufficientMaterial() bool {
 func (g *Game) SetEndInfo(r enums.Result, w enums.Color) {
 	g.Result = r
 	g.Winner = w
+	g.clock.Stop()
+}
+
+type CompletedMove struct {
+	Move     bitboard.Move `json:"m"`
+	SAN      string        `json:"s"`
+	FEN      string        `json:"f"` // Bitboard state after completing the move.
+	TimeLeft int           `json:"t"` // Remaining time on a player's clock in seconds.
+}
+
+type MoveEvent struct {
+	ClientId uuid.UUID
+	Move     bitboard.Move
+	Response chan<- bool // Whether the move was processed.
+}
+
+type GameInfo struct {
+	WhiteTime  int
+	BlackTime  int
+	Result     enums.Result
+	Winner     enums.Color
+	Moves      []CompletedMove
+	LegalMoves []bitboard.Move
+}
+
+type GameInfoEvent struct {
+	Response chan<- GameInfo
+}
+
+type EndGameInfo struct {
+	Result enums.Result
+	Winner enums.Color
 }

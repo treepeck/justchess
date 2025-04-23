@@ -62,7 +62,6 @@ CREATE TABLE IF NOT EXISTS game (
 	time_bonus SMALLINT NOT NULL,
 	result GAME_RESULT NOT NULL,
 	winner COLOR NOT NULL,
-	initial_fen TEXT NOT NULL, 
 	-- Each moves take 32 bits:
 	--   0-15: Move see [movegen.go];
 	--   16-31: Remaining time on a player's clock in seconds.

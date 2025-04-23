@@ -10,50 +10,104 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"sync"
 
 	"github.com/google/uuid"
 )
 
-type RoomStatus int
+type roomStatus int
+type clientEventType int
+
+type moveEvent struct {
+	client *client
+	move   MoveDTO
+}
+
+type clientEvent struct {
+	client *client
+	eType  clientEventType
+}
+
+type chatEvent struct {
+	client *client
+	data   ChatDTO
+}
 
 const (
-	// Waiting for at least 2 clients to start a game.
-	OPEN RoomStatus = iota
-	IN_PROGRESS
-	WHITE_DISCONNECTED
-	BLACK_DISCONNECTED
-	// Room denies all incomming requests and waits until all clients leaves.
-	OVER
+	statusOpen roomStatus = iota
+	statusInProgress
+	statusWhiteDisconnected
+	statusBlackDisconnected
+	statusOver
+
+	typeRegister clientEventType = iota - 5
+	typeUnregister
+	typeResign
+	typeOfferDraw
+	typeDeclineDraw
 )
 
-// Room is a middleman between a particular [chess.Game] instance and clients.
-// After the game is over or all clients are disconnected, the room removes itself from the Hub.
-//
-// Room accepts new connections in each [RoomStatus], except OVER.
 type Room struct {
-	sync.Mutex
-	// The room must be able to remove itself from the Hub.
-	id                uuid.UUID
-	creatorName       string
-	hub               *Hub
-	isVSEngine        bool
+	Id                uuid.UUID  `json:"id"`
+	CreatorName       string     `json:"cn"`
+	Status            roomStatus `json:"s"`
+	IsVSEngine        bool       `json:"e"` // Whet	her the match is between player and engine.
 	pendingDrawIssuer uuid.UUID
-	status            RoomStatus
+	hub               *Hub // To be able to remove the room from the hub.
 	game              *chess.Game
-	clients           map[*client]struct{}
+	clients           []*client
+	timeout           chan struct{} // The game will send to timeout if one of the players runns out of time.
+	clientEvents      chan clientEvent
+	move              chan moveEvent
+	chat              chan chatEvent
 }
 
 func newRoom(h *Hub, creatorName string, isVSEngine bool, control, bonus int) *Room {
 	id := uuid.New()
 	return &Room{
-		id:          id,
-		creatorName: creatorName,
-		hub:         h,
-		isVSEngine:  isVSEngine,
-		status:      OPEN,
-		clients:     make(map[*client]struct{}),
-		game:        chess.NewGame(id, nil, control, bonus),
+		Id:           id,
+		CreatorName:  creatorName,
+		Status:       statusOpen,
+		IsVSEngine:   isVSEngine,
+		hub:          h,
+		game:         chess.NewGame("", control, bonus),
+		clients:      make([]*client, 0),
+		timeout:      make(chan struct{}),
+		clientEvents: make(chan clientEvent),
+		move:         make(chan moveEvent),
+		chat:         make(chan chatEvent),
+	}
+}
+
+func (r *Room) runRoutine() {
+	for {
+		select {
+		case e := <-r.clientEvents:
+			switch e.eType {
+			case typeRegister:
+				r.register(e.client)
+			case typeUnregister:
+				r.unregister(e.client)
+
+				if len(r.clients) == 0 {
+					return
+				}
+			case typeResign:
+				r.resign(e.client)
+			case typeOfferDraw:
+				r.offerDraw(e.client)
+			case typeDeclineDraw:
+				r.declineDraw(e.client)
+			}
+
+		case me := <-r.move:
+			r.handleMove(me)
+
+		case ce := <-r.chat:
+			r.broadcastChat(ce.data, ce.client.name)
+
+		case <-r.timeout:
+			r.endGame(r.game.Result, r.game.Winner)
+		}
 	}
 }
 
@@ -66,7 +120,7 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 	cms := ctx.(auth.Claims)
 
 	// Guest users cannot play with other users, only vs engine.
-	if !r.isVSEngine && cms.Role == auth.RoleGuest {
+	if !r.IsVSEngine && cms.Role == auth.RoleGuest {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -83,305 +137,287 @@ func (r *Room) HandleNewConnection(rw http.ResponseWriter, req *http.Request) {
 	go c.readRoutine()
 	go c.writeRoutine()
 
-	r.register(c)
+	r.clientEvents <- clientEvent{client: c, eType: typeRegister}
 }
 
-// register denies multiple connections from a single peer.
+// register registers the client in the room. Repeated connections from the single peer are denied.
 func (r *Room) register(c *client) {
-	r.Lock()
-	defer r.Unlock()
-
-	for connected := range r.clients {
-		if connected.id == c.id || r.status == OVER {
+	// Deny connection if the client is already connected or the game is already over.
+	for _, conn := range r.clients {
+		if conn.id == c.id || r.Status == statusOver {
 			close(c.send)
 			return
 		}
 	}
 
-	r.clients[c] = struct{}{}
+	r.clients = append(r.clients, c)
 	log.Printf("client %s registered\n", c.id.String())
 
-	switch r.status {
-	case OPEN:
-		if r.isVSEngine || len(r.clients) == 2 {
+	switch r.Status {
+	// Start the game if both clients are connected or if the math is between player and engine.
+	case statusOpen:
+		if r.IsVSEngine || len(r.clients) == 2 {
 			r.startGame()
 		}
 
-	case WHITE_DISCONNECTED:
+	case statusWhiteDisconnected:
 		if r.game.WhiteId == c.id {
-			r.status = IN_PROGRESS
+			r.Status = statusInProgress
 		}
 
-	case BLACK_DISCONNECTED:
+	case statusBlackDisconnected:
 		if r.game.BlackId == c.id {
-			r.status = IN_PROGRESS
+			r.Status = statusInProgress
 		}
 	}
 
-	// Notify the client about all completed moves.
-	for _, m := range r.game.Moves {
-		c.send <- r.serialize(LAST_MOVE, r.formatLastMove(m))
-	}
-	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
+	r.broadcastRoomStatus()
 }
 
-// unregister terminates the game.DecrementTime routine.
 func (r *Room) unregister(c *client) {
-	r.Lock()
-	defer r.Unlock()
+	for i, conn := range r.clients {
+		if conn.id == c.id {
+			close(c.send)
+			// Remove the client. To do that, replace the element to delete with the one
+			// at the end and then assign to the len-1 elements.
+			r.clients[i] = r.clients[len(r.clients)-1]
+			r.clients = r.clients[:len(r.clients)-1]
 
-	if _, ok := r.clients[c]; !ok {
-		return
-	}
+			log.Printf("client %s unregistered\n", c.id.String())
+			if len(r.clients) == 0 {
+				if r.Status != statusOpen && r.Status != statusOver {
+					r.game.End <- chess.EndGameInfo{Result: enums.Unknown, Winner: enums.None}
+				}
 
-	close(c.send)
-	delete(r.clients, c)
+				r.hub.remove(r)
+				return
+			}
 
-	log.Printf("client %s unregistered\n", c.id.String())
+			if c.id == r.game.WhiteId && r.Status != statusOver {
+				r.Status = statusWhiteDisconnected
+			} else if c.id == r.game.BlackId && r.Status != statusOver {
+				r.Status = statusBlackDisconnected
+			}
 
-	if len(r.clients) == 0 {
-		if r.status != OPEN && r.status != OVER {
-			r.game.End <- struct{}{}
+			r.broadcastRoomStatus()
+			break
 		}
+	}
 
-		r.hub.remove(r)
+}
+
+func (r *Room) handleMove(m moveEvent) {
+	if r.Status == statusOpen || r.Status == statusOver ||
+		(r.game.WhiteId != m.client.id && r.game.BlackId != m.client.id) {
 		return
 	}
 
-	if c.id == r.game.WhiteId {
-		r.status = WHITE_DISCONNECTED
-	} else if c.id == r.game.BlackId {
-		r.status = BLACK_DISCONNECTED
-	}
-	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
-}
-
-func (r *Room) startGame() {
-	r.status = IN_PROGRESS
-	go r.game.Run(r.broadcastMove, r.endGame)
-
-	players := [2]uuid.UUID{}
-	i := 0
-	for c := range r.clients {
-		players[i] = c.id
-		i++
-	}
-
-	// Randomly select players' sides.
-	if rand.Intn(2) == 1 {
-		r.game.WhiteId = players[0]
-		r.game.BlackId = players[1]
-	} else {
-		r.game.WhiteId = players[1]
-		r.game.BlackId = players[0]
-	}
-
-	// TODO: unsafe code, the stockfish' uuid cannot ever change without breaking this.
-	if r.game.WhiteId == uuid.Nil {
-		r.game.WhiteId = uuid.MustParse("ccaf962b-855e-49da-b85f-7e8bba0edae2")
-	} else if r.game.BlackId == uuid.Nil {
-		r.game.BlackId = uuid.MustParse("ccaf962b-855e-49da-b85f-7e8bba0edae2")
-	}
-}
-
-func (r *Room) handle(m MoveData, c *client) {
-	r.Lock()
-	defer r.Unlock()
-
-	if r.status == OPEN || r.status == OVER ||
-		(r.game.WhiteId != c.id && r.game.BlackId != c.id) {
-		return
-	}
-
-	if !r.isVSEngine {
-		if r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId != c.id ||
-			r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId != c.id {
+	if !r.IsVSEngine {
+		if r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId != m.client.id ||
+			r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId != m.client.id {
 			return
 		}
 	}
 
-	r.game.Move <- bitboard.NewMove(m.To, m.From, m.Type)
+	res := make(chan bool)
+	r.game.Move <- chess.MoveEvent{
+		ClientId: m.client.id,
+		Move:     bitboard.NewMove(m.move.Destination, m.move.Source, m.move.Type),
+		Response: res,
+	}
+
+	// If the move wasn't processed.
+	if !<-res {
+		return
+	}
+
+	lastMove := r.game.Moves[len(r.game.Moves)-1]
+	data, err := json.Marshal(Message{Type: LAST_MOVE, Data: r.serializeLastMove(lastMove, r.game.Bitboard.LegalMoves)})
+	if err != nil {
+		log.Printf("cannot Marshal data: %v\n", err)
+		return
+	}
+	r.broadcast(data)
+
+	if r.game.Result != enums.Unknown {
+		r.endGame(r.game.Result, r.game.Winner)
+	}
 }
 
-func (r *Room) broadcastChat(data ChatData, senderName string) {
-	r.Lock()
-	defer r.Unlock()
+func (r *Room) resign(c *client) {
+	if r.Status == statusOpen || r.Status == statusOver {
+		return
+	}
 
+	if c.id == r.game.WhiteId {
+		r.game.End <- chess.EndGameInfo{Result: enums.Timeout, Winner: enums.Black}
+		r.endGame(enums.Resignation, enums.Black)
+	} else if c.id == r.game.BlackId {
+		r.game.End <- chess.EndGameInfo{Result: enums.Timeout, Winner: enums.White}
+		r.endGame(enums.Resignation, enums.White)
+	}
+}
+
+func (r *Room) offerDraw(c *client) {
+	if r.Status == statusOpen || r.Status == statusOver {
+		return
+	}
+
+	if r.pendingDrawIssuer == uuid.Nil {
+		var oppId uuid.UUID
+		var msg []byte
+
+		if c.id == r.game.WhiteId {
+			oppId = r.game.BlackId
+			msg, _ = json.Marshal(Message{Type: CHAT, Data: []byte(`"White offers draw"`)})
+		} else if c.id == r.game.BlackId {
+			oppId = r.game.WhiteId
+			msg, _ = json.Marshal(Message{Type: CHAT, Data: []byte(`"Black offers draw"`)})
+		} else { // Deny draw offers from viewers.
+			return
+		}
+
+		r.broadcast(msg)
+		r.pendingDrawIssuer = c.id
+
+		msg, _ = json.Marshal(Message{Type: DRAW_OFFER, Data: nil})
+		for _, conn := range r.clients {
+			if conn.id == oppId {
+				conn.send <- msg
+			}
+		}
+	} else if r.pendingDrawIssuer != c.id && (c.id == r.game.WhiteId ||
+		c.id == r.game.BlackId) {
+		msg, _ := json.Marshal(Message{Type: CHAT, Data: []byte(`"Draw accepted"`)})
+		r.broadcast(msg)
+
+		r.game.End <- chess.EndGameInfo{Result: enums.Agreement, Winner: enums.None}
+		r.endGame(enums.Agreement, enums.None)
+	}
+}
+
+func (r *Room) declineDraw(c *client) {
+	if r.Status == statusOpen || r.Status == statusOver ||
+		c.id == r.pendingDrawIssuer || r.pendingDrawIssuer == uuid.Nil ||
+		(c.id != r.game.WhiteId && c.id != r.game.BlackId) {
+		return
+	}
+
+	msg, _ := json.Marshal(Message{Type: CHAT, Data: []byte(`"Draw declined"`)})
+	r.broadcast(msg)
+
+	r.pendingDrawIssuer = uuid.Nil
+}
+
+func (r *Room) broadcastChat(data ChatDTO, senderName string) {
 	data.Message = `"` + senderName + `: ` + data.Message + `"`
 
 	msg, err := json.Marshal(Message{Type: CHAT, Data: []byte(data.Message)})
 	if err != nil {
 		return
 	}
-
-	for c := range r.clients {
-		c.send <- msg
-	}
+	r.broadcast(msg)
 }
 
-func (r *Room) broadcastMove(m chess.CompletedMove) {
-	r.broadcast(r.serialize(LAST_MOVE, r.formatLastMove(m)))
-	if r.game.Result != enums.Unknown {
-		r.endGame()
-	}
-}
+func (r *Room) startGame() {
+	r.Status = statusInProgress
 
-func (r *Room) handleResign(id uuid.UUID) {
-	r.Lock()
-	defer r.Unlock()
+	go r.game.RunRoutine(r.timeout)
 
-	if id == r.game.WhiteId {
-		r.game.SetEndInfo(enums.Resignation, enums.Black)
-		r.game.End <- struct{}{}
-		r.endGame()
-	} else if id == r.game.BlackId {
-		r.game.SetEndInfo(enums.Resignation, enums.White)
-		r.game.End <- struct{}{}
-		r.endGame()
-	}
-}
-
-// handleDrawOffer handles both draw offers and draw accepts.
-func (r *Room) handleDrawOffer(id uuid.UUID) {
-	r.Lock()
-	defer r.Unlock()
-
-	if r.pendingDrawIssuer == uuid.Nil {
-
-		var oppId uuid.UUID
-		var msg []byte
-		if id == r.game.WhiteId {
-			oppId = r.game.BlackId
-			msg, _ = json.Marshal(Message{Type: CHAT, Data: []byte(`"White offers draw"`)})
-		} else if id == r.game.BlackId {
-			oppId = r.game.WhiteId
-			msg, _ = json.Marshal(Message{Type: CHAT, Data: []byte(`"Black offers draw"`)})
-		} else { // Deny draw offers from viewers.
-			return
+	if rand.Intn(2) == 1 {
+		r.game.WhiteId = r.clients[0].id
+		if len(r.clients) == 2 {
+			r.game.BlackId = r.clients[1].id
+		} else {
+			// TODO: unsafe code, the stockfish' uuid cannot ever change without breaking this.
+			r.game.BlackId = uuid.MustParse("ccaf962b-855e-49da-b85f-7e8bba0edae2")
 		}
-		for c := range r.clients {
-			c.send <- msg
+	} else {
+		r.game.BlackId = r.clients[0].id
+		if len(r.clients) == 2 {
+			r.game.WhiteId = r.clients[1].id
+		} else {
+			r.game.WhiteId = uuid.MustParse("ccaf962b-855e-49da-b85f-7e8bba0edae2")
 		}
-		r.pendingDrawIssuer = id
-
-		msg, _ = json.Marshal(Message{Type: DRAW_OFFER, Data: nil})
-		for c := range r.clients {
-			if c.id == oppId {
-				c.send <- msg
-			}
-		}
-	} else if r.pendingDrawIssuer != id {
-		msg, _ := json.Marshal(Message{Type: CHAT, Data: []byte(`"Draw accpeted"`)})
-		for c := range r.clients {
-			c.send <- msg
-		}
-
-		r.game.SetEndInfo(enums.Agreement, enums.None)
-		r.game.End <- struct{}{}
-		r.endGame()
 	}
 }
 
-func (r *Room) handleDeclineDraw(id uuid.UUID) {
-	r.Lock()
-	defer r.Unlock()
+// endGame broadcasts room status and the game result.
+// Game data is stored in the db.
+func (r *Room) endGame(result enums.Result, winner enums.Color) {
+	r.Status = statusOver
 
-	if id == r.pendingDrawIssuer || r.pendingDrawIssuer == uuid.Nil {
-		return
-	}
-
-	msg, _ := json.Marshal(Message{Type: CHAT, Data: []byte(`"Draw declined"`)})
-	for c := range r.clients {
-		c.send <- msg
-	}
-
-	r.pendingDrawIssuer = uuid.Nil
-}
-
-// endGame broadcasts room status and game result.
-// endGame cannot be called from the non-locking function.
-// Game data is stored in the db 'game' table.
-func (r *Room) endGame() {
-	r.status = OVER
-	r.broadcast(r.serialize(ROOM_STATUS, r.formatRoomStatus()))
-
-	// Broadcast game result.
-	data, _ := json.Marshal(GameResultData{
-		Result: r.game.Result,
-		Winner: r.game.Winner,
-	})
+	data, _ := json.Marshal(GameResultDTO{Result: result, Winner: winner})
 	msg, _ := json.Marshal(Message{Type: GAME_RESULT, Data: data})
 	r.broadcast(msg)
 
 	r.hub.remove(r)
 
-	if len(r.game.Moves) > 2 {
-		err := game.Insert(*r.game)
+	if len(r.game.Moves) > 1 {
+		err := game.Insert(r.Id.String(), *r.game)
 		if err != nil {
-			log.Printf("cannot store game in db: %v, game: %v\n", err, *r.game)
+			log.Printf("cannot store game in the db: %v, game: %v\n", err, *r.game)
 		}
 	}
 }
 
-func (r *Room) formatRoomStatus() RoomStatusData {
-	white, black := r.game.WhiteId, r.game.BlackId
-
-	return RoomStatusData{
-		Status:     r.status,
-		White:      white,
-		Black:      black,
-		WhiteTime:  r.game.WhiteTime,
-		BlackTime:  r.game.BlackTime,
-		IsVSEngine: r.isVSEngine,
-		Clients:    len(r.clients),
-	}
-}
-
-func (r *Room) formatLastMove(move chess.CompletedMove) LastMoveData {
-	legalMoves := make([]MoveData, len(r.game.Bitboard.LegalMoves))
-	for i, m := range r.game.Bitboard.LegalMoves {
-		legalMoves[i] = MoveData{To: m.To(), From: m.From(), Type: m.Type()}
-	}
-
-	return LastMoveData{
-		SAN:        move.SAN,
-		FEN:        move.FEN,
-		TimeLeft:   move.TimeLeft,
-		LegalMoves: legalMoves,
-	}
-}
-
-// serialize can recieve data only of the specified types!
-func (r *Room) serialize(mt MessageType, data any) []byte {
-	raw, err := json.Marshal(data)
-	if err != nil {
-		log.Printf("cannot Marshal data: %v\n", err)
-		return nil
-	}
-
-	msg, err := json.Marshal(Message{Type: mt, Data: raw})
-	if err != nil {
-		log.Printf("cannot Marshal message: %v\n", err)
-		return nil
-	}
-	return msg
-}
-
 func (r *Room) broadcast(msg []byte) {
-	for c := range r.clients {
+	for _, c := range r.clients {
 		c.send <- msg
 	}
 }
 
-func (r *Room) getClientIds() []uuid.UUID {
-	r.Lock()
-	defer r.Unlock()
+func (r *Room) broadcastRoomStatus() {
+	info := chess.GameInfo{}
 
-	ids := make([]uuid.UUID, len(r.clients))
-	i := 0
-	for c := range r.clients {
-		ids[i] = c.id
-		i++
+	if r.Status == statusOpen || r.Status == statusOver {
+		info = chess.GameInfo{
+			WhiteTime:  r.game.WhiteTime,
+			BlackTime:  r.game.BlackTime,
+			Result:     r.game.Result,
+			Winner:     r.game.Winner,
+			Moves:      r.game.Moves,
+			LegalMoves: r.game.Bitboard.LegalMoves,
+		}
+	} else {
+		res := make(chan chess.GameInfo)
+		r.game.Info <- chess.GameInfoEvent{Response: res}
+		info = <-res
 	}
-	return ids
+	data, err := json.Marshal(Message{Type: ROOM_STATUS, Data: r.serializeRoomStatus(info)})
+	if err != nil {
+		log.Printf("cannot Marshal data: %v\n", err)
+		return
+	}
+	r.broadcast(data)
+}
+
+func (r *Room) serializeRoomStatus(info chess.GameInfo) []byte {
+	data, err := json.Marshal(RoomStatusDTO{
+		Status:     r.Status,
+		White:      r.game.WhiteId,
+		Black:      r.game.BlackId,
+		WhiteTime:  info.WhiteTime,
+		BlackTime:  info.BlackTime,
+		Control:    r.game.TimeControl,
+		IsVSEngine: r.IsVSEngine,
+		Clients:    len(r.clients),
+	})
+	if err != nil {
+		log.Printf("cannot Marshal room status: %v\n", err)
+	}
+	return data
+}
+
+func (r *Room) serializeLastMove(move chess.CompletedMove, lm []bitboard.Move) []byte {
+	data, err := json.Marshal(LastMoveDTO{
+		SAN:        move.SAN,
+		FEN:        move.FEN,
+		TimeLeft:   move.TimeLeft,
+		LegalMoves: lm,
+	})
+	if err != nil {
+		log.Printf("cannot Marshal last move: %v\n", err)
+	}
+	return data
 }
