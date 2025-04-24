@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; 
+
 -- Represents a registered human player (or engine).
 CREATE TABLE IF NOT EXISTS player (
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
