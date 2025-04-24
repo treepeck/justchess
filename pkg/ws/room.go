@@ -106,7 +106,7 @@ func (r *Room) runRoutine() {
 			r.broadcastChat(ce.data, ce.client.name)
 
 		case <-r.timeout:
-			r.endGame(r.game.Result, r.game.Winner)
+			r.endGame()
 		}
 	}
 }
@@ -186,7 +186,8 @@ func (r *Room) unregister(c *client) {
 			log.Printf("client %s unregistered\n", c.id.String())
 			if len(r.clients) == 0 {
 				if r.Status != statusOpen && r.Status != statusOver {
-					r.game.End <- chess.EndGameInfo{Result: enums.Unknown, Winner: enums.None}
+					r.game.End <- struct{}{}
+					r.game.SetEndInfo(enums.Unknown, enums.None)
 				}
 
 				r.hub.remove(r)
@@ -207,16 +208,13 @@ func (r *Room) unregister(c *client) {
 }
 
 func (r *Room) handleMove(m moveEvent) {
-	if r.Status == statusOpen || r.Status == statusOver ||
-		(r.game.WhiteId != m.client.id && r.game.BlackId != m.client.id) {
-		return
-	}
+	isPlayerTurn := (r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId == m.client.id) ||
+		(r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId == m.client.id)
 
-	if !r.IsVSEngine {
-		if r.game.Bitboard.ActiveColor == enums.White && r.game.WhiteId != m.client.id ||
-			r.game.Bitboard.ActiveColor == enums.Black && r.game.BlackId != m.client.id {
-			return
-		}
+	if r.Status == statusOpen || r.Status == statusOver ||
+		(r.game.WhiteId != m.client.id && r.game.BlackId != m.client.id) ||
+		(!r.IsVSEngine && !isPlayerTurn) {
+		return
 	}
 
 	res := make(chan bool)
@@ -240,7 +238,7 @@ func (r *Room) handleMove(m moveEvent) {
 	r.broadcast(data)
 
 	if r.game.Result != enums.Unknown {
-		r.endGame(r.game.Result, r.game.Winner)
+		r.endGame()
 	}
 }
 
@@ -250,11 +248,13 @@ func (r *Room) resign(c *client) {
 	}
 
 	if c.id == r.game.WhiteId {
-		r.game.End <- chess.EndGameInfo{Result: enums.Timeout, Winner: enums.Black}
-		r.endGame(enums.Resignation, enums.Black)
+		r.game.End <- struct{}{}
+		r.game.SetEndInfo(enums.Resignation, enums.Black)
+		r.endGame()
 	} else if c.id == r.game.BlackId {
-		r.game.End <- chess.EndGameInfo{Result: enums.Timeout, Winner: enums.White}
-		r.endGame(enums.Resignation, enums.White)
+		r.game.End <- struct{}{}
+		r.game.SetEndInfo(enums.Resignation, enums.White)
+		r.endGame()
 	}
 }
 
@@ -291,8 +291,9 @@ func (r *Room) offerDraw(c *client) {
 		msg, _ := json.Marshal(Message{Type: CHAT, Data: []byte(`"Draw accepted"`)})
 		r.broadcast(msg)
 
-		r.game.End <- chess.EndGameInfo{Result: enums.Agreement, Winner: enums.None}
-		r.endGame(enums.Agreement, enums.None)
+		r.game.End <- struct{}{}
+		r.game.SetEndInfo(enums.Agreement, enums.None)
+		r.endGame()
 	}
 }
 
@@ -344,10 +345,10 @@ func (r *Room) startGame() {
 
 // endGame broadcasts room status and the game result.
 // Game data is stored in the db.
-func (r *Room) endGame(result enums.Result, winner enums.Color) {
+func (r *Room) endGame() {
 	r.Status = statusOver
 
-	data, _ := json.Marshal(GameResultDTO{Result: result, Winner: winner})
+	data, _ := json.Marshal(GameResultDTO{Result: r.game.Result, Winner: r.game.Winner})
 	msg, _ := json.Marshal(Message{Type: GAME_RESULT, Data: data})
 	r.broadcast(msg)
 

@@ -11,8 +11,6 @@ import (
 
 const DefaultFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-var DefaultBB = FEN2Bitboard(DefaultFEN)
-
 func Bitboard2FEN(bb *bitboard.Bitboard) (FEN string) {
 	FEN += serializePiecePlacement(bb.Pieces)
 	FEN += serializeActiveColor(bb.ActiveColor)

@@ -30,13 +30,13 @@ type Game struct {
 	// End channel is used by Room to be able to terminate the
 	// RunRoutine if either both players are disconnected, one of them resigns,
 	// or they both agreeded to a draw.
-	End chan EndGameInfo
+	End chan struct{}
 }
 
 func NewGame(fenStr string, control, bonus int) *Game {
 	var bb *bitboard.Bitboard
 	if fenStr == "" {
-		bb = fen.DefaultBB
+		bb = fen.FEN2Bitboard(fen.DefaultFEN)
 	} else {
 		bb = fen.FEN2Bitboard(fenStr)
 	}
@@ -53,7 +53,7 @@ func NewGame(fenStr string, control, bonus int) *Game {
 		TimeBonus:   bonus,
 		Move:        make(chan MoveEvent),
 		Info:        make(chan GameInfoEvent),
-		End:         make(chan EndGameInfo),
+		End:         make(chan struct{}),
 	}
 
 	g.Bitboard.GenLegalMoves()
@@ -95,9 +95,7 @@ func (g *Game) RunRoutine(timeout chan<- struct{}) {
 				LegalMoves: g.Bitboard.LegalMoves[:],
 			}
 
-		case info := <-g.End:
-			g.Result = info.Result
-			g.Winner = info.Winner
+		case <-g.End:
 			return
 		}
 	}
@@ -262,9 +260,4 @@ type GameInfo struct {
 
 type GameInfoEvent struct {
 	Response chan<- GameInfo
-}
-
-type EndGameInfo struct {
-	Result enums.Result
-	Winner enums.Color
 }
