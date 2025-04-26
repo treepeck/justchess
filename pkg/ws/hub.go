@@ -16,7 +16,7 @@ import (
 var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	ReadBufferSize:  1024,
-	CheckOrigin:     func(r *http.Request) bool { return r.Header.Get("Origin") == os.Getenv("domain") },
+	CheckOrigin:     func(r *http.Request) bool { return r.Header.Get("Origin") == os.Getenv("DOMAIN") },
 }
 
 // Hub is a global repository of all created rooms and connected clients which are not in the game.
