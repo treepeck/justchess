@@ -289,7 +289,7 @@ func sendMail(addr, subject, templatePath string, data mailData) error {
 	return smtp.SendMail(
 		"smtp.gmail.com:587",
 		auth,
-		"support@justchess.org",
+		os.Getenv("SMTP_FROM"),
 		[]string{addr},
 		msg,
 	)
