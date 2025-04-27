@@ -43,7 +43,7 @@ func setupMux() *http.ServeMux {
 
 	mux.Handle("/auth/", allowCors(auth.Mux()))
 
-	mux.Handle("/player/", allowCors(isAuthorized(player.Mux())))
+	mux.Handle("/api/player/", allowCors(isAuthorized(player.Mux())))
 
 	mux.Handle("/game/", allowCors(isAuthorized(game.Mux())))
 
@@ -65,6 +65,23 @@ func setupMux() *http.ServeMux {
 
 		room.HandleNewConnection(rw, r)
 	}))
+
+	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
+		// To allow SharedBufferArray (for engine).
+		rw.Header().Add("Cross-Origin-Opener-Policy", "same-origin")
+		rw.Header().Add("Cross-Origin-Embedder-Policy", "require-corp")
+		if len(r.URL.Path) < 5 {
+			http.ServeFile(rw, r, "./frontend/index.html")
+			return
+		}
+
+		mime := r.URL.Path[len(r.URL.Path)-3 : len(r.URL.Path)]
+		if mime != "png" && mime != "css" && mime != ".js" && mime != "ico" && mime != "asm" {
+			http.ServeFile(rw, r, "./frontend/index.html")
+			return
+		}
+		http.FileServer(http.Dir("frontend")).ServeHTTP(rw, r)
+	})
 
 	return mux
 }

@@ -12,8 +12,8 @@ import (
 
 func Mux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /player/id/{id}", getById)
-	mux.HandleFunc("GET /player/name/{name}", getByName)
+	mux.HandleFunc("GET /api/player/id/{id}", getById)
+	mux.HandleFunc("GET /api/player/name/{name}", getByName)
 	return mux
 }
 
