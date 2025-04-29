@@ -6,11 +6,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"justchess/pkg/db"
 	"justchess/pkg/player"
 	"log"
 	"net/http"
-	"net/smtp"
 	"os"
 	"regexp"
 	"text/template"
@@ -40,6 +40,15 @@ type PlayerDTO struct {
 	Player      player.Player `json:"player"`
 	Role        Role          `json:"role"`
 	AccessToken string        `json:"accessToken"`
+}
+
+// Needed for correct HTML encoding into json.
+type mailtrapDTO struct {
+	From     map[string]string   `json:"from"`
+	To       []map[string]string `json:"to"`
+	Subject  string              `json:"subject"`
+	Html     string              `json:"html"`
+	Category string              `json:"category"`
 }
 
 // Regular expressions for validating registration data.
@@ -116,7 +125,7 @@ func signUp(rw http.ResponseWriter, r *http.Request) {
 		VerificationURL: os.Getenv("DOMAIN") + "/verify?action=registration&token=" + token,
 	}
 
-	err = sendMail(req.Mail, "Subject: Email Verification\r\n",
+	err = sendMail(req.Mail, "Email Verification",
 		"./templates/mail-verify.html", data)
 	if err != nil {
 		log.Printf("cannot send verification email: %v\n", err)
@@ -215,7 +224,7 @@ func passwordReset(rw http.ResponseWriter, r *http.Request) {
 		VerificationURL: os.Getenv("DOMAIN") + "/verify?action=reset&token=" + token,
 	}
 
-	if err = sendMail(p.Mail, "Subject: Password Reset\r\n",
+	if err = sendMail(p.Mail, "Password Reset",
 		"./templates/password-reset.html", data); err != nil {
 		log.Printf("cannot send mail: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -263,40 +272,44 @@ func completeReset(rw http.ResponseWriter, token string) {
 	completeAuth(rw, p, RolePlayer)
 }
 
-// sendMail assumes that dev.env file contains such variables:
-//
-//  1. mail of the sender (SMTP_MAIL);
-//  2. password for that email (SMTP_PASSWORD).
 func sendMail(addr, subject, templatePath string, data mailData) error {
-	auth := smtp.PlainAuth(
-		"",
-		os.Getenv("SMTP_MAIL"),
-		os.Getenv("SMTP_PASSWORD"),
-		"smtp.gmail.com",
-	)
-
-	mime := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
-	body, err := genTemplate(
-		templatePath,
-		data,
-	)
+	body, err := genTemplate(templatePath, data)
 	if err != nil {
 		return err
 	}
 
-	msg := []byte(subject + mime + body)
+	dto := mailtrapDTO{
+		From: map[string]string{
+			"email": os.Getenv("SMTP_FROM"),
+			"name":  "Support",
+		},
+		To:       []map[string]string{{"email": addr}},
+		Subject:  subject,
+		Html:     body,
+		Category: "Email verification",
+	}
+	payload, err := json.Marshal(dto)
+	if err != nil {
+		return err
+	}
 
-	return smtp.SendMail(
-		"smtp.gmail.com:587",
-		auth,
-		os.Getenv("SMTP_FROM"),
-		[]string{addr},
-		msg,
-	)
+	req, err := http.NewRequest("POST", "https://send.api.mailtrap.io/api/send",
+		bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Authorization", "Bearer "+os.Getenv("MAILTRAP_API_TOKEN"))
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil || (res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent) {
+		return errors.New("Mailtrap error")
+	}
+	return res.Body.Close()
 }
 
 // genTemplate generates the mail html templates.
-func genTemplate(path string, data any) (string, error) {
+func genTemplate(path string, data mailData) (string, error) {
 	t, err := template.ParseFiles(path)
 	if err != nil {
 		return "", err
