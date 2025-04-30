@@ -2,9 +2,17 @@ package ws
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+)
+
+const (
+	writeWait      = 10 * time.Second
+	pongWait       = 60 * time.Second
+	pingPeriod     = (pongWait * 9) / 10
+	maxMessageSize = 512
 )
 
 // client is a middleman between the frontend and server.
@@ -36,6 +44,10 @@ func (c *client) readRoutine() {
 		c.cleanup()
 	}()
 
+	c.connection.SetReadLimit(maxMessageSize)
+	c.connection.SetReadDeadline(time.Now().Add(pongWait))
+	c.connection.SetPongHandler(func(appData string) error { return c.connection.SetReadDeadline(time.Now().Add(pongWait)) })
+
 	for {
 		_, msg, err := c.connection.ReadMessage()
 		if err != nil {
@@ -47,18 +59,30 @@ func (c *client) readRoutine() {
 }
 
 func (c *client) writeRoutine() {
+	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		ticker.Stop()
 		c.cleanup()
 	}()
 
 	for {
-		msg, ok := <-c.send
-		if !ok {
-			return
-		}
+		select {
+		case msg, ok := <-c.send:
+			c.connection.SetWriteDeadline(time.Now().Add(writeWait))
 
-		if err := c.connection.WriteMessage(websocket.TextMessage, msg); err != nil {
-			return
+			if !ok {
+				return
+			}
+
+			if err := c.connection.WriteMessage(websocket.TextMessage, msg); err != nil {
+				return
+			}
+
+		case <-ticker.C:
+			c.connection.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.connection.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
 	}
 }
