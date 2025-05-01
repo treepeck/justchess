@@ -32,7 +32,7 @@ func main() {
 	defer db.Pool.Close()
 
 	mux := setupMux()
-	err = http.ListenAndServeTLS("localhost:443", "cert.pem", "key.pem", mux)
+	err = http.ListenAndServeTLS(":443", "cert.pem", "key.pem", mux)
 	if err != nil {
 		log.Printf("%v\n", err)
 	}
