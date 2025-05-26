@@ -45,11 +45,6 @@ func SelectPlayerByMail(mail string) (p Player, err error) {
 	return selectPlayer(query, mail)
 }
 
-func SelectPlayerByName(name string) (p Player, err error) {
-	query := "SELECT * FROM player WHERE name = $1 AND is_engine = false;"
-	return selectPlayer(query, name)
-}
-
 // IsTakenNameOrMail is a helper to quickly check are the name and mail unique.
 func IsTakenNameOrMail(name, mail string) bool {
 	query := "SELECT id FROM player WHERE name = $1 OR mail = $2 AND is_engine = false;"
@@ -124,7 +119,7 @@ func InsertTokenRegistration(token string, r Register, tx *sql.Tx) error {
 }
 
 func InsertPlayer(id string, r Register) error {
-	query := "INSERT INTO player (id, mail, password_hash, name) \n" +
+	query := "INSERT INTO player (id, mail, password_hash, name)\n" +
 		"VALUES ($1, $2, $3, $4);"
 	_, err := db.Pool.Exec(query, id, r.Mail, r.Password, r.Name)
 	return err

@@ -79,7 +79,7 @@ func selectByPlayerId(id string) (games []shortGameDTO, err error) {
 		JOIN player AS white_player ON game.white_id = white_player.id
 		JOIN player AS black_player ON game.black_id = black_player.id
 		WHERE game.white_id = $1 OR game.black_id = $1
-	ORDER BY game.created_at DESC LIMIT 100;`
+		ORDER BY game.created_at DESC LIMIT 100;`
 
 	rows, err := db.Pool.Query(query, id)
 	if err != nil {
