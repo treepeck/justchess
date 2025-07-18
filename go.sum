@@ -1,10 +1,6 @@
-github.com/BelikovArtem/chego v0.0.0-20250710100147-b76da2710c40 h1:p1UIgMtXBuW0VlnWy/3ju8mRVHkI9lrcOd3aaOm7VlA=
-github.com/BelikovArtem/chego v0.0.0-20250710100147-b76da2710c40/go.mod h1:RmDqy+c/g054w5PSrrz/O5ZWba5zUlYYhLQ79dhybAI=
-github.com/BelikovArtem/chego v0.0.0-20250710104824-64e6d7ff974b h1:3+I1BmsvzNS/QfF1VtSQRhmG60krqgCT5FvK9SlK550=
-github.com/BelikovArtem/chego v0.0.0-20250710104824-64e6d7ff974b/go.mod h1:RmDqy+c/g054w5PSrrz/O5ZWba5zUlYYhLQ79dhybAI=
-github.com/BelikovArtem/chego v0.0.0-20250711134937-9663316ceb0b h1:4qKsmu1rWVPBthXR+bdE9Z8i+u7/t3nyvhWsgdw28zw=
-github.com/BelikovArtem/chego v0.0.0-20250711134937-9663316ceb0b/go.mod h1:RmDqy+c/g054w5PSrrz/O5ZWba5zUlYYhLQ79dhybAI=
-github.com/BelikovArtem/chego v0.0.0-20250712155109-a517868de812 h1:JHibUI/JAqpDsvMCWdcr8ONmQmGc3k2IkavJLs+UuvQ=
-github.com/BelikovArtem/chego v0.0.0-20250712155109-a517868de812/go.mod h1:RmDqy+c/g054w5PSrrz/O5ZWba5zUlYYhLQ79dhybAI=
+github.com/BelikovArtem/chego v0.0.0-20250714092507-e28ab9273da7 h1:6mK/lVxCtmO+0pdL3fKO9W/mh445a4hUrbVoesQgjFU=
+github.com/BelikovArtem/chego v0.0.0-20250714092507-e28ab9273da7/go.mod h1:RmDqy+c/g054w5PSrrz/O5ZWba5zUlYYhLQ79dhybAI=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
+github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=

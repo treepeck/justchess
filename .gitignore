@@ -2,9 +2,12 @@
 .git/
 README.md
 
-# Secrets and other parameters.
-*.env
+.env
+SECRETS
 
 # Logs.
 log.txt
 
+TODO.txt
+
+*.drawio
