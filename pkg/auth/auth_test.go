@@ -1,35 +1,17 @@
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
 	"justchess/pkg/db"
-	"log"
-	"net/http"
+	"justchess/pkg/env"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 )
 
 func TestMain(m *testing.M) {
-	env, err := os.ReadFile("../../.env")
-	if err != nil {
-		log.Fatalf(".env file cannot be read %v", err)
-	}
-
-	for line := range strings.SplitSeq(string(env), "\n") {
-		// Skip empty lines and comments.
-		if len(line) < 3 || line[0] == '#' {
-			continue
-		}
-
-		pair := strings.SplitN(line, "=", 2)
-		// Skip malformed variable.
-		if len(pair) != 2 {
-			continue
-		}
-
-		os.Setenv(pair[0], pair[1])
-	}
+	env.Load("../../.env")
 
 	db.Open()
 	defer db.Close()
@@ -37,70 +19,69 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestCreateSessionUnauthorized(t *testing.T) {
-	req := httptest.NewRequest("POST", "/auth/", nil)
-
-	rec := httptest.NewRecorder()
-	createSession(rec, req)
-
-	res := rec.Result()
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("Must return statusok")
+func TestSignup(t *testing.T) {
+	testcases := []struct {
+		name           string
+		dto            signupDTO
+		expectedStatus int
+	}{
+		{"invalid name", signupDTO{Name: "", Email: "test@test.com", Password: "test1"}, 406},
+		{"invalid email", signupDTO{Name: "test", Email: "", Password: "test1"}, 406},
+		{"short pwd", signupDTO{Name: "test", Email: "test@test.com", Password: ""}, 406},
+		{"long pwd", signupDTO{Name: "test", Email: "test@test.com",
+			Password: "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"},
+			406,
+		},
 	}
 
-	if res.Cookies()[0].Name != "Authorization" {
-		t.Fatalf("Must return Authorization cookie")
-	}
+	for _, tc := range testcases {
+		body, err := json.Marshal(tc.dto)
+		if err != nil {
+			t.Fatalf("Cannot Marshal dto %v", err)
+		}
 
-	sid := res.Cookies()[0].Value
-	if err := db.DeleteSession(sid); err != nil {
-		t.Fatalf("Cannot delete test session %v", err)
+		req := httptest.NewRequest("POST", "/auth/signup", bytes.NewReader(body))
+		rec := httptest.NewRecorder()
+		signup(rec, req)
+
+		res := rec.Result()
+		defer res.Body.Close()
+
+		if res.StatusCode != tc.expectedStatus {
+			t.Fatalf("Test %s failed: expeted %d got %d", tc.name, tc.expectedStatus, res.StatusCode)
+		}
 	}
 }
 
-func TestSignBySession(t *testing.T) {
-	// Insert test session.
-	var sid, uid string
-	if err := db.InsertSession().Scan(&sid, &uid); err != nil {
-		t.Fatalf("Cannot create test record %v", err)
+func TestSignin(t *testing.T) {
+	testcases := []struct {
+		name           string
+		dto            signinDTO
+		expectedStatus int
+	}{
+		{"invalid email", signinDTO{Email: "", Password: "test1"}, 406},
+		{"short pwd", signinDTO{Email: "test@test.com", Password: ""}, 406},
+		{"long pwd", signinDTO{Email: "test@test.com",
+			Password: "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"},
+			406,
+		},
 	}
-	// Delete test session.
-	defer func() {
-		if err := db.DeleteSession(sid); err != nil {
-			t.Fatalf("Cannot delete test record %v", err)
+
+	for _, tc := range testcases {
+		body, err := json.Marshal(tc.dto)
+		if err != nil {
+			t.Fatalf("Cannot Marshal dto %v", err)
 		}
-	}()
 
-	req := httptest.NewRequest("GET", "/auth/", nil)
-	req.AddCookie(&http.Cookie{
-		Name:     "Authorization",
-		Value:    sid,
-		Path:     "/",
-		MaxAge:   10,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
+		req := httptest.NewRequest("POST", "/auth/signin", bytes.NewReader(body))
+		rec := httptest.NewRecorder()
+		signin(rec, req)
 
-	rec := httptest.NewRecorder()
-	signBySession(rec, req)
+		res := rec.Result()
+		defer res.Body.Close()
 
-	res := rec.Result()
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("Must return statusok")
-	}
-
-	raw := make([]byte, 36)
-	_, err := res.Body.Read(raw)
-	if err != nil {
-		t.Fatalf("Cannot read uid from body %v", err)
-	}
-
-	if string(raw) != uid {
-		t.Fatalf("Expected %s got %s", uid, string(raw))
+		if res.StatusCode != tc.expectedStatus {
+			t.Fatalf("Test %s failed: expeted %d got %d", tc.name, tc.expectedStatus, res.StatusCode)
+		}
 	}
 }

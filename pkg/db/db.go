@@ -31,7 +31,7 @@ func Open() {
 
 }
 
-// ApplySchma executes queries from the schema.sql file
+// ApplySchema executes queries from the schema.sql file
 func ApplySchema() {
 	schema, err := os.ReadFile("./pkg/db/schema.sql")
 	if err != nil {
