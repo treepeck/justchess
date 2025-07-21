@@ -18,3 +18,17 @@ CREATE TABLE IF NOT EXISTS session (
     -- The session will be active for a one day.
     expires_at TIMESTAMP NOT NULL DEFAULT (now() + interval '24 hours')
 );
+
+DO $$ BEGIN
+    CREATE DOMAIN GAME_RESULT AS INT
+    CHECK (VALUE IN (0, 1, 2, 3, 4, 5, 6, 7, 8));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Game represents an active or already overed game.
+CREATE TABLE IF NOT EXISTS game (
+    id BIGSERIAL PRIMARY KEY,
+    white_id BIGINT NOT NULL UNIQUE REFERENCES player(id),
+    black_id BIGINT NOT NULL UNIQUE REFERENCES player(id),
+    result GAME_RESULT NOT NULL
+);

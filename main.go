@@ -43,9 +43,10 @@ func setupMux() *http.ServeMux {
 
 	h := ws.NewHub()
 
-	mux.HandleFunc("GET /websocket", func(rw http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /websocket", auth.IsAuthorized(func(rw http.ResponseWriter,
+		r *http.Request) {
 		ws.HandleNewConnection(h, rw, r)
-	})
+	}))
 
 	return mux
 }

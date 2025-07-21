@@ -1,8 +1,7 @@
 package ws
 
 import (
-	"crypto/rand"
-	"encoding/json"
+	"justchess/pkg/auth"
 	"log"
 	"net/http"
 	"time"
@@ -10,86 +9,84 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type color int
-
-const (
-	// If the client is playing with white pieces, his color will be white.
-	colorWhite color = iota
-	// If the client is playing with black pieces, his color will be black.
-	colorBlack
-	// In case the client is just spectator.
-	colorNone
-)
-
-const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = 1024
-)
-
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return r.Header.Get("Origin") == "http://localhost:3502"
+		return true
 	},
 }
 
-func HandleNewConnection(room *Room, rw http.ResponseWriter, r *http.Request) {
+const (
+	// Time allowed to write a message to the peer.
+	writeWait = 10 * time.Second
+	// Time allowed to read the next pong message from the peer.
+	pongWait = 60 * time.Second
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = (pongWait * 9) / 10
+	// Maximum message size allowed from peer.
+	maxMessageSize = 1024
+)
+
+// client wraps a single active connection and provides methods for reading,
+// writing WebSocket and handling WebSocket messages.
+type client struct {
+	// id must be equal to player_id in the database.
+	id int64
+	// The id of the topic (hub or room) which outcomming events the client will recieve.
+	// An empty string means that client is subscribed to the Hub's events.
+	subscribtionId string
+	connection     *websocket.Conn
+	// send channel must be buffered, otherwise if the goroutine writes to it but the client
+	// drops the connection, the goroutine will wait forever.
+	send chan event
+	// To be able to send events to the hub.
+	hub *Hub
+	// Is WebSocket connection alive.
+	isConnected bool
+}
+
+// HandleNewConnection creates a new client and runs [client.read] and [client.write]
+// methods as goroutines. Each handshake request must include a context with a valid playerId
+// to identify the client. If the handshake request includes a roomId query parameter,
+// the hub will check if the room exists and connect the client to it.
+func HandleNewConnection(h *Hub, rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context().Value(auth.PidKey)
+	if ctx == nil {
+		log.Printf("ERROR: handshake request with nil context")
+		http.Error(rw, "Missing player id", http.StatusUnauthorized)
+		return
+	}
+	pid := ctx.(int64)
+
+	// If rid is missing or not valid, the client will be subscribed to hub.
+	rid := r.URL.Query().Get("roomId")
+
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		log.Printf("Cannot upgrade connection %v with IP: %s", err, r.RemoteAddr)
 		return
 	}
 
-	client := NewClient(room, conn)
-
-	log.Printf("New connection %s", client.id)
-
-	go client.readRoutine()
-	go client.writeRoutine()
-
-	// Register client in the room.
-	room.gate <- client
-}
-
-type client struct {
-	// id is random string to differentiate clients.
-	id         string
-	connection *websocket.Conn
-	// send channel must be buffered, otherwise if the routine writes to it but the client
-	// drops connection, the routine will wait forever.
-	send chan []byte
-	// To be able to send messages to the room.
-	room *Room
-	// Is WebSocket connection active.
-	isConnected bool
-	// Whether the client have created the room it connected to.
-	isRoomCreator bool
-	color         color
-}
-
-func NewClient(r *Room, conn *websocket.Conn) *client {
-	return &client{
-		id:            rand.Text(),
-		connection:    conn,
-		send:          make(chan []byte, 256),
-		room:          r,
-		isConnected:   true,
-		isRoomCreator: false,
-		color:         colorNone,
+	c := &client{
+		id:             pid,
+		hub:            h,
+		connection:     conn,
+		send:           make(chan event, 256),
+		isConnected:    true,
+		subscribtionId: rid,
 	}
+
+	go c.read()
+	go c.write()
+
+	h.register <- c
 }
 
-func (c *client) readRoutine() {
+// read consequentially (one at a time) reads messages from the connection.
+// Handles pong messages to maintain a heartbeat.
+// It is designed to run as a goroutine while the connection is alive.
+func (c *client) read() {
 	defer func() {
 		c.cleanup()
 	}()
@@ -99,20 +96,27 @@ func (c *client) readRoutine() {
 	c.connection.SetPongHandler(c.pongHandler)
 
 	for {
-		_, rawMsg, err := c.connection.ReadMessage()
+		var e event
+		err := c.connection.ReadJSON(&e)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway,
 				websocket.CloseAbnormalClosure) {
-				log.Printf("Unexpected disconnection: %v ID: %s", err, c.id)
+				log.Printf("Client %d unexpected disconnection: %v", c.id, err)
 			}
 			return
 		}
 
-		c.handleMessage(rawMsg)
+		e.PubId = c.id
+		e.TopicId = c.subscribtionId
+
+		c.hub.bus <- e
 	}
 }
 
-func (c *client) writeRoutine() {
+// write consequentially (one at a time) writes messages to the connection.
+// Automatically sends ping messages to maintain heartbeat.
+// Designed to run as a goroutine while the connection is alive.
+func (c *client) write() {
 	pingTicker := time.NewTicker(pingPeriod)
 	defer func() {
 		pingTicker.Stop()
@@ -121,16 +125,15 @@ func (c *client) writeRoutine() {
 
 	for {
 		select {
-		case message, ok := <-c.send:
+		case e, ok := <-c.send:
 			c.connection.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				c.connection.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			if err := c.connection.WriteMessage(websocket.TextMessage, message); err != nil {
+			if err := c.connection.WriteJSON(e); err != nil {
 				return
 			}
-			log.Printf("JSON message to %s", c.id)
 
 		// Send ping messages periodically.
 		case <-pingTicker.C:
@@ -138,56 +141,24 @@ func (c *client) writeRoutine() {
 			if err := c.connection.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
-			log.Printf("Ping message to %s", c.id)
 		}
 	}
 }
 
-func (c *client) handleMessage(rawMsg []byte) {
-	var msg message
-	err := json.Unmarshal(rawMsg, &msg)
-	if err != nil {
-		log.Printf("Recieved invalid message from %s %v", c.id, err)
-		return
-	}
-
-	switch msg.Action {
-	case actionMakeMove:
-		if c.room == nil {
-			log.Printf("Recieved move message but client is not in the room %s", c.id)
-			return
-		}
-
-		var p makeMovePayload
-		err := json.Unmarshal([]byte(msg.Payload), &p)
-		if err != nil {
-			log.Printf("Cannot Unmarshal move info: %v %s", err, c.id)
-			return
-		}
-		p.senderId = c.id
-		c.room.move <- p
-
-	default:
-		log.Printf("Recieved message with invalid action %s", c.id)
-	}
-}
-
+// cleanup closes the connection and unregisters the client from the Hub.
 func (c *client) cleanup() {
 	if c.isConnected {
-		c.connection.Close()
-		log.Printf("Disconnected %s", c.id)
 		c.isConnected = false
-
-		// Unregister client from the room.
-		c.room.gate <- c
+		c.connection.Close()
+		c.hub.unregister <- c
 	}
 }
 
+// pongHandler handles the incomming pong messages to maintain a heartbeat.
+// Heartbeat helps to drop inactive while maintaining the active connections.
 func (c *client) pongHandler(appData string) error {
 	if len(appData) > 0 {
-		log.Printf("WARNING: non-empty ping message from %s", c.id)
+		log.Printf("WARNING: Client %d send non-empty pong message", c.id)
 	}
-
-	log.Printf("Pong message from %s", c.id)
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }

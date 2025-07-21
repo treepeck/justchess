@@ -1,6 +1,8 @@
 package db
 
-import "time"
+import (
+	"time"
+)
 
 type Player struct {
 	Id           int64     `json:"id"`
@@ -42,6 +44,23 @@ func SelectSessionByPlayerId(pid int64) (string, error) {
 	var sid string
 	err := row.Scan(&sid)
 	return sid, err
+}
+
+// SelectPlayerIdBySessionId returns an error if the session is missing.
+func SelectPlayerIdBySessionId(sid string) (int64, error) {
+	query := "SELECT player_id FROM session WHERE id = $1;"
+	row := pool.QueryRow(query, sid)
+
+	var pid int64
+	err := row.Scan(&pid)
+	return pid, err
+}
+
+func DeleteExpiredSessions() error {
+	query := "DELETE FROM session WHERE expires_at < now();"
+
+	_, err := pool.Exec(query)
+	return err
 }
 
 func InsertSession(sid string, pid int64) error {

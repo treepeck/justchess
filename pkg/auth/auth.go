@@ -29,8 +29,8 @@ func Mux() *http.ServeMux {
 }
 
 // signup registers a new player.
-// The registration process includes the following steps:
 //
+// The registration process includes the following steps:
 //  1. Decode the request body with the registration data.
 //  2. Validate the registration data using regular expressions.
 //  3. Hash the password to securely store it in the database.
@@ -63,8 +63,8 @@ func signup(rw http.ResponseWriter, r *http.Request) {
 }
 
 // signin authenticates a player by the provided credentials.
-// The authentication process includes the following steps:
 //
+// The authentication process includes the following steps:
 //  1. Decode the request body and extract the credentials.
 //  2. Validate the credentials using regular expressions.
 //  3. Retrieve the player data from the database using the email from request.
