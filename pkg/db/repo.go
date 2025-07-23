@@ -1,11 +1,12 @@
 package db
 
 import (
+	"crypto/rand"
 	"time"
 )
 
 type Player struct {
-	Id           int64     `json:"id"`
+	Id           string    `json:"id"`
 	Name         string    `json:"name"`
 	Email        string    `json:"-"`
 	PasswordHash string    `json:"-"`
@@ -24,9 +25,9 @@ func SelectPlayerByEmail(email string) (Player, error) {
 
 // InsertPlayer returns an error if the record can't be inserted.
 func InsertPlayer(name, email, pwdHash string) error {
-	query := "INSERT INTO player (name, email, password_hash) VALUES ($1, $2, $3);"
+	query := "INSERT INTO player (id, name, email, password_hash) VALUES ($1, $2, $3, $4);"
 
-	_, err := pool.Exec(query, name, email, pwdHash)
+	_, err := pool.Exec(query, rand.Text(), name, email, pwdHash)
 	return err
 }
 
@@ -37,7 +38,7 @@ func DeletePlayerByName(name string) error {
 	return err
 }
 
-func SelectSessionByPlayerId(pid int64) (string, error) {
+func SelectSessionByPlayerId(pid string) (string, error) {
 	query := "SELECT id FROM session WHERE player_id = $1;"
 	row := pool.QueryRow(query, pid)
 
@@ -47,11 +48,11 @@ func SelectSessionByPlayerId(pid int64) (string, error) {
 }
 
 // SelectPlayerIdBySessionId returns an error if the session is missing.
-func SelectPlayerIdBySessionId(sid string) (int64, error) {
+func SelectPlayerIdBySessionId(sid string) (string, error) {
 	query := "SELECT player_id FROM session WHERE id = $1;"
 	row := pool.QueryRow(query, sid)
 
-	var pid int64
+	var pid string
 	err := row.Scan(&pid)
 	return pid, err
 }
@@ -63,7 +64,7 @@ func DeleteExpiredSessions() error {
 	return err
 }
 
-func InsertSession(sid string, pid int64) error {
+func InsertSession(sid string, pid string) error {
 	query := "INSERT INTO session (id, player_id) VALUES ($1, $2);"
 
 	_, err := pool.Exec(query, sid, pid)

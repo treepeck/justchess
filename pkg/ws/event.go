@@ -11,7 +11,7 @@ const (
 )
 
 type event struct {
-	PubId   int64           `json:"-"` // Publisher/Sender id.
+	PubId   string          `json:"-"` // Publisher/Sender id.
 	TopicId string          `json:"-"` // Topic id.
 	Action  eventAction     `json:"a"` // Event type.
 	Payload json.RawMessage `json:"p"` // Event payload.

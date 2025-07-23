@@ -1,6 +1,11 @@
 package ws
 
-import "crypto/rand"
+import (
+	"crypto/rand"
+
+	"github.com/BelikovArtem/chego/game"
+	"github.com/BelikovArtem/chego/movegen"
+)
 
 // room wraps a single game and stores the clients which are subscribed
 // to its events.
@@ -19,14 +24,16 @@ type room struct {
 	id      string
 	whiteId string
 	blackId string
+	game    *game.Game
 	// Connected clients which are subscribed to the room events.
-	subs map[int64]*client
+	subs map[string]*client
 }
 
 func newRoom() *room {
 	return &room{
 		id:   rand.Text(),
-		subs: make(map[int64]*client),
+		game: game.NewGame(),
+		subs: make(map[string]*client),
 	}
 }
 
@@ -34,8 +41,16 @@ func (r *room) register(c *client) {
 	r.subs[c.id] = c
 }
 
-func (r *room) unregister(id int64) {
+func (r *room) unregister(id string) {
 	delete(r.subs, id)
+}
+
+func (r *room) handleMove(m movegen.Move) {
+	moveInd := r.game.GetLegalMoveIndex(m)
+
+	if moveInd != -1 {
+		r.game.PushMove(r.game.LegalMoves.Moves[moveInd])
+	}
 }
 
 func (r *room) publish(e event) {

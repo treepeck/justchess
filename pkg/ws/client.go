@@ -32,7 +32,7 @@ const (
 // writing WebSocket and handling WebSocket messages.
 type client struct {
 	// id must be equal to player_id in the database.
-	id int64
+	id string
 	// The id of the topic (hub or room) which outcomming events the client will recieve.
 	// An empty string means that client is subscribed to the Hub's events.
 	subscribtionId string
@@ -57,7 +57,7 @@ func HandleNewConnection(h *Hub, rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, "Missing player id", http.StatusUnauthorized)
 		return
 	}
-	pid := ctx.(int64)
+	pid := ctx.(string)
 
 	// If rid is missing or not valid, the client will be subscribed to hub.
 	rid := r.URL.Query().Get("roomId")
@@ -101,7 +101,7 @@ func (c *client) read() {
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway,
 				websocket.CloseAbnormalClosure) {
-				log.Printf("Client %d unexpected disconnection: %v", c.id, err)
+				log.Printf("Client %s unexpected disconnection: %v", c.id, err)
 			}
 			return
 		}
@@ -158,7 +158,7 @@ func (c *client) cleanup() {
 // Heartbeat helps to drop inactive while maintaining the active connections.
 func (c *client) pongHandler(appData string) error {
 	if len(appData) > 0 {
-		log.Printf("WARNING: Client %d send non-empty pong message", c.id)
+		log.Printf("WARNING: Client %s send non-empty pong message", c.id)
 	}
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }

@@ -11,7 +11,7 @@ import (
 // will call the corresponding event handler.
 type Hub struct {
 	// Connected clients which are subscribed to the hub events.
-	subs       map[int64]*client
+	subs       map[string]*client
 	rooms      map[string]*room
 	register   chan *client
 	unregister chan *client
@@ -25,7 +25,7 @@ func NewHub() *Hub {
 		register:   make(chan *client),
 		unregister: make(chan *client),
 		bus:        make(chan event),
-		subs:       make(map[int64]*client),
+		subs:       make(map[string]*client),
 		rooms:      make(map[string]*room),
 	}
 	go h.route()
@@ -80,6 +80,7 @@ func (h *Hub) removeClient(c *client) {
 		r := h.rooms[c.subscribtionId]
 		r.unregister(c.id)
 
+		// Remove room is there are no connected subscribers left.
 		if len(r.subs) == 0 {
 			h.removeRoom(r.id)
 		}
@@ -89,10 +90,10 @@ func (h *Hub) removeClient(c *client) {
 	h.publish(event{Action: actionCounter, Payload: encode(h.counter)})
 }
 
+// addRoom inserts a new room into rooms and broadcasts the room among all hub subscribers.
 func (h *Hub) addRoom() {
 	r := newRoom()
 	h.rooms[r.id] = r
-
 	h.publish(event{Action: actionCreate, Payload: encode(r.id)})
 }
 

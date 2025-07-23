@@ -5,7 +5,6 @@ package auth
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"justchess/pkg/db"
 	"log"
 	"net/http"
@@ -38,26 +37,29 @@ func Mux() *http.ServeMux {
 //
 // The newly created user will not be authorized.
 func signup(rw http.ResponseWriter, r *http.Request) {
-	var dto signupDTO
-	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+	if err := r.ParseForm(); err != nil {
 		http.Error(rw, "Malformed request body", http.StatusBadRequest)
 		return
 	}
 
-	if !nameEx.MatchString(dto.Name) || !emailEx.MatchString(dto.Email) ||
-		!pwdEx.MatchString(dto.Password) {
+	name := r.FormValue("name")
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	if !nameEx.MatchString(name) || !emailEx.MatchString(email) ||
+		!pwdEx.MatchString(password) {
 		http.Error(rw, "Unacceptable input", http.StatusNotAcceptable)
 		return
 	}
 
-	pwdHash, err := bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
+	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("ERROR: not able to generate hash %v", err)
 		http.Error(rw, "Cannot hash password", http.StatusInternalServerError)
 		return
 	}
 
-	if err = db.InsertPlayer(dto.Name, dto.Email, string(pwdHash)); err != nil {
+	if err = db.InsertPlayer(name, email, string(pwdHash)); err != nil {
 		http.Error(rw, "Not unique name or email", http.StatusConflict)
 	}
 }
@@ -73,26 +75,28 @@ func signup(rw http.ResponseWriter, r *http.Request) {
 //  6. Create a new session.
 //  7. Respond with an authorization cookie and the player data.
 func signin(rw http.ResponseWriter, r *http.Request) {
-	var dto signinDTO
-	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+	if err := r.ParseForm(); err != nil {
 		http.Error(rw, "Malformed request body", http.StatusBadRequest)
 		return
 	}
 
-	if !emailEx.MatchString(dto.Email) || !pwdEx.MatchString(dto.Password) {
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
 		http.Error(rw, "Unacceptable input", http.StatusNotAcceptable)
 		return
 	}
 
-	p, err := db.SelectPlayerByEmail(dto.Email)
+	p, err := db.SelectPlayerByEmail(email)
 	if err != nil {
-		http.Error(rw, "Player not found", http.StatusNotFound)
+		http.Error(rw, "Invalid name or password", http.StatusNotAcceptable)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(dto.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(password))
 	if err != nil {
-		http.Error(rw, "Invalid password", http.StatusNotAcceptable)
+		http.Error(rw, "Invalid name or password", http.StatusNotAcceptable)
 		return
 	}
 

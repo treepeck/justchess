@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"bytes"
-	"encoding/json"
 	"justchess/pkg/db"
 	"justchess/pkg/env"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -19,28 +19,34 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+type form struct {
+	name     string
+	email    string
+	password string
+}
+
 func TestSignup(t *testing.T) {
 	testcases := []struct {
 		name           string
-		dto            signupDTO
+		dto            form
 		expectedStatus int
 	}{
-		{"invalid name", signupDTO{Name: "", Email: "test@test.com", Password: "test1"}, 406},
-		{"invalid email", signupDTO{Name: "test", Email: "", Password: "test1"}, 406},
-		{"short pwd", signupDTO{Name: "test", Email: "test@test.com", Password: ""}, 406},
-		{"long pwd", signupDTO{Name: "test", Email: "test@test.com",
-			Password: "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"},
+		{"invalid name", form{name: "", email: "test@test.com", password: "test1"}, 406},
+		{"invalid email", form{name: "test", email: "", password: "test1"}, 406},
+		{"short pwd", form{name: "test", email: "test@test.com", password: ""}, 406},
+		{"long pwd", form{name: "test", email: "test@test.com",
+			password: "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"},
 			406,
 		},
 	}
 
 	for _, tc := range testcases {
-		body, err := json.Marshal(tc.dto)
-		if err != nil {
-			t.Fatalf("Cannot Marshal dto %v", err)
-		}
+		body := url.Values{}
+		body.Add("name", tc.dto.name)
+		body.Add("email", tc.dto.email)
+		body.Add("password", tc.dto.password)
 
-		req := httptest.NewRequest("POST", "/auth/signup", bytes.NewReader(body))
+		req := httptest.NewRequest("POST", "/auth/signup", strings.NewReader(body.Encode()))
 		rec := httptest.NewRecorder()
 		signup(rec, req)
 
@@ -56,24 +62,23 @@ func TestSignup(t *testing.T) {
 func TestSignin(t *testing.T) {
 	testcases := []struct {
 		name           string
-		dto            signinDTO
+		dto            form
 		expectedStatus int
 	}{
-		{"invalid email", signinDTO{Email: "", Password: "test1"}, 406},
-		{"short pwd", signinDTO{Email: "test@test.com", Password: ""}, 406},
-		{"long pwd", signinDTO{Email: "test@test.com",
-			Password: "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"},
+		{"invalid email", form{email: "", password: "test1"}, 406},
+		{"short pwd", form{email: "test@test.com", password: ""}, 406},
+		{"long pwd", form{email: "test@test.com",
+			password: "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"},
 			406,
 		},
 	}
 
 	for _, tc := range testcases {
-		body, err := json.Marshal(tc.dto)
-		if err != nil {
-			t.Fatalf("Cannot Marshal dto %v", err)
-		}
+		body := url.Values{}
+		body.Add("email", tc.dto.email)
+		body.Add("password", tc.dto.password)
 
-		req := httptest.NewRequest("POST", "/auth/signin", bytes.NewReader(body))
+		req := httptest.NewRequest("POST", "/auth/signin", strings.NewReader(body.Encode()))
 		rec := httptest.NewRecorder()
 		signin(rec, req)
 
