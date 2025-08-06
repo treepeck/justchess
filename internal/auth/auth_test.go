@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"justchess/pkg/db"
-	"justchess/pkg/env"
+	"justchess/internal/db"
+	"justchess/internal/env"
 	"net/http/httptest"
 	"net/url"
 	"os"

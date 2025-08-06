@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}{{end}}</title>
+    <!-- TODO: consider bundling all scripts into a main.js and include it here. -->
+    {{block "scripts" .}}{{end}}
+    <!-- TODO: bundle all css files into a main.css and include it here. -->
+    {{block "styles" .}}{{end}}
+</head>
+<body>
+    <header>
+        This is an <b>underimplemented</b> header!
+    </header>
+    {{block "content" .}}{{end}}
+    <footer>
+        This is an <b>underimplemented</b> footer!
+    </footer>
+</body>
+</html>

@@ -1,7 +1,8 @@
 -- Player represents a registered player.
 CREATE TABLE IF NOT EXISTS player (
     id CHAR(26) PRIMARY KEY,
-    -- Name must be a string of english letters or numbers of the length between 2 and 60 symbols.
+    -- Name must be a string of english letters or numbers of the length
+    -- between 2 and 60 symbols.
     name VARCHAR(60) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(60) NOT NULL,

@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"justchess/pkg/db"
+	"justchess/internal/db"
 	"log"
 	"net/http"
 )

@@ -3,6 +3,8 @@ package ws
 import (
 	"encoding/json"
 	"log"
+
+	"github.com/BelikovArtem/chego"
 )
 
 // Hub stores all connected clients and created rooms.
@@ -108,6 +110,19 @@ func (h *Hub) handle(e event) {
 	case actionCreate:
 		h.addRoom()
 
+	case actionMakeMove:
+		r := h.rooms[e.TopicId]
+		if r == nil {
+			log.Printf("client %s sends a move but is not in any room", e.PubId)
+			return
+		}
+
+		var m chego.Move
+		if err := json.Unmarshal(e.Payload, &m); err != nil {
+			log.Printf("malformed move payload from %s %v", e.PubId, err)
+			return
+		}
+		r.handleMove(m, e.PubId)
 	}
 }
 
@@ -115,12 +130,4 @@ func (h *Hub) publish(e event) {
 	for _, c := range h.subs {
 		c.send <- e
 	}
-}
-
-func encode(payload any) []byte {
-	p, err := json.Marshal(payload)
-	if err != nil {
-		log.Printf("ERROR: cannot encode payload %v", err)
-	}
-	return p
 }

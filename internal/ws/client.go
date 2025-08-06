@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"justchess/pkg/auth"
+	"justchess/internal/auth"
 	"log"
 	"net/http"
 	"time"

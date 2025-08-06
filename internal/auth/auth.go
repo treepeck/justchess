@@ -5,7 +5,7 @@ package auth
 
 import (
 	"crypto/rand"
-	"justchess/pkg/db"
+	"justchess/internal/db"
 	"log"
 	"net/http"
 	"regexp"

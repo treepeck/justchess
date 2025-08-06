@@ -33,7 +33,7 @@ func Open() {
 
 // ApplySchema executes queries from the schema.sql file
 func ApplySchema() {
-	schema, err := os.ReadFile("./pkg/db/schema.sql")
+	schema, err := os.ReadFile("./static/migrations/schema.sql")
 	if err != nil {
 		pool.Close()
 		log.Fatalf("%v", err)

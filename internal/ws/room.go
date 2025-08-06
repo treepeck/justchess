@@ -3,8 +3,7 @@ package ws
 import (
 	"crypto/rand"
 
-	"github.com/BelikovArtem/chego/game"
-	"github.com/BelikovArtem/chego/movegen"
+	"github.com/BelikovArtem/chego"
 )
 
 // room wraps a single game and stores the clients which are subscribed
@@ -24,7 +23,7 @@ type room struct {
 	id      string
 	whiteId string
 	blackId string
-	game    *game.Game
+	game    *chego.Game
 	// Connected clients which are subscribed to the room events.
 	subs map[string]*client
 }
@@ -32,25 +31,40 @@ type room struct {
 func newRoom() *room {
 	return &room{
 		id:   rand.Text(),
-		game: game.NewGame(),
+		game: chego.NewGame(),
 		subs: make(map[string]*client),
 	}
 }
 
 func (r *room) register(c *client) {
 	r.subs[c.id] = c
+
+	r.publish(event{Action: actionRoomInfo, Payload: encode(roomInfo{
+		Counter: len(r.subs),
+		WhiteId: r.whiteId,
+		BlackId: r.blackId,
+	})})
 }
 
 func (r *room) unregister(id string) {
 	delete(r.subs, id)
+
+	r.publish(event{Action: actionRoomInfo, Payload: encode(roomInfo{
+		Counter: len(r.subs),
+		WhiteId: r.whiteId,
+		BlackId: r.blackId,
+	})})
 }
 
-func (r *room) handleMove(m movegen.Move) {
-	moveInd := r.game.GetLegalMoveIndex(m)
-
-	if moveInd != -1 {
-		r.game.PushMove(r.game.LegalMoves.Moves[moveInd])
+func (r *room) handleMove(m chego.Move, pubId string) {
+	if !r.game.IsMoveLegal(m) {
+		return
 	}
+
+	r.game.PushMove(m)
+
+	currentFEN := r.game.MoveStack[len(r.game.MoveStack)-1].FenString
+	r.publish(event{Action: actionLastMove, Payload: encode(currentFEN)})
 }
 
 func (r *room) publish(e event) {
