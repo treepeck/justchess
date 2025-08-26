@@ -1,6 +1,7 @@
 .vscode/
 .git/
 README.md
+DEPLOY.md
 
 .env
 SECRETS

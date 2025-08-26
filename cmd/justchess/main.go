@@ -2,57 +2,82 @@ package main
 
 import (
 	"justchess/internal/auth"
+	"justchess/internal/core"
 	"justchess/internal/db"
-	"justchess/internal/env"
-	"justchess/internal/tmpl"
-	"justchess/internal/ws"
+	"justchess/internal/player"
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/rabbitmq/amqp091-go"
 
 	"github.com/BelikovArtem/chego"
+	"github.com/BelikovArtem/gatekeeper/pkg/env"
+	"github.com/BelikovArtem/gatekeeper/pkg/mq"
 )
 
 func main() {
-	mux := setupMux()
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
 
-	// Initialize attack tables.
-	chego.InitAttackTables()
+	log.Print("Loading environment variables.")
+	if err := env.Load(".env"); err != nil {
+		log.Panic(err)
+	}
+	log.Print("Successfully loaded environment variables.")
 
-	env.Load(".env")
+	log.Print("Connecting to db.")
+	pool, err := db.OpenDB(os.Getenv("MYSQL_URL"))
+	if err != nil {
+		log.Panic(err)
+	}
+	defer pool.Close()
+	log.Print("Successfully connected to db.")
 
-	db.Open()
-	defer db.Close()
-	db.ApplySchema()
+	log.Print("Connecting to RabbitMQ.")
+	conn, err := amqp091.Dial(os.Getenv("RABBITMQ_URL"))
+	if err != nil {
+		log.Panic(err)
+	}
+	defer conn.Close()
 
-	http.ListenAndServe("localhost:3502", mux)
-}
+	// Open an AMQP channel.
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Panic(err)
+	}
+	defer ch.Close()
 
-func setupMux() *http.ServeMux {
+	// Put the channel into a confirm mode.
+	if err = ch.Confirm(false); err != nil {
+		log.Panic(err)
+	}
+	log.Printf("Successfully connected to RabbitMQ.")
+
+	log.Print("Initializing services.")
 	mux := http.NewServeMux()
 
-	mux.Handle("/auth/", auth.Mux())
+	if err = player.InitPlayerService(pool, mux); err != nil {
+		log.Panic(err)
+	}
 
-	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		tmpl.Exec(rw, "home.html")
-	})
+	if err = auth.InitAuthService(pool, mux); err != nil {
+		log.Panic(err)
+	}
 
-	mux.HandleFunc("/signup", func(rw http.ResponseWriter, r *http.Request) {
-		tmpl.Exec(rw, "signup.html")
-	})
+	log.Print("Successfully initialized services.")
 
-	// TODO: secure file server against creation of symbolic links.
-	mux.Handle("/static/", http.StripPrefix(
-		"/static/",
-		http.FileServer(http.Dir("./static")),
-	))
+	// Initialize attack tables to be able to generate chess moves.
+	chego.InitAttackTables()
+	// Initialize Zobrist keys to be able to detect threefold repetitions.
+	chego.InitZobristKeys()
 
-	h := ws.NewHub()
+	log.Print("Starting server.")
+	c := core.NewCore(ch)
 
-	mux.HandleFunc("GET /websocket", auth.IsAuthorized(func(rw http.ResponseWriter,
-		r *http.Request) {
-		ws.HandleNewConnection(h, rw, r)
-	}))
+	// Run the goroutines which will run untill the program exits.
+	go c.Handle()
+	go mq.Consume(ch, "gate", c.Bus)
 
-	return mux
+	// Set up router.
+	http.ListenAndServe("localhost:3502", mux)
 }
