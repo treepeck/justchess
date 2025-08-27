@@ -1,9 +1,13 @@
-// TODO: send email validation in signup.
-// TODO: allow multiple sessions from different devices.
-// TODO: automatically extend sessions without forcing players to sign in daily.
+/*
+Package auth implements authorization and authentication.
+TODO: send email validation in signup.
+TODO: allow multiple sessions from different devices.
+TODO: automatically extend sessions without forcing players to sign in daily.
+*/
 package auth
 
 import (
+	"context"
 	"database/sql"
 	"justchess/internal/player"
 	"justchess/internal/randgen"
@@ -57,9 +61,9 @@ The registration process includes the following steps:
 
 The newly created user will not be authorized.
 */
-func (s *AuthService) handleSignup(rw http.ResponseWriter, r *http.Request) {
+func (s AuthService) handleSignup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, "Malformed request body", http.StatusBadRequest)
+		http.Error(rw, "Malformed request body.", http.StatusBadRequest)
 		return
 	}
 
@@ -69,25 +73,25 @@ func (s *AuthService) handleSignup(rw http.ResponseWriter, r *http.Request) {
 
 	if !nameEx.MatchString(name) || !emailEx.MatchString(email) ||
 		!pwdEx.MatchString(password) {
-		http.Error(rw, "Unacceptable input", http.StatusNotAcceptable)
+		http.Error(rw, "Malformed request body.", http.StatusNotAcceptable)
 		return
 	}
 
 	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(rw, "Cannot generate hash from password", http.StatusInternalServerError)
+		http.Error(rw, "Cannot generate hash from password.", http.StatusInternalServerError)
 		return
 	}
 
 	dto := player.InsertPlayerDTO{
-		Id:           randgen.GenBase62(),
+		Id:           randgen.GenId(randgen.PlayerIdLen),
 		Name:         name,
 		Email:        email,
 		PasswordHash: string(pwdHash),
 	}
 
 	if err = player.Insert(s.pool, dto); err != nil {
-		http.Error(rw, "Not unique name or email", http.StatusConflict)
+		http.Error(rw, "Not unique name or email.", http.StatusConflict)
 	}
 }
 
@@ -103,42 +107,40 @@ The authentication process includes the following steps:
  6. Create a new session.
  7. Respond with an authorization cookie and the player data.
 */
-func (s *AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
-	/*
-		if err := r.ParseForm(); err != nil {
-			http.Error(rw, "Malformed request body", http.StatusBadRequest)
-			return
-		}
+func (s AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(rw, "Malformed request body", http.StatusBadRequest)
+		return
+	}
 
-		email := r.FormValue("email")
-		password := r.FormValue("password")
+	email := r.FormValue("email")
+	password := r.FormValue("password")
 
-		if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
-			http.Error(rw, "Unacceptable input", http.StatusNotAcceptable)
-			return
-		}
+	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
+		http.Error(rw, "Malformed request body.", http.StatusNotAcceptable)
+		return
+	}
 
-		p, err := db.SelectPlayerByEmail(email)
-		if err != nil {
-			http.Error(rw, "Invalid name or password", http.StatusNotAcceptable)
-			return
-		}
+	p, err := player.SelectByEmail(s.pool, email)
+	if err != nil {
+		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
+		return
+	}
 
-		err = bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(password))
-		if err != nil {
-			http.Error(rw, "Invalid name or password", http.StatusNotAcceptable)
-			return
-		}
+	err = bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(password))
+	if err != nil {
+		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
+		return
+	}
 
-		sid := rand.Text()
-		err = db.InsertSession(sid, p.Id)
-		if err != nil {
-			http.Error(rw, "Already signed", http.StatusConflict)
-			return
-		}
+	sessionId := randgen.GenId(randgen.SessionIdLen)
+	err = Insert(s.pool, sessionId, p.Id)
+	if err != nil {
+		http.Error(rw, "Cannot create new session.  Please try again after 24 hours.", http.StatusConflict)
+		return
+	}
 
-		setAutorizationCookie(rw, sid)
-	*/
+	setAutorizationCookie(rw, sessionId)
 }
 
 // CtxKey is used as a context type which provides player id.
@@ -152,33 +154,36 @@ the player's credentials to the next handler function.  Sensitive endpoints must
 check the subject's role.  It cannot be used to authenticate WebSocket handshake
 request, since those do not support user-defined request headers.
 */
-func AuthorizeRequest(next http.HandlerFunc) http.HandlerFunc {
-	/*
-		return func(rw http.ResponseWriter, r *http.Request) {
-			if len(r.Cookies()) != 1 || r.Cookies()[0].Name != "Authorization" {
-				http.Error(rw, "Unauthorized request.", http.StatusUnauthorized)
-				return
-			}
-
-			sid := r.Cookies()[0].Value
-
-			err := db.DeleteExpiredSessions()
-			if err != nil {
-				http.Error(rw, "Internal server error.", http.StatusInternalServerError)
-				return
-			}
-
-			pid, err := db.SelectPlayerIdBySessionId(sid)
-			if err != nil {
-				http.Error(rw, "Session expired.", http.StatusUnauthorized)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), PidKey, pid)
-			next.ServeHTTP(rw, r.WithContext(ctx))
+func AuthorizeRequest(pool *sql.DB, next http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		if len(r.Cookies()) != 1 || r.Cookies()[0].Name != "Authorization" {
+			http.Error(rw, "Unauthorized request.", http.StatusUnauthorized)
+			return
 		}
-	*/
-	return func(w http.ResponseWriter, r *http.Request) {}
+
+		sessionId := r.Cookies()[0].Value
+
+		err := DeleteExpired(pool)
+		if err != nil {
+			http.Error(rw, "Internal server error.", http.StatusInternalServerError)
+			return
+		}
+
+		session, err := SelectById(pool, sessionId)
+		if err != nil {
+			http.Error(rw, "Session expired.", http.StatusUnauthorized)
+			return
+		}
+
+		pid, err := player.SelectById(pool, session.PlayerId)
+		if err != nil {
+			http.Error(rw, "Player was deleted.", http.StatusNotFound)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), PidKey, pid)
+		next.ServeHTTP(rw, r.WithContext(ctx))
+	}
 }
 
 func setAutorizationCookie(rw http.ResponseWriter, sid string) {
@@ -186,7 +191,7 @@ func setAutorizationCookie(rw http.ResponseWriter, sid string) {
 		Name:     "Authorization",
 		Value:    sid,
 		Path:     "/",
-		MaxAge:   86400, // Session will last 1 day.
+		MaxAge:   86400, // Session will last for 24 hours.
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,

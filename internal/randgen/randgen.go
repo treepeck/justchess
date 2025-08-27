@@ -1,22 +1,28 @@
 package randgen
 
 import (
-	"math/rand/v2"
-	"strings"
+	"crypto/rand"
+	"encoding/base64"
 )
 
-const idLength = 8
-const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+/*
+Final encoded player id will have length 12, session id - 32.
+See https://en.wikipedia.org/wiki/Base64
+*/
+const (
+	PlayerIdLen  int = 9
+	SessionIdLen int = 24
+)
 
 /*
-GenBase62 generates a pseudo-random unique string of [idLength] symbols.
+GenId generates a secure random array of n bytes and applies a base64 encoding
+for storing in cookies and url.
 */
-func GenBase62() string {
-	var b strings.Builder
+func GenId(n int) string {
+	buff := make([]byte, n)
 
-	for range idLength {
-		b.WriteByte(alphabet[rand.IntN(62)])
-	}
+	// Read never returns an error, so omit the check.
+	rand.Read(buff)
 
-	return b.String()
+	return base64.RawURLEncoding.EncodeToString(buff)
 }

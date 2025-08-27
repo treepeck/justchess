@@ -1,6 +1,7 @@
 package core
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 )
 
 type Core struct {
+	pool        *sql.DB
 	channel     *amqp091.Channel
 	Bus         chan event.InternalEvent
 	gameRooms   map[string]*game.GameRoom
@@ -54,7 +56,7 @@ func (c *Core) Handle() {
 
 func (c *Core) Mux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /mm", auth.AuthorizeRequest(c.handleMatchmaking))
+	mux.HandleFunc("POST /mm", auth.AuthorizeRequest(c.pool, c.handleMatchmaking))
 	return mux
 }
 

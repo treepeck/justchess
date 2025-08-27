@@ -23,7 +23,7 @@ type InsertPlayerDTO struct {
 
 const (
 	createQuery = `CREATE TABLE IF NOT EXISTS player (
-		id CHAR(8) PRIMARY KEY,
+		id CHAR(12) PRIMARY KEY,
 		name VARCHAR(60) NOT NULL UNIQUE,
 		email VARCHAR(100) NOT NULL UNIQUE,
 		password_hash VARCHAR(60) NOT NULL,
@@ -35,6 +35,8 @@ const (
 	(?, ?, ?, ?)`
 
 	selectByIdQuery = `SELECT * FROM player WHERE id = ?`
+
+	selectByEmailQuery = `SELECT * FROM player WHERE email = ?`
 )
 
 /*
@@ -53,6 +55,28 @@ func Insert(pool *sql.DB, dto InsertPlayerDTO) error {
 	return err
 }
 
-func SelectById(pool *sql.DB, id string) {
+/*
+SelectById selects a single record with the same id as provided from the player
+table.
+*/
+func SelectById(pool *sql.DB, id string) (Player, error) {
+	row := pool.QueryRow(selectByIdQuery, id)
 
+	var p Player
+	err := row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
+		&p.UpdatedAt)
+	return p, err
+}
+
+/*
+SelectByEmail selects a single record with the same email as provided from the
+player table.
+*/
+func SelectByEmail(pool *sql.DB, email string) (Player, error) {
+	row := pool.QueryRow(selectByEmailQuery, email)
+
+	var p Player
+	err := row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
+		&p.UpdatedAt)
+	return p, err
 }
