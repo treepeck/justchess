@@ -6,11 +6,11 @@ import (
 )
 
 /*
-Final encoded player id will have length 12, session id - 32.
+Final encoded player/game id will have length 12, session id - 32.
 See https://en.wikipedia.org/wiki/Base64
 */
 const (
-	PlayerIdLen  int = 9
+	IdLen        int = 9 // Player or game id.
 	SessionIdLen int = 24
 )
 

@@ -9,6 +9,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"io"
 	"justchess/internal/player"
 	"justchess/internal/randgen"
 	"net/http"
@@ -46,6 +47,7 @@ func InitAuthService(pool *sql.DB, mux *http.ServeMux) error {
 
 	mux.HandleFunc("POST /auth/signup", s.handleSignup)
 	mux.HandleFunc("POST /auth/signin", s.handleSignin)
+	mux.HandleFunc("POST /auth/verify", s.handleVerify)
 
 	return nil
 }
@@ -84,7 +86,7 @@ func (s AuthService) handleSignup(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	dto := player.InsertPlayerDTO{
-		Id:           randgen.GenId(randgen.PlayerIdLen),
+		Id:           randgen.GenId(randgen.IdLen),
 		Name:         name,
 		Email:        email,
 		PasswordHash: string(pwdHash),
@@ -127,6 +129,11 @@ func (s AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = DeleteExpired(s.pool); err != nil {
+		http.Error(rw, "Database cannot be accepted. Please, try again later.", http.StatusInternalServerError)
+		return
+	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(password))
 	if err != nil {
 		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
@@ -136,11 +143,46 @@ func (s AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
 	sessionId := randgen.GenId(randgen.SessionIdLen)
 	err = Insert(s.pool, sessionId, p.Id)
 	if err != nil {
-		http.Error(rw, "Cannot create new session.  Please try again after 24 hours.", http.StatusConflict)
+		http.Error(rw, "Cannot create a new session. Please try again after 24 hours.", http.StatusConflict)
 		return
 	}
 
 	setAutorizationCookie(rw, sessionId)
+}
+
+/*
+handleVerify verifies that the provided in a request body session id is valid.
+If it is, the player's data will be returned.  Request body must be a plain text
+with a session id value.
+*/
+func (s AuthService) handleVerify(rw http.ResponseWriter, r *http.Request) {
+	sessionId, err := io.ReadAll(r.Body)
+	if err != nil || len(sessionId) != 32 {
+		http.Error(rw, "Unauthorized request.", http.StatusBadRequest)
+		return
+	}
+
+	if err := DeleteExpired(s.pool); err != nil {
+		http.Error(rw, "Internal server error.", http.StatusInternalServerError)
+		return
+	}
+
+	session, err := SelectById(s.pool, string(sessionId))
+	if err != nil {
+		http.Error(rw, "Session expired.", http.StatusUnauthorized)
+		return
+	}
+
+	p, err := player.SelectById(s.pool, session.PlayerId)
+	if err != nil {
+		http.Error(rw, "Player was deleted.", http.StatusNotFound)
+		return
+	}
+
+	rw.Header().Add("Content-Type", "plain/text")
+	if _, err := rw.Write([]byte(p.Id)); err != nil {
+		http.Error(rw, "Please try again later.", http.StatusInternalServerError)
+	}
 }
 
 // CtxKey is used as a context type which provides player id.
@@ -150,9 +192,7 @@ const PidKey CtxKey = "pid"
 
 /*
 AuthorizeRequest authorizes the incoming request and passes a context containing
-the player's credentials to the next handler function.  Sensitive endpoints must
-check the subject's role.  It cannot be used to authenticate WebSocket handshake
-request, since those do not support user-defined request headers.
+the player's credentials to the next handler function.
 */
 func AuthorizeRequest(pool *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
@@ -163,8 +203,7 @@ func AuthorizeRequest(pool *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 
 		sessionId := r.Cookies()[0].Value
 
-		err := DeleteExpired(pool)
-		if err != nil {
+		if err := DeleteExpired(pool); err != nil {
 			http.Error(rw, "Internal server error.", http.StatusInternalServerError)
 			return
 		}
@@ -175,21 +214,21 @@ func AuthorizeRequest(pool *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		pid, err := player.SelectById(pool, session.PlayerId)
+		p, err := player.SelectById(pool, session.PlayerId)
 		if err != nil {
 			http.Error(rw, "Player was deleted.", http.StatusNotFound)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), PidKey, pid)
+		ctx := context.WithValue(r.Context(), PidKey, p.Id)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
 
-func setAutorizationCookie(rw http.ResponseWriter, sid string) {
+func setAutorizationCookie(rw http.ResponseWriter, sessionId string) {
 	c := http.Cookie{
-		Name:     "Authorization",
-		Value:    sid,
+		Name:     "Auth",
+		Value:    sessionId,
 		Path:     "/",
 		MaxAge:   86400, // Session will last for 24 hours.
 		HttpOnly: true,

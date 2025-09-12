@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/rabbitmq/amqp091-go"
+	"github.com/treepeck/chego"
+	"github.com/treepeck/gatekeeper/pkg/env"
+	"github.com/treepeck/gatekeeper/pkg/mq"
 
-	"github.com/BelikovArtem/chego"
-	"github.com/BelikovArtem/gatekeeper/pkg/env"
-	"github.com/BelikovArtem/gatekeeper/pkg/mq"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
@@ -53,9 +53,9 @@ func main() {
 	}
 	log.Printf("Successfully connected to RabbitMQ.")
 
-	log.Print("Initializing services.")
 	mux := http.NewServeMux()
 
+	log.Print("Initializing services.")
 	if err = player.InitPlayerService(pool, mux); err != nil {
 		log.Panic(err)
 	}
@@ -63,7 +63,6 @@ func main() {
 	if err = auth.InitAuthService(pool, mux); err != nil {
 		log.Panic(err)
 	}
-
 	log.Print("Successfully initialized services.")
 
 	// Initialize attack tables to be able to generate chess moves.
@@ -72,11 +71,11 @@ func main() {
 	chego.InitZobristKeys()
 
 	log.Print("Starting server.")
-	c := core.NewCore(ch)
+	c := core.NewCore(ch, pool)
 
 	// Run the goroutines which will run untill the program exits.
-	go c.Handle()
-	go mq.Consume(ch, "gate", c.Bus)
+	go c.Route()
+	go mq.Consume(ch, "gate", c.EventBus)
 
 	// Set up router.
 	http.ListenAndServe("localhost:3502", mux)

@@ -4,97 +4,170 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"net/http"
+	"strconv"
 
-	"justchess/internal/auth"
-	"justchess/internal/game"
-	"justchess/internal/mm"
-
-	"github.com/BelikovArtem/chego"
-	"github.com/BelikovArtem/gatekeeper/pkg/event"
-	"github.com/BelikovArtem/gatekeeper/pkg/mq"
 	"github.com/rabbitmq/amqp091-go"
+
+	"justchess/internal/randgen"
+
+	"github.com/treepeck/chego"
+	"github.com/treepeck/gatekeeper/pkg/mq"
+	"github.com/treepeck/gatekeeper/pkg/types"
 )
 
 type Core struct {
+	rooms       map[string]*room
+	matchmaking map[waitRoom]struct{}
+	EventBus    chan types.MetaEvent
 	pool        *sql.DB
 	channel     *amqp091.Channel
-	Bus         chan event.InternalEvent
-	gameRooms   map[string]*game.GameRoom
-	matchmaking *mm.Matchmaking
 }
 
 /*
 NewCore opens a core channel, declares the "hub" exchange and creates a new Core
 instance.
 */
-func NewCore(ch *amqp091.Channel) *Core {
-	c := &Core{
+func NewCore(ch *amqp091.Channel, pool *sql.DB) *Core {
+	return &Core{
+		rooms:       make(map[string]*room),
+		matchmaking: make(map[waitRoom]struct{}),
+		EventBus:    make(chan types.MetaEvent),
+		pool:        pool,
 		channel:     ch,
-		Bus:         make(chan event.InternalEvent),
-		gameRooms:   make(map[string]*game.GameRoom),
-		matchmaking: mm.NewMatchmaking(),
 	}
-	return c
 }
 
 /*
-Handle consequentially (one at a time) accepts events from the Bus and forwards
+Route consequentially (one at a time) accepts events from the Bus and routes
 them to the corresponding handler function.
 */
-func (c *Core) Handle() {
+func (c *Core) Route() {
 	for {
-		e := <-c.Bus
-		switch e.Action {
-		// case event.CREATE_ROOM:
+		e := <-c.EventBus
 
-		default:
-			log.Print("unacceptable event: %v", e)
+		switch e.Action {
+		// Client events.
+
+		case types.ActionEnterMatchmaking:
+			c.handleEnterMatchmaking(e)
+
+		// Forward the incomming move to the existing game room which will
+		// handle it.
+		case types.ActionMakeMove:
+			r, exists := c.rooms[e.RoomId]
+			if !exists {
+				return
+			}
+			p, err := strconv.Atoi(string(e.Payload))
+			if err != nil {
+				return
+			}
+
+			r.move <- moveDTO{
+				playerId: e.ClientId,
+				move:     chego.Move(p),
+			}
+
+		case types.ActionJoinRoom:
+			if r, exists := c.rooms[e.RoomId]; exists {
+				r.handleJoin(e.ClientId)
+			}
+
+		case types.ActionLeaveRoom:
+			if r, exists := c.rooms[e.RoomId]; exists {
+				r.handleLeave(e.ClientId)
+			}
+
+		// Room events.
+		case types.ActionCompletedMove:
+			if _, exists := c.rooms[e.RoomId]; exists {
+				if raw, err := json.Marshal(e); err == nil {
+					mq.Publish(c.channel, "core", raw)
+				}
+			}
+
+		case types.ActionRemoveRoom:
+			if _, exists := c.rooms[e.RoomId]; exists {
+				if raw, err := json.Marshal(e); err == nil {
+					// Remove the room.
+					delete(c.rooms, e.RoomId)
+
+					// Notify the gatekeeper about removed room.
+					mq.Publish(c.channel, "core", raw)
+				}
+			}
 		}
 	}
 }
 
-func (c *Core) Mux() *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /mm", auth.AuthorizeRequest(c.pool, c.handleMatchmaking))
-	return mux
-}
-
-func (c *Core) handleMatchmaking(rw http.ResponseWriter, r *http.Request) {
-	var p mm.WaitRoom
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		http.Error(rw, "Malformed request body.", http.StatusBadRequest)
+/*
+It's a Gatekeeper's responsibility to ensure that the client isn't already in the
+room [mark clients which have already entered matchmaking].
+*/
+func (c *Core) handleEnterMatchmaking(e types.MetaEvent) {
+	// Deny the request if the payload is malformed.
+	var dto types.EnterMatchmaking
+	if json.Unmarshal(e.Payload, &dto) != nil {
 		return
 	}
 
-	c.Bus <- event.InternalEvent{}
-}
+	// Search for the a match.
+	for waitRoom := range c.matchmaking {
+		if waitRoom.timeControl != dto.TimeBonus ||
+			waitRoom.timeBonus != dto.TimeBonus {
+			continue
+		}
 
-/*
-handleEvent handles the consumed client event from the gate queue.
-*/
-func (c *Core) handleEvent(e event.InternalEvent) error {
-	return nil
-}
+		// Delete the wait room from matchmaking after the match was found.
+		delete(c.matchmaking, waitRoom)
 
-func (c *Core) addGameRoom(creatorId string, p createRoomPayload) {
-	gr := game.NewGameRoom(p.TimeControl, p.TimeBonus)
+		// Create new game room.
+		id := randgen.GenId(randgen.IdLen)
+		r := newRoom(
+			id,
+			waitRoom.creatorId, // Player 1.
+			e.ClientId,         // Player 2.
+			c.EventBus,
+			waitRoom.timeControl,
+			waitRoom.timeBonus,
+		)
 
-	c.gameRooms[gr.Id] = gr
+		go r.run(id)
 
-	raw := event.EncodeOrPanic(event.InternalEvent{
-		Action: event.ADD_ROOM,
-		Payload: event.EncodeOrPanic(addRoomPayload{
-			Id:          gr.Id,
-			CreatorId:   creatorId,
-			TimeControl: p.TimeControl,
-			TimeBonus:   p.TimeBonus,
-		}),
-		RoomId: "hub",
-	})
-	mq.Publish(c.channel, "core", raw)
-}
+		// Add room to the core.
+		c.rooms[id] = r
 
-func (c *Core) handleMakeMove(m chego.Move) {
+		// Notify the clients about start of the game.
+		p, err := json.Marshal(types.AddRoom{
+			WhiteId: r.whiteId,
+			BlackId: r.blackId,
+		})
+		if err != nil {
+			log.Printf("cannot encode add room payload: %s", err)
+			return
+		}
 
+		raw, err := json.Marshal(types.MetaEvent{
+			Action:  types.ActionAddRoom,
+			Payload: p,
+			RoomId:  id,
+		})
+		if err != nil {
+			log.Printf("cannot encode add room event: %s", err)
+			return
+		}
+		mq.Publish(c.channel, "core", raw)
+		return
+	}
+
+	// If there isn't room with the same parameters, create a new one.
+	waitRoom := waitRoom{
+		creatorId:   e.ClientId,
+		timeControl: dto.TimeControl,
+		timeBonus:   dto.TimeBonus,
+	}
+
+	// Do not notify clients here, just display that the game is searching on a
+	// frontend.
+	c.matchmaking[waitRoom] = struct{}{}
 }

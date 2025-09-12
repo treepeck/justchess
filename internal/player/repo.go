@@ -5,13 +5,17 @@ import (
 	"time"
 )
 
+/*
+Player represents a registered player.  Senstive data, such as password hash and
+email will not be encoded into a JSON.
+*/
 type Player struct {
-	Id           string
-	Name         string
-	Email        string
-	PasswordHash string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	Id           string    `json:"id"`
+	Name         string    `json:"name"`
+	Email        string    `json:"-"`
+	PasswordHash string    `json:"-"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 type InsertPlayerDTO struct {
