@@ -5,6 +5,7 @@ import (
 	"justchess/internal/core"
 	"justchess/internal/db"
 	"justchess/internal/player"
+	"justchess/internal/tmpl"
 	"log"
 	"net/http"
 	"os"
@@ -65,6 +66,14 @@ func main() {
 	}
 	log.Print("Successfully initialized services.")
 
+	log.Print("Creating routes to serve frontend files.")
+	fs := http.Dir("./static")
+	mux.Handle("/static/", http.StripPrefix("/static/",
+		http.FileServer(fs)),
+	)
+
+	mux.HandleFunc("/", tmpl.Exec)
+
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()
 	// Initialize Zobrist keys to be able to detect threefold repetitions.
@@ -74,7 +83,7 @@ func main() {
 	c := core.NewCore(ch, pool)
 
 	// Run the goroutines which will run untill the program exits.
-	go c.Route()
+	go c.Run()
 	go mq.Consume(ch, "gate", c.EventBus)
 
 	// Set up router.

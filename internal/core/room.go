@@ -10,6 +10,12 @@ import (
 	"github.com/treepeck/gatekeeper/pkg/types"
 )
 
+const (
+	// TODO: make it 20 seconds.
+	// Empty room will live 20 seconds before destruction.
+	deadline int = 60
+)
+
 /*
 room stores and manages a single active game state and additional info such as
 player ids and game parameters.
@@ -39,7 +45,7 @@ func newRoom(
 	r := &room{
 		id:          id,
 		ticker:      time.NewTicker(time.Second),
-		destroyTime: 20,
+		destroyTime: deadline,
 		move:        make(chan moveDTO),
 		forward:     forward,
 		timeControl: timeControl,
@@ -74,6 +80,13 @@ not handles the move.
 */
 func (r *room) run(roomId string) {
 	defer func() {
+		// Notify the core server that the room was destroyed.
+		r.forward <- types.MetaEvent{
+			Action:  types.ActionRemoveRoom,
+			Payload: nil,
+			RoomId:  roomId,
+		}
+
 		r.ticker.Stop()
 		r.game.Clock.Stop()
 	}()
@@ -82,33 +95,27 @@ func (r *room) run(roomId string) {
 		select {
 		case dto := <-r.move:
 			r.handleMove(roomId, dto)
+			if r.game.IsCheckmate() {
+				log.Print("checkmate")
+				return
+			}
 
 		case <-r.ticker.C:
 			r.destroyTime--
 			if r.destroyTime <= 0 {
-				log.Print("room destroyed")
-				r.forward <- types.MetaEvent{
-					Action:  types.ActionRemoveRoom,
-					Payload: nil,
-					RoomId:  roomId,
-				}
-				// TODO: notify the core that the room is destroyed.
 				return
 			}
 
 		case <-r.game.Clock.C:
 			if r.game.Position.ActiveColor == chego.ColorWhite {
 				r.game.WhiteTime--
-
-				if r.game.WhiteTime <= 0 {
-					// TODO: end game.
-				}
 			} else {
 				r.game.BlackTime--
+			}
 
-				if r.game.BlackTime <= 0 {
-					// TODO: end game.
-				}
+			if r.game.WhiteTime == 0 || r.game.BlackTime == 0 {
+				r.game.Result = chego.ResultTimeout
+				return
 			}
 		}
 	}
@@ -165,9 +172,9 @@ func (r *room) handleLeave(playerId string) {
 
 func (r *room) handleMove(roomId string, dto moveDTO) {
 	// Deny the move if one of the following is true:
-	//  * the game has been already over.
-	//  * the player who send the move doesn't have rights to perform it.
-	//  * the move isn't legal.
+	//  - the game has been already over.
+	//  - the player who send the move doesn't have rights to perform it.
+	//  - the move isn't legal.
 	if (r.game.Result != chego.ResultUnscored) ||
 		(len(r.game.MoveStack)%2 == 0 && dto.playerId != r.whiteId) ||
 		(len(r.game.MoveStack)%2 != 0 && dto.playerId != r.blackId) ||

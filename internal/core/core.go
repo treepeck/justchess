@@ -15,6 +15,10 @@ import (
 	"github.com/treepeck/gatekeeper/pkg/types"
 )
 
+/*
+Core is responsible for handling incoming events from both active rooms and
+the Gatekeeper.
+*/
 type Core struct {
 	rooms       map[string]*room
 	matchmaking map[waitRoom]struct{}
@@ -23,10 +27,6 @@ type Core struct {
 	channel     *amqp091.Channel
 }
 
-/*
-NewCore opens a core channel, declares the "hub" exchange and creates a new Core
-instance.
-*/
 func NewCore(ch *amqp091.Channel, pool *sql.DB) *Core {
 	return &Core{
 		rooms:       make(map[string]*room),
@@ -38,10 +38,10 @@ func NewCore(ch *amqp091.Channel, pool *sql.DB) *Core {
 }
 
 /*
-Route consequentially (one at a time) accepts events from the Bus and routes
+Run consequentially (one at a time) accepts events from the Bus and routes
 them to the corresponding handler function.
 */
-func (c *Core) Route() {
+func (c *Core) Run() {
 	for {
 		e := <-c.EventBus
 
@@ -54,18 +54,14 @@ func (c *Core) Route() {
 		// Forward the incomming move to the existing game room which will
 		// handle it.
 		case types.ActionMakeMove:
-			r, exists := c.rooms[e.RoomId]
-			if !exists {
-				return
-			}
-			p, err := strconv.Atoi(string(e.Payload))
-			if err != nil {
-				return
-			}
-
-			r.move <- moveDTO{
-				playerId: e.ClientId,
-				move:     chego.Move(p),
+			// Validate and decode.
+			if r, exists := c.rooms[e.RoomId]; exists {
+				if p, err := strconv.Atoi(string(e.Payload)); err == nil {
+					r.move <- moveDTO{
+						playerId: e.ClientId,
+						move:     chego.Move(p),
+					}
+				}
 			}
 
 		case types.ActionJoinRoom:
@@ -76,6 +72,13 @@ func (c *Core) Route() {
 		case types.ActionLeaveRoom:
 			if r, exists := c.rooms[e.RoomId]; exists {
 				r.handleLeave(e.ClientId)
+			} else {
+				// Remove the wait room if the creator disconnects.
+				for waitRoom := range c.matchmaking {
+					if waitRoom.creatorId == e.ClientId {
+						delete(c.matchmaking, waitRoom)
+					}
+				}
 			}
 
 		// Room events.
@@ -111,9 +114,9 @@ func (c *Core) handleEnterMatchmaking(e types.MetaEvent) {
 		return
 	}
 
-	// Search for the a match.
+	// Search for the match.
 	for waitRoom := range c.matchmaking {
-		if waitRoom.timeControl != dto.TimeBonus ||
+		if waitRoom.timeControl != dto.TimeControl ||
 			waitRoom.timeBonus != dto.TimeBonus {
 			continue
 		}

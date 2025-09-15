@@ -8,7 +8,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/treepeck/chego v0.0.0-20250909154447-9f136054a842
-	github.com/treepeck/gatekeeper v0.0.0-20250911114631-63d4b6d16c3d
+	github.com/treepeck/gatekeeper v0.0.0-20250912085057-c3a968391f03
 	golang.org/x/crypto v0.42.0
 )
 

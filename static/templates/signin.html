@@ -1,0 +1,33 @@
+{{template "signin.html" .}}
+
+{{define "title"}}
+<title>Sign In - JustChess.org</title>
+{{end}}
+
+{{define "content"}}
+<form id="form">
+	<h1>Sign in</h1>
+
+	<section id="email-container">
+		<img class="input-icon" src="/static/png/email.png" />
+
+		<input type="email" placeholder="Email" name="email" id="email" required />
+	</section>
+
+	<section id="password-container">
+		<img class="input-icon" src="/static/png/password.png" />
+
+		<input type="password" placeholder="Password" name="password" id="password" required />
+
+		<i id="visibility-icon" class="show"></i>
+	</section>
+
+	<button id="submit">Submit</button>
+
+	<p>Not registered? <a href="/signup">Sign Up</a>.</p>
+</form>
+{{end}}
+
+{{define "scripts"}}
+<script src="/static/js/signin.js"></script>
+{{end}}

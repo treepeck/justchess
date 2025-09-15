@@ -1,5 +1,4 @@
 // Regular expressions to validate user input.
-const nameEx  = /^[a-zA-Z0-9]{2,60}$/
 const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/
 const pwdEx   = /^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$/
 
@@ -17,23 +16,6 @@ function emailChange(e) {
         }
     } else if (document.getElementById("email-error") !== null) {
         container.removeChild(document.getElementById("email-error"))
-    }
-}
-
-function nameChange(e) {
-    removePopup()
-
-    const container = document.getElementById("name-container")
-
-    if (!nameEx.test(e.target.value)) {
-        if (document.getElementById("name-error") === null) {
-            const error = document.createElement("p")
-            error.id = "name-error"
-            error.textContent = "Username must contain 2 to 60 characters (english letters, numbers)."
-            container.appendChild(error)
-        }
-    } else if (document.getElementById("name-error") !== null) {
-        container.removeChild(document.getElementById("name-error"))
     }
 }
 
@@ -95,15 +77,14 @@ async function submitForm(e) {
     const form = document.getElementById("form")
     const formData = new FormData(form)
 
-    if (!nameEx.test(formData.get("name")) ||
-        !emailEx.test(formData.get("email")) ||
+    if (!emailEx.test(formData.get("email")) ||
         !pwdEx.test(formData.get("password"))) {
         createPopup("Please fill all fields.")
         return 
     }
 
     try {
-        const res = await fetch("http://localhost:3502/auth/signup", {
+        const res = await fetch("http://localhost:3502/auth/signin", {
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -112,7 +93,7 @@ async function submitForm(e) {
         })
 
         if (res.ok) {
-            window.location.replace("/signin.html")
+            window.location.replace("/index.html")
         } else {
             const text = await res.text()
 
@@ -123,7 +104,6 @@ async function submitForm(e) {
     }
 }
 
-document.getElementById("name").addEventListener("change", nameChange)
 document.getElementById("email").addEventListener("change", emailChange)
 document.getElementById("password").addEventListener("change", passwordChange)
 document.getElementById("visibility-icon").addEventListener("click", visibilityChange)

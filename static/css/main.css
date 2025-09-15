@@ -1,0 +1,183 @@
+/* Use a more-intuitive box-sizing model. */
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+* {
+	/* Remove default margin. */
+	margin: 0;
+}
+
+/* Variables with dark theme values by default.  */
+:root {
+	--textColor: white;
+	--background: #292B2F;
+	--inputBackground: #21252d;
+	--containerBackground: #343a46;
+	--linkColor: #3692e7;
+}
+
+body {
+	/* Add accessible line-height. */
+	line-height: 1.5;
+	/* Improve text rendering. */
+	-webkit-font-smoothing: antialiased;
+	background-color: var(--background);
+	color: var(--textColor);
+	font-family: "Roboto", serif;
+}
+
+/* Style links. */
+a {
+	text-decoration: none;
+	color: var(--linkColor);
+}
+
+a:hover {
+	color: var(--textColor);
+}
+
+/* Inherit fonts for form controls. */
+input, button, textarea, select {
+	font: inherit;
+}
+
+/* Avoid text overflows. */
+p, h1, h2, h3, h4, h5, h6 {
+	overflow-wrap: break-word;
+}
+
+/* Improve line wrapping. */
+p {
+	text-wrap: pretty;
+}
+h1, h2, h3, h4, h5, h6 {
+	text-wrap: balance;
+}
+
+/* Main container. */
+main {
+	display: flex;
+	width: 100%;
+	height: 100vh;
+}
+
+/* Popup message. */
+#popup {
+	/* Workaround to correctly center the popup. */
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	position: absolute;
+	margin: 50px auto auto auto;
+	background-color: var(--containerBackground);
+	border: none;
+	border-radius: 10px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 300px;
+	height: 100px;
+}
+
+/* Registration form. */
+form {
+	margin: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 25px;
+	padding: 10px;
+	border-radius: 10px;
+	width: 325px;
+	height: 400px;
+}
+
+form h1 {
+	margin: auto auto 0 auto;
+}
+
+form p {
+	margin: 0 auto 0 auto;
+}
+
+form button {
+	margin: 0 auto auto auto;
+	width: 60%;
+	height: 35px;
+	color: white;
+	border: none;
+	border-radius: 10px;
+	cursor: pointer;
+	font-size: large;
+	background-color: #3692e7;
+}
+
+form button:hover {
+	background-color: #7aa8d3;
+}
+
+form section {
+	display: grid;
+	width: 100%;
+	border-radius: 10px;
+	background-color: var(--inputBackground);
+}
+
+form section > * {
+	grid-column-start: 1;
+	grid-row-start: 1;
+}
+
+form section p {
+	grid-row-start: 2;
+	font-weight: bold;
+	background-color: var(--background);
+	width: 100%;
+}
+
+form section input {
+	display: inline-grid;
+	border: none;
+	border-radius: 10px;
+	width: 100%;
+	height: 40px;
+	padding-left: 32px;
+	padding-right: 40px;
+	color: var(--text);
+	background: transparent;
+}
+
+form section input:hover {
+	outline: 1px solid gray;
+}
+
+form section .input-icon {
+	display: inline-grid;
+	margin-top: auto;
+	margin-bottom: auto;
+	padding: 5px;
+	border-radius: 5px;
+	width: 32px;
+	height: 32px;
+	pointer-events: none;
+}
+
+form section #visibility-icon {
+	display: inline-grid;
+	margin-left: auto;
+	width: 32px;
+	height: 32px;
+	margin-right: 5px;
+	margin-top: auto;
+	margin-bottom: auto;
+	user-select: none;
+}
+
+form section .show {
+	background-image: url("../icons/show.png");
+}
+
+form section .hide {
+	background-image: url("../icons/hide.png");
+}

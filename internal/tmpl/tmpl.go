@@ -1,23 +1,22 @@
-// Package tmpl provides an interface for executing HTML templates.
-//
-// Before execution, templates are embedded into in-memory file system, which
-// helps speed up template execution by approximately 3.2 times
-// compared to using template.ParseFiles.
 package tmpl
 
 import (
-	"embed"
 	"html/template"
-	"io"
+	"net/http"
 )
 
-//go:embed pages/*.html
-var tmplFS embed.FS
-
-func Exec(w io.Writer, name string) error {
-	templ, err := template.ParseFS(tmplFS, "pages/base.html", "pages/"+name)
+func Exec(rw http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles(
+		"./static/templates/base.html",
+		"./static/templates"+r.URL.Path+".html",
+	)
 	if err != nil {
-		return err
+		http.Error(rw, "Page not found.", http.StatusNotFound)
+		return
 	}
-	return templ.Execute(w, nil)
+
+	if t.Execute(rw, nil) != nil {
+		http.Error(rw, "Internal server error. Please, try again later.", http.StatusInternalServerError)
+		return
+	}
 }
