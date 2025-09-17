@@ -15,6 +15,14 @@ import (
 	"github.com/treepeck/gatekeeper/pkg/types"
 )
 
+type CoreService struct {
+	rooms       map[string]*room
+	matchmaking map[waitRoom]struct{}
+	EventBus    chan types.MetaEvent
+	pool        *sql.DB
+	channel     *amqp091.Channel
+}
+
 /*
 Core is responsible for handling incoming events from both active rooms and
 the Gatekeeper.

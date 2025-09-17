@@ -11,9 +11,8 @@ import (
 )
 
 const (
-	// TODO: make it 20 seconds.
 	// Empty room will live 20 seconds before destruction.
-	deadline int = 60
+	deadline int = 20
 )
 
 /*

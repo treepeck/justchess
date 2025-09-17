@@ -1,8 +1,6 @@
 {{template "signin.html" .}}
 
-{{define "title"}}
-<title>Sign In - JustChess.org</title>
-{{end}}
+{{define "title"}}<title>Sign In - JustChess.org</title>{{end}}
 
 {{define "content"}}
 <form id="form">
@@ -28,6 +26,4 @@
 </form>
 {{end}}
 
-{{define "scripts"}}
-<script src="/static/js/signin.js"></script>
-{{end}}
+{{define "scripts"}}<script type="module" src="/static/js/signin.js"></script>{{end}}

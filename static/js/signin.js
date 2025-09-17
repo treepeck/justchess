@@ -1,3 +1,5 @@
+import { sendSignin } from "./http.js"
+
 // Regular expressions to validate user input.
 const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/
 const pwdEx   = /^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$/
@@ -78,30 +80,16 @@ async function submitForm(e) {
     const formData = new FormData(form)
 
     if (!emailEx.test(formData.get("email")) ||
-        !pwdEx.test(formData.get("password"))) {
-        createPopup("Please fill all fields.")
+		!pwdEx.test(formData.get("password"))) {
+		createPopup("Please fill all fields.")
         return 
-    }
+	}
 
     try {
-        const res = await fetch("http://localhost:3502/auth/signin", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams(formData).toString()
-        })
-
-        if (res.ok) {
-            window.location.replace("/index.html")
-        } else {
-            const text = await res.text()
-
-            createPopup(text)
-        }
-    } catch (e) {
-        createPopup(e)
-    }
+		await sendSignin(formData)
+    } catch(e) {
+		createPopup(e)
+	}
 }
 
 document.getElementById("email").addEventListener("change", emailChange)

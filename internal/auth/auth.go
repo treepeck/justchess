@@ -10,7 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"io"
-	"justchess/internal/player"
+	"justchess/internal/db"
 	"justchess/internal/randgen"
 	"net/http"
 	"regexp"
@@ -26,34 +26,19 @@ var (
 )
 
 /*
-AuthService wraps a database connection pool and provides methods for handling
+Service wraps a database connection pool and provides methods for handling
 authorization and authentication HTTP requests.
 */
-type AuthService struct {
+type Service struct {
 	pool *sql.DB
 }
 
-/*
-InitAuthService creates a new [AuthService], initializes the session table and
-adds routes to the specified mux.
-*/
-func InitAuthService(pool *sql.DB, mux *http.ServeMux) error {
-	s := AuthService{pool: pool}
-
-	// Initializing session table.
-	if _, err := pool.Exec(createQuery); err != nil {
-		return err
-	}
-
-	mux.HandleFunc("POST /auth/signup", s.handleSignup)
-	mux.HandleFunc("POST /auth/signin", s.handleSignin)
-	mux.HandleFunc("POST /auth/verify", s.handleVerify)
-
-	return nil
+func NewService(pool *sql.DB) *Service {
+	return &Service{pool: pool}
 }
 
 /*
-handleSignup registers a new player.
+HandleSignup registers a new player.
 
 The registration process includes the following steps:
  1. Decode the request body with the registration data.
@@ -63,7 +48,7 @@ The registration process includes the following steps:
 
 The newly created user will not be authorized.
 */
-func (s AuthService) handleSignup(rw http.ResponseWriter, r *http.Request) {
+func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(rw, "Malformed request body.", http.StatusBadRequest)
 		return
@@ -85,20 +70,14 @@ func (s AuthService) handleSignup(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dto := player.InsertPlayerDTO{
-		Id:           randgen.GenId(randgen.IdLen),
-		Name:         name,
-		Email:        email,
-		PasswordHash: string(pwdHash),
-	}
-
-	if err = player.Insert(s.pool, dto); err != nil {
+	playerId := randgen.GenId(randgen.IdLen)
+	if db.InsertPlayer(s.pool, playerId, name, email, string(pwdHash)) != nil {
 		http.Error(rw, "Not unique name or email.", http.StatusConflict)
 	}
 }
 
 /*
-handleSignin authenticates a player by the provided credentials.
+HandleSignin authenticates a player by the provided credentials.
 
 The authentication process includes the following steps:
  1. Decode the request body and extract the credentials.
@@ -109,7 +88,7 @@ The authentication process includes the following steps:
  6. Create a new session.
  7. Respond with an authorization cookie and the player data.
 */
-func (s AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
+func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(rw, "Malformed request body", http.StatusBadRequest)
 		return
@@ -123,13 +102,13 @@ func (s AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := player.SelectByEmail(s.pool, email)
+	p, err := db.SelectPlayerByEmail(s.pool, email)
 	if err != nil {
 		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
 		return
 	}
 
-	if err = DeleteExpired(s.pool); err != nil {
+	if err = db.DeleteExpiredSessions(s.pool); err != nil {
 		http.Error(rw, "Database cannot be accepted. Please, try again later.", http.StatusInternalServerError)
 		return
 	}
@@ -141,7 +120,7 @@ func (s AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionId := randgen.GenId(randgen.SessionIdLen)
-	err = Insert(s.pool, sessionId, p.Id)
+	err = db.InsertSession(s.pool, sessionId, p.Id)
 	if err != nil {
 		http.Error(rw, "Cannot create a new session. Please try again after 24 hours.", http.StatusConflict)
 		return
@@ -151,29 +130,29 @@ func (s AuthService) handleSignin(rw http.ResponseWriter, r *http.Request) {
 }
 
 /*
-handleVerify verifies that the provided in a request body session id is valid.
+HandleVerify verifies that the provided in a request body session id is valid.
 If it is, the player's data will be returned.  Request body must be a plain text
 with a session id value.
 */
-func (s AuthService) handleVerify(rw http.ResponseWriter, r *http.Request) {
+func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
 	sessionId, err := io.ReadAll(r.Body)
 	if err != nil || len(sessionId) != 32 {
 		http.Error(rw, "Unauthorized request.", http.StatusBadRequest)
 		return
 	}
 
-	if err := DeleteExpired(s.pool); err != nil {
+	if err := db.DeleteExpiredSessions(s.pool); err != nil {
 		http.Error(rw, "Internal server error.", http.StatusInternalServerError)
 		return
 	}
 
-	session, err := SelectById(s.pool, string(sessionId))
+	session, err := db.SelectSessionById(s.pool, string(sessionId))
 	if err != nil {
 		http.Error(rw, "Session expired.", http.StatusUnauthorized)
 		return
 	}
 
-	p, err := player.SelectById(s.pool, session.PlayerId)
+	p, err := db.SelectPlayerById(s.pool, session.PlayerId)
 	if err != nil {
 		http.Error(rw, "Player was deleted.", http.StatusNotFound)
 		return
@@ -203,18 +182,18 @@ func AuthorizeRequest(pool *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 
 		sessionId := r.Cookies()[0].Value
 
-		if err := DeleteExpired(pool); err != nil {
+		if err := db.DeleteExpiredSessions(pool); err != nil {
 			http.Error(rw, "Internal server error.", http.StatusInternalServerError)
 			return
 		}
 
-		session, err := SelectById(pool, sessionId)
+		session, err := db.SelectSessionById(pool, sessionId)
 		if err != nil {
 			http.Error(rw, "Session expired.", http.StatusUnauthorized)
 			return
 		}
 
-		p, err := player.SelectById(pool, session.PlayerId)
+		p, err := db.SelectPlayerById(pool, session.PlayerId)
 		if err != nil {
 			http.Error(rw, "Player was deleted.", http.StatusNotFound)
 			return

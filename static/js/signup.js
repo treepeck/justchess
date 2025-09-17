@@ -1,3 +1,5 @@
+import { sendSignup } from "./http.js"
+
 // Regular expressions to validate user input.
 const nameEx  = /^[a-zA-Z0-9]{2,60}$/
 const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/
@@ -103,21 +105,7 @@ async function submitForm(e) {
     }
 
     try {
-        const res = await fetch("http://localhost:3502/auth/signup", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams(formData).toString()
-        })
-
-        if (res.ok) {
-            window.location.replace("/signin.html")
-        } else {
-            const text = await res.text()
-
-            createPopup(text)
-        }
+        await sendSignup(formData)
     } catch (e) {
         createPopup(e)
     }

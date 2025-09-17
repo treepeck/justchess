@@ -1,14 +1,14 @@
 package main
 
 import (
-	"justchess/internal/auth"
-	"justchess/internal/core"
-	"justchess/internal/db"
-	"justchess/internal/player"
-	"justchess/internal/tmpl"
 	"log"
 	"net/http"
 	"os"
+
+	"justchess/internal/auth"
+	"justchess/internal/core"
+	"justchess/internal/db"
+	"justchess/internal/game"
 
 	"github.com/treepeck/chego"
 	"github.com/treepeck/gatekeeper/pkg/env"
@@ -34,6 +34,17 @@ func main() {
 	defer pool.Close()
 	log.Print("Successfully connected to db.")
 
+	log.Print("Initializing tables.")
+	if err = db.CreatePlayer(pool); err != nil {
+		log.Panic(err)
+	}
+
+	if err = db.CreateSession(pool); err != nil {
+		log.Panic(err)
+	}
+	// TODO: initialize game table.
+	log.Print("Tables are successfully initialized.")
+
 	log.Print("Connecting to RabbitMQ.")
 	conn, err := amqp091.Dial(os.Getenv("RABBITMQ_URL"))
 	if err != nil {
@@ -52,27 +63,22 @@ func main() {
 	if err = ch.Confirm(false); err != nil {
 		log.Panic(err)
 	}
-	log.Printf("Successfully connected to RabbitMQ.")
+	log.Print("Successfully connected to RabbitMQ.")
 
+	log.Print("Creating endpoints.")
 	mux := http.NewServeMux()
 
-	log.Print("Initializing services.")
-	if err = player.InitPlayerService(pool, mux); err != nil {
-		log.Panic(err)
-	}
+	authService := auth.NewService(pool)
+	mux.HandleFunc("POST /auth/signup", authService.HandleSignup)
+	mux.HandleFunc("POST /auth/signin", authService.HandleSignin)
+	mux.HandleFunc("POST /auth/verify", authService.HandleVerify)
 
-	if err = auth.InitAuthService(pool, mux); err != nil {
-		log.Panic(err)
-	}
-	log.Print("Successfully initialized services.")
+	gameService := game.NewService(pool)
+	mux.HandleFunc("GET /game", gameService.HandleGetGame)
 
-	log.Print("Creating routes to serve frontend files.")
+	// Serve static frontend files.
 	fs := http.Dir("./static")
-	mux.Handle("/static/", http.StripPrefix("/static/",
-		http.FileServer(fs)),
-	)
-
-	mux.HandleFunc("/", tmpl.Exec)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(fs)))
 
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()
@@ -86,6 +92,5 @@ func main() {
 	go c.Run()
 	go mq.Consume(ch, "gate", c.EventBus)
 
-	// Set up router.
-	http.ListenAndServe("localhost:3502", mux)
+	log.Panic(http.ListenAndServe("localhost:3502", mux))
 }
