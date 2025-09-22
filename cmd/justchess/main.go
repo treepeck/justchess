@@ -11,7 +11,6 @@ import (
 	"justchess/internal/tmpl"
 
 	"github.com/treepeck/chego"
-	"github.com/treepeck/gatekeeper/pkg/env"
 	"github.com/treepeck/gatekeeper/pkg/mq"
 
 	"github.com/rabbitmq/amqp091-go"
@@ -19,12 +18,6 @@ import (
 
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
-
-	log.Print("Loading environment variables.")
-	if err := env.Load(".env"); err != nil {
-		log.Panic(err)
-	}
-	log.Print("Successfully loaded environment variables.")
 
 	log.Print("Connecting to db.")
 	pool, err := db.OpenDB(os.Getenv("MYSQL_URL"))
@@ -93,5 +86,5 @@ func main() {
 	go c.Run()
 	go mq.Consume(ch, "gate", c.EventBus)
 
-	log.Panic(http.ListenAndServe("localhost:3502", mux))
+	log.Panic(http.ListenAndServe(":3502", mux))
 }
