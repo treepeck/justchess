@@ -8,7 +8,6 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"io"
 	"justchess/internal/db"
 	"justchess/internal/randgen"
@@ -26,15 +25,15 @@ var (
 )
 
 /*
-Service wraps a database connection pool and provides methods for handling
+Service wraps the database repository and provides methods for handling
 authorization and authentication HTTP requests.
 */
 type Service struct {
-	pool *sql.DB
+	repo *db.Repo
 }
 
-func NewService(pool *sql.DB) *Service {
-	return &Service{pool: pool}
+func NewService(r *db.Repo) *Service {
+	return &Service{repo: r}
 }
 
 /*
@@ -71,7 +70,7 @@ func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	playerId := randgen.GenId(randgen.IdLen)
-	if db.InsertPlayer(s.pool, playerId, name, email, string(pwdHash)) != nil {
+	if s.repo.InsertPlayer(playerId, name, email, string(pwdHash)) != nil {
 		http.Error(rw, "Not unique name or email.", http.StatusConflict)
 	}
 }
@@ -102,13 +101,13 @@ func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := db.SelectPlayerByEmail(s.pool, email)
+	p, err := s.repo.SelectPlayerByEmail(email)
 	if err != nil {
 		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
 		return
 	}
 
-	if err = db.DeleteExpiredSessions(s.pool); err != nil {
+	if err = s.repo.DeleteExpiredSessions(); err != nil {
 		http.Error(rw, "Database cannot be accepted. Please, try again later.", http.StatusInternalServerError)
 		return
 	}
@@ -120,7 +119,7 @@ func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionId := randgen.GenId(randgen.SessionIdLen)
-	err = db.InsertSession(s.pool, sessionId, p.Id)
+	err = s.repo.InsertSession(sessionId, p.Id)
 	if err != nil {
 		http.Error(rw, "Cannot create a new session. Please try again after 24 hours.", http.StatusConflict)
 		return
@@ -141,18 +140,18 @@ func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := db.DeleteExpiredSessions(s.pool); err != nil {
+	if err := s.repo.DeleteExpiredSessions(); err != nil {
 		http.Error(rw, "Internal server error.", http.StatusInternalServerError)
 		return
 	}
 
-	session, err := db.SelectSessionById(s.pool, string(sessionId))
+	session, err := s.repo.SelectSessionById(string(sessionId))
 	if err != nil {
 		http.Error(rw, "Session expired.", http.StatusUnauthorized)
 		return
 	}
 
-	p, err := db.SelectPlayerById(s.pool, session.PlayerId)
+	p, err := s.repo.SelectPlayerById(session.PlayerId)
 	if err != nil {
 		http.Error(rw, "Player was deleted.", http.StatusNotFound)
 		return
@@ -173,7 +172,7 @@ const PidKey CtxKey = "pid"
 AuthorizeRequest authorizes the incoming request and passes a context containing
 the player's credentials to the next handler function.
 */
-func AuthorizeRequest(pool *sql.DB, next http.HandlerFunc) http.HandlerFunc {
+func AuthorizeRequest(repo *db.Repo, next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		if len(r.Cookies()) != 1 || r.Cookies()[0].Name != "Authorization" {
 			http.Error(rw, "Unauthorized request.", http.StatusUnauthorized)
@@ -182,18 +181,18 @@ func AuthorizeRequest(pool *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 
 		sessionId := r.Cookies()[0].Value
 
-		if err := db.DeleteExpiredSessions(pool); err != nil {
+		if err := repo.DeleteExpiredSessions(); err != nil {
 			http.Error(rw, "Internal server error.", http.StatusInternalServerError)
 			return
 		}
 
-		session, err := db.SelectSessionById(pool, sessionId)
+		session, err := repo.SelectSessionById(sessionId)
 		if err != nil {
 			http.Error(rw, "Session expired.", http.StatusUnauthorized)
 			return
 		}
 
-		p, err := db.SelectPlayerById(pool, session.PlayerId)
+		p, err := repo.SelectPlayerById(session.PlayerId)
 		if err != nil {
 			http.Error(rw, "Player was deleted.", http.StatusNotFound)
 			return

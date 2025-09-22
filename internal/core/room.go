@@ -12,7 +12,7 @@ import (
 
 const (
 	// Empty room will live 20 seconds before destruction.
-	deadline int = 20
+	deadline int = 70
 )
 
 /*

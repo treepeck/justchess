@@ -8,7 +8,7 @@ import (
 	"justchess/internal/auth"
 	"justchess/internal/core"
 	"justchess/internal/db"
-	"justchess/internal/game"
+	"justchess/internal/tmpl"
 
 	"github.com/treepeck/chego"
 	"github.com/treepeck/gatekeeper/pkg/env"
@@ -35,11 +35,12 @@ func main() {
 	log.Print("Successfully connected to db.")
 
 	log.Print("Initializing tables.")
-	if err = db.CreatePlayer(pool); err != nil {
+	repo := db.NewRepo(pool)
+	if err = repo.CreatePlayer(); err != nil {
 		log.Panic(err)
 	}
 
-	if err = db.CreateSession(pool); err != nil {
+	if err = repo.CreateSession(); err != nil {
 		log.Panic(err)
 	}
 	// TODO: initialize game table.
@@ -68,17 +69,17 @@ func main() {
 	log.Print("Creating endpoints.")
 	mux := http.NewServeMux()
 
-	authService := auth.NewService(pool)
+	authService := auth.NewService(repo)
 	mux.HandleFunc("POST /auth/signup", authService.HandleSignup)
 	mux.HandleFunc("POST /auth/signin", authService.HandleSignin)
 	mux.HandleFunc("POST /auth/verify", authService.HandleVerify)
 
-	gameService := game.NewService(pool)
-	mux.HandleFunc("GET /game", gameService.HandleGetGame)
-
 	// Serve static frontend files.
 	fs := http.Dir("./static")
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(fs)))
+
+	// Serve HTML templates.
+	mux.HandleFunc("/", tmpl.Exec)
 
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()

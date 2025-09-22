@@ -12,3 +12,5 @@ log.txt
 TODO.txt
 
 *.drawio
+
+static/

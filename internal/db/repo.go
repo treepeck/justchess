@@ -47,7 +47,30 @@ const (
 
 	deleteExpiredSessions = `DELETE FROM session WHERE expires_at < NOW()`
 
-	// TODO: Game.
+	/* Game.
+
+	createGame = `CREATE TABLE IF NOT EXISTS game (
+		id CHAR(12) PRIMARY KEY,
+		white_id CHAR(12) NOT NULL,
+		black_id CHAR(12) NOT NULL,
+		result TINYINT NOT NULL,
+		winner TINYINT NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (white_id) REFERENCES player(id),
+		FOREIGN KEY (black_id) REFERENCES player(id),
+		FOREIGN KEY (result) REFERENCES result(id)
+	)`
+
+	createGameMoves = `CREATE TABLE IF NOT EXISTS game_moves (
+		game_id CHAR(12) NOT NULL,
+		move_number SMALLINT NOT NULL,
+		move_compressed INT NOT NULL,
+		PRIMARY KEY (game_id, move_number),
+		FOREIGN KEY (game_id) REFERENCES game(id) ON DELETE CASCADE
+	)`
+
+	*/
 )
 
 /*
@@ -91,18 +114,29 @@ type Game struct {
 }
 
 /*
+Repo wraps the database connection pool and provides methods to make queries.
+*/
+type Repo struct {
+	pool *sql.DB
+}
+
+func NewRepo(pool *sql.DB) *Repo {
+	return &Repo{pool: pool}
+}
+
+/*
 CreatePlayer creates the player table.
 */
-func CreatePlayer(pool *sql.DB) error {
-	_, err := pool.Exec(createPlayer)
+func (r *Repo) CreatePlayer() error {
+	_, err := r.pool.Exec(createPlayer)
 	return err
 }
 
 /*
 CreateSession creates the session table.
 */
-func CreateSession(pool *sql.DB) error {
-	_, err := pool.Exec(createSession)
+func (r *Repo) CreateSession() error {
+	_, err := r.pool.Exec(createSession)
 	return err
 }
 
@@ -110,16 +144,16 @@ func CreateSession(pool *sql.DB) error {
 InsertPlayer inserts a single record into the player table, using the provided
 credentials.
 */
-func InsertPlayer(pool *sql.DB, id, name, email, passwordHash string) error {
-	_, err := pool.Exec(insertPlayer, id, name, email, passwordHash)
+func (r *Repo) InsertPlayer(id, name, email, passwordHash string) error {
+	_, err := r.pool.Exec(insertPlayer, id, name, email, passwordHash)
 	return err
 }
 
 /*
 InsertSession inserts a single record into the session table.
 */
-func InsertSession(pool *sql.DB, id, playerId string) error {
-	_, err := pool.Exec(insertSession, id, playerId)
+func (r *Repo) InsertSession(id, playerId string) error {
+	_, err := r.pool.Exec(insertSession, id, playerId)
 	return err
 }
 
@@ -127,8 +161,8 @@ func InsertSession(pool *sql.DB, id, playerId string) error {
 SelectPlayerById selects a single record with the same id as provided from the player
 table.
 */
-func SelectPlayerById(pool *sql.DB, id string) (Player, error) {
-	row := pool.QueryRow(selectPlayerById, id)
+func (r *Repo) SelectPlayerById(id string) (Player, error) {
+	row := r.pool.QueryRow(selectPlayerById, id)
 
 	var p Player
 	err := row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
@@ -140,8 +174,8 @@ func SelectPlayerById(pool *sql.DB, id string) (Player, error) {
 SelectPlayerByEmail selects a single record with the same email as provided from the
 player table.
 */
-func SelectPlayerByEmail(pool *sql.DB, email string) (Player, error) {
-	row := pool.QueryRow(selectPlayerByEmail, email)
+func (r *Repo) SelectPlayerByEmail(email string) (Player, error) {
+	row := r.pool.QueryRow(selectPlayerByEmail, email)
 
 	var p Player
 	err := row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
@@ -156,8 +190,8 @@ session table.
 NOTE: It may return an expired session.  It's a caller's responsibility to
 delete all expired sessions before calling this function.
 */
-func SelectSessionById(pool *sql.DB, id string) (Session, error) {
-	row := pool.QueryRow(selectSessionById, id)
+func (r *Repo) SelectSessionById(id string) (Session, error) {
+	row := r.pool.QueryRow(selectSessionById, id)
 
 	var s Session
 	err := row.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt)
@@ -167,7 +201,7 @@ func SelectSessionById(pool *sql.DB, id string) (Session, error) {
 /*
 DeleteExpiredSessions delets all expired records from the session table.
 */
-func DeleteExpiredSessions(pool *sql.DB) error {
-	_, err := pool.Exec(deleteExpiredSessions)
+func (r *Repo) DeleteExpiredSessions() error {
+	_, err := r.pool.Exec(deleteExpiredSessions)
 	return err
 }

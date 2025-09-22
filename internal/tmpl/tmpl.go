@@ -29,7 +29,7 @@ func Exec(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Error(rw, "Internal server error. Please, try again later.", http.StatusInternalServerError)
 	if t.Execute(rw, nil) != nil {
+		http.Error(rw, "Internal server error. Please, try again later.", http.StatusInternalServerError)
 	}
 }
