@@ -8,7 +8,6 @@ import (
 	"justchess/internal/auth"
 	"justchess/internal/core"
 	"justchess/internal/db"
-	"justchess/internal/tmpl"
 
 	"github.com/treepeck/chego"
 	"github.com/treepeck/gatekeeper/pkg/mq"
@@ -27,7 +26,7 @@ func main() {
 	defer pool.Close()
 	log.Print("Successfully connected to db.")
 
-	log.Print("Initializing tables.")
+	log.Print("Initializing SQL tables.")
 	repo := db.NewRepo(pool)
 	if err = repo.CreatePlayer(); err != nil {
 		log.Panic(err)
@@ -37,7 +36,7 @@ func main() {
 		log.Panic(err)
 	}
 	// TODO: initialize game table.
-	log.Print("Tables are successfully initialized.")
+	log.Print("SQL tables are successfully initialized.")
 
 	log.Print("Connecting to RabbitMQ.")
 	conn, err := amqp091.Dial(os.Getenv("RABBITMQ_URL"))
@@ -66,13 +65,6 @@ func main() {
 	mux.HandleFunc("POST /auth/signup", authService.HandleSignup)
 	mux.HandleFunc("POST /auth/signin", authService.HandleSignin)
 	mux.HandleFunc("POST /auth/verify", authService.HandleVerify)
-
-	// Serve static frontend files.
-	fs := http.Dir("./static")
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(fs)))
-
-	// Serve HTML templates.
-	mux.HandleFunc("/", tmpl.Exec)
 
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()
