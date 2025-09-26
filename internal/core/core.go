@@ -20,17 +20,18 @@ Core is responsible for handling incoming events from both active rooms and
 the Gatekeeper.
 */
 type Core struct {
-	rooms       map[string]*room
-	matchmaking map[waitRoom]struct{}
-	EventBus    chan types.MetaEvent
-	pool        *sql.DB
-	channel     *amqp091.Channel
+	matchmaking *matchmaking
+	// Active game rooms.
+	rooms    map[string]*room
+	EventBus chan types.MetaEvent
+	pool     *sql.DB
+	channel  *amqp091.Channel
 }
 
 func NewCore(ch *amqp091.Channel, pool *sql.DB) *Core {
 	return &Core{
+		matchmaking: newMatchmaking(),
 		rooms:       make(map[string]*room),
-		matchmaking: make(map[waitRoom]struct{}),
 		EventBus:    make(chan types.MetaEvent),
 		pool:        pool,
 		channel:     ch,
@@ -73,12 +74,7 @@ func (c *Core) Run() {
 			if r, exists := c.rooms[e.RoomId]; exists {
 				r.handleLeave(e.ClientId)
 			} else {
-				// Remove the wait room if the creator disconnects.
-				for waitRoom := range c.matchmaking {
-					if waitRoom.creatorId == e.ClientId {
-						delete(c.matchmaking, waitRoom)
-					}
-				}
+				c.matchmaking.leave(e.ClientId)
 			}
 
 		// Room events.
@@ -104,10 +100,22 @@ func (c *Core) Run() {
 }
 
 /*
-It's a Gatekeeper's responsibility to ensure that the client isn't already in the
-room [mark clients which have already entered matchmaking].
+handleEnterMatchmaking denies the request if the client is already in game or
+matchmaking room.
 */
 func (c *Core) handleEnterMatchmaking(e types.MetaEvent) {
+	// Deny the request if the player has already entered matchmaking.
+	if c.matchmaking.hasEntered(e.ClientId) {
+		return
+	}
+
+	// Deny the request if the player is playing the game.
+	for _, r := range c.rooms {
+		if e.ClientId == r.whiteId || e.ClientId == r.blackId {
+			return
+		}
+	}
+
 	// Deny the request if the payload is malformed.
 	var dto types.EnterMatchmaking
 	if json.Unmarshal(e.Payload, &dto) != nil {
@@ -115,62 +123,51 @@ func (c *Core) handleEnterMatchmaking(e types.MetaEvent) {
 	}
 
 	// Search for the match.
-	for waitRoom := range c.matchmaking {
-		if waitRoom.timeControl != dto.TimeControl ||
-			waitRoom.timeBonus != dto.TimeBonus {
-			continue
-		}
-
-		// Delete the wait room from matchmaking after the match was found.
-		delete(c.matchmaking, waitRoom)
-
-		// Create new game room.
-		id := randgen.GenId(randgen.IdLen)
-		r := newRoom(
-			id,
-			waitRoom.creatorId, // Player 1.
-			e.ClientId,         // Player 2.
-			c.EventBus,
-			waitRoom.timeControl,
-			waitRoom.timeBonus,
-		)
-
-		go r.run(id)
-
-		// Add room to the core.
-		c.rooms[id] = r
-
-		// Notify the clients about start of the game.
-		p, err := json.Marshal(types.AddRoom{
-			WhiteId: r.whiteId,
-			BlackId: r.blackId,
-		})
-		if err != nil {
-			log.Printf("cannot encode add room payload: %s", err)
-			return
-		}
-
-		raw, err := json.Marshal(types.MetaEvent{
-			Action:  types.ActionAddRoom,
-			Payload: p,
-			RoomId:  id,
-		})
-		if err != nil {
-			log.Printf("cannot encode add room event: %s", err)
-			return
-		}
-		mq.Publish(c.channel, "core", raw)
+	matchId := c.matchmaking.match(dto)
+	// If there isn't room with the same parameters, create a new one.
+	// Do not notify clients here, just display that the game is searching on a
+	// frontend.
+	if matchId == "" {
+		c.matchmaking.enter(e.ClientId, dto)
 		return
 	}
 
-	// If there isn't room with the same parameters, create a new one.
-	waitRoom := waitRoom{
-		creatorId:   e.ClientId,
-		timeControl: dto.TimeControl,
-		timeBonus:   dto.TimeBonus,
+	c.matchmaking.leave(matchId)
+
+	// Create new game room.
+	id := randgen.GenId(randgen.IdLen)
+	r := newRoom(
+		id,
+		matchId,    // Player 1.
+		e.ClientId, // Player 2.
+		c.EventBus,
+		dto.TimeControl,
+		dto.TimeBonus,
+	)
+
+	go r.run(id)
+
+	// Add room to the core.
+	c.rooms[id] = r
+
+	// Notify the clients about start of the game.
+	p, err := json.Marshal(types.AddRoom{
+		WhiteId: r.whiteId,
+		BlackId: r.blackId,
+	})
+	if err != nil {
+		log.Printf("cannot encode add room payload: %s", err)
+		return
 	}
 
-	// Do not notify clients here, just display that the game is searching on a
-	// frontend.
-	c.matchmaking[waitRoom] = struct{}{}
+	raw, err := json.Marshal(types.MetaEvent{
+		Action:  types.ActionAddRoom,
+		Payload: p,
+		RoomId:  id,
+	})
+	if err != nil {
+		log.Printf("cannot encode add room event: %s", err)
+		return
+	}
+	mq.Publish(c.channel, "core", raw)
 }

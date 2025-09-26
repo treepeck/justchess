@@ -2,16 +2,6 @@ package core
 
 import "github.com/treepeck/chego"
 
-/*
-waitRoom is a matchmaking room which helps to find and create matches between
-different game parameters.
-*/
-type waitRoom struct {
-	creatorId   string
-	timeControl int
-	timeBonus   int
-}
-
 type moveDTO struct {
 	playerId string
 	move     chego.Move
