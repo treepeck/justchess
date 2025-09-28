@@ -24,19 +24,10 @@ func main() {
 		log.Panic(err)
 	}
 	defer pool.Close()
-	log.Print("Successfully connected to db.")
 
-	log.Print("Initializing SQL tables.")
+	// Initialize database repository.
 	repo := db.NewRepo(pool)
-	if err = repo.CreatePlayer(); err != nil {
-		log.Panic(err)
-	}
-
-	if err = repo.CreateSession(); err != nil {
-		log.Panic(err)
-	}
-	// TODO: initialize game table.
-	log.Print("SQL tables are successfully initialized.")
+	log.Print("Successfully connected to db.")
 
 	log.Print("Connecting to RabbitMQ.")
 	conn, err := amqp091.Dial(os.Getenv("RABBITMQ_URL"))

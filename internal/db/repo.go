@@ -15,15 +15,6 @@ modify database tables.
 const (
 	// Player.
 
-	createPlayer = `CREATE TABLE IF NOT EXISTS player (
-		id CHAR(12) PRIMARY KEY,
-		name VARCHAR(60) NOT NULL UNIQUE,
-		email VARCHAR(100) NOT NULL UNIQUE,
-		password_hash VARCHAR(60) NOT NULL,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	)`
-
 	insertPlayer = `INSERT INTO player (id, name, email, password_hash) VALUES
 	(?, ?, ?, ?)`
 
@@ -33,44 +24,11 @@ const (
 
 	// Session.
 
-	createSession = `CREATE TABLE IF NOT EXISTS session (
-		id CHAR(32) PRIMARY KEY,
-		player_id CHAR(12) NOT NULL UNIQUE,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		expires_at DATETIME AS (created_at + INTERVAL 24 HOUR) STORED,
-		FOREIGN KEY (player_id) REFERENCES player(id)
-	)`
-
 	insertSession = `INSERT INTO session (id, player_id) VALUES (?, ?)`
 
 	selectSessionById = `SELECT * FROM session WHERE id = ?`
 
 	deleteExpiredSessions = `DELETE FROM session WHERE expires_at < NOW()`
-
-	/* Game.
-
-	createGame = `CREATE TABLE IF NOT EXISTS game (
-		id CHAR(12) PRIMARY KEY,
-		white_id CHAR(12) NOT NULL,
-		black_id CHAR(12) NOT NULL,
-		result TINYINT NOT NULL,
-		winner TINYINT NOT NULL,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (white_id) REFERENCES player(id),
-		FOREIGN KEY (black_id) REFERENCES player(id),
-		FOREIGN KEY (result) REFERENCES result(id)
-	)`
-
-	createGameMoves = `CREATE TABLE IF NOT EXISTS game_moves (
-		game_id CHAR(12) NOT NULL,
-		move_number SMALLINT NOT NULL,
-		move_compressed INT NOT NULL,
-		PRIMARY KEY (game_id, move_number),
-		FOREIGN KEY (game_id) REFERENCES game(id) ON DELETE CASCADE
-	)`
-
-	*/
 )
 
 /*
@@ -122,22 +80,6 @@ type Repo struct {
 
 func NewRepo(pool *sql.DB) *Repo {
 	return &Repo{pool: pool}
-}
-
-/*
-CreatePlayer creates the player table.
-*/
-func (r *Repo) CreatePlayer() error {
-	_, err := r.pool.Exec(createPlayer)
-	return err
-}
-
-/*
-CreateSession creates the session table.
-*/
-func (r *Repo) CreateSession() error {
-	_, err := r.pool.Exec(createSession)
-	return err
 }
 
 /*
