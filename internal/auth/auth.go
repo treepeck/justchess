@@ -70,7 +70,7 @@ func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	playerId := randgen.GenId(randgen.IdLen)
-	if s.repo.InsertPlayer(playerId, name, email, string(pwdHash)) != nil {
+	if s.repo.InsertPlayer(playerId, name, email, pwdHash) != nil {
 		http.Error(rw, "Not unique name or email.", http.StatusConflict)
 	}
 }
@@ -112,7 +112,7 @@ func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(password))
+	err = bcrypt.CompareHashAndPassword(p.PasswordHash, []byte(password))
 	if err != nil {
 		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
 		return

@@ -36,10 +36,10 @@ Player represents a registered player.  Sensitive data, such as password hash an
 email will not be encoded into a JSON.
 */
 type Player struct {
+	PasswordHash []byte    `json:"-"`
 	Id           string    `json:"id"`
 	Name         string    `json:"name"`
 	Email        string    `json:"-"`
-	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
@@ -86,7 +86,7 @@ func NewRepo(pool *sql.DB) *Repo {
 InsertPlayer inserts a single record into the player table, using the provided
 credentials.
 */
-func (r *Repo) InsertPlayer(id, name, email, passwordHash string) error {
+func (r *Repo) InsertPlayer(id, name, email string, passwordHash []byte) error {
 	_, err := r.pool.Exec(insertPlayer, id, name, email, passwordHash)
 	return err
 }
