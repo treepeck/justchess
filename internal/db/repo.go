@@ -15,8 +15,8 @@ modify database tables.
 const (
 	// Player.
 
-	insertPlayer = `INSERT INTO player (id, name, email, password_hash) VALUES
-	(?, ?, ?, ?)`
+	insertPlayer = `INSERT INTO player (id, name, email, password_hash)
+	VALUES (?, ?, ?, ?)`
 
 	selectPlayerById = `SELECT * FROM player WHERE id = ?`
 
@@ -26,7 +26,8 @@ const (
 
 	insertSession = `INSERT INTO session (id, player_id) VALUES (?, ?)`
 
-	selectSessionById = `SELECT * FROM session WHERE id = ?`
+	selectPlayerBySessionId = `SELECT player.* FROM player INNER JOIN session
+	ON player.id = session.player_id WHERE session.id = ?`
 
 	deleteExpiredSessions = `DELETE FROM session WHERE expires_at < NOW()`
 )
@@ -126,18 +127,19 @@ func (r *Repo) SelectPlayerByEmail(email string) (Player, error) {
 }
 
 /*
-SelectSessionById selects a single record with the same id as provided from the
-session table.
+SelectPlayerBySessionId selects a single player record with the player_id,
+similar to the one from session table.
 
-NOTE: It may return an expired session.  It's a caller's responsibility to
+NOTE: it may return player by exired session.  It's a caller's responsibility to
 delete all expired sessions before calling this function.
 */
-func (r *Repo) SelectSessionById(id string) (Session, error) {
-	row := r.pool.QueryRow(selectSessionById, id)
+func (r *Repo) SelectPlayerBySessionId(id string) (Player, error) {
+	row := r.pool.QueryRow(selectPlayerBySessionId, id)
 
-	var s Session
-	err := row.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt)
-	return s, err
+	var p Player
+	err := row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
+		&p.UpdatedAt)
+	return p, err
 }
 
 /*

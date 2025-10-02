@@ -97,7 +97,7 @@ func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
-		http.Error(rw, "Malformed request body.", http.StatusNotAcceptable)
+		http.Error(rw, "Malformed request body.", http.StatusBadRequest)
 		return
 	}
 
@@ -145,15 +145,9 @@ func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := s.repo.SelectSessionById(string(sessionId))
+	p, err := s.repo.SelectPlayerBySessionId(string(sessionId))
 	if err != nil {
-		http.Error(rw, "Session expired.", http.StatusUnauthorized)
-		return
-	}
-
-	p, err := s.repo.SelectPlayerById(session.PlayerId)
-	if err != nil {
-		http.Error(rw, "Player was deleted.", http.StatusNotFound)
+		http.Error(rw, "Session not found.", http.StatusUnauthorized)
 		return
 	}
 
@@ -186,15 +180,9 @@ func AuthorizeRequest(repo *db.Repo, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		session, err := repo.SelectSessionById(sessionId)
+		p, err := repo.SelectPlayerById(sessionId)
 		if err != nil {
-			http.Error(rw, "Session expired.", http.StatusUnauthorized)
-			return
-		}
-
-		p, err := repo.SelectPlayerById(session.PlayerId)
-		if err != nil {
-			http.Error(rw, "Player was deleted.", http.StatusNotFound)
+			http.Error(rw, "Session not found.", http.StatusUnauthorized)
 			return
 		}
 
