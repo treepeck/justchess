@@ -66,7 +66,7 @@ func newRoom(
 	// TimeControl equal to 0 means that the game does not have time
 	// restrictions.
 	if r.timeControl > 0 {
-		r.game.SetClock(r.timeControl, r.timeBonus)
+		// r.game.SetClock(r.timeControl, r.timeBonus)
 	}
 
 	return r
@@ -87,7 +87,7 @@ func (r *room) run(roomId string) {
 		}
 
 		r.ticker.Stop()
-		r.game.Clock.Stop()
+		// r.game.Clock.Stop()
 	}()
 
 	for {
@@ -105,17 +105,17 @@ func (r *room) run(roomId string) {
 				return
 			}
 
-		case <-r.game.Clock.C:
-			if r.game.Position.ActiveColor == chego.ColorWhite {
-				r.game.WhiteTime--
-			} else {
-				r.game.BlackTime--
-			}
+			// case <-r.game.Clock.C:
+			// 	if r.game.Position.ActiveColor == chego.ColorWhite {
+			// 		r.game.WhiteTime--
+			// 	} else {
+			// 		r.game.BlackTime--
+			// 	}
 
-			if r.game.WhiteTime == 0 || r.game.BlackTime == 0 {
-				r.game.Result = chego.ResultTimeout
-				return
-			}
+			// 	if r.game.WhiteTime == 0 || r.game.BlackTime == 0 {
+			// 		r.game.Result = chego.ResultTimeout
+			// 		return
+			// 	}
 		}
 	}
 }

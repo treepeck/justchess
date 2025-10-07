@@ -4,10 +4,10 @@ github.com/go-sql-driver/mysql v1.9.3 h1:U/N249h2WzJ3Ukj8SowVFjdtZKfu9vlLZxjPXV1
 github.com/go-sql-driver/mysql v1.9.3/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
 github.com/rabbitmq/amqp091-go v1.10.0 h1:STpn5XsHlHGcecLmMFCtg7mqq0RnD+zFr4uzukfVhBw=
 github.com/rabbitmq/amqp091-go v1.10.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
-github.com/treepeck/chego v0.0.0-20250909154447-9f136054a842 h1:9Ub7epI0N+fyYx+Xy/6/skbyQVaX+wgHKLjj7Q2CFGs=
-github.com/treepeck/chego v0.0.0-20250909154447-9f136054a842/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
-github.com/treepeck/gatekeeper v0.0.0-20250921081107-7a252ecb1604 h1:8sSdsnOcDabpKcxaZgPJabd16C5VfpzqIlfG6wIn2Gk=
-github.com/treepeck/gatekeeper v0.0.0-20250921081107-7a252ecb1604/go.mod h1:BKenfwLFzgkYlf+0yjrvqFlfpFUuCgxCqJ0Aur2Du9E=
+github.com/treepeck/chego v0.0.0-20251003162014-818af417f0cb h1:SgwJrEeagSve/K4+/JzKm6V1arHM/7x8dB9HYtvRJ+Y=
+github.com/treepeck/chego v0.0.0-20251003162014-818af417f0cb/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
+github.com/treepeck/gatekeeper v0.0.0-20250924082329-9b89a4d58c06 h1:PBIIV17xG99bBZXyUuFc7Th7ovDtmIorMGiOxnjUUwA=
+github.com/treepeck/gatekeeper v0.0.0-20250924082329-9b89a4d58c06/go.mod h1:BKenfwLFzgkYlf+0yjrvqFlfpFUuCgxCqJ0Aur2Du9E=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/crypto v0.42.0 h1:chiH31gIWm57EkTXpwnqf8qeuMUi0yekh6mT2AvFlqI=

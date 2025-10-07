@@ -44,8 +44,7 @@ The registration process includes the following steps:
  2. Validate the registration data using regular expressions.
  3. Hash the password to securely store it in the database.
  4. Insert a new player record.
-
-The newly created user will not be authorized.
+ 5. Creates a new session for the user.
 */
 func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
@@ -72,7 +71,10 @@ func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
 	playerId := randgen.GenId(randgen.IdLen)
 	if s.repo.InsertPlayer(playerId, name, email, pwdHash) != nil {
 		http.Error(rw, "Not unique name or email.", http.StatusConflict)
+		return
 	}
+
+	s.genSession(rw, playerId)
 }
 
 /*
@@ -118,14 +120,7 @@ func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionId := randgen.GenId(randgen.SessionIdLen)
-	err = s.repo.InsertSession(sessionId, p.Id)
-	if err != nil {
-		http.Error(rw, "Cannot create a new session. Please try again after 24 hours.", http.StatusConflict)
-		return
-	}
-
-	setAutorizationCookie(rw, sessionId)
+	s.genSession(rw, p.Id)
 }
 
 /*
@@ -191,7 +186,17 @@ func AuthorizeRequest(repo *db.Repo, next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func setAutorizationCookie(rw http.ResponseWriter, sessionId string) {
+/*
+genSession inserts a new record in the session table and adds the HTTP-only
+secure cookie to the response.
+*/
+func (s *Service) genSession(rw http.ResponseWriter, playerId string) {
+	sessionId := randgen.GenId(randgen.SessionIdLen)
+	if s.repo.InsertSession(sessionId, playerId) != nil {
+		http.Error(rw, "Cannot create a new session. Please try again after 24 hours.", http.StatusConflict)
+		return
+	}
+
 	c := http.Cookie{
 		Name:     "Auth",
 		Value:    sessionId,
