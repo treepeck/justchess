@@ -23,7 +23,7 @@ type room struct {
 	id, whiteId, blackId   string
 	state                  roomState
 	move                   chan moveDTO
-	forward                chan<- types.MetaEvent
+	forward                chan<- types.ServerEvent
 	timeControl, timeBonus int
 	// Will tick every second and decrement the destroyTime when all players are
 	// disconnected.
@@ -38,7 +38,7 @@ game clock.
 */
 func newRoom(
 	id, player1Id, player2Id string,
-	forward chan<- types.MetaEvent,
+	forward chan<- types.ServerEvent,
 	timeControl, timeBonus int,
 ) *room {
 	r := &room{
@@ -80,7 +80,7 @@ not handles the move.
 func (r *room) run(roomId string) {
 	defer func() {
 		// Notify the core server that the room was destroyed.
-		r.forward <- types.MetaEvent{
+		r.forward <- types.ServerEvent{
 			Action:  types.ActionRemoveRoom,
 			Payload: nil,
 			RoomId:  roomId,
@@ -202,7 +202,7 @@ func (r *room) handleMove(roomId string, dto moveDTO) {
 		return
 	}
 
-	r.forward <- types.MetaEvent{
+	r.forward <- types.ServerEvent{
 		Action:  types.ActionCompletedMove,
 		Payload: p,
 		RoomId:  roomId,

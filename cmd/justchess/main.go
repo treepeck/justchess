@@ -67,7 +67,7 @@ func main() {
 
 	// Run the goroutines which will run untill the program exits.
 	go c.Run()
-	go mq.Consume(ch, "gate", c.EventBus)
+	go mq.Consume(ch, "gate", c.ClientEvents)
 
 	log.Panic(http.ListenAndServe(":3502", mux))
 }

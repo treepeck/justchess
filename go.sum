@@ -6,8 +6,8 @@ github.com/rabbitmq/amqp091-go v1.10.0 h1:STpn5XsHlHGcecLmMFCtg7mqq0RnD+zFr4uzuk
 github.com/rabbitmq/amqp091-go v1.10.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
 github.com/treepeck/chego v0.0.0-20251003162014-818af417f0cb h1:SgwJrEeagSve/K4+/JzKm6V1arHM/7x8dB9HYtvRJ+Y=
 github.com/treepeck/chego v0.0.0-20251003162014-818af417f0cb/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
-github.com/treepeck/gatekeeper v0.0.0-20250924082329-9b89a4d58c06 h1:PBIIV17xG99bBZXyUuFc7Th7ovDtmIorMGiOxnjUUwA=
-github.com/treepeck/gatekeeper v0.0.0-20250924082329-9b89a4d58c06/go.mod h1:BKenfwLFzgkYlf+0yjrvqFlfpFUuCgxCqJ0Aur2Du9E=
+github.com/treepeck/gatekeeper v0.0.0-20251009104825-f63b3483425b h1:ng96Z9yBS7BJ/mjzHeN9Br53/0Mp4dgGk6g8Ckelefs=
+github.com/treepeck/gatekeeper v0.0.0-20251009104825-f63b3483425b/go.mod h1:BKenfwLFzgkYlf+0yjrvqFlfpFUuCgxCqJ0Aur2Du9E=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/crypto v0.42.0 h1:chiH31gIWm57EkTXpwnqf8qeuMUi0yekh6mT2AvFlqI=

@@ -22,29 +22,35 @@ the Gatekeeper.
 type Core struct {
 	matchmaking *matchmaking
 	// Active game rooms.
-	rooms    map[string]*room
-	EventBus chan types.MetaEvent
-	pool     *sql.DB
-	channel  *amqp091.Channel
+	rooms        map[string]*room
+	ClientEvents chan []byte
+	roomEvents   chan types.ServerEvent
+	pool         *sql.DB
+	channel      *amqp091.Channel
 }
 
 func NewCore(ch *amqp091.Channel, pool *sql.DB) *Core {
 	return &Core{
-		matchmaking: newMatchmaking(),
-		rooms:       make(map[string]*room),
-		EventBus:    make(chan types.MetaEvent),
-		pool:        pool,
-		channel:     ch,
+		matchmaking:  newMatchmaking(),
+		rooms:        make(map[string]*room),
+		ClientEvents: make(chan []byte),
+		roomEvents:   make(chan types.ServerEvent),
+		pool:         pool,
+		channel:      ch,
 	}
 }
 
 /*
-Run consequentially (one at a time) accepts events from the Bus and routes
-them to the corresponding handler function.
+Run consequentially (one at a time) accepts events from the Request channel and
+routes them to the corresponding handler function.
 */
 func (c *Core) Run() {
+	var e types.ClientEvent
 	for {
-		e := <-c.EventBus
+		if err := json.Unmarshal(<-c.ClientEvents, &e); err != nil {
+			log.Printf("cannot decode client event: %s", err)
+			continue
+		}
 
 		switch e.Action {
 		// Client events.
@@ -103,7 +109,7 @@ func (c *Core) Run() {
 handleEnterMatchmaking denies the request if the client is already in game or
 matchmaking room.
 */
-func (c *Core) handleEnterMatchmaking(e types.MetaEvent) {
+func (c *Core) handleEnterMatchmaking(e types.ClientEvent) {
 	// Deny the request if the player has already entered matchmaking.
 	if c.matchmaking.hasEntered(e.ClientId) {
 		return
@@ -140,7 +146,7 @@ func (c *Core) handleEnterMatchmaking(e types.MetaEvent) {
 		id,
 		matchId,    // Player 1.
 		e.ClientId, // Player 2.
-		c.EventBus,
+		c.roomEvents,
 		dto.TimeControl,
 		dto.TimeBonus,
 	)
@@ -160,7 +166,7 @@ func (c *Core) handleEnterMatchmaking(e types.MetaEvent) {
 		return
 	}
 
-	raw, err := json.Marshal(types.MetaEvent{
+	raw, err := json.Marshal(types.ServerEvent{
 		Action:  types.ActionAddRoom,
 		Payload: p,
 		RoomId:  id,
