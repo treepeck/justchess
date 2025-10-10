@@ -11,12 +11,13 @@ only the requests that are coming from the trusted origin.
 */
 func AllowCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Origin") != os.Getenv("TRUSTED_DOMAIN") {
+		trustedDomain := os.Getenv("TRUSTED_DOMAIN")
+		if r.Header.Get("Origin") != trustedDomain {
 			http.Error(rw, "Origin domain is not trusted.", http.StatusForbidden)
 			return
 		}
 
-		rw.Header().Add("Access-Control-Allow-Origin", os.Getenv("TRUSTED_DOMAIN"))
+		rw.Header().Add("Access-Control-Allow-Origin", trustedDomain)
 		rw.Header().Add("Access-Control-Allow-Credentials", "true")
 		rw.Header().Add("Access-Control-Allow-Headers", "Authorization")
 		rw.Header().Add("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
