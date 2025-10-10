@@ -8,6 +8,7 @@ import (
 	"justchess/internal/auth"
 	"justchess/internal/core"
 	"justchess/internal/db"
+	"justchess/internal/middleware"
 
 	"github.com/treepeck/chego"
 	"github.com/treepeck/gatekeeper/pkg/mq"
@@ -53,9 +54,10 @@ func main() {
 	mux := http.NewServeMux()
 
 	authService := auth.NewService(repo)
-	mux.HandleFunc("POST /auth/signup", authService.HandleSignup)
-	mux.HandleFunc("POST /auth/signin", authService.HandleSignin)
-	mux.HandleFunc("POST /auth/verify", authService.HandleVerify)
+
+	mux.HandleFunc("POST /auth/signup", middleware.AllowCORS(authService.HandleSignup))
+	mux.HandleFunc("POST /auth/signin", middleware.AllowCORS(authService.HandleSignin))
+	mux.HandleFunc("POST /auth/verify", middleware.AllowCORS(authService.HandleVerify))
 
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()

@@ -32,8 +32,8 @@ type Service struct {
 	repo *db.Repo
 }
 
-func NewService(r *db.Repo) *Service {
-	return &Service{repo: r}
+func NewService(r *db.Repo) Service {
+	return Service{repo: r}
 }
 
 /*

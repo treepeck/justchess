@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func initServiceOrPanic() *auth.Service {
+func initServiceOrPanic() auth.Service {
 	pool, err := db.OpenDB(os.Getenv("MYSQL_TEST_URL"))
 	if err != nil {
 		panic(err)
