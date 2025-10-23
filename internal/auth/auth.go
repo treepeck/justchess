@@ -134,19 +134,18 @@ HandleVerify validates the session ID extracted from the Authorization cookie
 and, if valid, returns the player's data in the response.
 */
 func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
-	if r.Cookies()[0].Name != "Authorization" {
-		http.Error(rw, "Unauthorized request.", http.StatusUnauthorized)
+	session, err := r.Cookie("Authorization")
+	if err != nil {
+		http.Error(rw, "Sign up/in to start playing.", http.StatusUnauthorized)
 		return
 	}
-
-	sessionId := r.Cookies()[0].Value
 
 	if err := s.repo.DeleteExpiredSessions(); err != nil {
 		http.Error(rw, "Internal server error.", http.StatusInternalServerError)
 		return
 	}
 
-	p, err := s.repo.SelectPlayerBySessionId(sessionId)
+	p, err := s.repo.SelectPlayerBySessionId(session.Value)
 	if err != nil {
 		http.Error(rw, "Session not found.", http.StatusUnauthorized)
 		return
