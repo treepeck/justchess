@@ -7,6 +7,7 @@ package auth_test
 import (
 	"justchess/internal/auth"
 	"justchess/internal/db"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -124,16 +125,21 @@ func TestHandleVerify(t *testing.T) {
 		expectedCode int
 	}{
 		{"verify valid player", "57w_sbICMc9znzXepVw2RskBDg_W94H1", 200},
-		{"verify missing session", "", 400},
+		{"verify missing session", "", 401},
 		{"verify missing player", "MIS_sbICMc9znzXepVw2RskBDg_W94H1", 401},
 	}
 
 	for _, tc := range testcases {
-		req := httptest.NewRequest(
-			"POST",
-			"/auth/verify",
-			strings.NewReader(tc.sessionId),
-		)
+		req := httptest.NewRequest("GET", "/auth/verify", nil)
+		req.AddCookie(&http.Cookie{
+			Name:     "Authorization",
+			Value:    tc.sessionId,
+			Path:     "/",
+			MaxAge:   86400, // Session will last for 24 hours.
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+		})
 
 		rec := httptest.NewRecorder()
 

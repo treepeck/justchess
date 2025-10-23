@@ -7,8 +7,7 @@ TODO: automatically extend sessions without forcing players to sign in daily.
 package auth
 
 import (
-	"context"
-	"io"
+	"encoding/json"
 	"justchess/internal/db"
 	"justchess/internal/randgen"
 	"net/http"
@@ -124,65 +123,38 @@ func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 }
 
 /*
-HandleVerify verifies that the provided in a request body session id is valid.
-If it is, the player's data will be returned.  Request body must be a plain text
-with a session id value.
+CtxKey is used as a context type which provides player id.
+*/
+type CtxKey string
+
+const PidKey CtxKey = "pid"
+
+/*
+HandleVerify validates the session ID extracted from the Authorization cookie
+and, if valid, returns the player's data in the response.
 */
 func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
-	sessionId, err := io.ReadAll(r.Body)
-	if err != nil || len(sessionId) != 32 {
-		http.Error(rw, "Unauthorized request.", http.StatusBadRequest)
+	if r.Cookies()[0].Name != "Authorization" {
+		http.Error(rw, "Unauthorized request.", http.StatusUnauthorized)
 		return
 	}
+
+	sessionId := r.Cookies()[0].Value
 
 	if err := s.repo.DeleteExpiredSessions(); err != nil {
 		http.Error(rw, "Internal server error.", http.StatusInternalServerError)
 		return
 	}
 
-	p, err := s.repo.SelectPlayerBySessionId(string(sessionId))
+	p, err := s.repo.SelectPlayerBySessionId(sessionId)
 	if err != nil {
 		http.Error(rw, "Session not found.", http.StatusUnauthorized)
 		return
 	}
 
-	rw.Header().Add("Content-Type", "plain/text")
-	if _, err := rw.Write([]byte(p.Id)); err != nil {
+	rw.Header().Add("Content-Type", "application/json")
+	if err = json.NewEncoder(rw).Encode(p); err != nil {
 		http.Error(rw, "Please try again later.", http.StatusInternalServerError)
-	}
-}
-
-// CtxKey is used as a context type which provides player id.
-type CtxKey string
-
-const PidKey CtxKey = "pid"
-
-/*
-AuthorizeRequest authorizes the incoming request and passes a context containing
-the player's credentials to the next handler function.
-*/
-func AuthorizeRequest(repo *db.Repo, next http.HandlerFunc) http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		if len(r.Cookies()) != 1 || r.Cookies()[0].Name != "Authorization" {
-			http.Error(rw, "Unauthorized request.", http.StatusUnauthorized)
-			return
-		}
-
-		sessionId := r.Cookies()[0].Value
-
-		if err := repo.DeleteExpiredSessions(); err != nil {
-			http.Error(rw, "Internal server error.", http.StatusInternalServerError)
-			return
-		}
-
-		p, err := repo.SelectPlayerById(sessionId)
-		if err != nil {
-			http.Error(rw, "Session not found.", http.StatusUnauthorized)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), PidKey, p.Id)
-		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
 
@@ -198,7 +170,7 @@ func (s *Service) genSession(rw http.ResponseWriter, playerId string) {
 	}
 
 	c := http.Cookie{
-		Name:     "Auth",
+		Name:     "Authorization",
 		Value:    sessionId,
 		Path:     "/",
 		MaxAge:   86400, // Session will last for 24 hours.
