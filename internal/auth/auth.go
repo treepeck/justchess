@@ -172,7 +172,7 @@ func (s *Service) genSession(rw http.ResponseWriter, playerId string) {
 		Name:     "Auth",
 		Value:    sessionId,
 		Path:     "/",
-		MaxAge:   86400, // Session will last for 24 hours.
+		MaxAge:   60 * 60 * 24 * 30, // Session will last for 30 days.
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
