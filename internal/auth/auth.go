@@ -134,7 +134,7 @@ HandleVerify validates the session ID extracted from the Authorization cookie
 and, if valid, returns the player's data in the response.
 */
 func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
-	session, err := r.Cookie("Authorization")
+	session, err := r.Cookie("Auth")
 	if err != nil {
 		http.Error(rw, "Sign up/in to start playing.", http.StatusUnauthorized)
 		return
@@ -169,7 +169,7 @@ func (s *Service) genSession(rw http.ResponseWriter, playerId string) {
 	}
 
 	c := http.Cookie{
-		Name:     "Authorization",
+		Name:     "Auth",
 		Value:    sessionId,
 		Path:     "/",
 		MaxAge:   86400, // Session will last for 24 hours.

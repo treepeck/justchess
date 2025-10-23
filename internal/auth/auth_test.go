@@ -132,7 +132,7 @@ func TestHandleVerify(t *testing.T) {
 	for _, tc := range testcases {
 		req := httptest.NewRequest("GET", "/auth/verify", nil)
 		req.AddCookie(&http.Cookie{
-			Name:     "Authorization",
+			Name:     "Auth",
 			Value:    tc.sessionId,
 			Path:     "/",
 			MaxAge:   86400, // Session will last for 24 hours.
