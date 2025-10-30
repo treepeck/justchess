@@ -7,8 +7,8 @@ toolchain go1.24.6
 require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/rabbitmq/amqp091-go v1.10.0
-	github.com/treepeck/chego v0.0.0-20251003162014-818af417f0cb
-	github.com/treepeck/gatekeeper v0.0.0-20251009104825-f63b3483425b
+	github.com/treepeck/chego v0.0.0-20251028104051-0866c57d092b
+	github.com/treepeck/gatekeeper v0.0.0-20251029101646-650234256cfa
 	golang.org/x/crypto v0.42.0
 )
 

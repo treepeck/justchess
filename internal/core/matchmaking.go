@@ -2,36 +2,28 @@ package core
 
 import (
 	"log"
-
-	"github.com/treepeck/gatekeeper/pkg/types"
 )
 
 /*
 matchmaking implements the matchmaking system that finds a match if both players
 have selected the similar time control and bonus.
-TODO: do not pair two players if they have a large MMR gap.
+Stores player id as a key and selected game paremeters as value.
+TODO: don't pair two players if they have a large MMR gap.
 */
-type matchmaking struct {
-	// pool stores player id as a key and selected game paremeters as value.
-	pool map[string]types.EnterMatchmaking
-}
+type matchmaking map[string]matchmakingDTO
 
-func newMatchmaking() *matchmaking {
-	return &matchmaking{pool: make(map[string]types.EnterMatchmaking)}
-}
-
-func (m *matchmaking) enter(playerId string, entry types.EnterMatchmaking) {
-	m.pool[playerId] = entry
+func (mm matchmaking) enter(playerId string, entry matchmakingDTO) {
+	mm[playerId] = entry
 	log.Printf("player \"%s\" entered matchmaking", playerId)
 }
 
-func (m *matchmaking) leave(playerId string) {
-	delete(m.pool, playerId)
+func (mm matchmaking) leave(playerId string) {
+	delete(mm, playerId)
 	log.Printf("player \"%s\" leaved matchmaking", playerId)
 }
 
-func (m *matchmaking) hasEntered(playerId string) bool {
-	_, ok := m.pool[playerId]
+func (mm matchmaking) hasEntered(playerId string) bool {
+	_, ok := mm[playerId]
 	return ok
 }
 
@@ -39,8 +31,8 @@ func (m *matchmaking) hasEntered(playerId string) bool {
 match returns player id if the player that has selected the similar game
 parameters exists and an empty string otherwise.
 */
-func (m *matchmaking) match(entry types.EnterMatchmaking) string {
-	for playerId, e := range m.pool {
+func (mm matchmaking) match(entry matchmakingDTO) string {
+	for playerId, e := range mm {
 		if e.TimeBonus == entry.TimeBonus || e.TimeControl == entry.TimeControl {
 			log.Printf("match found \"%s\"", playerId)
 			return playerId

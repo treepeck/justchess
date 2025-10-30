@@ -57,7 +57,7 @@ func main() {
 
 	mux.HandleFunc("POST /auth/signup", middleware.AllowCORS(authService.HandleSignup))
 	mux.HandleFunc("POST /auth/signin", middleware.AllowCORS(authService.HandleSignin))
-	mux.HandleFunc("POST /auth/verify", middleware.AllowCORS(authService.HandleVerify))
+	mux.HandleFunc("GET /auth/verify", middleware.AllowCORS(authService.HandleVerify))
 
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()
@@ -65,11 +65,11 @@ func main() {
 	chego.InitZobristKeys()
 
 	log.Print("Starting server.")
-	c := core.NewCore(ch, pool)
+	c := core.NewCore(ch, repo)
 
 	// Run the goroutines which will run untill the program exits.
 	go c.Run()
-	go mq.Consume(ch, "gate", c.ClientEvents)
+	go mq.Consume(ch, "gate", c.EventBus)
 
 	log.Panic(http.ListenAndServe(":3502", mux))
 }
