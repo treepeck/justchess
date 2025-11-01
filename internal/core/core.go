@@ -21,11 +21,11 @@ type Core struct {
 	// Active game rooms.
 	rooms    map[string]*room
 	EventBus chan event.Internal
-	repo     *db.Repo
+	repo     db.Repo
 	channel  *amqp091.Channel
 }
 
-func NewCore(ch *amqp091.Channel, r *db.Repo) *Core {
+func NewCore(ch *amqp091.Channel, r db.Repo) *Core {
 	return &Core{
 		mm:       make(matchmaking),
 		rooms:    make(map[string]*room),

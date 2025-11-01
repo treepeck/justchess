@@ -10,13 +10,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 )
 
 func initServiceOrPanic() auth.Service {
-	pool, err := db.OpenDB(os.Getenv("MYSQL_TEST_URL"))
+	pool, err := db.OpenDB("admin:admin@tcp(localhost:52000)/justchess-db?parseTime=true")
 	if err != nil {
 		panic(err)
 	}
@@ -55,6 +54,7 @@ func TestHandleSignup(t *testing.T) {
 		)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
 		s.HandleSignup(rec, req)
@@ -81,11 +81,11 @@ func TestHandleSignin(t *testing.T) {
 		expectedCode int
 	}{
 		{"signin valid player", "magnus@carlsen.com", "carlsen", 200},
-		{"signin duplicate", "magnus@carlsen.com", "carlsen", 409},
+		{"signin valid player second session", "magnus@carlsen.com", "carlsen", 200},
 		{"signin invalid email", "", "carlsen", 400},
 		{"signin invalid password", "magnus@carlsen.com", "", 400},
-		{"signin incorrect email", "m@carlsen.com", "carlsen", 406},
-		{"signin incorrect password", "magnus@carlsen.com", "incorrect", 406},
+		{"signin incorrect email", "m@carlsen.com", "carlsen", 401},
+		{"signin incorrect password", "magnus@carlsen.com", "incorrect", 401},
 	}
 
 	for _, tc := range testcases {
@@ -100,6 +100,7 @@ func TestHandleSignin(t *testing.T) {
 		)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
 		s.HandleSignin(rec, req)
@@ -141,6 +142,7 @@ func TestHandleVerify(t *testing.T) {
 			SameSite: http.SameSiteStrictMode,
 		})
 
+		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
 		s.HandleVerify(rec, req)
