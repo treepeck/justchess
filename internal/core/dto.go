@@ -1,13 +1,46 @@
 package core
 
-import "github.com/treepeck/chego"
+import (
+	"github.com/treepeck/chego"
+)
 
-type moveDTO struct {
+type joinMatchmakingReq struct {
+	playerId string
+	params   roomParams
+}
+
+type addRoomRes struct {
+	players     [2]string
+	roomId      string
+	timeControl int
+	timeBonus   int
+}
+
+type moveReq struct {
 	playerId string
 	move     chego.Move
 }
 
-type matchmakingDTO struct {
+type addRoomPayload struct {
+	players     [2]string
+	timeControl int
+	timeBonus   int
+}
+
+type roomInfo struct {
+	WhiteId string `json:"w"`
+	BlackId string `json:"b"`
+	// In seconds.
+	TimeToLive int `json:"t"`
+	Viewers    int `json:"v"`
+}
+
+type roomParams struct {
 	TimeControl int `json:"tc"`
 	TimeBonus   int `json:"tb"`
+}
+
+type completedMove struct {
+	San  string     `json:"s"`
+	Move chego.Move `json:"m"`
 }
