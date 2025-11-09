@@ -31,7 +31,6 @@ const (
 	msgBadRequest    string = "Malformed request body"
 	msgConflict      string = "Not unique username or email"
 	msgCannotHash    string = "Cannot generate password hash"
-	msgCannotEncode  string = "Cannot encode response body. Please, try again later"
 	msgDatabaseError string = "Database cannot be accessed. Please, try again later"
 )
 
@@ -46,7 +45,16 @@ type Service struct {
 func NewService(r db.Repo) Service { return Service{repo: r} }
 
 /*
-HandleSignup registers a new player.
+RegisterRoutes registers enpoints to the specified ServeMux.
+*/
+func (s Service) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /auth/signup", s.signup)
+	mux.HandleFunc("POST /auth/signin", s.signin)
+	mux.HandleFunc("GET /auth/verify", s.verify)
+}
+
+/*
+signup registers a new player.
 
 The registration process includes the following steps:
  1. Decode the request body with the registration data.
@@ -55,7 +63,7 @@ The registration process includes the following steps:
  4. Insert a new player record.
  5. Creates a new session for the user.
 */
-func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
+func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(rw, msgBadRequest, http.StatusBadRequest)
 		return
@@ -87,7 +95,7 @@ func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
 }
 
 /*
-HandleSignin authenticates a player by the provided credentials.
+signin authenticates a player by the provided credentials.
 
 The authentication process includes the following steps:
  1. Decode the request body and extract the credentials.
@@ -102,7 +110,7 @@ The authentication process includes the following steps:
  9. Insert a newly created session.
  10. Respond with an authorization cookie and the player data.
 */
-func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
+func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(rw, msgBadRequest, http.StatusBadRequest)
 		return
@@ -168,10 +176,10 @@ type CtxKey string
 const PidKey CtxKey = "pid"
 
 /*
-HandleVerify validates the session ID extracted from the Authorization cookie
-and, if valid, returns the player's data in the response.
+verify validates the session ID extracted from the Authorization cookie and, if
+valid, returns the player's data in the response.
 */
-func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
+func (s Service) verify(rw http.ResponseWriter, r *http.Request) {
 	session, err := r.Cookie("Auth")
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)

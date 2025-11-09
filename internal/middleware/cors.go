@@ -9,7 +9,7 @@ import (
 AllowCORS handles the Cross-Origin-Resource-Sharing policy by allowing processing
 only the requests that are coming from the trusted origin.
 */
-func AllowCORS(next http.HandlerFunc) http.HandlerFunc {
+func AllowCORS(next http.Handler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		trustedDomain := os.Getenv("TRUSTED_DOMAIN")
 		if r.Header.Get("Origin") != trustedDomain {

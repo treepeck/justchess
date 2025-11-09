@@ -11,7 +11,6 @@ import (
 	"justchess/internal/middleware"
 
 	"github.com/treepeck/chego"
-	"github.com/treepeck/gatekeeper/pkg/mq"
 
 	"github.com/rabbitmq/amqp091-go"
 )
@@ -43,33 +42,24 @@ func main() {
 		log.Panic(err)
 	}
 	defer ch.Close()
-
-	// Put the channel into a confirm mode.
-	if err = ch.Confirm(false); err != nil {
-		log.Panic(err)
-	}
 	log.Print("Successfully connected to RabbitMQ.")
 
 	log.Print("Creating endpoints.")
 	mux := http.NewServeMux()
 
 	authService := auth.NewService(repo)
+	authService.RegisterRoutes(mux)
 
-	mux.HandleFunc("POST /auth/signup", middleware.AllowCORS(authService.HandleSignup))
-	mux.HandleFunc("POST /auth/signin", middleware.AllowCORS(authService.HandleSignin))
-	mux.HandleFunc("GET /auth/verify", middleware.AllowCORS(authService.HandleVerify))
-
+	log.Print("Starting server.")
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()
 	// Initialize Zobrist keys to be able to detect threefold repetitions.
 	chego.InitZobristKeys()
 
-	log.Print("Starting server.")
 	c := core.NewCore(ch, repo)
 
-	// Run the goroutines which will run untill the program exits.
-	go c.Run()
-	go mq.Consume(ch, "gate", c.EventBus)
+	// Run the goroutine which will run untill the program exits.
+	go c.EventBus()
 
-	log.Panic(http.ListenAndServe(":3502", mux))
+	log.Panic(http.ListenAndServe(":3502", middleware.AllowCORS(mux)))
 }

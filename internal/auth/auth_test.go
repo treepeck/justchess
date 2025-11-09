@@ -2,10 +2,9 @@
 Tests from this package must be executed only when the testdb service is up and
 running.
 */
-package auth_test
+package auth
 
 import (
-	"justchess/internal/auth"
 	"justchess/internal/db"
 	"net/http"
 	"net/http/httptest"
@@ -14,16 +13,16 @@ import (
 	"testing"
 )
 
-func initServiceOrPanic() auth.Service {
+func initServiceOrPanic() Service {
 	pool, err := db.OpenDB("admin:admin@tcp(localhost:52000)/justchess-db?parseTime=true")
 	if err != nil {
 		panic(err)
 	}
 
-	return auth.NewService(db.NewRepo(pool))
+	return NewService(db.NewRepo(pool))
 }
 
-func TestHandleSignup(t *testing.T) {
+func TestSignup(t *testing.T) {
 	s := initServiceOrPanic()
 
 	testcases := []struct {
@@ -57,7 +56,7 @@ func TestHandleSignup(t *testing.T) {
 		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
-		s.HandleSignup(rec, req)
+		s.signup(rec, req)
 
 		res := rec.Result()
 		res.Body.Close()
@@ -71,7 +70,7 @@ func TestHandleSignup(t *testing.T) {
 	}
 }
 
-func TestHandleSignin(t *testing.T) {
+func TestSignin(t *testing.T) {
 	s := initServiceOrPanic()
 
 	testcases := []struct {
@@ -103,7 +102,7 @@ func TestHandleSignin(t *testing.T) {
 		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
-		s.HandleSignin(rec, req)
+		s.signin(rec, req)
 
 		res := rec.Result()
 		res.Body.Close()
@@ -117,7 +116,7 @@ func TestHandleSignin(t *testing.T) {
 	}
 }
 
-func TestHandleVerify(t *testing.T) {
+func TestVerify(t *testing.T) {
 	s := initServiceOrPanic()
 
 	testcases := []struct {
@@ -145,7 +144,7 @@ func TestHandleVerify(t *testing.T) {
 		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
-		s.HandleVerify(rec, req)
+		s.verify(rec, req)
 
 		res := rec.Result()
 		res.Body.Close()
