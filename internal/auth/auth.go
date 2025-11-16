@@ -102,13 +102,12 @@ The authentication process includes the following steps:
  2. Validate the credentials using regular expressions.
  3. Retrieve the player data from the database using the email from request.
  4. Compare the stored password hash with the provided password.
- 5. If the provided credentials are valid, delete all expired sessions.
- 6. Get all sessions with the same player_id.
- 7. If the number of sessions is more than or equal to five, remove the
+ 5. Get all non-expired sessions with the same player_id.
+ 6. If the number of sessions is more than or equal to five, remove the
     oldest created session.
- 8. Create a new session.
- 9. Insert a newly created session.
- 10. Respond with an authorization cookie and the player data.
+ 7. Create a new session.
+ 8. Insert a newly created session.
+ 9. Respond with an authorization cookie and the player data.
 */
 func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
@@ -133,11 +132,6 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	err = bcrypt.CompareHashAndPassword(p.PasswordHash, []byte(password))
 	if err != nil {
 		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
-		return
-	}
-
-	if err = s.repo.DeleteExpiredSessions(); err != nil {
-		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
 	}
 
@@ -183,11 +177,6 @@ func (s Service) verify(rw http.ResponseWriter, r *http.Request) {
 	session, err := r.Cookie("Auth")
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	if err := s.repo.DeleteExpiredSessions(); err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

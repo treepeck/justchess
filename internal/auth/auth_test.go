@@ -157,3 +157,24 @@ func TestVerify(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkVerify(b *testing.B) {
+	s := initServiceOrPanic()
+
+	req := httptest.NewRequest("GET", "/auth/verify", nil)
+	req.AddCookie(&http.Cookie{
+		Name:     "Auth",
+		Value:    "57w_sbICMc9znzXepVw2RskBDg_W94H1", // Default test session.
+		Path:     "/",
+		MaxAge:   86400, // Session will last for 24 hours.
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+	req.Header.Add("Origin", "http://localhost:3000")
+	rec := httptest.NewRecorder()
+
+	for b.Loop() {
+		s.verify(rec, req)
+	}
+}
