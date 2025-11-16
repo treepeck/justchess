@@ -61,5 +61,5 @@ func main() {
 	// Run the goroutine which will run untill the program exits.
 	go c.EventBus()
 
-	log.Panic(http.ListenAndServe(":3502", middleware.AllowCORS(mux)))
+	log.Panic(http.ListenAndServe(":3502", middleware.CORSHandler(mux)))
 }

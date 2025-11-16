@@ -21,12 +21,6 @@ type moveReq struct {
 	move     chego.Move
 }
 
-type addRoomPayload struct {
-	players     [2]string
-	timeControl int
-	timeBonus   int
-}
-
 type roomInfo struct {
 	WhiteId string `json:"w"`
 	BlackId string `json:"b"`

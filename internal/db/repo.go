@@ -22,17 +22,18 @@ const (
 	selectPlayerByEmail = `SELECT * FROM player WHERE email = ?`
 
 	selectPlayerBySessionId = `SELECT player.* FROM player INNER JOIN session
-	ON player.id = session.player_id WHERE session.id = ?`
+	ON player.id = session.player_id
+	WHERE session.id = ? AND session.expires_at > NOW()`
 
 	// Session.
 
 	insertSession = `INSERT INTO session (id, player_id) VALUES (?, ?)`
 
-	selectSessionById = `SELECT * FROM session WHERE id = ?`
+	selectSessionById = `SELECT * FROM session WHERE id = ? AND
+	expires_at > NOW()`
 
-	selectSessionsByPlayerId = `SELECT * FROM session WHERE player_id = ?`
-
-	deleteExpiredSessions = `DELETE FROM session WHERE expires_at < NOW()`
+	selectSessionsByPlayerId = `SELECT * FROM session WHERE player_id = ? AND
+	expires_at > NOW()`
 
 	deleteSessionById = `DELETE FROM session WHERE id = ?`
 )
@@ -57,6 +58,7 @@ the Auth cookie to contain valid and not expired session.
 type Session struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	SigninAt  time.Time
 	Id        string
 	PlayerId  string
 }
@@ -95,8 +97,8 @@ func (r Repo) InsertPlayer(id, name, email string, passwordHash []byte) error {
 }
 
 /*
-SelectPlayerById selects a single record with the same id as provided from the player
-table.
+SelectPlayerById selects a single record with the same id as provided from the
+player table.
 */
 func (r Repo) SelectPlayerById(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerById, id)
@@ -107,8 +109,8 @@ func (r Repo) SelectPlayerById(id string) (Player, error) {
 }
 
 /*
-SelectPlayerByEmail selects a single record with the same email as provided from the
-player table.
+SelectPlayerByEmail selects a single record with the same email as provided from
+the player table.
 */
 func (r Repo) SelectPlayerByEmail(email string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerByEmail, email)
@@ -119,11 +121,8 @@ func (r Repo) SelectPlayerByEmail(email string) (Player, error) {
 }
 
 /*
-SelectPlayerBySessionId selects a single player record with the player_id,
-similar to the one from session table.
-
-NOTE: it may return player by exired session.  It's a caller's responsibility to
-delete all expired sessions before calling this function.
+SelectPlayerBySessionId selects a single player with the specified session_id.
+Expired sessions are omitted.
 */
 func (r Repo) SelectPlayerBySessionId(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerBySessionId, id)
@@ -142,19 +141,20 @@ func (r Repo) InsertSession(id, playerId string) error {
 }
 
 /*
-SelectSessionById selects a single record with the same id as provided from the
-session table.
+SelectSessionsByPlayerId selects a single record with the specified player_id
+from the session table.  Expired sessions are omitted.
 */
 func (r Repo) SelectSessionById(id string) (Session, error) {
 	row := r.pool.QueryRow(selectSessionById, id)
 
 	var s Session
-	return s, row.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt)
+	return s, row.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt,
+		&s.SigninAt)
 }
 
 /*
-SelectSessionsByPlayerId selects multiple records with the same player_id as
-provided from the session table.
+SelectSessionsByPlayerId selects multiple records with the specified player_id
+from the session table.  Expired sessions are omitted.
 */
 func (r Repo) SelectSessionsByPlayerId(playerId string) ([]Session, error) {
 	rows, err := r.pool.Query(selectSessionsByPlayerId, playerId)
@@ -168,20 +168,12 @@ func (r Repo) SelectSessionsByPlayerId(playerId string) ([]Session, error) {
 	for rows.Next() {
 		var s Session
 		if err = rows.Scan(&s.Id, &s.PlayerId, &s.CreatedAt,
-			&s.ExpiresAt); err != nil {
+			&s.ExpiresAt, &s.SigninAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)
 	}
 	return sessions, rows.Err()
-}
-
-/*
-DeleteExpiredSessions delets all expired records from the session table.
-*/
-func (r Repo) DeleteExpiredSessions() error {
-	_, err := r.pool.Exec(deleteExpiredSessions)
-	return err
 }
 
 /*
