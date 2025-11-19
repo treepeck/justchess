@@ -147,3 +147,6 @@ func (c *Core) publishEncoded(a event.Action, p any, roomId string) {
 
 	mq.Publish(c.channel, "core", raw)
 }
+
+func (c *Core) handleMalformedEvent() {
+}

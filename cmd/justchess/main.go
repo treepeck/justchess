@@ -8,11 +8,16 @@ import (
 	"justchess/internal/auth"
 	"justchess/internal/core"
 	"justchess/internal/db"
-	"justchess/internal/middleware"
+	"justchess/internal/web"
 
 	"github.com/treepeck/chego"
 
 	"github.com/rabbitmq/amqp091-go"
+)
+
+var (
+	templates = os.DirFS(os.Getenv("TEMPLATES_DIR"))
+	public    = os.DirFS(os.Getenv("PUBLIC_DIR"))
 )
 
 func main() {
@@ -50,6 +55,9 @@ func main() {
 	authService := auth.NewService(repo)
 	authService.RegisterRoutes(mux)
 
+	webService := web.NewService(templates, public, repo)
+	webService.RegisterRoutes(mux)
+
 	log.Print("Starting server.")
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()
@@ -61,5 +69,5 @@ func main() {
 	// Run the goroutine which will run untill the program exits.
 	go c.EventBus()
 
-	log.Panic(http.ListenAndServe(":3502", middleware.CORSHandler(mux)))
+	log.Panic(http.ListenAndServe(":3502", mux))
 }

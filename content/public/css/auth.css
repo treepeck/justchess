@@ -1,0 +1,9 @@
+/* This css files applies to /signup and /signin. */
+
+form {
+	margin: auto;
+}
+
+form p {
+	color: red;
+}

@@ -29,6 +29,13 @@ type roomInfo struct {
 	Viewers    int `json:"v"`
 }
 
+type gameState struct {
+	CompletedMoves []completedMove `json:"cm"`
+	LegalMoves     []chego.Move    `json:"lm"`
+	WhiteTime      int             `json:"w"`
+	BlackTime      int             `json:"b"`
+}
+
 type roomParams struct {
 	TimeControl int `json:"tc"`
 	TimeBonus   int `json:"tb"`

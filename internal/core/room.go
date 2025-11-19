@@ -139,6 +139,21 @@ func (r *room) handleMove(playerId string, m chego.Move) {
 		San:  r.game.PushMove(m),
 		Move: m,
 	})
+
+	// Publish updated room info after player connection.
+	raw, err := event.EncodeInternal(event.ActionGameState, gameState{
+		CompletedMoves: r.moves,
+		// Compressed legal moves (null moves excluded).
+		LegalMoves: r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
+		WhiteTime:  r.game.WhiteTime,
+		BlackTime:  r.game.BlackTime,
+	}, "", r.id)
+	if err != nil {
+		log.Printf("cannot encode internal event: %s", err)
+		return
+	}
+
+	r.response <- raw
 }
 
 func (r *room) handleTimeTick() {

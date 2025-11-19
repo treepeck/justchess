@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="icon" href="/public/img/favicon.png" type="image/x-icon">
+	<link rel="stylesheet" href="/public/css/main.css">
+	{{block "stylesheet" .}}{{end}}
+	{{block "title" .}}{{end}}
+	{{block "script" .}}{{end}}
+</head>
+<body>
+	<header>
+		<div class="header-content">
+			<a href="/">JustChess</a>
+			<nav>
+				<a href="/coach">AI coach</a>
+			</nav>
+
+			<div class="header-profile">
+				{{ if .Player.Name }}
+					<p>{{ .Player.Name }}</p>
+				{{ else }}
+					<a href="/signin">Sign in</a>
+				{{ end }}
+			</div>
+		</div>
+	</header>
+
+	<main>{{block "content" .}}{{end}}</main>
+
+	<footer>
+		Lorem ipsum dim.
+	</footer>
+</body>
+</html>

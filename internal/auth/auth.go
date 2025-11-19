@@ -163,13 +163,6 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 }
 
 /*
-CtxKey is used as a context type which provides player id.
-*/
-type CtxKey string
-
-const PidKey CtxKey = "pid"
-
-/*
 verify validates the session ID extracted from the Authorization cookie and, if
 valid, returns the player's data in the response.
 */
