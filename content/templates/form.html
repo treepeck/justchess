@@ -1,6 +1,12 @@
 {{define "form"}}
 <form id="form">
-	<h1>{{ if .Form.IsSignUp }}Sign up{{ else }}Sign in{{ end }}</h1>
+	<h1>
+		{{ if .Form.IsSignUp }}
+		Create a new account
+		{{ else }}
+		Sign in to your account
+		{{ end }}
+	</h1>
 
 	{{ if .Form.IsSignUp }}
 	<div>
@@ -47,5 +53,13 @@
 	<button type="submit" id="form-submit">
 		{{ if .Form.IsSignUp }}Sign up{{ else }}Sign in{{ end }}
 	</button>
+
+	<p class="form-footer">
+		{{ if .Form.IsSignUp }}
+		Already have an account? <a href="/signin">Sign in</a>.
+		{{ else }}
+		Does not have an account? <a href="/signup">Sign up</a>.
+		{{ end }}
+	</p>
 </form>
 {{end}}

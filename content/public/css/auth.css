@@ -2,8 +2,65 @@
 
 form {
 	margin: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	font-size: larger;
+}
+
+form div {
+	display: grid;
+	grid-template-rows: 1fr 1fr;
+}
+
+form h1 {
+	text-align: center;
+	margin-bottom: 10px;
+}
+
+form div {
+	font-size: x-large;
+}
+
+form input {
+	background-color: var(--input-background);
+	border: none;
+	border-radius: 10px;
+	font-weight: bold;
+	font-size: large;
+	width: 100%;
+	padding: 5px;
+}
+
+form div input:focus {
+	outline-width: 2px;
+	outline-color: #00bcff;
+}
+
+form button {
+	border: none;
+	border-radius: 15px;
+	background: var(--container-background);
+	color: var(--container-foreground);
+	cursor: pointer;
+	font-size: x-large;
+	padding: 10px;
+	width: 60%;
+	margin: auto;
 }
 
 form p {
+	font-size: large;
 	color: red;
+}
+
+.form-footer {
+	padding-top: 10px;
+	margin: auto;
+	font-size: medium;
+	color: var(--foreground);
+}
+
+.form-footer a {
+	color: var(--url-hover);
 }

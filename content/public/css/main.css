@@ -48,8 +48,9 @@ body {
 header {
 	gap: 10px;
 	width: 100%;
+	padding: 5px;
 	font-weight: bold;
-	font-size: xx-large;
+	font-size: x-large;
 	color: var(--container-foreground);
 	background: var(--container-background);
 }
@@ -82,7 +83,7 @@ a:hover {
 footer {
 	width: 100%;
 	font-weight: bold;
-	font-size: xx-large;
+	font-size: x-large;
 	color: var(--container-foreground);
 	background: var(--container-background);
 }

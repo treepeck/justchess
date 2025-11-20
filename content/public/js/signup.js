@@ -62,11 +62,6 @@ function submitHandler(e) {
 	const container = document.getElementById("server-error")
 	container.textContent = ""
 
-	/* Disable the button while the request is being processed. */
-	const button = document.getElementById("form-submit")
-	button.disabled = true
-	button.textContent = "Waiting..."
-
 	const data = new FormData(form)
 
 	const name = data.get("name")
@@ -74,6 +69,11 @@ function submitHandler(e) {
 	const password = data.get("password")
 
 	if (validateInput(name, email, password)) {
+		/* Disable the button while the request is being processed. */
+		const button = document.getElementById("form-submit")
+		button.disabled = true
+		button.textContent = "Waiting..."
+
 		const params = new URLSearchParams(data)
 
 		signUp(params)
