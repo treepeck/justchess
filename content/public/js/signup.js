@@ -1,8 +1,5 @@
 import { signUp } from "/public/js/http.js"
 
-const form = document.getElementById("form")
-form.addEventListener("submit", submitHandler)
-
 const nameEx = /^[a-zA-Z0-9]{2,60}$/i
 const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/i
 const pwdEx = /^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$/i
@@ -55,8 +52,9 @@ function displayError(containerName, msg) {
 	container.textContent = msg
 }
 
-function submitHandler(e) {
+function submitForm(e) {
 	e.preventDefault()
+	e.stopPropagation()
 
 	/* Clear previous error message. */
 	const container = document.getElementById("server-error")
@@ -86,3 +84,22 @@ function submitHandler(e) {
 			})
 	}
 }
+
+function togglePassword() {
+	const curr = passwordInput.getAttribute("type")
+	if (curr === "password") {
+		passwordInput.setAttribute("type", "text")
+		passwordToggle.style.backgroundImage = "url('/public/img/hide.png')"
+	} else {
+		passwordInput.setAttribute("type", "password")
+		passwordToggle.style.backgroundImage = "url('/public/img/show.png')"
+	}
+}
+
+const form = document.getElementById("form")
+form.addEventListener("submit", submitForm)
+
+const passwordToggle = document.getElementById("password-toggle")
+passwordToggle.addEventListener("click", togglePassword)
+
+const passwordInput = document.getElementById("input-password")

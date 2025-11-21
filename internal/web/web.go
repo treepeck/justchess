@@ -56,8 +56,8 @@ func (s Service) servePages(rw http.ResponseWriter, r *http.Request) {
 	case "/game":
 		s.renderPage(rw, p, "game.html")
 
-	default:
-		s.redirect(rw, r)
+		// default:
+		// 	s.redirect(rw, r)
 	}
 }
 

@@ -37,7 +37,7 @@ form div input:focus {
 	outline-color: #00bcff;
 }
 
-form button {
+form #form-submit {
 	border: none;
 	border-radius: 15px;
 	background: var(--container-background);
@@ -63,4 +63,27 @@ form p {
 
 .form-footer a {
 	color: var(--url-hover);
+}
+
+.password-container {
+	display: flex;
+	background: var(--input-background);
+	border-radius: 10px;
+}
+
+.password-container input {
+	background-color: transparent;
+}
+
+.password-container div {
+	margin-left: 5px;
+	margin-right: 5px;
+	border-radius: 50%;
+	height: 100%;
+	aspect-ratio: 1/1;
+	border: none;
+	cursor: pointer;
+	background-color: transparent;
+	background-image: url("/public/img/show.png");
+	background-size: cover;
 }

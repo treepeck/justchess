@@ -40,12 +40,16 @@
 		<label>
 			Password
 		</label>
-		<input
-			type="password"
-			name="password"
-			autocomplete="off"
-			placeholder="*************"
-		/>
+		<div class="password-container">
+			<input
+				id="input-password"
+				type="password"
+				name="password"
+				autocomplete="off"
+				placeholder="*************"
+			/>
+			<div id="password-toggle"></div>
+		</div>
 		<p id="password-error"></p>
 	</div>
 
@@ -56,9 +60,9 @@
 
 	<p class="form-footer">
 		{{ if .Form.IsSignUp }}
-		Already have an account? <a href="/signin">Sign in</a>.
+		Already have an account? <a href="/signin">Sign in</a>
 		{{ else }}
-		Does not have an account? <a href="/signup">Sign up</a>.
+		Does not have an account? <a href="/signup">Sign up</a>
 		{{ end }}
 	</p>
 </form>

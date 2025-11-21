@@ -1,9 +1,6 @@
 import { signIn } from "/public/js/http.js"
 
-const form = document.getElementById("form")
-form.addEventListener("submit", submitHandler)
-
-function submitHandler(e) {
+function submitForm(e) {
 	e.preventDefault()
 
 	/* Clear previous error message. */
@@ -27,3 +24,22 @@ function submitHandler(e) {
 			button.textContent = "Sign in"
 		})
 }
+
+function togglePassword() {
+	const curr = passwordInput.getAttribute("type")
+	if (curr === "password") {
+		passwordInput.setAttribute("type", "text")
+		passwordToggle.style.backgroundImage = "url('/public/img/hide.png')"
+	} else {
+		passwordInput.setAttribute("type", "password")
+		passwordToggle.style.backgroundImage = "url('/public/img/show.png')"
+	}
+}
+
+const form = document.getElementById("form")
+form.addEventListener("submit", submitForm)
+
+const passwordToggle = document.getElementById("password-toggle")
+passwordToggle.addEventListener("click", togglePassword)
+
+const passwordInput = document.getElementById("input-password")
