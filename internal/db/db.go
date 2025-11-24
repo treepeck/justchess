@@ -7,11 +7,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-/*
-OpenDB opens a database using a MySQL driver and verifies the specified
-connection url by calling a Ping method.  Sets the important connection
-parameters after a successful Ping.
-*/
+// OpenDB opens a database using a MySQL driver and verifies the specified
+// connection url by calling a Ping method.  Sets the important connection
+// parameters after a successful Ping.
 func OpenDB(url string) (*sql.DB, error) {
 	// Create a database pool.
 	db, err := sql.Open("mysql", url)
