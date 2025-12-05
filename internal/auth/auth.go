@@ -1,14 +1,11 @@
 /*
 Package auth implements authorization and authentication.
 TODO: send email validation in signup.
-TODO: allow multiple sessions from different devices.
-TODO: automatically extend sessions without forcing players to sign in daily.
 */
 package auth
 
 import (
-	"context"
-	"io"
+	"encoding/json"
 	"justchess/internal/db"
 	"justchess/internal/randgen"
 	"net/http"
@@ -17,7 +14,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Regular expressions to validate user input.
+/*
+Regular expressions to validate user input.
+*/
 var (
 	nameEx  = regexp.MustCompile(`^[a-zA-Z0-9]{2,60}$`)
 	emailEx = regexp.MustCompile(`^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$`)
@@ -25,31 +24,48 @@ var (
 )
 
 /*
+Declaration of error messages.
+*/
+const (
+	msgUnauthorized  string = "Invalid credentials"
+	msgBadRequest    string = "Malformed request body"
+	msgConflict      string = "Not unique username or email"
+	msgCannotHash    string = "Cannot generate password hash"
+	msgDatabaseError string = "Database cannot be accessed. Please, try again later"
+)
+
+/*
 Service wraps the database repository and provides methods for handling
 authorization and authentication HTTP requests.
 */
 type Service struct {
-	repo *db.Repo
+	repo db.Repo
 }
 
-func NewService(r *db.Repo) *Service {
-	return &Service{repo: r}
+func NewService(r db.Repo) Service { return Service{repo: r} }
+
+/*
+RegisterRoutes registers enpoints to the specified ServeMux.
+*/
+func (s Service) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /auth/signup", s.signup)
+	mux.HandleFunc("POST /auth/signin", s.signin)
+	mux.HandleFunc("GET /auth/verify", s.verify)
 }
 
 /*
-HandleSignup registers a new player.
+signup registers a new player.
 
 The registration process includes the following steps:
  1. Decode the request body with the registration data.
  2. Validate the registration data using regular expressions.
  3. Hash the password to securely store it in the database.
  4. Insert a new player record.
-
-The newly created user will not be authorized.
+ 5. Creates a new session for the user.
 */
-func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
+func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, "Malformed request body.", http.StatusBadRequest)
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -59,37 +75,43 @@ func (s Service) HandleSignup(rw http.ResponseWriter, r *http.Request) {
 
 	if !nameEx.MatchString(name) || !emailEx.MatchString(email) ||
 		!pwdEx.MatchString(password) {
-		http.Error(rw, "Malformed request body.", http.StatusNotAcceptable)
+		http.Error(rw, msgBadRequest, http.StatusNotAcceptable)
 		return
 	}
 
 	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(rw, "Cannot generate hash from password.", http.StatusInternalServerError)
+		http.Error(rw, msgCannotHash, http.StatusInternalServerError)
 		return
 	}
 
 	playerId := randgen.GenId(randgen.IdLen)
-	if s.repo.InsertPlayer(playerId, name, email, string(pwdHash)) != nil {
-		http.Error(rw, "Not unique name or email.", http.StatusConflict)
+	if s.repo.InsertPlayer(playerId, name, email, pwdHash) != nil {
+		http.Error(rw, msgConflict, http.StatusConflict)
+		return
 	}
+
+	s.genSession(rw, playerId)
 }
 
 /*
-HandleSignin authenticates a player by the provided credentials.
+signin authenticates a player by the provided credentials.
 
 The authentication process includes the following steps:
  1. Decode the request body and extract the credentials.
  2. Validate the credentials using regular expressions.
  3. Retrieve the player data from the database using the email from request.
  4. Compare the stored password hash with the provided password.
- 5. If the credetials are valid, verify that player isn't already authenticated.
- 6. Create a new session.
- 7. Respond with an authorization cookie and the player data.
+ 5. Get all non-expired sessions with the same player_id.
+ 6. If the number of sessions is more than or equal to five, remove the
+    oldest created session.
+ 7. Create a new session.
+ 8. Insert a newly created session.
+ 9. Respond with an authorization cookie and the player data.
 */
-func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
+func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, "Malformed request body", http.StatusBadRequest)
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -97,121 +119,92 @@ func (s Service) HandleSignin(rw http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
-		http.Error(rw, "Malformed request body.", http.StatusNotAcceptable)
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
 		return
 	}
 
 	p, err := s.repo.SelectPlayerByEmail(email)
 	if err != nil {
-		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
+		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
 	}
 
-	if err = s.repo.DeleteExpiredSessions(); err != nil {
-		http.Error(rw, "Database cannot be accepted. Please, try again later.", http.StatusInternalServerError)
-		return
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(p.PasswordHash), []byte(password))
+	err = bcrypt.CompareHashAndPassword(p.PasswordHash, []byte(password))
 	if err != nil {
-		http.Error(rw, "Invalid credentials.", http.StatusNotAcceptable)
+		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
 	}
 
+	sessions, err := s.repo.SelectSessionsByPlayerId(p.Id)
+	if err != nil {
+		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
+		return
+	}
+
+	if len(sessions) == 5 {
+		// Find the oldest session.
+		min := sessions[0].CreatedAt
+		ind := 0
+		for i := 1; i < 5; i++ {
+			if sessions[i].CreatedAt.Before(min) {
+				min = sessions[i].CreatedAt
+				ind = i
+			}
+		}
+
+		// Delete the oldest session to replace it with the new one.
+		if err = s.repo.DeleteSessionById(sessions[ind].Id); err != nil {
+			http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	s.genSession(rw, p.Id)
+}
+
+/*
+verify validates the session ID extracted from the Authorization cookie and, if
+valid, returns the player's data in the response.
+*/
+func (s Service) verify(rw http.ResponseWriter, r *http.Request) {
+	session, err := r.Cookie("Auth")
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	p, err := s.repo.SelectPlayerBySessionId(session.Value)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	rw.Header().Add("Content-Type", "application/json")
+	if err = json.NewEncoder(rw).Encode(p); err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+/*
+genSession inserts a new record in the session table and adds the HTTP-only
+secure cookie to the response.
+*/
+func (s Service) genSession(rw http.ResponseWriter, playerId string) {
+	// Use generated unique string as session value.
 	sessionId := randgen.GenId(randgen.SessionIdLen)
-	err = s.repo.InsertSession(sessionId, p.Id)
-	if err != nil {
-		http.Error(rw, "Cannot create a new session. Please try again after 24 hours.", http.StatusConflict)
+
+	if err := s.repo.InsertSession(sessionId, playerId); err != nil {
+		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
 	}
 
-	setAutorizationCookie(rw, sessionId)
-}
-
-/*
-HandleVerify verifies that the provided in a request body session id is valid.
-If it is, the player's data will be returned.  Request body must be a plain text
-with a session id value.
-*/
-func (s Service) HandleVerify(rw http.ResponseWriter, r *http.Request) {
-	sessionId, err := io.ReadAll(r.Body)
-	if err != nil || len(sessionId) != 32 {
-		http.Error(rw, "Unauthorized request.", http.StatusBadRequest)
-		return
-	}
-
-	if err := s.repo.DeleteExpiredSessions(); err != nil {
-		http.Error(rw, "Internal server error.", http.StatusInternalServerError)
-		return
-	}
-
-	session, err := s.repo.SelectSessionById(string(sessionId))
-	if err != nil {
-		http.Error(rw, "Session expired.", http.StatusUnauthorized)
-		return
-	}
-
-	p, err := s.repo.SelectPlayerById(session.PlayerId)
-	if err != nil {
-		http.Error(rw, "Player was deleted.", http.StatusNotFound)
-		return
-	}
-
-	rw.Header().Add("Content-Type", "plain/text")
-	if _, err := rw.Write([]byte(p.Id)); err != nil {
-		http.Error(rw, "Please try again later.", http.StatusInternalServerError)
-	}
-}
-
-// CtxKey is used as a context type which provides player id.
-type CtxKey string
-
-const PidKey CtxKey = "pid"
-
-/*
-AuthorizeRequest authorizes the incoming request and passes a context containing
-the player's credentials to the next handler function.
-*/
-func AuthorizeRequest(repo *db.Repo, next http.HandlerFunc) http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		if len(r.Cookies()) != 1 || r.Cookies()[0].Name != "Authorization" {
-			http.Error(rw, "Unauthorized request.", http.StatusUnauthorized)
-			return
-		}
-
-		sessionId := r.Cookies()[0].Value
-
-		if err := repo.DeleteExpiredSessions(); err != nil {
-			http.Error(rw, "Internal server error.", http.StatusInternalServerError)
-			return
-		}
-
-		session, err := repo.SelectSessionById(sessionId)
-		if err != nil {
-			http.Error(rw, "Session expired.", http.StatusUnauthorized)
-			return
-		}
-
-		p, err := repo.SelectPlayerById(session.PlayerId)
-		if err != nil {
-			http.Error(rw, "Player was deleted.", http.StatusNotFound)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), PidKey, p.Id)
-		next.ServeHTTP(rw, r.WithContext(ctx))
-	}
-}
-
-func setAutorizationCookie(rw http.ResponseWriter, sessionId string) {
-	c := http.Cookie{
+	http.SetCookie(rw, &http.Cookie{
 		Name:     "Auth",
 		Value:    sessionId,
 		Path:     "/",
-		MaxAge:   86400, // Session will last for 24 hours.
+		MaxAge:   60 * 60 * 24 * 30, // Session will last for 30 days.
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
-	}
-	http.SetCookie(rw, &c)
+	})
 }

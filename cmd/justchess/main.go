@@ -8,11 +8,16 @@ import (
 	"justchess/internal/auth"
 	"justchess/internal/core"
 	"justchess/internal/db"
+	"justchess/internal/web"
 
 	"github.com/treepeck/chego"
-	"github.com/treepeck/gatekeeper/pkg/mq"
 
 	"github.com/rabbitmq/amqp091-go"
+)
+
+var (
+	templates = os.DirFS(os.Getenv("TEMPLATES_DIR"))
+	public    = os.DirFS(os.Getenv("PUBLIC_DIR"))
 )
 
 func main() {
@@ -24,19 +29,10 @@ func main() {
 		log.Panic(err)
 	}
 	defer pool.Close()
-	log.Print("Successfully connected to db.")
 
-	log.Print("Initializing SQL tables.")
+	// Initialize database repository.
 	repo := db.NewRepo(pool)
-	if err = repo.CreatePlayer(); err != nil {
-		log.Panic(err)
-	}
-
-	if err = repo.CreateSession(); err != nil {
-		log.Panic(err)
-	}
-	// TODO: initialize game table.
-	log.Print("SQL tables are successfully initialized.")
+	log.Print("Successfully connected to db.")
 
 	log.Print("Connecting to RabbitMQ.")
 	conn, err := amqp091.Dial(os.Getenv("RABBITMQ_URL"))
@@ -51,32 +47,27 @@ func main() {
 		log.Panic(err)
 	}
 	defer ch.Close()
-
-	// Put the channel into a confirm mode.
-	if err = ch.Confirm(false); err != nil {
-		log.Panic(err)
-	}
 	log.Print("Successfully connected to RabbitMQ.")
 
 	log.Print("Creating endpoints.")
 	mux := http.NewServeMux()
 
 	authService := auth.NewService(repo)
-	mux.HandleFunc("POST /auth/signup", authService.HandleSignup)
-	mux.HandleFunc("POST /auth/signin", authService.HandleSignin)
-	mux.HandleFunc("POST /auth/verify", authService.HandleVerify)
+	authService.RegisterRoutes(mux)
 
+	webService := web.NewService(templates, public, repo)
+	webService.RegisterRoutes(mux)
+
+	log.Print("Starting server.")
 	// Initialize attack tables to be able to generate chess moves.
 	chego.InitAttackTables()
 	// Initialize Zobrist keys to be able to detect threefold repetitions.
 	chego.InitZobristKeys()
 
-	log.Print("Starting server.")
-	c := core.NewCore(ch, pool)
+	c := core.NewCore(ch, repo)
 
-	// Run the goroutines which will run untill the program exits.
-	go c.Run()
-	go mq.Consume(ch, "gate", c.EventBus)
+	// Run the goroutine which will run untill the program exits.
+	go c.EventBus()
 
 	log.Panic(http.ListenAndServe(":3502", mux))
 }

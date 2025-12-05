@@ -1,0 +1,69 @@
+{{define "form"}}
+<form id="form">
+	<h1>
+		{{ if .Form.IsSignUp }}
+		Create a new account
+		{{ else }}
+		Sign in to your account
+		{{ end }}
+	</h1>
+
+	{{ if .Form.IsSignUp }}
+	<div>
+		<label>
+			Username
+		</label>
+		<input
+			type="text"
+			name="name"
+			autocomplete="off"
+			placeholder="MagnusCarlsen"
+		/>
+		<p id="name-error"></p>
+	</div>
+	{{ end }}
+
+	<div>
+		<label>
+			Email address
+		</label>
+		<input
+			type="text"
+			name="email"
+			autocomplete="off"
+			placeholder="magnus@carlsen.com"
+		/>
+		<p id="email-error"></p>
+	</div>
+
+	<div>
+		<label>
+			Password
+		</label>
+		<div class="password-container">
+			<input
+				id="input-password"
+				type="password"
+				name="password"
+				autocomplete="off"
+				placeholder="*************"
+			/>
+			<div id="password-toggle"></div>
+		</div>
+		<p id="password-error"></p>
+	</div>
+
+	<p id="server-error"></p>
+	<button type="submit" id="form-submit">
+		{{ if .Form.IsSignUp }}Sign up{{ else }}Sign in{{ end }}
+	</button>
+
+	<p class="form-footer">
+		{{ if .Form.IsSignUp }}
+		Already have an account? <a href="/signin">Sign in</a>
+		{{ else }}
+		Does not have an account? <a href="/signup">Sign up</a>
+		{{ end }}
+	</p>
+</form>
+{{end}}
