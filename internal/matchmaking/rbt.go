@@ -117,6 +117,21 @@ func insert(root *node, leaf int) *node {
 	return root
 }
 
+// search finds the node with the specified leaf and returns it.
+func search(root *node, leaf int) *node {
+	curr := root
+	for curr != nil {
+		if leaf < curr.leaf {
+			curr = curr.left
+		} else if leaf > curr.leaf {
+			curr = curr.right
+		} else {
+			break
+		}
+	}
+	return curr
+}
+
 // b - black node, r - red node.
 //
 // Before:
