@@ -88,7 +88,7 @@ func TestRemoveNode(t *testing.T) {
 		{
 			[]int{20, 10, 30, 15},
 			30,
-			[]int{10, 15, 20},
+			[]int{15, 10, 20},
 		},
 	}
 
@@ -142,4 +142,31 @@ func bfs(t *redBlackTree) []int {
 	}
 
 	return res
+}
+
+func BenchmarkInsertNode(b *testing.B) {
+	tree := newRedBlackTree()
+
+	i := 10
+	for b.Loop() {
+		tree.insertNode(tree.spawn(i))
+		i += 10
+	}
+}
+
+func BenchmarkRemoveNode(b *testing.B) {
+	tree := newRedBlackTree()
+
+	i := 0
+	for ; i <= 10000000; i++ {
+		tree.insertNode(tree.spawn(i))
+	}
+
+	for b.Loop() {
+		i -= 1
+		n := tree.search(i)
+		if n != nil {
+			tree.removeNode(tree.search(i))
+		}
+	}
 }
