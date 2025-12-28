@@ -9,6 +9,14 @@ type redBlackNode struct {
 	isRed  bool
 }
 
+// Red-Black Tree satisfies the following properties:
+//
+//	(*) Every node is either red or black;
+//	(*) The root is black;
+//	(*) The leaf node is black;
+//	(*) If a node is red, the both its children are black;
+//	(*) For each node, all simple paths from the node to descendant leaves
+//	contain the same number of black nodes.
 type redBlackTree struct {
 	root *redBlackNode
 	leaf *redBlackNode
@@ -111,14 +119,14 @@ func (t *redBlackTree) fixInsert(z *redBlackNode) {
 				z = z.parent.parent
 			} else {
 				if z == z.parent.right {
-					// Case 2: z is the right child, it's parent is the left
+					// Case 2: z is the right child, its parent is the left
 					// child, and the uncle is black.
 					// Perform left rotation.
 					z = z.parent
 					t.rotateLeft(z)
 				}
 
-				// Case 3: z is the left child, it's parent is the left
+				// Case 3: z is the left child, its parent is the left
 				// child, and the uncle is black.
 				// Perform some recoloring and right rotation.
 				z.parent.isRed = false
@@ -134,14 +142,14 @@ func (t *redBlackTree) fixInsert(z *redBlackNode) {
 				z = z.parent.parent
 			} else {
 				if z == z.parent.left {
-					// Case 5: z is the left child, it's parent is the right
+					// Case 5: z is the left child, its parent is the right
 					// child, and the uncle is black.
 					// Perform right rotation.
 					z = z.parent
 					t.rotateRight(z)
 				}
 
-				// Case 6: z is the right child, it's parent is the right
+				// Case 6: z is the right child, its parent is the right
 				// child, and the uncle is black.
 				// Perform recoloring and right and left rotation.
 				z.parent.isRed = false
