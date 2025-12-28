@@ -1,207 +1,355 @@
 package matchmaking
 
-// node represents the Red-Black Tree node.
-type node struct {
-	parent, left, right *node
-	// Node's value.
-	leaf int
-	// Node's color.
-	isRed bool
+// redBlackNode represents the Red-Black Tree node.
+type redBlackNode struct {
+	parent *redBlackNode
+	left   *redBlackNode
+	right  *redBlackNode
+	value  int
+	isRed  bool
 }
 
-// insert inserts the node with the specified leaf following the Red-Black Tree
-// properties and returns the updated root node.
-func insert(root *node, leaf int) *node {
-	// Shortcut: empty tree.
-	if root == nil {
-		return &node{leaf: leaf, isRed: false}
-	}
+type redBlackTree struct {
+	root *redBlackNode
+	leaf *redBlackNode
+}
 
-	// Find parent.
-	curr := root
-	var parent *node
-	for curr != nil {
-		parent = curr
-		if leaf < curr.leaf {
-			// Go to the left subtree.
-			curr = curr.left
+func newRedBlackTree() *redBlackTree {
+	leaf := &redBlackNode{isRed: false}
+	return &redBlackTree{root: leaf, leaf: leaf}
+}
+
+// Inserts the node and fixes any violations of the Red-Black Tree properties.
+func (t *redBlackTree) insertNode(z *redBlackNode) {
+	y := t.leaf
+	x := t.root
+
+	for x != t.leaf {
+		y = x
+		if z.value < x.value {
+			x = x.left
 		} else {
-			// Go to the right subtree.
-			curr = curr.right
+			x = x.right
 		}
 	}
 
-	// Insert node.
-	n := &node{leaf: leaf, isRed: true}
-	n.parent = parent
-	if leaf < parent.leaf {
-		parent.left = n
+	z.parent = y
+	if y == t.leaf {
+		t.root = z
+	} else if z.value < y.value {
+		y.left = z
 	} else {
-		parent.right = n
+		y.right = z
 	}
 
-	// Exit when parent is root node.
-	if parent.parent == nil {
-		return root
-	}
-
-	// Fix violations of Red-Black Tree properties after BST insertion.
-	curr = n
-	for curr != nil && curr != root && curr.isRed && curr.parent.isRed {
-		if curr.parent == curr.parent.parent.left {
-			uncle := curr.parent.parent.right
-
-			if uncle != nil && uncle.isRed {
-				curr.parent.parent.isRed = true
-				curr.parent.isRed = false
-				uncle.isRed = false
-				curr = curr.parent
-			} else {
-				if curr == curr.parent.left {
-					rotateRight(curr.parent.parent)
-
-					if root.parent != nil {
-						root = curr.parent
-					}
-
-					curr.parent.isRed = !curr.parent.isRed
-					curr.parent.right.isRed = !curr.parent.right.isRed
-				} else {
-					rotateLeft(curr.parent)
-					rotateRight(curr.parent)
-
-					if root.parent != nil {
-						root = curr
-					}
-
-					curr.isRed = !curr.isRed
-					curr.right.isRed = !curr.right.isRed
-				}
-			}
-		} else {
-			uncle := curr.parent.parent.left
-
-			if uncle != nil && uncle.isRed {
-				// If the uncle is red, only recoloring required.
-				curr.parent.parent.isRed = true
-				curr.parent.isRed = false
-				uncle.isRed = false
-				curr = curr.parent
-			} else {
-				if curr == curr.parent.left {
-					rotateRight(curr.parent)
-					rotateLeft(curr.parent)
-
-					curr.isRed = !curr.isRed
-					curr.left.isRed = !curr.left.isRed
-
-					if root.parent != nil {
-						root = curr
-					}
-				} else {
-					rotateLeft(curr.parent.parent)
-
-					if root.parent != nil {
-						root = curr.parent
-					}
-
-					curr.parent.isRed = !curr.parent.isRed
-					curr.parent.left.isRed = !curr.parent.left.isRed
-				}
-			}
-		}
-		curr = curr.parent
-	}
-	root.isRed = false
-
-	return root
+	t.fixInsert(z)
 }
 
-// search finds the node with the specified leaf and returns it.
-func search(root *node, leaf int) *node {
-	curr := root
-	for curr != nil {
-		if leaf < curr.leaf {
-			curr = curr.left
-		} else if leaf > curr.leaf {
-			curr = curr.right
+// Removes the node and fixes any violations of the Red-Black Tree properties.
+func (t *redBlackTree) removeNode(z *redBlackNode) {
+	var x *redBlackNode
+
+	y := z
+	wasRed := y.isRed
+
+	if z.left == t.leaf {
+		x = z.right
+		t.transplant(z, z.right)
+	} else if z.right == t.leaf {
+		x = z.left
+		t.transplant(z, z.left)
+	} else {
+		y = t.findMax(z.left)
+		wasRed = y.isRed
+
+		x = y.left
+		if y.parent == z {
+			x.parent = y
 		} else {
-			break
+			t.transplant(y, y.left)
+			y.left = z.left
+			y.left.parent = y
 		}
+
+		t.transplant(z, y)
+		y.right = z.right
+		y.right.parent = y
+		y.isRed = z.isRed
 	}
-	return curr
+
+	if !wasRed {
+		t.fixRemove(x)
+	}
 }
 
-// b - black node, r - red node.
+func (t *redBlackTree) search(value int) *redBlackNode {
+	x := t.root
+
+	for x != t.leaf {
+		if x.value > value {
+			x = x.left
+		} else if x.value < value {
+			x = x.right
+		} else {
+			return x
+		}
+	}
+
+	return nil
+}
+
+// Fixes any violations of the Red-Black Tree properties which occurs after
+// insertion of the node.
+func (t *redBlackTree) fixInsert(z *redBlackNode) {
+	for z.parent.isRed {
+		if z.parent == z.parent.parent.left {
+			uncle := z.parent.parent.right
+			if uncle.isRed {
+				// Case 1: z's parent is the left child, and the uncle is red.
+				// Perform recoloring.
+				recolor(z, uncle)
+				z = z.parent.parent
+			} else {
+				if z == z.parent.right {
+					// Case 2: z is the right child, it's parent is the left
+					// child, and the uncle is black.
+					// Perform left rotation.
+					z = z.parent
+					t.rotateLeft(z)
+				}
+
+				// Case 3: z is the left child, it's parent is the left
+				// child, and the uncle is black.
+				// Perform some recoloring and right rotation.
+				z.parent.isRed = false
+				z.parent.parent.isRed = true
+				t.rotateRight(z.parent.parent)
+			}
+		} else {
+			uncle := z.parent.parent.left
+			if uncle.isRed {
+				// Case 4: z's parent is the right child, and the uncle is red.
+				// Perform recoloring.
+				recolor(z, uncle)
+				z = z.parent.parent
+			} else {
+				if z == z.parent.left {
+					// Case 5: z is the left child, it's parent is the right
+					// child, and the uncle is black.
+					// Perform right rotation.
+					z = z.parent
+					t.rotateRight(z)
+				}
+
+				// Case 6: z is the right child, it's parent is the right
+				// child, and the uncle is black.
+				// Perform recoloring and right and left rotation.
+				z.parent.isRed = false
+				z.parent.parent.isRed = true
+				t.rotateLeft(z.parent.parent)
+			}
+		}
+	}
+	t.root.isRed = false
+}
+
+// Fixes any violations of the Red-Black Tree properties which occurs after
+// deletion of the node.
+func (t *redBlackTree) fixRemove(x *redBlackNode) {
+	for x != t.root && !x.isRed {
+		if x == x.parent.left {
+			sibling := x.parent.right
+			if sibling.isRed {
+				// Case 1: x is the left child and its sibling is red.
+				// Perform recoloring and left rotation.
+				sibling.isRed = false
+				x.parent.isRed = true
+				t.rotateLeft(x.parent)
+				sibling = x.parent.right
+			}
+
+			if !sibling.left.isRed && !sibling.right.isRed {
+				// Case 2: sibling is black, and both its children are black.
+				// Perform recoloring.
+				sibling.isRed = true
+				x = x.parent
+			} else {
+				if !sibling.right.isRed {
+					// Case 3: sibling is black, its left child is red, and
+					// right child is black.
+					// Perform recoloring and right rotation.
+					sibling.left.isRed = false
+					sibling.isRed = true
+					t.rotateRight(sibling)
+					sibling = x.parent.right
+				}
+
+				// Case 4: sibling is black, and its right child is red.
+				// Perform recoloring and left rotation.
+				sibling.isRed = x.parent.isRed
+				x.parent.isRed = false
+				sibling.right.isRed = false
+				t.rotateLeft(x.parent)
+				x = t.root
+			}
+		} else {
+			sibling := x.parent.left
+			if sibling.isRed {
+				// Case 5: x is the right child and its sibling is red.
+				// Perform recoloring and right rotation.
+				sibling.isRed = false
+				x.parent.isRed = true
+				t.rotateRight(x.parent)
+				sibling = x.parent.left
+			}
+
+			if !sibling.left.isRed && !sibling.right.isRed {
+				// Case 6: sibling is black, and both its children are black.
+				// Perform recoloring.
+				sibling.isRed = true
+				x = x.parent
+			} else {
+				if !sibling.left.isRed {
+					// Case 7: sibling is black, its right child is black, and
+					// left child is black.
+					// Perform recoloring and left rotation.
+					sibling.right.isRed = false
+					sibling.isRed = true
+					t.rotateLeft(sibling)
+					sibling = x.parent.left
+				}
+
+				// Case 8: sibling is black, and its left child is red.
+				// Perform recoloring and right rotation.
+				sibling.isRed = x.parent.isRed
+				sibling.right.isRed = false
+				sibling.left.isRed = false
+				t.rotateRight(x.parent)
+				x = t.root
+			}
+		}
+	}
+	x.isRed = false
+}
+
+// Performs left rotation.  Assumes that x.right != t.leaf.
+// The letters a, b, and g represent arbitrary subtrees.
 //
 // Before:
 //
-//	    (2 b)
-//	   /     \
-//	(1 b)   (3 r)
-//	             \
-//	            (4 r)
+//			       (x)
+//	              /   \
+//	             a    (y)
+//	                 /   \
+//		            b     g
 //
 // After:
 //
-//	 	    (3 b)
-//	 	   /     \
-//	 	(2 r)   (4 r)
-//	   /
-//	(1 b)
-func rotateLeft(n *node) {
-	head := n.right
-	head.parent = n.parent
-	if n.parent != nil {
-		if n == n.parent.left {
-			n.parent.left = head
-		} else {
-			n.parent.right = head
-		}
+//			       (y)
+//	              /   \
+//	            (x)    g
+//	           /   \
+//		      a     b
+func (t *redBlackTree) rotateLeft(x *redBlackNode) {
+	y := x.right
+
+	// Turn x's right subtree into y's left subtree.
+	x.right = y.left
+	if x.right != t.leaf {
+		x.right.parent = x
 	}
 
-	n.right = head.left
-	if n.right != nil {
-		n.right.parent = n
+	// Link y to x's parent.
+	y.parent = x.parent
+	if x == t.root {
+		t.root = y
+	} else if x == y.parent.left {
+		y.parent.left = y
+	} else {
+		y.parent.right = y
 	}
 
-	head.left = n
-	n.parent = head
+	// Put x on y's left subtree.
+	y.left = x
+	x.parent = y
 }
 
-// b - black node, r - red node.
+// Performs right rotation.  Assumes that x.left != t.leaf.
+// The letters a, b, and g represent arbitrary subtrees.
 //
 // Before:
 //
-//	 	    (3 b)
-//	 	   /     \
-//	 	(2 r)   (4 b)
-//	   /
-//	(1 r)
+//			       (x)
+//	              /   \
+//	            (y)    g
+//	           /   \
+//		      a     b
 //
 // After:
 //
-//	    (2 b)
-//	   /     \
-//	(1 r)   (3 r)
-//	             \
-//	            (4 b)
-func rotateRight(n *node) {
-	head := n.left
-	head.parent = n.parent
-	if n.parent != nil {
-		if n == n.parent.left {
-			n.parent.left = head
-		} else {
-			n.parent.right = head
-		}
+//			       (y)
+//	              /   \
+//	             a    (x)
+//	                 /   \
+//		            b     g
+func (t *redBlackTree) rotateRight(x *redBlackNode) {
+	y := x.left
+
+	// Turn x's left subtree into y's right subtree.
+	x.left = y.right
+	if x.left != t.leaf {
+		x.left.parent = x
 	}
 
-	n.left = head.right
-	if n.left != nil {
-		n.left.parent = n
+	// Link y to x's parent.
+	y.parent = x.parent
+	if x == t.root {
+		t.root = y
+	} else if x == y.parent.left {
+		y.parent.left = y
+	} else {
+		y.parent.right = y
 	}
 
-	head.right = n
-	n.parent = head
+	// Put x on y's right subtree.
+	y.right = x
+	x.parent = y
+}
+
+// Finds the node with the biggest value in the specified tree.
+func (t *redBlackTree) findMax(z *redBlackNode) *redBlackNode {
+	for z.right != t.leaf {
+		z = z.right
+	}
+	return z
+}
+
+// Recolors nodes to resolve the cases 1 and 4 of the [fixInsert] function.
+func recolor(z, uncle *redBlackNode) {
+	z.parent.isRed = false
+	uncle.isRed = false
+	z.parent.parent.isRed = true
+}
+
+// Copies v into u's position.
+func (t *redBlackTree) transplant(u, v *redBlackNode) {
+	if u.parent == t.leaf {
+		t.root = v
+	} else if u == u.parent.left {
+		u.parent.left = v
+	} else {
+		u.parent.right = v
+	}
+	v.parent = u.parent
+}
+
+// creates a new node with specified value and default fields.
+func (t *redBlackTree) spawn(value int) *redBlackNode {
+	return &redBlackNode{
+		value:  value,
+		isRed:  true,
+		parent: t.leaf,
+		left:   t.leaf,
+		right:  t.leaf,
+	}
 }
