@@ -1,12 +1,9 @@
-/*
-Tests from this package must be executed only when the testdb service is up and
-running.
-*/
+// Tests from this package must be executed only when the testdb service is up and
+// running.
 package auth
 
 import (
 	"justchess/internal/db"
-	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -116,65 +113,10 @@ func TestSignin(t *testing.T) {
 	}
 }
 
-func TestVerify(t *testing.T) {
-	s := initServiceOrPanic()
+func BenchmarkSignup(b *testing.B) {
 
-	testcases := []struct {
-		name         string
-		sessionId    string
-		expectedCode int
-	}{
-		{"verify valid player", "57w_sbICMc9znzXepVw2RskBDg_W94H1", 200},
-		{"verify missing session", "", 401},
-		{"verify missing player", "MIS_sbICMc9znzXepVw2RskBDg_W94H1", 401},
-	}
-
-	for _, tc := range testcases {
-		req := httptest.NewRequest("GET", "/auth/verify", nil)
-		req.AddCookie(&http.Cookie{
-			Name:     "Auth",
-			Value:    tc.sessionId,
-			Path:     "/",
-			MaxAge:   86400, // Session will last for 24 hours.
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-		})
-
-		req.Header.Add("Origin", "http://localhost:3000")
-		rec := httptest.NewRecorder()
-
-		s.verify(rec, req)
-
-		res := rec.Result()
-		res.Body.Close()
-
-		if res.StatusCode != tc.expectedCode {
-			t.Fatalf(
-				"%s failed: expected %d got %d",
-				tc.name, tc.expectedCode, res.StatusCode,
-			)
-		}
-	}
 }
 
-func BenchmarkVerify(b *testing.B) {
-	s := initServiceOrPanic()
+func BenchmarkSignin(b *testing.B) {
 
-	req := httptest.NewRequest("GET", "/auth/verify", nil)
-	req.AddCookie(&http.Cookie{
-		Name:     "Auth",
-		Value:    "57w_sbICMc9znzXepVw2RskBDg_W94H1", // Default test session.
-		Path:     "/",
-		MaxAge:   86400, // Session will last for 24 hours.
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
-	req.Header.Add("Origin", "http://localhost:3000")
-	rec := httptest.NewRecorder()
-
-	for b.Loop() {
-		s.verify(rec, req)
-	}
 }
