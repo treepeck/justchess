@@ -9,7 +9,7 @@ development environment.
 
 ## License
 
-Copyright (c) 2024-2025 Artem Bielikov
+Copyright (c) 2024-2026 Artem Bielikov
 
 This project is available under the Mozilla Public License, v. 2.0.<br/>
 See the [LICENSE](LICENSE) file for details.
