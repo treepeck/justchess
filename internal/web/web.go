@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"io/fs"
 	"justchess/internal/db"
+	"log"
 	"net/http"
 )
 
@@ -68,11 +69,13 @@ func (s Service) renderPage(rw http.ResponseWriter, p Page, tmpls ...string) {
 
 	if err != nil {
 		http.Error(rw, msgCannotRender, http.StatusInternalServerError)
+		log.Println(err)
 		return
 	}
 
 	if err := t.Execute(rw, p); err != nil {
 		http.Error(rw, msgCannotRender, http.StatusInternalServerError)
+		log.Print(err)
 		return
 	}
 }

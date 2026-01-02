@@ -63,7 +63,6 @@ type Player struct {
 type Session struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
-	SigninAt  time.Time
 	Id        string
 	PlayerId  string
 }
@@ -151,8 +150,7 @@ func (r Repo) SelectSessionById(id string) (Session, error) {
 	row := r.pool.QueryRow(selectSessionById, id)
 
 	var s Session
-	return s, row.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt,
-		&s.SigninAt)
+	return s, row.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt)
 }
 
 // SelectSessionsByPlayerId selects multiple records with the specified player_id
@@ -168,8 +166,7 @@ func (r Repo) SelectSessionsByPlayerId(playerId string) ([]Session, error) {
 
 	for rows.Next() {
 		var s Session
-		if err = rows.Scan(&s.Id, &s.PlayerId, &s.CreatedAt,
-			&s.ExpiresAt, &s.SigninAt); err != nil {
+		if err = rows.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)

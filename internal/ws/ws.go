@@ -106,7 +106,7 @@ func (s Service) handleRegister(h handshake) {
 	defer func() { h.ch <- struct{}{} }()
 
 	roomId := h.r.URL.Query().Get("rid")
-	roomChannel, exists := s.rooms[roomId]
+	roomCh, exists := s.rooms[roomId]
 	if !exists {
 		return
 	}
@@ -123,7 +123,7 @@ func (s Service) handleRegister(h handshake) {
 	go c.write()
 
 	// Notify the room that client has joined.
-	roomChannel <- clientEvent{
+	roomCh <- clientEvent{
 		Action:  actionJoin,
 		Payload: []byte(h.clientId),
 		sender:  c,
