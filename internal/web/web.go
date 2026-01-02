@@ -71,7 +71,6 @@ func (s Service) renderPage(rw http.ResponseWriter, p Page, tmpls ...string) {
 		return
 	}
 
-	// Nil data for now.
 	if err := t.Execute(rw, p); err != nil {
 		http.Error(rw, msgCannotRender, http.StatusInternalServerError)
 		return

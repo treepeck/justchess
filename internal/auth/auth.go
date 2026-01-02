@@ -25,6 +25,8 @@ const (
 	msgConflict      string = "Not unique username or email"
 	msgCannotHash    string = "Cannot generate password hash"
 	msgDatabaseError string = "Database cannot be accessed. Please, try again later"
+
+	sessionsThreshold int = 5
 )
 
 // Service wraps the database repository and provides methods for handling
@@ -125,7 +127,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(sessions) == 5 {
+	if len(sessions) == sessionsThreshold {
 		// Find the oldest session.
 		min := sessions[0].CreatedAt
 		ind := 0
