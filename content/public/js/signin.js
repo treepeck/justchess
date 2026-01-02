@@ -3,11 +3,11 @@ import { signIn } from "/public/js/http.js"
 function submitForm(e) {
 	e.preventDefault()
 
-	/* Clear previous error message. */
+	// Clear previous error message.
 	const container = document.getElementById("server-error")
 	container.textContent = ""
 
-	/* Disable the button while the request is being processed. */
+	// Disable the button while the request is being processed.
 	const button = document.getElementById("form-submit")
 	button.disabled = true
 	button.textContent = "Submitting..."
@@ -19,7 +19,7 @@ function submitForm(e) {
 		.then((err) => {
 			container.textContent = "Sign in failed: " + err
 
-			/* Enable the submit button. */
+			// Enable the submit button.
 			button.disabled = false
 			button.textContent = "Sign in"
 		})

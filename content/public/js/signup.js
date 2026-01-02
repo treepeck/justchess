@@ -4,7 +4,7 @@ const nameEx = /^[a-zA-Z0-9]{2,60}$/i
 const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/i
 const pwdEx = /^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$/i
 
-/* Validates the user input and displays error messages. */
+// Validates the user input and displays error messages.
 function validateInput(name, email, password) {
 	let isValid = true
 
@@ -56,7 +56,7 @@ function submitForm(e) {
 	e.preventDefault()
 	e.stopPropagation()
 
-	/* Clear previous error message. */
+	// Clear previous error message.
 	const container = document.getElementById("server-error")
 	container.textContent = ""
 
@@ -67,7 +67,7 @@ function submitForm(e) {
 	const password = data.get("password")
 
 	if (validateInput(name, email, password)) {
-		/* Disable the button while the request is being processed. */
+		// Disable the button while the request is being processed.
 		const button = document.getElementById("form-submit")
 		button.disabled = true
 		button.textContent = "Submitting..."
@@ -78,7 +78,7 @@ function submitForm(e) {
 			.then((err) => {
 				container.textContent = "Sign up failed: " + err
 
-				/* Enable the submit button. */
+				// Enable the submit button.
 				button.disabled = false
 				button.textContent = "Sign up"
 			})

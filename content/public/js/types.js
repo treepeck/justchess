@@ -11,7 +11,7 @@ export const Piece = {
 	BQ: 9,
 	WK: 10,
 	BK: 11,
-	NP: -1, /* No piece. */
+	NP: -1, // No piece.
 }
 
 export class DraggedPiece {
@@ -20,5 +20,26 @@ export class DraggedPiece {
 		this.y = y
 		this.piece = piece
 		this.fromSquare = fromSquare
+	}
+}
+
+// Must be exactly the same as in justchess/internal/ws/event.go
+export const Action = {
+	Ping: 0,
+	Pong: 1,
+	MakeMove: 2,
+}
+
+export class WSEvent {
+	constructor(action, payload) {
+		this.action = action
+		this.payload =  payload
+	}
+
+	toJSON() {
+		return JSON.stringify({
+			a: this.action,
+			p: this.payload,
+		})
 	}
 }

@@ -9,11 +9,11 @@ type eventAction int
 
 const (
 	// Client's actions.
-	actionMakeMove eventAction = iota
+	actionPing eventAction = iota
+	actionPong
+	actionMakeMove
 	actionJoin
 	actionLeave
-	actionPing
-	actionPong
 
 	// Room's actions.
 )

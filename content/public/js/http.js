@@ -11,16 +11,14 @@ export async function signIn(data) {
 			return await res.text()
 		}
 
-		/* Redirect user to home page after successful authentication. */
+		// Redirect user to home page after successful authentication.
 		window.location.href = "/"
 	} catch (err) {
 		return err.message
 	}
 }
 
-/*
-It's a caller's responsibility to validate the provided data to display errors.
-*/
+// It's a caller's responsibility to validate the provided data to display errors.
 export async function signUp(data) {
 	try {
 		const res = await fetch("/auth/signup", {
@@ -34,7 +32,7 @@ export async function signUp(data) {
 			return await res.text()
 		}
 
-		/* Redirect user to home page after successful registration. */
+		// Redirect user to home page after successful registration.
 		window.location.href = "/"
 	} catch (err) {
 		return err.message

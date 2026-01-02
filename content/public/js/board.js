@@ -1,17 +1,17 @@
 import { Piece, DraggedPiece } from "/public/js/types.js"
 
-/* Board size in pixels. */
+// Board size in pixels.
 const BOARD  = 560
-/* Square size in pixels. */
+// Square size in pixels.
 const SQUARE = BOARD / 8
-/* Source image piece size in pixels. */
+// Source image piece size in pixels.
 const PIECE = 90
 
 class Board {
 	constructor(ctx, sheet) {
-		/* Canvas rendering content. */
+		// Canvas rendering content.
 		this.ctx = ctx
-		/* Sprite sheet. */
+		// Sprite sheet.
 		this.sheet = sheet
 
 		this.marked = []
@@ -32,7 +32,7 @@ class Board {
 	draw() {
 		for (let rank = 0; rank < 8; rank++) {
 			for (let file = 0; file < 8; file++) {
-				/* Draw board squares. */
+				// Draw board squares.
 				this.ctx.fillStyle = "#b5936e"
 				if ((rank % 2 !== 0 && file % 2 !== 0) ||
 					(rank % 2 === 0 && file % 2 === 0)) {
@@ -44,13 +44,13 @@ class Board {
 				this.ctx.fillRect(x, y, SQUARE, SQUARE)
 
 				const ind = 8 * rank + file
-				/* Draw selected square. */
+				// Draw selected square.
 				if (ind === this.selectedSquare) {
 					this.ctx.fillStyle = "green"
 					this.ctx.fillRect(x, y, SQUARE, SQUARE)
 				}
 
-				/* Draw dragged piece. */
+				// Draw dragged piece.
 				if (this.draggedPiece) {
 					this.ctx.drawImage(
 						this.sheet,
@@ -62,7 +62,7 @@ class Board {
 					)
 				}
 
-				/* Draw pieces. */
+				// Draw pieces.
 				if (this.squares[ind] !== Piece.NP) {
 					this.ctx.drawImage(
 						this.sheet,
@@ -88,37 +88,36 @@ class Board {
 
 		this.selected = 8 * rank + file
 
-		/* Begin piece drag. */
+		// Begin piece drag.
 		if (this.squares[this.selected] !== Piece.NP) {
 			this.draggedPiece = new DraggedPiece(
-				x - SQUARE / 2, /* Center dragged piece horizontally. */
-				y - SQUARE / 2, /* Center dragged piece vertically. */
+				x - SQUARE / 2, // Center dragged piece horizontally.
+				y - SQUARE / 2, // Center dragged piece vertically.
 				this.squares[this.selected],
 				this.selected,
 			)
-			/* Remove the piece from its originating square while it's being
-			   dragged. */
+			// Remove the piece from its originating square while it's being dragged.
 			this.squares[this.selected] = Piece.NP
 		}
 
-		/* Redraw the board. */
+		// Redraw the board.
 		this.draw()
 	}
 
 	onMouseMove(e) {
-		/* Update dragged piece position. */
+		// Update dragged piece position.
 		if (this.draggedPiece) {
 			const rect = e.target.getBoundingClientRect()
 			this.draggedPiece.x = (e.clientX - rect.left) - SQUARE / 2
 			this.draggedPiece.y = (e.clientY - rect.top) - SQUARE / 2
 
-			/* Redraw the board. */
+			// Redraw the board.
 			this.draw()
 		}
 	}
 
 	onMouseUp(e) {
-		/* Handle piece drop. */
+		// Handle piece drop.
 		if (this.draggedPiece) {
 			const rect = e.target.getBoundingClientRect()
 
@@ -132,7 +131,7 @@ class Board {
 			this.draggedPiece = null
 			this.selected = -1
 
-			/* Redraw the board. */
+			// Redraw the board.
 			this.draw()
 		}
 	}
@@ -146,7 +145,7 @@ sheet.onload = () => {
 	const board = new Board(ctx, sheet)
 	board.draw()
 
-	/* Add event listeners. */
+	// Add event listeners.
 	canvas.addEventListener("mousedown", e => board.onMouseDown(e))
 	canvas.addEventListener("mousemove", e => board.onMouseMove(e))
 	canvas.addEventListener("mouseup", e => board.onMouseUp(e))
