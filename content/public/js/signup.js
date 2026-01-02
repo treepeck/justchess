@@ -70,7 +70,7 @@ function submitForm(e) {
 		/* Disable the button while the request is being processed. */
 		const button = document.getElementById("form-submit")
 		button.disabled = true
-		button.textContent = "Waiting..."
+		button.textContent = "Submitting..."
 
 		const params = new URLSearchParams(data)
 

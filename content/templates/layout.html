@@ -5,8 +5,8 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="icon" href="/public/img/favicon.png" type="image/x-icon">
 	<link rel="stylesheet" href="/public/css/main.css">
-	{{block "stylesheet" .}}{{end}}
-	{{block "title" .}}{{end}}
+	<link rel="stylesheet" href="{{block "stylesheet" .}}{{end}}">
+	<title>{{block "title" .}}{{end}} &ndash; JustChess.org</title>
 	{{block "script" .}}{{end}}
 </head>
 <body>

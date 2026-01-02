@@ -69,6 +69,7 @@ header {
 
 main {
 	flex: 1;
+	flex-direction: column;
 	margin: auto;
 	display: flex;
 	align-items: center;

@@ -32,9 +32,8 @@ form input {
 	padding: 5px;
 }
 
-form div input:focus {
-	outline-width: 2px;
-	outline-color: #00bcff;
+form input:focus{
+	outline: none;
 }
 
 form #form-submit {

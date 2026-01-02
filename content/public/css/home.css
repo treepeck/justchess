@@ -10,6 +10,14 @@
 	border-radius: 20px;
 }
 
+#ping {
+	position: fixed;
+	font-size: larger;
+	font-weight: bold;
+	left: 10px;
+	bottom: 40px;
+}
+
 .grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr 1fr;
@@ -23,7 +31,7 @@
 	color: var(--container-foreground);
 	border: 2px solid var(--container-foreground);
 	border-radius: 15%;
-	font-size: x-large;
+	font-size: xx-large;
 	aspect-ratio: 1/1;
 }
 
