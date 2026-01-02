@@ -97,7 +97,8 @@ func (r Repo) SelectPlayerById(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerById, id)
 
 	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
+	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.RatingDeviation,
+		&p.RatingVolatility, &p.Email, &p.PasswordHash, &p.CreatedAt,
 		&p.UpdatedAt)
 }
 
@@ -107,7 +108,8 @@ func (r Repo) SelectPlayerByEmail(email string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerByEmail, email)
 
 	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
+	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.RatingDeviation,
+		&p.RatingVolatility, &p.Email, &p.PasswordHash, &p.CreatedAt,
 		&p.UpdatedAt)
 }
 
@@ -117,7 +119,8 @@ func (r Repo) SelectPlayerBySessionId(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerBySessionId, id)
 
 	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Email, &p.PasswordHash, &p.CreatedAt,
+	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.RatingDeviation,
+		&p.RatingVolatility, &p.Email, &p.PasswordHash, &p.CreatedAt,
 		&p.UpdatedAt)
 }
 

@@ -17,11 +17,13 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-// Declaration of error messages.
 const (
+	// Declaration of error messages.
 	msgInternalError string = "The connection coudn't be established. Please reload the page"
 	msgUnauthorized  string = "Sign in to start playing"
 	msgNotFound      string = "Requested game does not exist"
+
+	hubId string = "hub"
 )
 
 type metadata struct {
@@ -48,7 +50,7 @@ type Service struct {
 func NewService(r db.Repo) Service {
 	rooms := make(map[string]chan clientEvent)
 	hubCh := make(chan clientEvent)
-	rooms["hub"] = hubCh
+	rooms[hubId] = hubCh
 
 	hub := newRoom()
 	go hub.handle(hubCh)
@@ -158,12 +160,26 @@ func (s Service) forwardEvent(e clientEvent) {
 		return
 	}
 
-	roomCh, exists := s.rooms[m.roomId]
-	if !exists {
-		log.Print("room does not exist")
-		return
+	switch e.Action {
+	case actionJoinMatchmaking:
+		if m.roomId != hubId {
+			return
+		}
+
+	case actionLeaveMatchmaking:
+		if m.roomId != hubId {
+			return
+		}
+
+	default:
+		roomCh, exists := s.rooms[m.roomId]
+		if !exists {
+			log.Print("room does not exist")
+			return
+		}
+
+		// Notify the room that client has leaved.
+		roomCh <- e
 	}
 
-	// Notify the room that client has leaved.
-	roomCh <- e
 }

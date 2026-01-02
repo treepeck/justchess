@@ -6,12 +6,13 @@ import (
 	"justchess/internal/db"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
 
 func initServiceOrPanic() Service {
-	pool, err := db.OpenDB("admin:admin@tcp(localhost:52000)/justchess-db?parseTime=true")
+	pool, err := db.OpenDB(os.Getenv("MYSQL_TEST_URL"))
 	if err != nil {
 		panic(err)
 	}
@@ -50,7 +51,6 @@ func TestSignup(t *testing.T) {
 		)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
 		s.signup(rec, req)
@@ -96,7 +96,6 @@ func TestSignin(t *testing.T) {
 		)
 
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Add("Origin", "http://localhost:3000")
 		rec := httptest.NewRecorder()
 
 		s.signin(rec, req)

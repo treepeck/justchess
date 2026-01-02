@@ -269,11 +269,12 @@ func (t *redBlackTree) rotateLeft(x *redBlackNode) {
 
 	// Link y to x's parent.
 	y.parent = x.parent
-	if x == t.root {
+	switch x {
+	case t.root:
 		t.root = y
-	} else if x == y.parent.left {
+	case y.parent.left:
 		y.parent.left = y
-	} else {
+	default:
 		y.parent.right = y
 	}
 
@@ -311,11 +312,12 @@ func (t *redBlackTree) rotateRight(x *redBlackNode) {
 
 	// Link y to x's parent.
 	y.parent = x.parent
-	if x == t.root {
+	switch x {
+	case t.root:
 		t.root = y
-	} else if x == y.parent.left {
+	case y.parent.left:
 		y.parent.left = y
-	} else {
+	default:
 		y.parent.right = y
 	}
 
