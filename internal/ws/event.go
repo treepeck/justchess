@@ -1,0 +1,32 @@
+package ws
+
+import (
+	"encoding/json"
+)
+
+// Domain of possible event actions.
+type eventAction int
+
+const (
+	// Client's actions.
+	actionMakeMove eventAction = iota
+	actionJoin
+	actionLeave
+	actionPing
+	actionPong
+
+	// Room's actions.
+)
+
+// Recieved from or forwared to the client struct.
+type clientEvent struct {
+	Payload json.RawMessage `json:"p"`
+	Action  eventAction     `json:"a"`
+	sender  *client         `json:"-"`
+}
+
+type roomEvent struct {
+	recipients []string
+	payload    json.RawMessage
+	action     eventAction
+}

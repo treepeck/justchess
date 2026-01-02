@@ -6,13 +6,9 @@ import (
 	"os"
 
 	"justchess/internal/auth"
-	"justchess/internal/core"
 	"justchess/internal/db"
 	"justchess/internal/web"
-
-	"github.com/treepeck/chego"
-
-	"github.com/rabbitmq/amqp091-go"
+	"justchess/internal/ws"
 )
 
 var (
@@ -34,21 +30,6 @@ func main() {
 	repo := db.NewRepo(pool)
 	log.Print("Successfully connected to db.")
 
-	log.Print("Connecting to RabbitMQ.")
-	conn, err := amqp091.Dial(os.Getenv("RABBITMQ_URL"))
-	if err != nil {
-		log.Panic(err)
-	}
-	defer conn.Close()
-
-	// Open an AMQP channel.
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Panic(err)
-	}
-	defer ch.Close()
-	log.Print("Successfully connected to RabbitMQ.")
-
 	log.Print("Creating endpoints.")
 	mux := http.NewServeMux()
 
@@ -58,16 +39,10 @@ func main() {
 	webService := web.NewService(templates, public, repo)
 	webService.RegisterRoutes(mux)
 
+	wsService := ws.NewService(repo)
+	go wsService.EventBus()
+	wsService.RegisterRoutes(mux)
+
 	log.Print("Starting server.")
-	// Initialize attack tables to be able to generate chess moves.
-	chego.InitAttackTables()
-	// Initialize Zobrist keys to be able to detect threefold repetitions.
-	chego.InitZobristKeys()
-
-	c := core.NewCore(ch, repo)
-
-	// Run the goroutine which will run untill the program exits.
-	go c.EventBus()
-
 	log.Panic(http.ListenAndServe(":3502", mux))
 }
