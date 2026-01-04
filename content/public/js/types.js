@@ -27,7 +27,12 @@ export class DraggedPiece {
 export const Action = {
 	Ping: 0,
 	Pong: 1,
-	MakeMove: 2,
+	JoinMatchmaking: 2,
+	LeaveMatchmaking: 3,
+	MakeMove: 4,
+	// Internal events skipped.
+	// Server events.
+	Redirect: 7,
 }
 
 export class WSEvent {

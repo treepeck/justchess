@@ -7,7 +7,7 @@
 	<link rel="stylesheet" href="/public/css/main.css">
 	<link rel="stylesheet" href="{{block "stylesheet" .}}{{end}}">
 	<title>{{block "title" .}}{{end}} &ndash; JustChess.org</title>
-	{{block "script" .}}{{end}}
+	<script>src="{{block "script" .}}{{end}}" type="module" defer</script>
 </head>
 <body>
 	<header>

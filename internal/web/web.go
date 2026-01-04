@@ -44,18 +44,18 @@ func (s Service) servePages(rw http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/":
-		s.renderPage(rw, p, "home.html")
+		s.renderPage(rw, p, "home.tmpl")
 
 	case "/signin":
 		p["Form"] = Form{IsSignUp: false}
-		s.renderPage(rw, p, "form.html", "signin.html")
+		s.renderPage(rw, p, "form.tmpl", "signin.tmpl")
 
 	case "/signup":
 		p["Form"] = Form{IsSignUp: true}
-		s.renderPage(rw, p, "form.html", "signup.html")
+		s.renderPage(rw, p, "form.tmpl", "signup.tmpl")
 
 	case "/game":
-		s.renderPage(rw, p, "game.html")
+		s.renderPage(rw, p, "game.tmpl")
 
 		// default:
 		// 	s.redirect(rw, r)
@@ -64,7 +64,7 @@ func (s Service) servePages(rw http.ResponseWriter, r *http.Request) {
 
 func (s Service) renderPage(rw http.ResponseWriter, p Page, tmpls ...string) {
 	// Load base template.
-	t, err := template.ParseFS(s.templates, append([]string{"layout.html"},
+	t, err := template.ParseFS(s.templates, append([]string{"layout.tmpl"},
 		tmpls...)...)
 
 	if err != nil {
