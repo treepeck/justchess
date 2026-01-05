@@ -1,6 +1,6 @@
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
-JustChess.org core backend server.
+JustChess.org is a free chess platform.
 
 ## Local installation
 
@@ -11,5 +11,8 @@ development environment.
 
 Copyright (c) 2024-2026 Artem Bielikov
 
-This project is available under the Mozilla Public License, v. 2.0.<br/>
+The source code is available under the Mozilla Public License, v. 2.0.<br/>
 See the [LICENSE](LICENSE) file for details.
+
+The fonts are licensed under the Ubuntu Font License, v. 1.0.<br/>
+See the [LICENCE.txt](content/public/font/LICENCE.txt) file for details.
