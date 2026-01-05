@@ -12,12 +12,9 @@
 <body>
 	<header>
 		<div class="header-content">
-			<a href="/">JustChess</a>
-			<nav>
-				<a href="/coach">AI coach</a>
-			</nav>
+			<div class="logo"><a href="/">JustChess</a></div>
 
-			<div class="header-profile">
+			<div class="profile">
 				{{ if .Player.Name }}
 					<p>{{ .Player.Name }}</p>
 				{{ else }}
@@ -30,7 +27,9 @@
 	<main>{{block "content" .}}{{end}}</main>
 
 	<footer>
-		Lorem ipsum dim.
+		<div class="footer-content">
+			Lorem ipsum dim.
+		</div>
 	</footer>
 </body>
 </html>

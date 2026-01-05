@@ -1,30 +1,15 @@
 @font-face {
-	font-family: "Ubuntu";
-	src: url("/public/font/Ubuntu-Regular.ttf");
-	font-style: normal;
-	font-display: swap;
+	font-family: Ubuntu;
+	src: url("/public/font/UbuntuSans-Regular.woff2");
 }
 
-html {
-	font-family: "Ubuntu", system-ui;
+@font-face {
+	font-family: Ubuntu;
+	src: url("/public/font/UbuntuSans-Bold.woff2");
+	font-weight: bold;
 }
 
-*, *::before, *::after {
-	box-sizing: border-box;
-}
-
-* {
-	margin: 0;
-	padding: 0;
-}
-
-a, input {
-	font: inherit;
-	color: inherit;
-	text-decoration: none;
-}
-
-/* White theme colors. */
+/* White theme colors by default. */
 :root {
 	--background: #e2d3c4;
 	--foreground: #34211d;
@@ -35,56 +20,78 @@ a, input {
 	--container-foreground: #b5936e;
 }
 
+* {
+	margin: 0;
+	padding: 0;
+}
+
+/* Without this paddings and margins will not count as element width and height. */
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+html {
+	font-family: Ubuntu;
+}
+
 body {
 	width: 100%;
 	height: 100vh;
 	display: flex;
+	font-size: x-large;
 	line-height: 1.5;
 	flex-direction: column;
 	color: var(--foreground);
 	background: var(--background);
 }
 
+a, input, button {
+	font: inherit;
+	color: inherit;
+	text-decoration: none;
+}
+
+button {
+	cursor: pointer;
+}
+
 header {
-	gap: 10px;
 	width: 100%;
 	padding: 5px;
-	font-weight: bold;
-	font-size: x-large;
+	user-select: none;
+	font-size: larger;
 	color: var(--container-foreground);
-	background: var(--container-background);
+	background-color: var(--container-background);
 }
 
 .header-content {
-	margin: auto;
 	display: flex;
-	gap: 20px;
-	height: 100%;
+	margin: 0 auto 0 auto;
 	max-width: 1280px;
 }
 
-.header-profile {
-	margin-left: auto;
+.header-content .logo {
+	flex: 1;
+	font-weight: bold;
+	font-size: xx-large;	
 }
 
 main {
-	flex: 1;
-	flex-direction: column;
-	margin: auto;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	height: 100%;
+	width: 100%;
 	max-width: 1280px;
-}
-
-a:hover {
-	color: var(--url-hover);
+	display: flex;
+	margin: 0 auto 0 auto;
+	flex: 1;
 }
 
 footer {
 	width: 100%;
-	font-weight: bold;
-	font-size: x-large;
 	color: var(--container-foreground);
-	background: var(--container-background);
+	background-color: var(--container-background);
+}
+
+.footer-content {
+	margin: 0 auto 0 auto;
+	max-width: 1280px;
 }
