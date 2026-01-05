@@ -48,9 +48,16 @@ h1 {
 	font-size: larger;
 	aspect-ratio: 1/1;
 	font-weight: bold;
+	transition: background-color 1.5s;
 	color: var(--container-foreground);
 	background-color: var(--container-background);
 	border: 2px solid var(--container-foreground);
+}
+
+.grid button:hover {
+	color: var(--container-background);
+	background-color: var(--container-foreground);
+	border: 2px solid var(--container-background);
 }
 
 @keyframes slide {
@@ -97,9 +104,5 @@ h1 {
 		transform: rotate(15deg) scale(2);
 		/* Make animation slower on larger screens. */
 		animation: slide 600s ease-out infinite;
-	}
-
-	.grid button {
-		font-size: xx-large;
 	}
 }
