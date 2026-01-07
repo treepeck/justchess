@@ -97,6 +97,15 @@ footer {
 	max-width: var(--max-width);
 }
 
+#tooltip-toggle {
+	cursor: help;
+	text-decoration: underline;
+}
+
+#tooltip-toggle:hover {
+	color: #173091;
+}
+
 #tooltip-container {
 	position: fixed;
 	top: 0;

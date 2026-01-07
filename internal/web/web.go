@@ -61,7 +61,14 @@ func (s Service) servePages(rw http.ResponseWriter, r *http.Request) {
 
 	case "/signup":
 		p["Form"] = Form{IsSignUp: true}
-		s.renderPage(rw, p, "form.tmpl", "signup.tmpl")
+		p["Tooltip"] = Tooltip{
+			Header: "Why do I need to enter my email address?",
+			Content: []string{
+				"To securely reset your password if you forget it.",
+				"Note that your email will never be shared or used for any other purpose.",
+			},
+		}
+		s.renderPage(rw, p, "form.tmpl", "tooltip.tmpl", "signup.tmpl")
 
 	case "/game":
 		s.renderPage(rw, p, "game.tmpl")

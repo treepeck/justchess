@@ -24,7 +24,7 @@
 	{{ end }}
 
 	<div>
-		<label>
+		<label {{ if .Form.IsSignUp }}id="tooltip-toggle"{{ end }}>
 			Email address
 		</label>
 		<input

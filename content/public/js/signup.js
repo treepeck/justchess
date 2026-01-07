@@ -103,3 +103,13 @@ const passwordToggle = document.getElementById("password-toggle")
 passwordToggle.addEventListener("click", togglePassword)
 
 const passwordInput = document.getElementById("input-password")
+
+function toggleTooltipVisibility() {
+	tooltipContainer.classList.toggle("tooltip-show")
+}
+
+const tooltipToggle = document.getElementById("tooltip-toggle")
+tooltipToggle.addEventListener("click", toggleTooltipVisibility)
+
+const tooltipContainer = document.getElementById("tooltip-container")
+tooltipContainer.addEventListener("click", toggleTooltipVisibility)
