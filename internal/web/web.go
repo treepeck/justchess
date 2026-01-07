@@ -44,7 +44,16 @@ func (s Service) servePages(rw http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/":
-		s.renderPage(rw, p, "home.tmpl")
+		p["Tooltip"] = Tooltip{
+			Header: "What is time control?",
+			Content: []string{
+				"Each chess game has a time limit.",
+				"The goal of time control is to define this limit.",
+				"The first number indicates the number of minutes.",
+				"The second number indicates the number of seconds added after each move.",
+			},
+		}
+		s.renderPage(rw, p, "tooltip.tmpl", "home.tmpl")
 
 	case "/signin":
 		p["Form"] = Form{IsSignUp: false}
@@ -57,8 +66,8 @@ func (s Service) servePages(rw http.ResponseWriter, r *http.Request) {
 	case "/game":
 		s.renderPage(rw, p, "game.tmpl")
 
-		// default:
-		// 	s.redirect(rw, r)
+	default:
+		s.redirect(rw, r)
 	}
 }
 

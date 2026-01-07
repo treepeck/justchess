@@ -1,0 +1,8 @@
+{{define "tooltip"}}
+<div id="tooltip-container">
+	<div id="tooltip-content">
+		<h2>{{ .Tooltip.Header }}</h2>
+        {{range .Tooltip.Content }} <p>{{ . }}</p> {{ end }}
+	</div>
+</div>
+{{end}}
