@@ -44,6 +44,8 @@ function joinMatchmaking(cellInd) {
 		e.payload = {tc: 900, tb: 10}
 	}
 	socket.send(e.toJSON())
+
+	// TODO: display a matchmaking queue window.
 }
 
 const socket = new WebSocket("http://localhost:3502/ws?rid=hub")
@@ -64,8 +66,18 @@ socket.onclose = () => {
 const ping = document.getElementById("ping")
 
 // Add cell event listeners.
+const cells = []
 for (let i = 1; i <= 9; i++) {
-	document.getElementById(`cell-${i}`).addEventListener("click", () => {
-		joinMatchmaking(i)
-	})
+	cells[i-1] = document.getElementById(`cell-${i}`)
+	cells[i-1].addEventListener("click", () => { joinMatchmaking(i) })
 }
+
+function toggleTooltipVisibility() {
+	tooltipContainer.classList.toggle("tooltip-show")
+}
+
+const tooltipToggle = document.getElementById("tooltip-toggle")
+tooltipToggle.addEventListener("click", toggleTooltipVisibility)
+
+const tooltipContainer = document.getElementById("tooltip-container")
+tooltipContainer.addEventListener("click", toggleTooltipVisibility)

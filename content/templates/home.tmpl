@@ -2,7 +2,17 @@
 {{define "stylesheet"}}/public/css/home.css{{end}}
 {{define "script"}}/public/js/home.js{{end}}
 {{define "content"}}
-<h1>Choose a <u>time control</u></h1>
+<h1>Choose a <u id="tooltip-toggle"> time control</u></h1>
+
+<div id="tooltip-container">
+	<div id="tooltip-content">
+		<h2>What is time control?</h2>
+		<p>Each chess game has a time limit.</p>
+		<p>The goal of time control is to define this limit.</p>
+		<p>The first number indicates the number of minutes.</p>
+		<p>The second number indicates the number of seconds added after each move.</p>
+	</div>
+</div>
 
 <div class="grid">
 	<button id="cell-1">1+0</button>
