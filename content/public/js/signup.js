@@ -57,10 +57,9 @@ function submitForm(e) {
 	e.stopPropagation()
 
 	// Clear previous error message.
-	const container = document.getElementById("server-error")
-	container.textContent = ""
+	serverError.textContent = ""
 
-	const data = new FormData(form)
+	const data = new FormData(authForm)
 
 	const name = data.get("name")
 	const email = data.get("email")
@@ -68,19 +67,18 @@ function submitForm(e) {
 
 	if (validateInput(name, email, password)) {
 		// Disable the button while the request is being processed.
-		const button = document.getElementById("form-submit")
-		button.disabled = true
-		button.textContent = "Submitting..."
+		submitBtn.disabled = true
+		submitBtn.textContent = "Submitting..."
 
 		const params = new URLSearchParams(data)
 
 		signUp(params)
 			.then((err) => {
-				container.textContent = "Sign up failed: " + err
+				serverError.textContent = "Sign up failed: " + err
 
 				// Enable the submit button.
-				button.disabled = false
-				button.textContent = "Sign up"
+				submitBtn.disabled = false
+				submitBtn.textContent = "Sign up"
 			})
 	}
 }
@@ -96,20 +94,14 @@ function togglePassword() {
 	}
 }
 
-const form = document.getElementById("form")
-form.addEventListener("submit", submitForm)
+authForm.addEventListener("submit", submitForm)
 
-const passwordToggle = document.getElementById("password-toggle")
 passwordToggle.addEventListener("click", togglePassword)
-
-const passwordInput = document.getElementById("input-password")
 
 function toggleTooltipVisibility() {
 	tooltipContainer.classList.toggle("tooltip-show")
 }
 
-const tooltipToggle = document.getElementById("tooltip-toggle")
 tooltipToggle.addEventListener("click", toggleTooltipVisibility)
 
-const tooltipContainer = document.getElementById("tooltip-container")
 tooltipContainer.addEventListener("click", toggleTooltipVisibility)

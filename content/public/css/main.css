@@ -79,7 +79,6 @@ header {
 }
 
 main {
-	height: 100%;
 	width: 100%;
 	max-width: var(--max-width);
 	display: flex;
@@ -98,16 +97,16 @@ footer {
 	max-width: var(--max-width);
 }
 
-#tooltip-toggle {
+#tooltipToggle {
 	cursor: help;
 	text-decoration: underline;
 }
 
-#tooltip-toggle:hover {
+#tooltipToggle:hover {
 	color: #173091;
 }
 
-#tooltip-container {
+#tooltipContainer {
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -121,7 +120,7 @@ footer {
 	backdrop-filter: blur(5px);
 }
 
-#tooltip-content {
+#tooltipContent {
 	width: 95%;
 	height: 400px;
 	max-width: 700px;
@@ -136,7 +135,7 @@ footer {
 	border-radius: 15px;
 }
 
-#tooltip-content::after{
+#tooltipContent::after{
 	content: "X";
 	position: absolute;
 	cursor: pointer;
@@ -153,11 +152,11 @@ footer {
 	width: 40px;
 }
 
-#tooltip-container.tooltip-show {
+#tooltipContainer.tooltip-show {
 	z-index: 1;
 	opacity: 1;
 }
 
-#tooltip-content h2 {
+#tooltipContent h2 {
 	font-size: xx-large;
 }

@@ -4,24 +4,22 @@ function submitForm(e) {
 	e.preventDefault()
 
 	// Clear previous error message.
-	const container = document.getElementById("server-error")
-	container.textContent = ""
+	serverError.textContent = ""
 
 	// Disable the button while the request is being processed.
-	const button = document.getElementById("form-submit")
-	button.disabled = true
-	button.textContent = "Submitting..."
+	submitBtn.disabled = true
+	submitBtn.textContent = "Submitting..."
 
-	const data = new FormData(form)
+	const data = new FormData(authForm)
 	const params = new URLSearchParams(data)
 
 	signIn(params)
 		.then((err) => {
-			container.textContent = "Sign in failed: " + err
+			serverError.textContent = "Sign in failed: " + err
 
 			// Enable the submit button.
-			button.disabled = false
-			button.textContent = "Sign in"
+			submitBtn.disabled = false
+			submitBtn.textContent = "Sign in"
 		})
 }
 
@@ -36,10 +34,6 @@ function togglePassword() {
 	}
 }
 
-const form = document.getElementById("form")
-form.addEventListener("submit", submitForm)
+authForm.addEventListener("submit", submitForm)
 
-const passwordToggle = document.getElementById("password-toggle")
 passwordToggle.addEventListener("click", togglePassword)
-
-const passwordInput = document.getElementById("input-password")

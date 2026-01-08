@@ -1,5 +1,5 @@
 {{define "form"}}
-<form id="form">
+<form id="authForm">
 	<h1>
 		{{ if .Form.IsSignUp }}
 		Create a new account
@@ -19,12 +19,12 @@
 			autocomplete="off"
 			placeholder="MagnusCarlsen"
 		/>
-		<p id="name-error"></p>
+		<p id="nameError"></p>
 	</div>
 	{{ end }}
 
 	<div>
-		<label {{ if .Form.IsSignUp }}id="tooltip-toggle"{{ end }}>
+		<label {{ if .Form.IsSignUp }}id="tooltipToggle"{{ end }}>
 			Email address
 		</label>
 		<input
@@ -33,7 +33,7 @@
 			autocomplete="off"
 			placeholder="magnus@carlsen.com"
 		/>
-		<p id="email-error"></p>
+		<p id="emailError"></p>
 	</div>
 
 	<div>
@@ -42,19 +42,19 @@
 		</label>
 		<div class="password-container">
 			<input
-				id="input-password"
+				id="passwordInput"
 				type="password"
 				name="password"
 				autocomplete="off"
 				placeholder="*************"
 			/>
-			<div id="password-toggle"></div>
+			<div id="passwordToggle"></div>
 		</div>
-		<p id="password-error"></p>
+		<p id="passwordError"></p>
 	</div>
 
-	<p id="server-error"></p>
-	<button type="submit" id="form-submit">
+	<p id="serverError"></p>
+	<button type="submit" id="submitBtn">
 		{{ if .Form.IsSignUp }}Sign up{{ else }}Sign in{{ end }}
 	</button>
 

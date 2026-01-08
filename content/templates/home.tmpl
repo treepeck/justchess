@@ -2,20 +2,25 @@
 {{define "stylesheet"}}/public/css/home.css{{end}}
 {{define "script"}}/public/js/home.js{{end}}
 {{define "content"}}
-<h1>Choose a <span id="tooltip-toggle"> time control</span></h1>
+<h1 id="homeHeader">Choose a <span id="tooltipToggle"> time control</span></h1>
 
 {{block "tooltip" .}}{{end}}
 
-<div class="grid">
-	<button id="cell-1">1+0</button>
-	<button id="cell-2">2+1</button>
-	<button id="cell-3">3+0</button>
-	<button id="cell-4">3+2</button>
-	<button id="cell-5">5+0</button>
-	<button id="cell-6">5+2</button>
-	<button id="cell-7">10+0</button>
-	<button id="cell-8">10+10</button>
-	<button id="cell-9">15+10</button>
+<div id="homeGrid">
+	<button id="cell1">1+0</button>
+	<button id="cell2">2+1</button>
+	<button id="cell3">3+0</button>
+	<button id="cell4">3+2</button>
+	<button id="cell5">5+0</button>
+	<button id="cell6">5+2</button>
+	<button id="cell7">10+0</button>
+	<button id="cell8">10+10</button>
+	<button id="cell9">15+10</button>
+</div>
+
+<div id="matchmakingWindow">
+	<button id="closeBtn">X</button>
+	You are in a matchmaking queue!!!
 </div>
 
 <p id="ping">Ping: ?? ms</p>

@@ -36,7 +36,7 @@ form input:focus{
 	outline: none;
 }
 
-form #form-submit {
+form #submitBtn {
 	border: none;
 	border-radius: 15px;
 	background: var(--container-background);
