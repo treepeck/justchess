@@ -18,12 +18,14 @@ const (
 type Page struct {
 	Title    string
 	Name     string
+	Script   string
 	template *template.Template
 }
 
-func NewPage(title string, t *template.Template) Page {
+func NewPage(title, script string, t *template.Template) Page {
 	return Page{
-		Title: title,
+		Title:  title,
+		Script: script,
 		// By default sign up since user can be unauthorized.
 		Name:     "Sign up",
 		template: t,
@@ -44,19 +46,19 @@ func ParsePages() (map[string]Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	pages["/"] = NewPage("Home", home)
+	pages["/"] = NewPage("Home", "/js/home.js", home)
 
 	signup, err := template.ParseFiles(baseTmpl, signupTmpl)
 	if err != nil {
 		return nil, err
 	}
-	pages["/signup"] = NewPage("Sign up", signup)
+	pages["/signup"] = NewPage("Sign up", "/js/signup.js", signup)
 
 	signin, err := template.ParseFiles(baseTmpl, signinTmpl)
 	if err != nil {
 		return nil, err
 	}
-	pages["/signin"] = NewPage("Sign in", signin)
+	pages["/signin"] = NewPage("Sign in", "/js/signin.js", signin)
 
 	return pages, nil
 }

@@ -5,16 +5,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/css/styles.css">
-  <link rel="stylesheet" href="/css/fonts.css">
   <link rel="icon" href="/images/favicon.png" type="image/png">
   <title>{{ .Title }} &ndash; JustChess.org</title>
-  <script src="/js/base.js"></script>
+  <script src="{{ .Script }}" type="module"></script>
 </head>
 
 <body>
   <header>
     <nav>
-      <a href="/">JustChess</a>
+      <a class="logo" href="/">JustChess</a>
 
       <a href="/{{ .Name }}">{{ .Name }}</a>
     </nav>
@@ -23,7 +22,9 @@
   <main>{{ block "content" . }}{{ end }}</main>
 
   <footer>
-    &copy; 2026 JustChess
+    <div>
+      &copy; 2026 JustChess
+    </div>
   </footer>
 </body>
 

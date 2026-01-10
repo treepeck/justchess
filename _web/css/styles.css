@@ -1,0 +1,397 @@
+/******************************************************************************/
+/* BASE                                                                       */
+/******************************************************************************/
+
+@font-face {
+	font-family: 'Ubuntu';
+	src: url('/fonts/UbuntuSans-Regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Ubuntu';
+	src: url('/fonts/UbuntuSans-Bold.woff2') format('woff2');
+	font-weight: bold;
+}
+
+/* White theme colors by default. */
+:root {
+  --background: #e2d3c4;
+	--foreground: #34211d;
+	--url-hover: #173091;
+	--input-background: #b5936e69;
+	--input-placeholder: rgba(73, 72, 72, 0.564);
+	--container-background: rgb(37, 22, 22, 85%);
+	--container-foreground: #b5936e;
+	--max-width: 1600px;
+}
+
+/* Remove default margin and padding. */
+* {
+	margin: 0;
+	padding: 0;
+}
+
+/* Count element size taking margins and paddings into account. */
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+body {
+	width: 100%;
+	height: 100%;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+  font-family: 'Ubuntu';
+	font-size: x-large;
+	line-height: 1.5;
+	color: var(--foreground);
+	background: var(--background);
+}
+
+a, input, button {
+	font: inherit;
+	color: inherit;
+	text-decoration: none;
+}
+
+button {
+	cursor: pointer;
+}
+
+header {
+	width: 100%;
+	padding: 5px;
+	user-select: none;
+	font-size: larger;
+	color: var(--container-foreground);
+	background-color: var(--container-background);
+}
+
+header nav {
+  max-width: var(--max-width);
+  display: flex;
+  margin: 0 auto 0 auto;
+}
+
+header nav .logo {
+  flex: 1;
+  font-weight: bold;
+  font-size: xx-large;
+}
+
+main {
+  max-width: var(--max-width);
+  margin: auto;
+  display: flex;
+  flex: 1;
+}
+
+footer {
+  width: 100%;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+footer div {
+  max-width: var(--max-width);
+  display: flex;
+  margin: 0 auto 0 auto;
+}
+
+#ping {
+  margin: auto auto 0 0;
+  user-select: none;
+  font-weight: bold;
+}
+
+/* TODO: hack to apply hover effect on all buttons. Rewrite without !important. */
+button {
+  transition: background-color 0.75s ease-in-out, border-color 0.75s ease-in-out, color 0.75s ease-in-out !important;
+}
+
+button:focus{
+  outline: none;
+  color: var(--container-background) !important;
+	background-color: var(--container-foreground) !important;
+	border: 2px solid var(--container-background) !important;
+}
+
+button:hover {
+	color: var(--container-background) !important;
+	background-color: var(--container-foreground) !important;
+	border: 2px solid var(--container-background) !important;
+}
+
+/* Help window. */
+
+#helpText {
+  text-decoration: underline;
+  cursor: help;
+}
+
+#helpText:hover {
+  color: var(--url-hover);
+}
+
+#helpWindow {
+  position: fixed;
+	top: 0;
+	left: 0;
+	display: flex;
+	width: 100%;
+	height: 100%;
+	z-index: -1;
+	opacity: 0;
+	transition: opacity ease-in-out 0.75s, z-index ease-out 0.75s, backgroud-color ease-in-out 0.75s;
+	user-select: none;
+	backdrop-filter: blur(5px);
+  background-color: rgb(0, 0, 0, 40%);
+}
+
+#helpWindow.show {
+  z-index: 1;
+  opacity: 1;
+}
+
+#helpWindow div {
+  user-select: none;
+  font-size: x-large;
+  text-align: center;
+  margin: auto;
+  border-radius: 20px;
+  padding: 20px;
+  line-height: 2;
+  animation: appear 1s ease-in-out 1;
+  backdrop-filter: blur(5px);
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+#helpWindow p {
+  text-align: left;
+}
+
+#helpWindow button {
+  height: 50px;
+  width: 95%;
+  border-radius: 15px;
+  font-weight: bold;
+  margin: 10px;
+  border: 2px solid var(--container-foreground);
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+/******************************************************************************/
+/* / (Home page)                                                              */
+/******************************************************************************/
+
+.home-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+}
+
+.home-header {
+  margin: auto 0 0 0;
+  user-select: none;
+  font-size: xx-large;
+  text-align: center;
+}
+
+/* Animated background. */
+.time-controls::before {
+  width: 200%;
+	height: 200%;
+	top: -50%;
+	left: -50%;
+	content: "";
+	position: fixed;
+	background-image: url("/images/background.png");
+	transform: rotate(15deg);
+	filter: blur(2px);
+	animation: slide-background 120s ease-in-out infinite;
+	z-index: -1;
+}
+
+.time-controls {
+	width: 95%;
+	display: grid;
+  margin: 0 auto 0 auto;
+	grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+}
+
+.time-controls button {
+  font-size: larger;
+	aspect-ratio: 1/1;
+	font-weight: bold;
+	border: 2px solid var(--container-foreground);
+  border-radius: 15%;
+	color: var(--container-foreground);
+	background-color: var(--container-background);
+}
+
+/******************************************************************************/
+/* /signup & /signin                                                          */
+/******************************************************************************/
+
+#authForm {
+  display: flex;
+  margin: auto;
+  padding: 20px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#authForm h1 {
+  font-size: larger;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+#authForm section {
+  display: grid;
+  font-size: larger;
+  grid-template-rows: 1fr 1fr;
+}
+
+#authForm section input {
+	width: 100%;
+	font-size: x-large;
+	font-weight: bold;
+	padding: 5px;
+  line-height: 2;
+  border: none;
+	border-radius: 10px;
+  background-color: var(--input-background);
+}
+
+#authForm section input:focus {
+  outline: var(--input-background);
+}
+
+#authForm #submitBtn {
+	width: 60%;
+	margin: auto;
+	padding: 10px;
+	font-size: x-large;
+  border: 2px solid var(--container-background);
+	border-radius: 15px;
+	color: var(--container-foreground);
+	background: var(--container-background);
+  
+}
+
+#authForm p {
+  font-size: large;
+  color: red;
+}
+
+#authForm .form-footer {
+	margin: auto;
+	padding-top: 10px;
+	font-size: large;
+	color: var(--foreground);
+}
+
+.form-footer a {
+	color: var(--url-hover);
+}
+
+.password-container {
+	display: flex;
+	border-radius: 10px;
+	background: var(--input-background);
+}
+
+#authForm .password-container input {
+	background-color: transparent;
+}
+
+.password-container div {
+  height: 80%;
+	aspect-ratio: 1/1;
+  margin: auto 5px auto 5px;
+	border-radius: 50%;
+	border: none;
+	cursor: pointer;
+	background-color: transparent;
+	background-image: url("/images/show.png");
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+/******************************************************************************/
+/* ANIMATIONS                                                                 */
+/******************************************************************************/
+
+/* Animated background on home page. */
+@keyframes slide-background {
+  0% {
+		background-position-x: 0;
+		background-position-y: 0;
+	}
+
+	25% { 
+		background-position-x: 100vw;
+		background-position-y: -100vh;
+	}
+
+	50% {
+		background-position-x: 0;
+		background-position-y: 0;
+	}
+
+	75% {
+		background-position-x: -100vw;
+		background-position-y: 100vh;
+	}
+
+	100% {
+		background-position-x: 0;
+		background-position-y: 0;
+	}
+}
+
+/******************************************************************************/
+/* QUERIES                                                                    */
+/******************************************************************************/
+
+@media screen and (min-width: 400px) {
+  #authForm h1 {
+    font-size: xx-large;
+  }
+}
+
+@media screen and (min-width: 600px) {
+   .home-header {
+    font-weight: bold;
+  }
+
+  /* Set fixed width. */
+  .time-controls {
+    width: 600px;
+  }
+
+  /* Make background animation slower on larger screens. */
+  .time-controls::before {
+    transform: rotate(15deg) scale(1.5);
+		animation: slide-background 340s ease-in-out infinite;
+  }
+
+  #authForm {
+    min-width: 600px;
+  }
+}
+
+@media screen and (min-width: 1280px) {
+  /* Make background animation slower on larger screens. */
+  .time-controls::before {
+    transform: rotate(15deg) scale(2);
+  }
+}

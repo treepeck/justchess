@@ -2,7 +2,7 @@
 <form id="authForm">
 	<h1>Create a new account</h1>
 
-	<div>
+	<section>
 		<label>Username</label>
 		<input
 			type="text"
@@ -11,10 +11,10 @@
 			placeholder="MagnusCarlsen"
 		/>
 		<p id="nameError"></p>
-	</div>
+	</section>
 
-	<div>
-		<label id="tooltipToggle">Email address</label>
+	<section>
+		<label><span id="helpText">Email address</span></label>
 		<input
 			type="text"
 			name="email"
@@ -22,9 +22,9 @@
 			placeholder="magnus@carlsen.com"
 		/>
 		<p id="emailError"></p>
-	</div>
+	</section>
 
-	<div>
+	<section>
 		<label>Password</label>
 		<div class="password-container">
 			<input
@@ -37,7 +37,7 @@
 			<div id="passwordToggle"></div>
 		</div>
 		<p id="passwordError"></p>
-	</div>
+	</section>
 
 	<p id="serverError"></p>
 	<button type="submit" id="submitBtn">Sign up</button>
@@ -46,4 +46,15 @@
 		Already have an account? <a href="/signin">Sign in</a>
 	</p>
 </form>
+
+<div id="helpWindow">
+  <div>
+    <h2><b>Why do I need to enter my email address?</b></h2>
+
+    <p>To securely reset your password if you forget it.</p>
+    <p>Note that your email will never be shared or used for any other purpose.</p>
+
+    <button id="closeBtn">OK</button>
+  </div>
+</div>
 {{ end }}
