@@ -1,18 +1,9 @@
-{{define "form"}}
+{{ define "content" }}
 <form id="authForm">
-	<h1>
-		{{ if .Form.IsSignUp }}
-		Create a new account
-		{{ else }}
-		Sign in to your account
-		{{ end }}
-	</h1>
+	<h1>Create a new account</h1>
 
-	{{ if .Form.IsSignUp }}
 	<div>
-		<label>
-			Username
-		</label>
+		<label>Username</label>
 		<input
 			type="text"
 			name="name"
@@ -21,12 +12,9 @@
 		/>
 		<p id="nameError"></p>
 	</div>
-	{{ end }}
 
 	<div>
-		<label {{ if .Form.IsSignUp }}id="tooltipToggle"{{ end }}>
-			Email address
-		</label>
+		<label id="tooltipToggle">Email address</label>
 		<input
 			type="text"
 			name="email"
@@ -37,9 +25,7 @@
 	</div>
 
 	<div>
-		<label>
-			Password
-		</label>
+		<label>Password</label>
 		<div class="password-container">
 			<input
 				id="passwordInput"
@@ -54,16 +40,10 @@
 	</div>
 
 	<p id="serverError"></p>
-	<button type="submit" id="submitBtn">
-		{{ if .Form.IsSignUp }}Sign up{{ else }}Sign in{{ end }}
-	</button>
+	<button type="submit" id="submitBtn">Sign up</button>
 
 	<p class="form-footer">
-		{{ if .Form.IsSignUp }}
 		Already have an account? <a href="/signin">Sign in</a>
-		{{ else }}
-		Does not have an account? <a href="/signup">Sign up</a>
-		{{ end }}
 	</p>
 </form>
-{{end}}
+{{ end }}

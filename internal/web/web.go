@@ -1,101 +1,55 @@
 package web
 
 import (
-	"html/template"
-	"io/fs"
-	"justchess/internal/db"
-	"log"
 	"net/http"
-)
 
-const (
-	msgCannotRender = "The requested page cannot be rendered"
+	"justchess/internal/db"
 )
 
 type Service struct {
-	repo      db.Repo
-	templates fs.FS
-	public    fs.FS
+	repo  db.Repo
+	pages map[string]Page
 }
 
-func NewService(templates, public fs.FS, r db.Repo) Service {
-	return Service{
-		repo:      r,
-		templates: templates,
-		public:    public,
-	}
+func NewService(pages map[string]Page, r db.Repo) Service {
+	return Service{pages: pages, repo: r}
 }
 
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/", s.servePages)
+	// Serve files from the _web/css folder.
+	css := http.Dir("./_web/css")
+	mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(css)))
 
-	// Server static files.
-	mux.Handle("/public/", http.StripPrefix("/public/",
-		http.FileServerFS(s.public)))
+	// Serve files from the _web/fonts folder.
+	fonts := http.Dir("./_web/fonts")
+	mux.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(fonts)))
+
+	// Serve files from the _web/images folder.
+	images := http.Dir("./_web/images")
+	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(images)))
+
+	// Serve files from the _web/js folder.
+	js := http.Dir("./_web/js")
+	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(js)))
+
+	// Serve pages.
+	mux.Handle("/", http.HandlerFunc(s.servePage))
 }
 
-func (s Service) servePages(rw http.ResponseWriter, r *http.Request) {
-	p := make(Page)
+func (s Service) servePage(rw http.ResponseWriter, r *http.Request) {
+	p, exists := s.pages[r.URL.Path]
+	if !exists {
+		http.Redirect(rw, r, "/404", http.StatusNotFound)
+		return
+	}
 
-	session, err := r.Cookie("Auth")
+	c, err := r.Cookie("Auth")
 	if err == nil {
-		p["Player"], _ = s.repo.SelectPlayerBySessionId(session.Value)
-	}
-
-	switch r.URL.Path {
-	case "/":
-		p["Tooltip"] = Tooltip{
-			Header: "What is time control?",
-			Content: []string{
-				"Each chess game has a time limit.",
-				"The goal of time control is to define this limit.",
-				"The first number indicates the number of minutes.",
-				"The second number indicates the number of seconds added after each move.",
-			},
+		player, err := s.repo.SelectPlayerBySessionId(c.Value)
+		if err == nil {
+			p.Name = player.Name
 		}
-		s.renderPage(rw, p, "tooltip.tmpl", "home.tmpl")
-
-	case "/signin":
-		p["Form"] = Form{IsSignUp: false}
-		s.renderPage(rw, p, "form.tmpl", "signin.tmpl")
-
-	case "/signup":
-		p["Form"] = Form{IsSignUp: true}
-		p["Tooltip"] = Tooltip{
-			Header: "Why do I need to enter my email address?",
-			Content: []string{
-				"To securely reset your password if you forget it.",
-				"Note that your email will never be shared or used for any other purpose.",
-			},
-		}
-		s.renderPage(rw, p, "form.tmpl", "tooltip.tmpl", "signup.tmpl")
-
-	case "/game":
-		s.renderPage(rw, p, "game.tmpl")
-
-	default:
-		s.redirect(rw, r)
-	}
-}
-
-func (s Service) renderPage(rw http.ResponseWriter, p Page, tmpls ...string) {
-	// Load base template.
-	t, err := template.ParseFS(s.templates, append([]string{"layout.tmpl"},
-		tmpls...)...)
-
-	if err != nil {
-		http.Error(rw, msgCannotRender, http.StatusInternalServerError)
-		log.Println(err)
-		return
 	}
 
-	if err := t.Execute(rw, p); err != nil {
-		http.Error(rw, msgCannotRender, http.StatusInternalServerError)
-		log.Print(err)
-		return
-	}
-}
-
-func (s Service) redirect(rw http.ResponseWriter, r *http.Request) {
-	http.Redirect(rw, r, "/404", http.StatusFound)
+	p.exec(rw)
 }

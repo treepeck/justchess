@@ -11,11 +11,14 @@ const (
 	// Client's actions.
 	actionPing eventAction = iota
 	actionPong
+	actionJoinMatchmaking
+	actionLeaveMatchmaking
 	actionMakeMove
 	actionJoin
 	actionLeave
 
 	// Room's actions.
+	actionRedirect
 )
 
 // Recieved from or forwared to the client struct.

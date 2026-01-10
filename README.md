@@ -15,4 +15,4 @@ The source code is available under the Mozilla Public License, v. 2.0.<br/>
 See the [LICENSE](LICENSE) file for details.
 
 The fonts are licensed under the Ubuntu Font License, v. 1.0.<br/>
-See the [LICENCE.txt](content/public/font/LICENCE.txt) file for details.
+See the [LICENCE.txt](_web/fonts/LICENCE.txt) file for details.

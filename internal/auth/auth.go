@@ -18,8 +18,8 @@ var (
 	pwdEx   = regexp.MustCompile(`^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$`)
 )
 
-// Declaration of error messages.
 const (
+	// Declaration of error messages.
 	msgUnauthorized  string = "Invalid credentials"
 	msgBadRequest    string = "Malformed request body"
 	msgConflict      string = "Not unique username or email"
