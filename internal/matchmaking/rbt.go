@@ -1,11 +1,16 @@
 package matchmaking
 
+type nodeKey struct {
+	playerId string
+	rating   int
+}
+
 // redBlackNode represents the Red-Black Tree node.
 type redBlackNode struct {
 	parent *redBlackNode
 	left   *redBlackNode
 	right  *redBlackNode
-	value  int
+	key    nodeKey
 	isRed  bool
 }
 
@@ -20,6 +25,8 @@ type redBlackNode struct {
 type redBlackTree struct {
 	root *redBlackNode
 	leaf *redBlackNode
+	// Number of nodes excluding leafs.
+	size int
 }
 
 func newRedBlackTree() *redBlackTree {
@@ -34,7 +41,7 @@ func (t *redBlackTree) insertNode(z *redBlackNode) {
 
 	for x != t.leaf {
 		y = x
-		if z.value < x.value {
+		if z.key.rating < x.key.rating {
 			x = x.left
 		} else {
 			x = x.right
@@ -44,13 +51,15 @@ func (t *redBlackTree) insertNode(z *redBlackNode) {
 	z.parent = y
 	if y == t.leaf {
 		t.root = z
-	} else if z.value < y.value {
+	} else if z.key.rating < y.key.rating {
 		y.left = z
 	} else {
 		y.right = z
 	}
 
 	t.fixInsert(z)
+
+	t.size++
 }
 
 // Removes the node and fixes any violations of the Red-Black Tree properties.
@@ -88,18 +97,24 @@ func (t *redBlackTree) removeNode(z *redBlackNode) {
 	if !wasRed {
 		t.fixRemove(x)
 	}
+
+	t.size--
 }
 
-func (t *redBlackTree) search(value int) *redBlackNode {
+func (t *redBlackTree) search(rating int, playerId string) *redBlackNode {
 	x := t.root
 
 	for x != t.leaf {
-		if x.value > value {
+		if x.key.rating > rating {
 			x = x.left
-		} else if x.value < value {
+		} else if x.key.rating < rating {
 			x = x.right
 		} else {
-			return x
+			if x.key.playerId == playerId {
+				return x
+			} else {
+				x = x.right
+			}
 		}
 	}
 
@@ -354,9 +369,9 @@ func (t *redBlackTree) transplant(u, v *redBlackNode) {
 }
 
 // creates a new node with specified value and default fields.
-func (t *redBlackTree) spawn(value int) *redBlackNode {
+func (t *redBlackTree) spawn(rating int, playerId string) *redBlackNode {
 	return &redBlackNode{
-		value:  value,
+		key:    nodeKey{rating: rating, playerId: playerId},
 		isRed:  true,
 		parent: t.leaf,
 		left:   t.leaf,

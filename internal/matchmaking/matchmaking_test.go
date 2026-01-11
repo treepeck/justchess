@@ -27,7 +27,7 @@ func TestInsertNode(t *testing.T) {
 		tree := newRedBlackTree()
 
 		for _, val := range tc.values {
-			tree.insertNode(tree.spawn(val))
+			tree.insertNode(tree.spawn(val, ""))
 		}
 
 		got := bfs(tree)
@@ -96,10 +96,10 @@ func TestRemoveNode(t *testing.T) {
 		tree := newRedBlackTree()
 
 		for _, val := range tc.values {
-			tree.insertNode(tree.spawn(val))
+			tree.insertNode(tree.spawn(val, ""))
 		}
 
-		tree.removeNode(tree.search(tc.value))
+		tree.removeNode(tree.search(tc.value, ""))
 
 		got := bfs(tree)
 
@@ -117,6 +117,18 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
+// func TestSearch(t *testing.T) {
+// 	testcases := []struct{
+
+// 	}{
+
+// 	}
+
+// 	for _, tc := range testcases {
+
+// 	}
+// }
+
 func bfs(t *redBlackTree) []int {
 	res := make([]int, 0)
 	if t.root == t.leaf {
@@ -130,7 +142,7 @@ func bfs(t *redBlackTree) []int {
 		node := visit[0]
 		visit = visit[1:]
 
-		res = append(res, node.value)
+		res = append(res, node.key.rating)
 
 		if node.left != t.leaf {
 			visit = append(visit, node.left)
@@ -149,7 +161,7 @@ func BenchmarkInsertNode(b *testing.B) {
 
 	i := 10
 	for b.Loop() {
-		tree.insertNode(tree.spawn(i))
+		tree.insertNode(tree.spawn(i, ""))
 		i += 10
 	}
 }
@@ -159,14 +171,14 @@ func BenchmarkRemoveNode(b *testing.B) {
 
 	i := 0
 	for ; i <= 10000000; i++ {
-		tree.insertNode(tree.spawn(i))
+		tree.insertNode(tree.spawn(i, ""))
 	}
 
 	for b.Loop() {
 		i -= 1
-		n := tree.search(i)
+		n := tree.search(i, "")
 		if n != nil {
-			tree.removeNode(tree.search(i))
+			tree.removeNode(tree.search(i, ""))
 		}
 	}
 }
