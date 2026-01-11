@@ -17,21 +17,30 @@ function submitForm(event) {
 	const password = data.get("password")
 
 	if (validateInput(name, email, password)) {
-		// Disable the button while the request is being processed.
-		submitBtn.disabled = true
-		submitBtn.textContent = "Submitting..."
-
-		const params = new URLSearchParams(data)
-
-		signUp(params)
-			.then((err) => {
-				serverError.textContent = "Sign up failed: " + err
-
-				// Enable the submit button.
-				submitBtn.disabled = false
-				submitBtn.textContent = "Sign up"
-			})
+		// Show confirmation window.
+		confirmWindow.classList.add("show")
+		cancelSubmit.focus()
 	}
+}
+
+function confirmHandler() {
+	// Hide confirmation window.
+	confirmWindow.classList.remove("show")
+
+	// Disable the button while the request is being processed.
+	submitBtn.disabled = true
+	submitBtn.textContent = "Submitting..."
+
+	const params = new URLSearchParams(data)
+
+	signUp(params)
+		.then((err) => {
+			serverError.textContent = "Sign up failed: " + err
+
+			// Enable the submit button.
+			submitBtn.disabled = false
+			submitBtn.textContent = "Sign up"
+		})
 }
 
 // Validates the user input and displays error messages.
@@ -116,10 +125,13 @@ authForm.addEventListener("submit", submitForm)
 passwordToggle.addEventListener("click", togglePassword)
 
 helpText.addEventListener("click", () => {
-	helpWindow.classList.toggle("show")
+	helpWindow.classList.add("show")
 
 	// Focus close button.
 	closeHelp.focus()
 })
 
-closeHelp.addEventListener("click", () => { helpWindow.classList.toggle("show") })
+closeHelp.addEventListener("click", () => { helpWindow.classList.remove("show") })
+
+cancelSubmit.addEventListener("click", () => { confirmWindow.classList.remove("show") })
+confirmSubmit.addEventListener("click", () => { confirmHandler() })

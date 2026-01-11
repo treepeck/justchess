@@ -1,3 +1,5 @@
+// TODO: allow multiple notifications.
+
 const notification = document.createElement("div")
 notification.classList.add("notification")
 
