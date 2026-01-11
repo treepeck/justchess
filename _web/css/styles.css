@@ -167,6 +167,7 @@ button:hover {
 
 #helpWindow p {
   text-align: left;
+  padding: 0 20px 0 20px;
 }
 
 #helpWindow button {
@@ -176,6 +177,35 @@ button:hover {
   font-weight: bold;
   margin: 10px;
   border: 2px solid var(--container-foreground);
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+/* Notification popup. */
+
+.notification {
+  display: flex;
+  gap: 5px;
+  user-select: none;
+  text-align: center;
+  align-items: center;
+  position: fixed;
+  padding: 10px;
+  bottom: 50px;
+  right: 20px;
+  animation: popup 1s ease-in-out 1;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.notification button {
+  width: 40px;
+  height: 40px;
+  font-weight: bold;
+  border: 2px solid var(--container-foreground);
+  border-radius: 50%;
   color: var(--container-foreground);
   background-color: var(--container-background);
 }
@@ -352,6 +382,18 @@ button:hover {
 		background-position-x: 0;
 		background-position-y: 0;
 	}
+}
+
+@keyframes popup {
+  from {
+    z-index: -1;
+    opacity: 0;
+  }
+
+  to {
+    z-index: 1;
+    opacity: 1;
+  }
 }
 
 /******************************************************************************/

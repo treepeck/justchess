@@ -115,14 +115,11 @@ function togglePassword() {
 authForm.addEventListener("submit", submitForm)
 passwordToggle.addEventListener("click", togglePassword)
 
-// Show and hide help window.
 helpText.addEventListener("click", () => {
 	helpWindow.classList.toggle("show")
 
 	// Focus close button.
-	closeBtn.focus()
+	closeHelp.focus()
 })
 
-closeBtn.addEventListener("click", () => {
-	helpWindow.classList.toggle("show")
-})
+closeHelp.addEventListener("click", () => { helpWindow.classList.toggle("show") })
