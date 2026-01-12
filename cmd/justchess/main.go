@@ -40,7 +40,6 @@ func main() {
 	webService.RegisterRoutes(mux)
 
 	wsService := ws.NewService(repo)
-	go wsService.EventBus()
 	wsService.RegisterRoutes(mux)
 	log.Print("Successfully initialized services.")
 

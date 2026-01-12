@@ -24,9 +24,6 @@ const (
 type client struct {
 	// Timestamp when the last ping event was sent to measure the network delay.
 	pingTimestamp time.Time
-	unregister    chan<- *client
-	// forward is a channel to which the client will send the events.
-	forward chan<- clientEvent
 	// send is a channel which recieves events that the client will write to
 	// the WebSocket connection.  It must recieve raw bytes to avoid expensive
 	// JSON encoding for each client in case of event broadcasting.
@@ -43,12 +40,10 @@ type client struct {
 }
 
 // newClient creates a new client and sets the WebSocket connection properties.
-func newClient(unregister chan<- *client, forward chan<- clientEvent, conn *websocket.Conn) *client {
+func newClient(conn *websocket.Conn) *client {
 	now := time.Now()
 
 	c := &client{
-		unregister:    unregister,
-		forward:       forward,
 		send:          make(chan []byte, 192),
 		conn:          conn,
 		ping:          0,
@@ -68,8 +63,8 @@ func newClient(unregister chan<- *client, forward chan<- clientEvent, conn *webs
 // Pong events are handled by the client itself.  In the case of other event,
 // they are forwarded to the forward channel.  If an event cannot be read, the
 // connection will be closed.
-func (c *client) read() {
-	defer c.cleanup()
+func (c *client) read(unregister chan<- *client, forward chan<- clientEvent) {
+	defer c.cleanup(unregister)
 
 	var e clientEvent
 	for {
@@ -81,7 +76,7 @@ func (c *client) read() {
 			c.handlePong()
 		} else {
 			e.sender = c
-			c.forward <- e
+			forward <- e
 		}
 	}
 }
@@ -151,8 +146,8 @@ func (c *client) handlePong() error {
 }
 
 // cleanup closes the connection and unregisters the client from the gatekeeper.
-func (c *client) cleanup() {
-	c.unregister <- c
+func (c *client) cleanup(unregister chan<- *client) {
+	unregister <- c
 	close(c.send)
 	c.conn.Close()
 }

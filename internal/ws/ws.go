@@ -1,10 +1,12 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
 	"justchess/internal/db"
+	"justchess/internal/matchmaking"
 
 	"github.com/gorilla/websocket"
 )
@@ -23,46 +25,48 @@ const (
 	msgUnauthorized  string = "Sign in to start playing"
 	msgNotFound      string = "Requested game does not exist"
 
-	hubId string = "hub"
+	homeId string = "home"
 )
 
 type metadata struct {
-	clientId string
-	roomId   string
+	player         db.Player
+	roomId         string
+	isFindingMatch bool
 }
 
 type handshake struct {
-	r        *http.Request
-	rw       http.ResponseWriter
-	clientId string
-	ch       chan struct{}
+	r      *http.Request
+	rw     http.ResponseWriter
+	player db.Player
+	ch     chan struct{}
 }
 
 type Service struct {
+	pool       matchmaking.Pool
 	repo       db.Repo
 	register   chan handshake
 	unregister chan *client
 	forward    chan clientEvent
-	clients    map[*client]metadata
+	clients    map[*client]*metadata
 	rooms      map[string]chan clientEvent
 }
 
 func NewService(r db.Repo) Service {
-	rooms := make(map[string]chan clientEvent)
-	hubCh := make(chan clientEvent)
-	rooms[hubId] = hubCh
+	p := matchmaking.NewPool()
+	go p.EventBus()
 
-	hub := newRoom()
-	go hub.handle(hubCh)
-
-	return Service{
+	s := Service{
 		repo:       r,
+		pool:       p,
 		register:   make(chan handshake),
 		unregister: make(chan *client),
 		forward:    make(chan clientEvent),
-		clients:    make(map[*client]metadata),
-		rooms:      rooms,
+		clients:    make(map[*client]*metadata),
+		rooms:      make(map[string]chan clientEvent),
 	}
+	go s.EventBus()
+
+	return s
 }
 
 // RegisterRoutes registers endpoints to the specified mux.
@@ -83,7 +87,7 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h := handshake{rw: rw, r: r, ch: make(chan struct{}), clientId: p.Id}
+	h := handshake{rw: rw, r: r, ch: make(chan struct{}), player: p}
 
 	s.register <- h
 	<-h.ch
@@ -109,26 +113,30 @@ func (s Service) handleRegister(h handshake) {
 
 	roomId := h.r.URL.Query().Get("rid")
 	roomCh, exists := s.rooms[roomId]
-	if !exists {
+	if !exists && roomId != homeId {
+		http.Error(h.rw, msgNotFound, http.StatusNotFound)
 		return
 	}
 
 	conn, err := upgrader.Upgrade(h.rw, h.r, nil)
 	if err != nil {
+		// upgrader writes the response, so simply return here.
 		return
 	}
 
-	c := newClient(s.unregister, s.forward, conn)
-	s.clients[c] = metadata{clientId: h.clientId, roomId: roomId}
+	c := newClient(conn)
+	s.clients[c] = &metadata{player: h.player, roomId: roomId}
 
-	go c.read()
+	go c.read(s.unregister, s.forward)
 	go c.write()
 
 	// Notify the room that client has joined.
-	roomCh <- clientEvent{
-		Action:  actionJoin,
-		Payload: []byte(h.clientId),
-		sender:  c,
+	if exists {
+		roomCh <- clientEvent{
+			Action:  actionJoin,
+			Payload: []byte(h.player.Id),
+			sender:  c,
+		}
 	}
 }
 
@@ -136,6 +144,13 @@ func (s Service) handleUnregister(c *client) {
 	m, exists := s.clients[c]
 	if !exists {
 		log.Print("client does not exist")
+		return
+	}
+
+	if m.roomId == homeId {
+		if m.isFindingMatch {
+			s.pool.Leave <- m.player.Id
+		}
 		return
 	}
 
@@ -148,7 +163,7 @@ func (s Service) handleUnregister(c *client) {
 	// Notify the room that client has leaved.
 	roomCh <- clientEvent{
 		Action:  actionLeave,
-		Payload: []byte(m.clientId),
+		Payload: []byte(m.player.Id),
 		sender:  c,
 	}
 }
@@ -162,13 +177,28 @@ func (s Service) forwardEvent(e clientEvent) {
 
 	switch e.Action {
 	case actionJoinMatchmaking:
-		if m.roomId != hubId {
-			return
+		if m.roomId == homeId && !m.isFindingMatch {
+			var control matchmaking.TimeControl
+			if err := json.Unmarshal(e.Payload, &control); err != nil {
+				log.Print(err)
+				return
+			}
+
+			m.isFindingMatch = true
+
+			s.pool.Join <- matchmaking.JoinDTO{
+				PlayerId: m.player.Id,
+				Ticket: matchmaking.Ticket{
+					Control: control,
+					Rating:  m.player.Rating,
+				},
+			}
 		}
 
 	case actionLeaveMatchmaking:
-		if m.roomId != hubId {
-			return
+		if m.roomId == homeId && m.isFindingMatch {
+			s.pool.Leave <- m.player.Id
+			m.isFindingMatch = false
 		}
 
 	default:
