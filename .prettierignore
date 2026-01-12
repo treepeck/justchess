@@ -1,0 +1,6 @@
+# Ignore all items by default.
+*
+
+# Format content of those directories.
+!/_web/css/
+!/_web/js/

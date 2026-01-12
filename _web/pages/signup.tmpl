@@ -1,50 +1,50 @@
 {{ define "content" }}
 <form id="authForm">
-	<h1>Create a new account</h1>
+  <h1>Create a new account</h1>
 
-	<section>
-		<label>Username</label>
-		<input
-			type="text"
-			name="name"
-			autocomplete="off"
-			placeholder="MagnusCarlsen"
-		/>
-		<p id="nameError"></p>
-	</section>
+  <section>
+    <label>Username</label>
+    <input
+      type="text"
+      name="name"
+      autocomplete="off"
+      placeholder="MagnusCarlsen"
+    />
+    <p id="nameError"></p>
+  </section>
 
-	<section>
-		<label><span id="helpText">Email address</span></label>
-		<input
-			type="text"
-			name="email"
-			autocomplete="off"
-			placeholder="magnus@carlsen.com"
-		/>
-		<p id="emailError"></p>
-	</section>
+  <section>
+    <label><span id="helpText">Email address</span></label>
+    <input
+      type="text"
+      name="email"
+      autocomplete="off"
+      placeholder="magnus@carlsen.com"
+    />
+    <p id="emailError"></p>
+  </section>
 
-	<section>
-		<label>Password</label>
-		<div class="password-container">
-			<input
-				id="passwordInput"
-				type="password"
-				name="password"
-				autocomplete="off"
-				placeholder="*************"
-			/>
-			<div id="passwordToggle"></div>
-		</div>
-		<p id="passwordError"></p>
-	</section>
+  <section>
+    <label>Password</label>
+    <div class="password-container">
+      <input
+        id="passwordInput"
+        type="password"
+        name="password"
+        autocomplete="off"
+        placeholder="*************"
+      />
+      <div id="passwordToggle"></div>
+    </div>
+    <p id="passwordError"></p>
+  </section>
 
-	<p id="serverError"></p>
-	<button type="submit" id="submitBtn">Sign up</button>
+  <p id="serverError"></p>
+  <button type="submit" id="submitBtn">Sign up</button>
 
-	<p class="form-footer">
-		Already have an account? <a href="/signin">Sign in</a>
-	</p>
+  <p class="form-footer">
+    Already have an account? <a href="/signin">Sign in</a>
+  </p>
 </form>
 
 <div id="helpWindow">
@@ -63,8 +63,8 @@
     <h2><b>Please note</b></h2>
     <p>Accounts with offensive or inappropriate names will be blocked.</p>
     <div class="buttons">
-      <button id="cancelSubmit">Cancel</button>
-      <button id="confirmSubmit">Confirm</button>
+    <button id="cancelSubmit">Cancel</button>
+    <button id="confirmSubmit">Confirm</button>
     </div>
   </div>
 </div>

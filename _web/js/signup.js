@@ -33,14 +33,13 @@ function confirmHandler() {
 
 	const params = new URLSearchParams(data)
 
-	signUp(params)
-		.then((err) => {
-			serverError.textContent = "Sign up failed: " + err
+	signUp(params).then((err) => {
+		serverError.textContent = "Sign up failed: " + err
 
-			// Enable the submit button.
-			submitBtn.disabled = false
-			submitBtn.textContent = "Sign up"
-		})
+		// Enable the submit button.
+		submitBtn.disabled = false
+		submitBtn.textContent = "Sign up"
+	})
 }
 
 // Validates the user input and displays error messages.
@@ -79,7 +78,8 @@ function validateInput(name, email, password) {
 		passwordError.textContent = "Must not exceed 71 characters"
 		isValid = false
 	} else if (!pwdEx.test(password)) {
-		passwordError.textContent = "Can only contain letters, numbers, and !@#$%^&*()_+-/.<>"
+		passwordError.textContent =
+			"Can only contain letters, numbers, and !@#$%^&*()_+-/.<>"
 		isValid = false
 	} else {
 		// Clear error message.
@@ -131,7 +131,13 @@ helpText.addEventListener("click", () => {
 	closeHelp.focus()
 })
 
-closeHelp.addEventListener("click", () => { helpWindow.classList.remove("show") })
+closeHelp.addEventListener("click", () => {
+	helpWindow.classList.remove("show")
+})
 
-cancelSubmit.addEventListener("click", () => { confirmWindow.classList.remove("show") })
-confirmSubmit.addEventListener("click", () => { confirmHandler() })
+cancelSubmit.addEventListener("click", () => {
+	confirmWindow.classList.remove("show")
+})
+confirmSubmit.addEventListener("click", () => {
+	confirmHandler()
+})

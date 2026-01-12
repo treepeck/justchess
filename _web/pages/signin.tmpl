@@ -1,38 +1,38 @@
 {{ define "content" }}
 <form id="authForm">
-	<h1>Sign in to your account</h1>
+  <h1>Sign in to your account</h1>
 
-	<section>
-		<label>Email address</label>
-		<input
-			type="text"
-			name="email"
-			autocomplete="off"
-			placeholder="magnus@carlsen.com"
-		/>
-		<p id="emailError"></p>
-	</section>
+  <section>
+    <label>Email address</label>
+    <input
+      type="text"
+      name="email"
+      autocomplete="off"
+      placeholder="magnus@carlsen.com"
+    />
+    <p id="emailError"></p>
+  </section>
 
-	<section>
-		<label>Password</label>
-		<div class="password-container">
-			<input
-				id="passwordInput"
-				type="password"
-				name="password"
-				autocomplete="off"
-				placeholder="*************"
-			/>
-			<div id="passwordToggle"></div>
-		</div>
-		<p id="passwordError"></p>
-	</section>
+  <section>
+    <label>Password</label>
+    <div class="password-container">
+      <input
+        id="passwordInput"
+        type="password"
+        name="password"
+        autocomplete="off"
+        placeholder="*************"
+      />
+      <div id="passwordToggle"></div>
+    </div>
+    <p id="passwordError"></p>
+  </section>
 
-	<p id="serverError"></p>
-	<button type="submit" id="submitBtn">Sign in</button>
+  <p id="serverError"></p>
+  <button type="submit" id="submitBtn">Sign in</button>
 
-	<p class="form-footer">
-		Doesn't have an account? <a href="/signup">Sign up</a>
-	</p>
+  <p class="form-footer">
+    Doesn't have an account? <a href="/signup">Sign up</a>
+  </p>
 </form>
 {{ end }}

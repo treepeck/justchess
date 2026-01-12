@@ -1,4 +1,3 @@
-
 function submitForm(event) {
 	event.preventDefault()
 	event.stopPropagation()
@@ -13,14 +12,13 @@ function submitForm(event) {
 	const data = new FormData(authForm)
 	const params = new URLSearchParams(data)
 
-	signIn(params)
-		.then((err) => {
-			serverError.textContent = "Sign in failed: " + err
+	signIn(params).then((err) => {
+		serverError.textContent = "Sign in failed: " + err
 
-			// Enable the submit button.
-			submitBtn.disabled = false
-			submitBtn.textContent = "Sign in"
-		})
+		// Enable the submit button.
+		submitBtn.disabled = false
+		submitBtn.textContent = "Sign in"
+	})
 }
 
 async function signIn(data) {
