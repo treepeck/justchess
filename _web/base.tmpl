@@ -13,13 +13,13 @@
 <body>
   <header>
     <nav>
-      <a class="logo" href="/">JustChess</a>
+      <div class="logo"><a href="/">JustChess</a></div>
 
       <a href="/{{ .Name }}">{{ .Name }}</a>
     </nav>
   </header>
 
-  <main>{{ block "content" . }}{{ end }}</main>
+  {{ block "content" . }}{{ end }}
 
   <footer>
     <div>

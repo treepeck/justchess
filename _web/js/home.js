@@ -64,6 +64,11 @@ function joinMatchmaking(cellId) {
 	socket.send(JSON.stringify({ a: EventAction.JoinMatchmaking, p: payload }))
 
 	// TODO: show matchmaking window.
+	cube.classList.add("left-rotation")
+}
+
+function leaveMatchmaking() {
+	cube.classList.remove("left-rotation")
 }
 
 for (let i = 1; i <= 9; i++) {
@@ -72,6 +77,19 @@ for (let i = 1; i <= 9; i++) {
 		joinMatchmaking(i)
 	})
 }
+
+matchmakingLeave.addEventListener("click", leaveMatchmaking)
+
+const observer = new ResizeObserver((entries) => {
+	for (const e of entries) {
+		const width = e.contentRect.width
+		const height = e.contentRect.height
+
+		cube.style.setProperty("--width", `${width}px`)
+		cube.style.setProperty("--height", `${height}px`)
+	}
+})
+observer.observe(cube)
 
 // Show and hide help window.
 helpText.addEventListener("click", () => {
