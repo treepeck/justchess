@@ -52,21 +52,15 @@ type Service struct {
 }
 
 func NewService(r db.Repo) Service {
-	p := matchmaking.NewPool()
-	go p.EventBus()
-
-	s := Service{
+	return Service{
 		repo:       r,
-		pool:       p,
+		pool:       matchmaking.NewPool(),
 		register:   make(chan handshake),
 		unregister: make(chan *client),
 		forward:    make(chan clientEvent),
 		clients:    make(map[*client]*metadata),
 		rooms:      make(map[string]chan clientEvent),
 	}
-	go s.EventBus()
-
-	return s
 }
 
 // RegisterRoutes registers endpoints to the specified mux.
@@ -149,7 +143,7 @@ func (s Service) handleUnregister(c *client) {
 
 	if m.roomId == homeId {
 		if m.isFindingMatch {
-			s.pool.Leave <- m.player.Id
+			s.pool.Leave(m.player.Id, m.player.Rating)
 		}
 		return
 	}
@@ -178,26 +172,20 @@ func (s Service) forwardEvent(e clientEvent) {
 	switch e.Action {
 	case actionJoinMatchmaking:
 		if m.roomId == homeId && !m.isFindingMatch {
-			var control matchmaking.TimeControl
-			if err := json.Unmarshal(e.Payload, &control); err != nil {
+			var t matchmaking.Ticket
+			if err := json.Unmarshal(e.Payload, &t); err != nil {
 				log.Print(err)
 				return
 			}
 
 			m.isFindingMatch = true
 
-			s.pool.Join <- matchmaking.JoinDTO{
-				PlayerId: m.player.Id,
-				Ticket: matchmaking.Ticket{
-					Control: control,
-					Rating:  m.player.Rating,
-				},
-			}
+			s.pool.Join(m.player.Id, m.player.Rating, t)
 		}
 
 	case actionLeaveMatchmaking:
 		if m.roomId == homeId && m.isFindingMatch {
-			s.pool.Leave <- m.player.Id
+			s.pool.Leave(m.player.Id, m.player.Rating)
 			m.isFindingMatch = false
 		}
 
@@ -211,5 +199,4 @@ func (s Service) forwardEvent(e clientEvent) {
 		// Notify the room that client has leaved.
 		roomCh <- e
 	}
-
 }

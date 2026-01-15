@@ -1,14 +1,11 @@
 package db
 
 import (
-	"time"
-
 	"database/sql"
-
-	"github.com/treepeck/chego"
 )
 
-// The following block of constants declares the SQL queries.
+// The following block of constants declares SQL queries,
+// sorted by the tables they access.
 const (
 	// Player.
 
@@ -43,39 +40,6 @@ const (
 
 	deleteSessionById = `DELETE FROM session WHERE id = ?`
 )
-
-// Player represents a registered player.  Sensitive data, such as password hash
-// and email will not be encoded into a JSON.
-type Player struct {
-	PasswordHash     []byte    `json:"-"`
-	CreatedAt        time.Time `json:"createdAt"`
-	UpdatedAt        time.Time `json:"updatedAt"`
-	Id               string    `json:"id"`
-	Name             string    `json:"name"`
-	Email            string    `json:"-"`
-	Rating           float64   `json:"rating"`
-	RatingDeviation  float64   `json:"-"`
-	RatingVolatility float64   `json:"-"`
-}
-
-// Session is an authorization token for a player.  Each protected endpoint
-// expects the Auth cookie to contain valid and not expired session.
-type Session struct {
-	CreatedAt time.Time
-	ExpiresAt time.Time
-	Id        string
-	PlayerId  string
-}
-
-// Game represents the state of a single completed chess game.
-type Game struct {
-	CreatedAt   time.Time
-	Id          string            `json:"id"`
-	WhiteId     string            `json:"whiteId"`
-	BlackId     string            `json:"blackId"`
-	Result      chego.Result      `json:"result"`
-	Termination chego.Termination `json:"termination"`
-}
 
 // Repo wraps the database connection pool and provides methods to make queries.
 type Repo struct {
@@ -126,7 +90,7 @@ func (r Repo) SelectPlayerBySessionId(id string) (Player, error) {
 
 // InsertGame inserts a single record into the game table.
 func (r Repo) InsertGame(id, whiteId, blackId string, periodId int,
-	res chego.Result, t chego.Termination) error {
+	res Result, t Termination) error {
 	_, err := r.pool.Exec(insertGame, id, whiteId, blackId, res, t)
 	return err
 }
