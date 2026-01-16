@@ -1,32 +1,18 @@
 {{ define "content" }}
-<main class="home-container">
-  <div id="scene">
-    <div id="cube">
-      <div class="face front">
-        <h3>Choose a <span id="helpText">time control</span></h3>
+<main class="column-container">
+  <h2>Choose a <span id="helpText">time control</span></h2>
 
-        <div>
-          <button id="cell1">1+0</button>
-          <button id="cell2">2+1</button>
-          <button id="cell3">3+0</button>
-          <button id="cell4">3+2</button>
-          <button id="cell5">5+0</button>
-          <button id="cell6">5+2</button>
-          <button id="cell7">10+0</button>
-          <button id="cell8">10+10</button>
-          <button id="cell9">15+10</button>
-        </div>
-      </div>
-
-      <div class="face back">
-        <h3>matchmaking window</h3>
-
-        <button id="matchmakingLeave">Leave</button>
-      </div>
-    </div>
+  <div class="grid">
+    <button id="cell1">1+0</button>
+    <button id="cell2">2+1</button>
+    <button id="cell3">3+0</button>
+    <button id="cell4">3+2</button>
+    <button id="cell5">5+0</button>
+    <button id="cell6">5+2</button>
+    <button id="cell7">10+0</button>
+    <button id="cell8">10+10</button>
+    <button id="cell9">15+10</button>
   </div>
-
-  <p id="ping">Ping: ?? ms</p>
 
   <div id="helpWindow">
     <div>

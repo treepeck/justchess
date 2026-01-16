@@ -263,16 +263,14 @@ button:hover {
   background-color: var(--container-background);
 }
 
-/******************************************************************************/
-/* / (Home page)                                                              */
-/******************************************************************************/
-
-.home-container {
+/* Column container. */
+.column-container {
   flex-direction: column;
+  gap: 20px;
 }
 
 /* Animated background. */
-.home-container::before {
+.column-container::before {
   width: 200%;
   height: 200%;
   top: -50%;
@@ -286,47 +284,24 @@ button:hover {
   z-index: -1;
 }
 
-.home-container #scene {
-  width: 100%;
-  flex: 1;
-  display: flex;
-  perspective: 1000px;
+/******************************************************************************/
+/* / (Home page)                                                              */
+/******************************************************************************/
+
+.column-container h2 {
+  margin: auto auto 0 auto;
 }
 
-#cube {
-  width: 90%;
-  aspect-ratio: 1/1.25;
-  margin: auto;
-  transform-style: preserve-3d;
-  transition: transform 1.5s ease-in-out;
-}
-
-#cube.left-rotation {
-  transform: rotateY(180deg);
-}
-
-.face {
-  position: absolute;
-  height: var(--height);
-  text-align: center;
-  backface-visibility: hidden;
-  padding: 10px;
-}
-
-.front {
-  width: var(--width);
-  transform: translateZ(calc(var(--width) / 10));
-}
-
-.front div {
-  margin-top: 10px;
-  width: 100%;
+.column-container .grid {
+  width: 95%;
+  max-width: 600px;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  margin: 0 auto auto auto;
+  grid-template-columns: repeat(3, 1fr);
   gap: 5px;
 }
 
-.front button {
+.column-container .grid button {
   font-size: larger;
   aspect-ratio: 1/1;
   font-weight: bold;
@@ -336,9 +311,19 @@ button:hover {
   background-color: var(--container-background);
 }
 
-.back {
-  width: var(--width);
-  transform: rotateY(180deg) translateZ(calc(var(--width) / 10));
+/******************************************************************************/
+/* /queue                                                              */
+/******************************************************************************/
+
+.queue-content {
+  width: 95%;
+  max-width: 600px;
+  margin: 0 auto auto auto;
+  padding: 20px;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
 }
 
 /******************************************************************************/
@@ -487,15 +472,6 @@ button:hover {
 }
 
 @media screen and (min-width: 600px) {
-  .home-header {
-    font-weight: bold;
-  }
-
-  /* Set fixed width. */
-  #cube {
-    max-width: 600px;
-  }
-
   /* Make background animation slower on larger screens. */
   .home-container::before {
     transform: rotate(15deg) scale(1.5);

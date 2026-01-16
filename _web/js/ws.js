@@ -1,9 +1,8 @@
-// Must match event actions from backend.
-// Internal actions are skipped.
+// Must match event actions from backend (justchess/internal/ws/event.go).
 export const EventAction = {
 	Ping: 0,
 	Pong: 1,
-	JoinMatchmaking: 2,
-	LeaveMatchmaking: 3,
-	MakeMove: 4,
+	MakeMove: 2,
+	ClientsCounter: 3,
+	Redirect: 4,
 }
