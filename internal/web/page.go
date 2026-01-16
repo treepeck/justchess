@@ -2,17 +2,14 @@ package web
 
 import (
 	"html/template"
-	"log"
-	"net/http"
 )
 
 const (
 	baseTmpl   = "./_web/base.tmpl"
 	homeTmpl   = "./_web/pages/home.tmpl"
+	queueTmpl  = "./_web/pages/queue.tmpl"
 	signupTmpl = "./_web/pages/signup.tmpl"
 	signinTmpl = "./_web/pages/signin.tmpl"
-
-	msgInvalidTemplate = "The requested page cannot be rendered."
 )
 
 type Page struct {
@@ -22,20 +19,13 @@ type Page struct {
 	template *template.Template
 }
 
-func NewPage(title, script string, t *template.Template) Page {
+func newPage(title, script string, t *template.Template) Page {
 	return Page{
 		Title:  title,
 		Script: script,
 		// By default sign up since user can be unauthorized.
 		Name:     "Sign up",
 		template: t,
-	}
-}
-
-func (p Page) exec(rw http.ResponseWriter) {
-	if err := p.template.Execute(rw, p); err != nil {
-		log.Print(err)
-		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
 	}
 }
 
@@ -46,19 +36,25 @@ func ParsePages() (map[string]Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	pages["/"] = NewPage("Home", "/js/home.js", home)
+	pages["/"] = newPage("Home", "/js/home.js", home)
+
+	queue, err := template.ParseFiles(baseTmpl, queueTmpl)
+	if err != nil {
+		return nil, err
+	}
+	pages["/queue"] = newPage("Queue", "/js/queue.js", queue)
 
 	signup, err := template.ParseFiles(baseTmpl, signupTmpl)
 	if err != nil {
 		return nil, err
 	}
-	pages["/signup"] = NewPage("Sign up", "/js/signup.js", signup)
+	pages["/signup"] = newPage("Sign up", "/js/signup.js", signup)
 
 	signin, err := template.ParseFiles(baseTmpl, signinTmpl)
 	if err != nil {
 		return nil, err
 	}
-	pages["/signin"] = NewPage("Sign in", "/js/signin.js", signin)
+	pages["/signin"] = newPage("Sign in", "/js/signin.js", signin)
 
 	return pages, nil
 }

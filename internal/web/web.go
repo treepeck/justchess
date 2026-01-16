@@ -1,9 +1,15 @@
 package web
 
 import (
+	"log"
 	"net/http"
 
 	"justchess/internal/db"
+)
+
+// Declaration of error messages.
+const (
+	msgInvalidTemplate string = "The requested page cannot be rendered."
 )
 
 type Service struct {
@@ -37,6 +43,7 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (s Service) servePage(rw http.ResponseWriter, r *http.Request) {
+	// TODO: resolve dynamic URLs such as /user/<ID>
 	p, exists := s.pages[r.URL.Path]
 	if !exists {
 		http.Redirect(rw, r, "/404", http.StatusNotFound)
@@ -51,5 +58,8 @@ func (s Service) servePage(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	p.exec(rw)
+	if err := p.template.Execute(rw, p); err != nil {
+		log.Print(err)
+		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
+	}
 }
