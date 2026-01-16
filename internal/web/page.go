@@ -2,14 +2,19 @@ package web
 
 import (
 	"html/template"
+	"regexp"
+)
+
+// Regular expressions to allow dynamic routes.
+var (
+	homeEx   = regexp.MustCompile(`^\/$`)
+	queueEx  = regexp.MustCompile(`^\/queue\/[123456789]$`)
+	signupEx = regexp.MustCompile(`^\/signup$`)
+	signinEx = regexp.MustCompile(`^\/signin$`)
 )
 
 const (
-	baseTmpl   = "./_web/base.tmpl"
-	homeTmpl   = "./_web/pages/home.tmpl"
-	queueTmpl  = "./_web/pages/queue.tmpl"
-	signupTmpl = "./_web/pages/signup.tmpl"
-	signinTmpl = "./_web/pages/signin.tmpl"
+	baseTmpl = "./_web/base.tmpl"
 )
 
 type Page struct {
@@ -29,32 +34,32 @@ func newPage(title, script string, t *template.Template) Page {
 	}
 }
 
-func ParsePages() (map[string]Page, error) {
-	pages := make(map[string]Page)
+func ParsePages() (map[*regexp.Regexp]Page, error) {
+	pages := make(map[*regexp.Regexp]Page)
 
-	home, err := template.ParseFiles(baseTmpl, homeTmpl)
+	home, err := template.ParseFiles(baseTmpl, "./_web/pages/home.tmpl")
 	if err != nil {
 		return nil, err
 	}
-	pages["/"] = newPage("Home", "/js/home.js", home)
+	pages[homeEx] = newPage("Home", "/js/home.js", home)
 
-	queue, err := template.ParseFiles(baseTmpl, queueTmpl)
+	queue, err := template.ParseFiles(baseTmpl, "./_web/pages/queue.tmpl")
 	if err != nil {
 		return nil, err
 	}
-	pages["/queue"] = newPage("Queue", "/js/queue.js", queue)
+	pages[queueEx] = newPage("Queue", "/js/queue.js", queue)
 
-	signup, err := template.ParseFiles(baseTmpl, signupTmpl)
+	signup, err := template.ParseFiles(baseTmpl, "./_web/pages/signup.tmpl")
 	if err != nil {
 		return nil, err
 	}
-	pages["/signup"] = newPage("Sign up", "/js/signup.js", signup)
+	pages[signupEx] = newPage("Sign up", "/js/signup.js", signup)
 
-	signin, err := template.ParseFiles(baseTmpl, signinTmpl)
+	signin, err := template.ParseFiles(baseTmpl, "./_web/pages/signin.tmpl")
 	if err != nil {
 		return nil, err
 	}
-	pages["/signin"] = newPage("Sign in", "/js/signin.js", signin)
+	pages[signinEx] = newPage("Sign in", "/js/signin.js", signin)
 
 	return pages, nil
 }

@@ -3,21 +3,23 @@ package web
 import (
 	"log"
 	"net/http"
+	"regexp"
 
 	"justchess/internal/db"
 )
 
 // Declaration of error messages.
 const (
+	msgNotFound        string = "The requested page doesn't exist."
 	msgInvalidTemplate string = "The requested page cannot be rendered."
 )
 
 type Service struct {
 	repo  db.Repo
-	pages map[string]Page
+	pages map[*regexp.Regexp]Page
 }
 
-func NewService(pages map[string]Page, r db.Repo) Service {
+func NewService(pages map[*regexp.Regexp]Page, r db.Repo) Service {
 	return Service{pages: pages, repo: r}
 }
 
@@ -43,10 +45,19 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (s Service) servePage(rw http.ResponseWriter, r *http.Request) {
-	// TODO: resolve dynamic URLs such as /user/<ID>
-	p, exists := s.pages[r.URL.Path]
+	// Find page using regular expressions.
+	exists := false
+	page := Page{}
+	for ex, p := range s.pages {
+		if ex.MatchString(r.URL.Path) {
+			exists = true
+			page = p
+			break
+		}
+	}
+
 	if !exists {
-		http.Redirect(rw, r, "/404", http.StatusNotFound)
+		http.Error(rw, msgNotFound, http.StatusNotFound)
 		return
 	}
 
@@ -54,11 +65,11 @@ func (s Service) servePage(rw http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		player, err := s.repo.SelectPlayerBySessionId(c.Value)
 		if err == nil {
-			p.Name = player.Name
+			page.Name = player.Name
 		}
 	}
 
-	if err := p.template.Execute(rw, p); err != nil {
+	if err := page.template.Execute(rw, page); err != nil {
 		log.Print(err)
 		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
 	}

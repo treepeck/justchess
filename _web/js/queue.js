@@ -1,11 +1,11 @@
 import showNotification from "/js/notification.js"
 import { EventAction } from "/js/ws.js"
 
-const queryString = window.location.search
-const params = new URLSearchParams(queryString)
+// Queue id is the last element of the pathname.
+const id = window.location.pathname.split("/").at(-1)
 
 // Initialize WebSocket connection.
-const socket = new WebSocket(`http://localhost:3502/ws?id=${params.get("id")}`)
+const socket = new WebSocket(`http://localhost:3502/ws?id=${id}`)
 
 socket.onclose = () => {
 	showNotification(
@@ -44,7 +44,9 @@ function handleEvent(action, payload) {
 	}
 }
 
-switch (params.get("id")) {
+// Countup timer.
+
+switch (id) {
 	case "2":
 		timeControl.textContent = "Control: 2 minutes"
 		timeBonus.textContent = "Bonus: 1 second"
