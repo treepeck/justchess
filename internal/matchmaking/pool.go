@@ -4,82 +4,37 @@ import (
 	"log"
 )
 
-// Ticket defines the matchmaking criterias. Only players with simmilar tickers
-// can be matched together.
-type Ticket struct {
-	// Number of minutes each player has at the beginning of the game.
-	Control int `json:"c"`
-	// Number of seconds added after each completed move.
-	Bonus int `json:"b"`
-}
-
 type Pool struct {
-	tickets map[string]Ticket
-	forest  map[Ticket]*redBlackTree
+	tree *redBlackTree
 }
 
 func NewPool() Pool {
-	forest := make(map[Ticket]*redBlackTree, 9)
-
-	// Predefine matchmaking tickets for allowed game modes.
-	tickets := []Ticket{
-		{Control: 1, Bonus: 0},
-		{Control: 2, Bonus: 1},
-		{Control: 3, Bonus: 0},
-		{Control: 3, Bonus: 2},
-		{Control: 5, Bonus: 0},
-		{Control: 5, Bonus: 2},
-		{Control: 10, Bonus: 0},
-		{Control: 10, Bonus: 10},
-		{Control: 15, Bonus: 10},
-	}
-	// Make a tree for every type of ticket.
-	for _, t := range tickets {
-		forest[t] = newRedBlackTree()
-	}
-
 	return Pool{
-		forest:  forest,
-		tickets: make(map[string]Ticket),
+		tree: newRedBlackTree(),
 	}
 }
 
-func (p Pool) Join(id string, rating float64, t Ticket) {
-	// Deny the request if the player already have opened a ticket.
-	if _, exists := p.tickets[id]; exists {
-		log.Printf("Player %s tries to open multiple tickets", id)
-		return
-	}
-
-	tree, exists := p.forest[t]
-	if !exists {
-		return
-	}
-	n := tree.spawn(rating, id)
-	tree.insertNode(n)
-
-	// Add matchmaking ticket.
-	p.tickets[id] = t
-
-	log.Printf("Player %s joins matchmaking", id)
+// Join associates the specified [Ticket] with the player's id and their rating
+// and returns the number of players who have selected the same [Ticket].
+// It's the caller's responsibility to ensure that a single client doesn't join
+// more than once.
+func (p Pool) Join(id string, rating float64) {
+	n := p.tree.spawn(rating, id)
+	p.tree.insertNode(n)
 }
 
+// Leave removes the record with specified id from the tickets map and deletes
+// the player's node from the tree and returns the number of active players
+// who have selected the same ticket.
 func (p Pool) Leave(id string, rating float64) {
-	t, exists := p.tickets[id]
-	if !exists {
+	n := p.tree.search(rating, id)
+	if n == nil {
 		return
 	}
-
-	tree, exists := p.forest[t]
-	if !exists {
-		return
-	}
-
-	n := tree.search(rating, id)
-	tree.removeNode(n)
-
-	// Remove matchmaking ticket.
-	delete(p.tickets, id)
-
+	p.tree.removeNode(n)
 	log.Printf("Player %s leaves matchmaking", id)
+}
+
+func (p Pool) MakeMatches() {
+
 }

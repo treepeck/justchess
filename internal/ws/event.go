@@ -11,25 +11,16 @@ const (
 	// Client's actions.
 	actionPing eventAction = iota
 	actionPong
-	actionJoinMatchmaking
-	actionLeaveMatchmaking
 	actionMakeMove
-	actionJoin
-	actionLeave
 
-	// Room's actions.
+	// Server's actions.
+	actionClientsCounter
 	actionRedirect
 )
 
-// Recieved from or forwared to the client struct.
-type clientEvent struct {
+type event struct {
 	Payload json.RawMessage `json:"p"`
 	Action  eventAction     `json:"a"`
-	sender  *client         `json:"-"`
-}
-
-type roomEvent struct {
-	recipients []string
-	payload    json.RawMessage
-	action     eventAction
+	// Ignored in json.
+	sender *client
 }

@@ -1,12 +1,9 @@
 package ws
 
 import (
-	"encoding/json"
-	"log"
 	"net/http"
 
 	"justchess/internal/db"
-	"justchess/internal/matchmaking"
 
 	"github.com/gorilla/websocket"
 )
@@ -19,20 +16,12 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
+// Declaration of error messages.
 const (
-	// Declaration of error messages.
-	msgInternalError string = "The connection coudn't be established. Please reload the page"
+	msgInternalError string = "The connection cannot be established. Please reload the page"
 	msgUnauthorized  string = "Sign in to start playing"
-	msgNotFound      string = "Requested game does not exist"
-
-	homeId string = "home"
+	msgNotFound      string = "Room doesn't exist"
 )
-
-type metadata struct {
-	player         db.Player
-	roomId         string
-	isFindingMatch bool
-}
 
 type handshake struct {
 	r      *http.Request
@@ -42,24 +31,40 @@ type handshake struct {
 }
 
 type Service struct {
-	pool       matchmaking.Pool
-	repo       db.Repo
-	register   chan handshake
-	unregister chan *client
-	forward    chan clientEvent
-	clients    map[*client]*metadata
-	rooms      map[string]chan clientEvent
+	repo   db.Repo
+	rooms  map[string]room
+	queues map[string]queue
 }
 
 func NewService(r db.Repo) Service {
+	queues := make(map[string]queue, 9)
+	// Add queue for each game mode.
+	var params = []struct {
+		id      string
+		control int
+		bonus   int
+	}{
+		{"1", 1, 0},
+		{"2", 2, 1},
+		{"3", 3, 0},
+		{"4", 3, 2},
+		{"5", 5, 0},
+		{"6", 5, 2},
+		{"7", 10, 0},
+		{"8", 10, 10},
+		{"9", 15, 10},
+	}
+	for _, param := range params {
+		q := newQueue(param.control, param.bonus)
+		queues[param.id] = q
+		// Will run until the program exists.
+		go q.listenEvents()
+	}
+
 	return Service{
-		repo:       r,
-		pool:       matchmaking.NewPool(),
-		register:   make(chan handshake),
-		unregister: make(chan *client),
-		forward:    make(chan clientEvent),
-		clients:    make(map[*client]*metadata),
-		rooms:      make(map[string]chan clientEvent),
+		repo:   r,
+		rooms:  make(map[string]room),
+		queues: queues,
 	}
 }
 
@@ -68,6 +73,7 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ws", s.serveWS)
 }
 
+// Concurrently accepts the WebSocket handshake requests.
 func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("Auth")
 	if err != nil {
@@ -83,120 +89,22 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 
 	h := handshake{rw: rw, r: r, ch: make(chan struct{}), player: p}
 
-	s.register <- h
-	<-h.ch
-}
-
-func (s Service) EventBus() {
-	for {
-		select {
-		case h := <-s.register:
-			s.handleRegister(h)
-
-		case c := <-s.unregister:
-			s.handleUnregister(c)
-
-		case e := <-s.forward:
-			s.forwardEvent(e)
-		}
-	}
-}
-
-func (s Service) handleRegister(h handshake) {
-	defer func() { h.ch <- struct{}{} }()
-
-	roomId := h.r.URL.Query().Get("rid")
-	roomCh, exists := s.rooms[roomId]
-	if !exists && roomId != homeId {
-		http.Error(h.rw, msgNotFound, http.StatusNotFound)
-		return
-	}
-
-	conn, err := upgrader.Upgrade(h.rw, h.r, nil)
-	if err != nil {
-		// upgrader writes the response, so simply return here.
-		return
-	}
-
-	c := newClient(conn)
-	s.clients[c] = &metadata{player: h.player, roomId: roomId}
-
-	go c.read(s.unregister, s.forward)
-	go c.write()
-
-	// Notify the room that client has joined.
+	id := h.r.URL.Query().Get("id")
+	queue, exists := s.queues[id]
 	if exists {
-		roomCh <- clientEvent{
-			Action:  actionJoin,
-			Payload: []byte(h.player.Id),
-			sender:  c,
-		}
-	}
-}
-
-func (s Service) handleUnregister(c *client) {
-	m, exists := s.clients[c]
-	if !exists {
-		log.Print("client does not exist")
+		queue.register <- h
+		// Wait for the response.
+		<-h.ch
 		return
 	}
 
-	if m.roomId == homeId {
-		if m.isFindingMatch {
-			s.pool.Leave(m.player.Id, m.player.Rating)
-		}
+	room, exists := s.rooms[id]
+	if exists {
+		room.register <- h
+		// Wait for the response.
+		<-h.ch
 		return
 	}
 
-	roomCh, exists := s.rooms[m.roomId]
-	if !exists {
-		log.Print("room does not exist")
-		return
-	}
-
-	// Notify the room that client has leaved.
-	roomCh <- clientEvent{
-		Action:  actionLeave,
-		Payload: []byte(m.player.Id),
-		sender:  c,
-	}
-}
-
-func (s Service) forwardEvent(e clientEvent) {
-	m, exists := s.clients[e.sender]
-	if !exists {
-		log.Print("client does not exist")
-		return
-	}
-
-	switch e.Action {
-	case actionJoinMatchmaking:
-		if m.roomId == homeId && !m.isFindingMatch {
-			var t matchmaking.Ticket
-			if err := json.Unmarshal(e.Payload, &t); err != nil {
-				log.Print(err)
-				return
-			}
-
-			m.isFindingMatch = true
-
-			s.pool.Join(m.player.Id, m.player.Rating, t)
-		}
-
-	case actionLeaveMatchmaking:
-		if m.roomId == homeId && m.isFindingMatch {
-			s.pool.Leave(m.player.Id, m.player.Rating)
-			m.isFindingMatch = false
-		}
-
-	default:
-		roomCh, exists := s.rooms[m.roomId]
-		if !exists {
-			log.Print("room does not exist")
-			return
-		}
-
-		// Notify the room that client has leaved.
-		roomCh <- e
-	}
+	http.Error(rw, msgNotFound, http.StatusNotFound)
 }

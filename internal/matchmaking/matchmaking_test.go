@@ -117,18 +117,6 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
-// func TestSearch(t *testing.T) {
-// 	testcases := []struct{
-
-// 	}{
-
-// 	}
-
-// 	for _, tc := range testcases {
-
-// 	}
-// }
-
 func bfs(t *redBlackTree) []float64 {
 	res := make([]float64, 0)
 	if t.root == t.leaf {

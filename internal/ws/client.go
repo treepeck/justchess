@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	"justchess/internal/db"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -20,8 +22,9 @@ const (
 	maxMessageSize = 1024
 )
 
-// client wraps a single active connection.
+// client wraps a single active connection and player info.
 type client struct {
+	player db.Player
 	// Timestamp when the last ping event was sent to measure the network delay.
 	pingTimestamp time.Time
 	// send is a channel which recieves events that the client will write to
@@ -40,10 +43,11 @@ type client struct {
 }
 
 // newClient creates a new client and sets the WebSocket connection properties.
-func newClient(conn *websocket.Conn) *client {
+func newClient(p db.Player, conn *websocket.Conn) *client {
 	now := time.Now()
 
 	c := &client{
+		player:        p,
 		send:          make(chan []byte, 192),
 		conn:          conn,
 		ping:          0,
@@ -63,10 +67,10 @@ func newClient(conn *websocket.Conn) *client {
 // Pong events are handled by the client itself.  In the case of other event,
 // they are forwarded to the forward channel.  If an event cannot be read, the
 // connection will be closed.
-func (c *client) read(unregister chan<- *client, forward chan<- clientEvent) {
+func (c *client) read(unregister chan<- *client, forward chan<- event) {
 	defer c.cleanup(unregister)
 
-	var e clientEvent
+	var e event
 	for {
 		if err := c.conn.ReadJSON(&e); err != nil {
 			return
@@ -75,8 +79,10 @@ func (c *client) read(unregister chan<- *client, forward chan<- clientEvent) {
 		if e.Action == actionPong {
 			c.handlePong()
 		} else {
-			e.sender = c
-			forward <- e
+			if forward != nil {
+				e.sender = c
+				forward <- e
+			}
 		}
 	}
 }
@@ -115,7 +121,7 @@ func (c *client) write() {
 
 			c.pingTimestamp = now
 
-			if err := c.conn.WriteJSON(clientEvent{
+			if err := c.conn.WriteJSON(event{
 				Action:  actionPing,
 				Payload: []byte(strconv.Itoa(c.ping)),
 			}); err != nil {
