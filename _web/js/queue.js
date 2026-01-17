@@ -44,7 +44,34 @@ function handleEvent(action, payload) {
 	}
 }
 
-// Countup timer.
+// Self-adjusting countup timer.
+function timeTick() {
+	const current = Date.now()
+	const delta = current - expected
+	if (delta > interval) {
+		// Skip missing steps.
+		expected += delta
+	}
+
+	expected += interval
+
+	let seconds = Math.floor((current - initial) / 1000)
+	const minutes = Math.floor(seconds / 60)
+	if (minutes > 0) {
+		seconds -= 60 * minutes
+	}
+
+	countUp.textContent = `${minutes > 9 ? minutes : `0${minutes}`}:${
+		seconds > 9 ? seconds : `0${seconds}`
+	}`
+
+	setTimeout(timeTick, Math.max(0, interval - delta))
+}
+
+const interval = 500 // Milliseconds.
+const initial = Date.now()
+let expected = initial + interval
+setTimeout(timeTick, interval)
 
 switch (id) {
 	case "2":

@@ -318,12 +318,21 @@ button:hover {
 .queue-content {
   width: 95%;
   max-width: 600px;
+  text-align: center;
+  aspect-ratio: 1/1;
   margin: 0 auto auto auto;
   padding: 20px;
   border: 2px solid var(--container-foreground);
   border-radius: 15px;
   color: var(--container-foreground);
   background-color: var(--container-background);
+}
+
+#countUp {
+  width: 100%;
+  font-size: xx-large;
+  user-select: none;
+  /* background */
 }
 
 /******************************************************************************/
@@ -473,7 +482,7 @@ button:hover {
 
 @media screen and (min-width: 600px) {
   /* Make background animation slower on larger screens. */
-  .home-container::before {
+  .column-container::before {
     transform: rotate(15deg) scale(1.5);
     animation: slide-background 340s ease-in-out infinite;
   }
@@ -485,7 +494,7 @@ button:hover {
 
 @media screen and (min-width: 1280px) {
   /* Make background animation slower on larger screens. */
-  .home-container::before {
+  .column-container::before {
     transform: rotate(15deg) scale(2);
   }
 }
