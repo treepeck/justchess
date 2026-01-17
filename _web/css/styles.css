@@ -13,6 +13,11 @@
   font-weight: bold;
 }
 
+@font-face {
+  font-family: "ChessClock";
+  src: url("/fonts/JustChessClock-Regular.woff2") format("woff2");
+}
+
 /* White theme colors by default. */
 :root {
   --background: #e2d3c4;
@@ -330,8 +335,9 @@ button:hover {
 
 #countUp {
   width: 100%;
-  font-size: xx-large;
+  font-size: 70px;
   user-select: none;
+  font-family: "ChessClock";
   /* background */
 }
 
