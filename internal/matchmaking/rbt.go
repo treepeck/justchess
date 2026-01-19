@@ -1,6 +1,6 @@
 package matchmaking
 
-const defaultGapThreshold = 10
+const defaultGapThreshold = 500
 
 type nodeKey struct {
 	playerId     string
@@ -22,7 +22,7 @@ type redBlackNode struct {
 //	(*) Every node is either red or black;
 //	(*) The root is black;
 //	(*) The leaf node is black;
-//	(*) If a node is red, the both its children are black;
+//	(*) If a node is red, both its children are black;
 //	(*) For each node, all simple paths from the node to descendant leaves
 //	contain the same number of black nodes.
 type redBlackTree struct {
