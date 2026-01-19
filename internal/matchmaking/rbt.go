@@ -1,8 +1,11 @@
 package matchmaking
 
+const defaultGapThreshold = 10
+
 type nodeKey struct {
-	playerId string
-	rating   float64
+	playerId     string
+	rating       float64
+	gapThreshold float64
 }
 
 // redBlackNode represents the Red-Black Tree node.
@@ -245,7 +248,7 @@ func (t *redBlackTree) fixRemove(x *redBlackNode) {
 				// Case 8: sibling is black, and its left child is red.
 				// Perform recoloring and right rotation.
 				sibling.isRed = x.parent.isRed
-				sibling.right.isRed = false
+				x.parent.isRed = false
 				sibling.left.isRed = false
 				t.rotateRight(x.parent)
 				x = t.root
@@ -349,6 +352,14 @@ func (t *redBlackTree) findMax(z *redBlackNode) *redBlackNode {
 	return z
 }
 
+// Finds the node with the smallest value in the specified tree.
+func (t *redBlackTree) findMin(z *redBlackNode) *redBlackNode {
+	for z.left != t.leaf {
+		z = z.left
+	}
+	return z
+}
+
 // Recolors nodes to resolve the cases 1 and 4 of the [fixInsert] function.
 func recolor(z, uncle *redBlackNode) {
 	z.parent.isRed = false
@@ -371,7 +382,7 @@ func (t *redBlackTree) transplant(u, v *redBlackNode) {
 // creates a new node with specified value and default fields.
 func (t *redBlackTree) spawn(rating float64, playerId string) *redBlackNode {
 	return &redBlackNode{
-		key:    nodeKey{rating: rating, playerId: playerId},
+		key:    nodeKey{rating: rating, playerId: playerId, gapThreshold: defaultGapThreshold},
 		isRed:  true,
 		parent: t.leaf,
 		left:   t.leaf,

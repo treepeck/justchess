@@ -1,8 +1,11 @@
 package matchmaking
 
 import (
+	"strconv"
 	"testing"
 )
+
+// Validated with https://www.cs.usfca.edu/~galles/visualization/RedBlack.html
 
 func TestInsertNode(t *testing.T) {
 	testcases := []struct {
@@ -90,6 +93,11 @@ func TestRemoveNode(t *testing.T) {
 			30,
 			[]float64{15, 10, 20},
 		},
+		{
+			[]float64{56, 38, 140, 19, 55, 120, 150, 8, 31, 130, 160},
+			56,
+			[]float64{55, 19, 140, 8, 38, 120, 150, 31, 130, 160},
+		},
 	}
 
 	for i, tc := range testcases {
@@ -166,7 +174,7 @@ func BenchmarkRemoveNode(b *testing.B) {
 		i -= 1
 		n := tree.search(i, "")
 		if n != nil {
-			tree.removeNode(tree.search(i, ""))
+			tree.removeNode(n)
 		}
 	}
 }
