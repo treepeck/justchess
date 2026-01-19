@@ -5,6 +5,8 @@ import (
 	"math"
 )
 
+// Pool wraps a single Red-Black Tree and provides implementation of the
+// matchmaking algorithm.
 type Pool struct {
 	tree *redBlackTree
 }
@@ -33,10 +35,14 @@ func (p Pool) Leave(id string, rating float64) {
 
 // MakeMatches finds best matches between all players in the pool. Every found
 // match is send to a result channel.
-// It's the caller's responsibility to close the result channel after this function
-// exists.
-func (p Pool) MakeMatches(n *redBlackNode, result chan<- [2]string) {
-	// Shortcut: node doesn't have any matches.
+// The results channel will be closed after algorithm finishes.
+func (p Pool) MakeMatches(results chan<- [2]string) {
+	p.makeMatches(p.tree.root, results)
+	close(results)
+}
+
+func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
+	// Base case: node doesn't have any matches.
 	if n == p.tree.leaf || n.left == p.tree.leaf || n.right == p.tree.leaf {
 		return
 	}
@@ -46,7 +52,7 @@ func (p Pool) MakeMatches(n *redBlackNode, result chan<- [2]string) {
 		n.left, n.right, p.tree.findMax(n.left), p.tree.findMin(n.right),
 	}
 
-	// Find the match, which has the lowest rating gap.
+	// Find the match which has the lowest rating gap.
 	best := matches[0]
 	lowestGap := math.Abs(n.key.rating - best.key.rating)
 	for i := 1; i < len(matches); i++ {
@@ -60,23 +66,23 @@ func (p Pool) MakeMatches(n *redBlackNode, result chan<- [2]string) {
 	// Check does the lowest gap exceeds the alowed threshold.
 	if lowestGap <= n.key.gapThreshold && lowestGap <= best.key.gapThreshold {
 		// Notify service about created rooms.
-		result <- [2]string{n.key.playerId, best.key.playerId}
+		results <- [2]string{n.key.playerId, best.key.playerId}
 
 		// Remove nodes from tree.
 		p.tree.removeNode(p.tree.search(n.key.rating, n.key.playerId))
 		p.tree.removeNode(p.tree.search(best.key.rating, best.key.playerId))
 
 		// Call function recursively.
-		p.MakeMatches(p.tree.root, result)
+		p.makeMatches(p.tree.root, results)
 		return
 	}
 
 	// Call function recursively on left and right subtrees.
 	if n.left != p.tree.leaf {
-		p.MakeMatches(n.left, result)
+		p.makeMatches(n.left, results)
 	}
 
 	if n.right != p.tree.leaf {
-		p.MakeMatches(n.right, result)
+		p.makeMatches(n.right, results)
 	}
 }

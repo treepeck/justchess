@@ -149,16 +149,14 @@ func TestMakeMatches(t *testing.T) {
 			pool.tree.insertNode(pool.tree.spawn(rating, strconv.Itoa(i)))
 		}
 
-		matches := make(chan [2]string)
-
 		got := make([][2]string, 0)
-		go func() {
-			pool.MakeMatches(pool.tree.root, matches)
-			close(matches)
-		}()
+
+		results := make(chan [2]string)
+
+		go pool.MakeMatches(results)
 
 		for {
-			match, ok := <-matches
+			match, ok := <-results
 			if !ok {
 				break
 			}
