@@ -142,7 +142,7 @@ func TestMakeMatches(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testcases {
+	for i, tc := range testcases {
 		pool := NewPool()
 
 		for i, rating := range tc.ratings {
@@ -163,9 +163,13 @@ func TestMakeMatches(t *testing.T) {
 			got = append(got, match)
 		}
 
-		for i, pair := range tc.expected {
-			if pair[0] != got[i][0] || pair[1] != got[i][1] {
-				t.Fatalf("expected: %v, got: %v", tc.expected, got)
+		if len(tc.expected) != len(got) {
+			t.Fatalf("case %d: expected: %v, got: %v", i, tc.expected, got)
+		}
+
+		for j, pair := range tc.expected {
+			if pair[0] != got[j][0] || pair[1] != got[j][1] {
+				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expected, got)
 			}
 		}
 	}

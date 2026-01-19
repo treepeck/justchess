@@ -42,29 +42,47 @@ func (p Pool) MakeMatches(results chan<- [2]string) {
 }
 
 func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
-	// Base case: node doesn't have any matches.
-	if n == p.tree.leaf || n.left == p.tree.leaf || n.right == p.tree.leaf {
+	if n == p.tree.leaf {
 		return
 	}
 
 	// Find possible matches.
-	matches := [4]*redBlackNode{
-		n.left, n.right, p.tree.findMax(n.left), p.tree.findMin(n.right),
+	matches := [4]*redBlackNode{n.left, n.right, p.tree.leaf, p.tree.leaf}
+	if n.left != p.tree.leaf {
+		matches[2] = p.tree.findMax(n.left)
+	}
+	if n.right != p.tree.leaf {
+		matches[3] = p.tree.findMin(n.right)
 	}
 
 	// Find the match which has the lowest rating gap.
-	best := matches[0]
-	lowestGap := math.Abs(n.key.rating - best.key.rating)
-	for i := 1; i < len(matches); i++ {
-		gap := math.Abs(n.key.rating - matches[i].key.rating)
-		if gap < lowestGap {
-			best = matches[i]
-			lowestGap = gap
+	var best *redBlackNode
+	bestGap := -1.0
+	for _, match := range matches {
+		// Skip possible leaf nodes.
+		if match == p.tree.leaf {
+			continue
+		}
+
+		gap := math.Abs(n.key.rating - match.key.rating)
+		if bestGap == -1.0 {
+			best = match
+			bestGap = gap
+			continue
+		}
+
+		if gap < bestGap {
+			best = match
+			bestGap = gap
 		}
 	}
 
+	if best == nil {
+		return
+	}
+
 	// Check does the lowest gap exceeds the alowed threshold.
-	if lowestGap <= n.key.gapThreshold && lowestGap <= best.key.gapThreshold {
+	if bestGap <= n.key.gapThreshold && bestGap <= best.key.gapThreshold {
 		// Notify service about created rooms.
 		results <- [2]string{n.key.playerId, best.key.playerId}
 
