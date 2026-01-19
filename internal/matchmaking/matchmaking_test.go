@@ -126,36 +126,49 @@ func TestRemoveNode(t *testing.T) {
 }
 
 func TestMakeMatches(t *testing.T) {
-	pool := NewPool()
-
-	ratings := []float64{38, 19, 120, 8, 31, 86, 140, 55, 89, 130, 150, 56, 160}
-	for i, rating := range ratings {
-		pool.tree.insertNode(pool.tree.spawn(rating, strconv.Itoa(i)))
+	testcases := []struct {
+		ratings  []float64
+		expected [][2]string
+	}{
+		{
+			[]float64{38, 19, 120, 8, 31, 86, 140, 55, 89, 130, 150, 56, 160},
+			[][2]string{
+				{"5", "8"}, {"11", "7"}, {"0", "4"}, {"1", "3"}, {"6", "10"}, {"9", "2"},
+			},
+		},
+		{
+			[]float64{1500, 3000, 2900, 2300, 500, 780, 6000, 200},
+			[][2]string{{"2", "1"}, {"4", "5"}},
+		},
 	}
 
-	matches := make(chan [2]string)
+	for _, tc := range testcases {
+		pool := NewPool()
 
-	got := make([][2]string, 0)
-	go func() {
-		pool.MakeMatches(pool.tree.root, matches)
-		close(matches)
-	}()
-
-	for {
-		match, ok := <-matches
-		if !ok {
-			break
+		for i, rating := range tc.ratings {
+			pool.tree.insertNode(pool.tree.spawn(rating, strconv.Itoa(i)))
 		}
-		got = append(got, match)
-	}
 
-	expected := [][2]string{
-		{"5", "8"}, {"11", "7"}, {"0", "4"}, {"6", "10"}, {"9", "2"},
-	}
+		matches := make(chan [2]string)
 
-	for i, pair := range expected {
-		if pair[0] != got[i][0] || pair[1] != got[i][1] {
-			t.Fatalf("expected: %v, got: %v", expected, got)
+		got := make([][2]string, 0)
+		go func() {
+			pool.MakeMatches(pool.tree.root, matches)
+			close(matches)
+		}()
+
+		for {
+			match, ok := <-matches
+			if !ok {
+				break
+			}
+			got = append(got, match)
+		}
+
+		for i, pair := range tc.expected {
+			if pair[0] != got[i][0] || pair[1] != got[i][1] {
+				t.Fatalf("expected: %v, got: %v", tc.expected, got)
+			}
 		}
 	}
 }
