@@ -125,6 +125,41 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
+func TestMakeMatches(t *testing.T) {
+	pool := NewPool()
+
+	ratings := []float64{38, 19, 120, 8, 31, 86, 140, 55, 89, 130, 150, 56, 160}
+	for i, rating := range ratings {
+		pool.tree.insertNode(pool.tree.spawn(rating, strconv.Itoa(i)))
+	}
+
+	matches := make(chan [2]string)
+
+	got := make([][2]string, 0)
+	go func() {
+		pool.MakeMatches(pool.tree.root, matches)
+		close(matches)
+	}()
+
+	for {
+		match, ok := <-matches
+		if !ok {
+			break
+		}
+		got = append(got, match)
+	}
+
+	expected := [][2]string{
+		{"5", "8"}, {"11", "7"}, {"0", "4"}, {"6", "10"}, {"9", "2"},
+	}
+
+	for i, pair := range expected {
+		if pair[0] != got[i][0] || pair[1] != got[i][1] {
+			t.Fatalf("expected: %v, got: %v", expected, got)
+		}
+	}
+}
+
 func bfs(t *redBlackTree) []float64 {
 	res := make([]float64, 0)
 	if t.root == t.leaf {
