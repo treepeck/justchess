@@ -3,15 +3,19 @@ package ws
 import (
 	"encoding/json"
 	"justchess/internal/matchmaking"
+	"justchess/internal/randgen"
 	"log"
+	"time"
 )
 
+const matchmakingTick = 5 * time.Second
+
 type queue struct {
+	ticker     *time.Ticker
 	pool       matchmaking.Pool
 	register   chan handshake
 	unregister chan *client
-	// TODO: store wait time instead of empty struct.
-	clients map[string]*client
+	clients    map[string]*client
 	// Matchmaking parameters.
 	control int
 	bonus   int
@@ -19,6 +23,7 @@ type queue struct {
 
 func newQueue(control, bonus int) queue {
 	return queue{
+		ticker:     time.NewTicker(matchmakingTick),
 		pool:       matchmaking.NewPool(),
 		register:   make(chan handshake),
 		unregister: make(chan *client),
@@ -28,7 +33,7 @@ func newQueue(control, bonus int) queue {
 	}
 }
 
-func (q queue) listenEvents() {
+func (q queue) listenEvents(add chan addRoomEvent) {
 	for {
 		select {
 		case c := <-q.register:
@@ -38,6 +43,27 @@ func (q queue) listenEvents() {
 		case c := <-q.unregister:
 			q.handleUnregister(c)
 			q.broadcastClientsCounter()
+
+		case <-q.ticker.C:
+			matches := make(chan [2]string)
+			go q.pool.MakeMatches(matches)
+
+			for {
+				match, ok := <-matches
+				if !ok {
+					break
+				}
+				roomId := randgen.GenId(randgen.IdLen)
+				// Add room to service.
+				add <- addRoomEvent{
+					playerIDs: match,
+					roomId:    roomId,
+					control:   q.control,
+					bonus:     q.bonus,
+				}
+				// Notify clients.
+				q.sendRedirect(match, roomId)
+			}
 		}
 	}
 }
@@ -46,7 +72,7 @@ func (q queue) handleRegister(h handshake) {
 	// Write to the response channel so that request cannot be closed.
 	defer func() { h.ch <- struct{}{} }()
 
-	// Deny the request if the clients is already in the queue.
+	// Deny the request if the client is already in the queue.
 	if _, exists := q.clients[h.player.Id]; exists {
 		return
 	}
@@ -61,7 +87,9 @@ func (q queue) handleRegister(h handshake) {
 	go c.read(q.unregister, nil)
 	go c.write()
 
+	q.clients[h.player.Id] = c
 	q.pool.Join(c.player.Id, c.player.Rating)
+
 	log.Printf("client %s joined queue", c.player.Id)
 }
 
@@ -73,7 +101,29 @@ func (q queue) handleUnregister(c *client) {
 
 	delete(q.clients, c.player.Id)
 	q.pool.Leave(c.player.Id, c.player.Rating)
+
 	log.Printf("client %s leaved queue", c.player.Id)
+}
+
+func (q queue) sendRedirect(players [2]string, roomId string) {
+	// Encode event payload.
+	raw, err := json.Marshal(roomId)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	e, err := json.Marshal(event{Action: actionRedirect, Payload: raw})
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	for _, c := range q.clients {
+		if c.player.Id == players[0] || c.player.Id == players[1] {
+			c.send <- e
+		}
+	}
 }
 
 // broadcast clients counter event among all connected clients.

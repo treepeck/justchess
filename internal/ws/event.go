@@ -24,3 +24,10 @@ type event struct {
 	// Ignored in json.
 	sender *client
 }
+
+type addRoomEvent struct {
+	playerIDs [2]string
+	roomId    string
+	control   int
+	bonus     int
+}

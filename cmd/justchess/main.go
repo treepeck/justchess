@@ -41,6 +41,7 @@ func main() {
 
 	wsService := ws.NewService(repo)
 	wsService.RegisterRoutes(mux)
+	go wsService.ListenEvents()
 	log.Print("Successfully initialized services.")
 
 	log.Print("Starting server.")

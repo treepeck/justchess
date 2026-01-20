@@ -1,6 +1,8 @@
 package ws
 
 import (
+	"log"
+	"math/rand/v2"
 	"net/http"
 
 	"justchess/internal/db"
@@ -32,12 +34,21 @@ type handshake struct {
 
 type Service struct {
 	repo   db.Repo
+	add    chan addRoomEvent
+	remove chan string
 	rooms  map[string]room
 	queues map[string]queue
 }
 
 func NewService(r db.Repo) Service {
-	queues := make(map[string]queue, 9)
+	s := Service{
+		repo:   r,
+		add:    make(chan addRoomEvent),
+		remove: make(chan string),
+		rooms:  make(map[string]room),
+	}
+
+	s.queues = make(map[string]queue, 9)
 	// Add queue for each game mode.
 	var params = []struct {
 		id      string
@@ -56,16 +67,12 @@ func NewService(r db.Repo) Service {
 	}
 	for _, param := range params {
 		q := newQueue(param.control, param.bonus)
-		queues[param.id] = q
+		s.queues[param.id] = q
 		// Will run until the program exists.
-		go q.listenEvents()
+		go q.listenEvents(s.add)
 	}
 
-	return Service{
-		repo:   r,
-		rooms:  make(map[string]room),
-		queues: queues,
-	}
+	return s
 }
 
 // RegisterRoutes registers endpoints to the specified mux.
@@ -107,4 +114,27 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(rw, msgNotFound, http.StatusNotFound)
+}
+
+func (s Service) ListenEvents() {
+	for {
+		select {
+		case e := <-s.add:
+			// Randomly select players' sides.
+			whiteId := e.playerIDs[0]
+			blackId := e.playerIDs[1]
+			// 50/50 chance.
+			if rand.IntN(2) == 0 {
+				whiteId = e.playerIDs[1]
+				blackId = e.playerIDs[0]
+			}
+			r := newRoom(e.roomId, whiteId, blackId)
+			s.rooms[e.roomId] = r
+			go r.listenEvents(s.remove)
+			log.Print("room added")
+
+		case roomId := <-s.remove:
+			delete(s.rooms, roomId)
+		}
+	}
 }
