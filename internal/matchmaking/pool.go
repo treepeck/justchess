@@ -5,6 +5,11 @@ import (
 	"math"
 )
 
+const (
+	defaultThreshold = 500.0
+	maxThreshold     = 3000.0
+)
+
 // Pool wraps a single Red-Black Tree and provides implementation of the
 // matchmaking algorithm.
 type Pool struct {
@@ -82,7 +87,7 @@ func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
 	}
 
 	// Check does the lowest gap exceeds the alowed threshold.
-	if bestGap <= n.key.gapThreshold && bestGap <= best.key.gapThreshold {
+	if bestGap <= n.key.threshold && bestGap <= best.key.threshold {
 		// Notify service about created rooms.
 		results <- [2]string{n.key.playerId, best.key.playerId}
 
@@ -93,6 +98,15 @@ func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
 		// Call function recursively.
 		p.makeMatches(p.tree.root, results)
 		return
+	} else {
+		// Expand rating gaps so that players with greater rating gaps can be
+		// paired later.
+		if n.key.threshold < maxThreshold {
+			n.key.threshold += defaultThreshold
+		}
+		if best.key.threshold < maxThreshold {
+			best.key.threshold += defaultThreshold
+		}
 	}
 
 	// Call function recursively on left and right subtrees.
