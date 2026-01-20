@@ -24,6 +24,10 @@ func TestInsertNode(t *testing.T) {
 			[]float64{20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
 			[]float64{13, 9, 17, 5, 11, 15, 19, 3, 7, 10, 12, 14, 16, 18, 20, 2, 4, 6, 8, 1},
 		},
+		{
+			[]float64{3000, 1400, 1500, 500, 200, 12},
+			[]float64{1500, 500, 3000, 200, 1400, 12},
+		},
 	}
 
 	for i, tc := range testcases {
@@ -40,7 +44,7 @@ func TestInsertNode(t *testing.T) {
 		}
 
 		for j, val := range tc.expectedBFS {
-			if val != got[j] {
+			if val != got[j].key.rating {
 				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expectedBFS, got)
 			}
 		}
@@ -117,7 +121,7 @@ func TestRemoveNode(t *testing.T) {
 
 		if len(tc.expectedBFS) > 0 {
 			for j, val := range tc.expectedBFS {
-				if val != got[j] {
+				if val != got[j].key.rating {
 					t.Fatalf("case %d: expected: %v, got: %v", i, tc.expectedBFS, got)
 				}
 			}
@@ -175,8 +179,39 @@ func TestMakeMatches(t *testing.T) {
 	}
 }
 
-func bfs(t *redBlackTree) []float64 {
-	res := make([]float64, 0)
+func TestExpandThresholds(t *testing.T) {
+	testcases := []struct {
+		thresholds []float64
+		expected   []float64
+	}{
+		{
+			[]float64{3000, 1400, 1500, 500, 200, 12},
+			[]float64{2000, 1000, 3000, 700, 1900, 512},
+		},
+	}
+
+	for i, tc := range testcases {
+		pool := NewPool()
+
+		for j := range len(tc.thresholds) {
+			n := pool.tree.spawn(tc.thresholds[j], "")
+			n.key.threshold = tc.thresholds[j]
+			pool.tree.insertNode(n)
+		}
+
+		pool.ExpandThresholds()
+		got := bfs(pool.tree)
+
+		for j, threshold := range tc.expected {
+			if threshold != got[j].key.threshold {
+				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expected[j], got[j])
+			}
+		}
+	}
+}
+
+func bfs(t *redBlackTree) []*redBlackNode {
+	res := make([]*redBlackNode, 0, t.size)
 	if t.root == t.leaf {
 		return res
 	}
@@ -188,7 +223,7 @@ func bfs(t *redBlackTree) []float64 {
 		node := visit[0]
 		visit = visit[1:]
 
-		res = append(res, node.key.rating)
+		res = append(res, node)
 
 		if node.left != t.leaf {
 			visit = append(visit, node.left)
@@ -226,5 +261,18 @@ func BenchmarkRemoveNode(b *testing.B) {
 		if n != nil {
 			tree.removeNode(n)
 		}
+	}
+}
+
+func BenchmarkExpandThresholds(b *testing.B) {
+	pool := NewPool()
+
+	i := float64(0)
+	for ; i <= 10000; i++ {
+		pool.tree.insertNode(pool.tree.spawn(i, ""))
+	}
+
+	for b.Loop() {
+		pool.ExpandThresholds()
 	}
 }

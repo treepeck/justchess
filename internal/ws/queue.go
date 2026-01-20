@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const matchmakingTick = 5 * time.Second
+const matchmakingTick = 3 * time.Second
 
 type queue struct {
 	ticker     *time.Ticker
@@ -45,6 +45,11 @@ func (q queue) listenEvents(add chan addRoomEvent) {
 			q.broadcastClientsCounter()
 
 		case <-q.ticker.C:
+			// Shortcut: not enough players to make a match.
+			if q.pool.Size() < 2 {
+				continue
+			}
+
 			matches := make(chan [2]string)
 			go q.pool.MakeMatches(matches)
 
@@ -64,6 +69,8 @@ func (q queue) listenEvents(add chan addRoomEvent) {
 				// Notify clients.
 				q.sendRedirect(match, roomId)
 			}
+
+			q.pool.ExpandThresholds()
 		}
 	}
 }

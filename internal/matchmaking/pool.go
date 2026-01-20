@@ -16,11 +16,7 @@ type Pool struct {
 	tree *redBlackTree
 }
 
-func NewPool() Pool {
-	return Pool{
-		tree: newRedBlackTree(),
-	}
-}
+func NewPool() Pool { return Pool{tree: newRedBlackTree()} }
 
 // It's the caller's responsibility to ensure that a single client doesn't join
 // more than once.
@@ -36,6 +32,10 @@ func (p Pool) Leave(id string, rating float64) {
 	}
 	p.tree.removeNode(n)
 	log.Printf("Player %s leaves matchmaking", id)
+}
+
+func (p Pool) Size() int {
+	return p.tree.size
 }
 
 // MakeMatches finds best matches between all players in the pool. Every found
@@ -98,15 +98,6 @@ func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
 		// Call function recursively.
 		p.makeMatches(p.tree.root, results)
 		return
-	} else {
-		// Expand rating gaps so that players with greater rating gaps can be
-		// paired later.
-		if n.key.threshold < maxThreshold {
-			n.key.threshold += defaultThreshold
-		}
-		if best.key.threshold < maxThreshold {
-			best.key.threshold += defaultThreshold
-		}
 	}
 
 	// Call function recursively on left and right subtrees.
@@ -116,5 +107,28 @@ func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
 
 	if n.right != p.tree.leaf {
 		p.makeMatches(n.right, results)
+	}
+}
+
+// ExpandThresholds expands rating threshold of each thee node so that players
+// with greater rating gaps can be paired together.
+func (p Pool) ExpandThresholds() {
+	if p.tree.size < 1 {
+		return
+	}
+	p.expandThresholds(p.tree.root)
+}
+
+func (p Pool) expandThresholds(n *redBlackNode) {
+	if n.key.threshold < maxThreshold {
+		n.key.threshold += defaultThreshold
+	}
+
+	if n.left != p.tree.leaf {
+		p.expandThresholds(n.left)
+	}
+
+	if n.right != p.tree.leaf {
+		p.expandThresholds(n.right)
 	}
 }
