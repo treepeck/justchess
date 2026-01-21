@@ -3,24 +3,47 @@ package web
 import (
 	"log"
 	"net/http"
-	"regexp"
+	"text/template"
 
 	"justchess/internal/db"
 )
 
 // Declaration of error messages.
 const (
-	msgNotFound        string = "The requested page doesn't exist."
-	msgInvalidTemplate string = "The requested page cannot be rendered."
+	msgNotFound        string = "The requested page doesn't exist"
+	msgInvalidTemplate string = "The requested page cannot be rendered"
 )
 
 type Service struct {
-	repo  db.Repo
-	pages map[*regexp.Regexp]Page
+	repo db.Repo
+	// maps URL path to a [Page].
+	pages map[string]page
 }
 
-func NewService(pages map[*regexp.Regexp]Page, r db.Repo) Service {
-	return Service{pages: pages, repo: r}
+// InitService tries to parse the template files and stores them in the [Service].
+func InitService(r db.Repo) (Service, error) {
+	pagesData := []struct {
+		url      string
+		tmplPath string
+		base     baseData
+	}{
+		{"/", "./_web/pages/home.tmpl", baseData{Title: "Home", Script: "/js/home.js"}},
+		{"/queue", "./_web/pages/queue.tmpl", baseData{Title: "Queue", Script: "/js/queue.js"}},
+		{"/signup", "./_web/pages/signup.tmpl", baseData{Title: "Sign up", Script: "/js/signup.js"}},
+		{"/signin", "./_web/pages/signin.tmpl", baseData{Title: "Sign in", Script: "/js/signin.js"}},
+		{"/game", "./_web/pages/game.tmpl", baseData{Title: "Game", Script: "/js/game.js"}},
+	}
+
+	pages := make(map[string]page, len(pagesData))
+	for _, data := range pagesData {
+		t, err := template.ParseFiles(basePath, data.tmplPath)
+		if err != nil {
+			return Service{}, err
+		}
+		pages[data.url] = page{base: data.base, template: t}
+	}
+
+	return Service{pages: pages, repo: r}, nil
 }
 
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
@@ -40,36 +63,50 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	js := http.Dir("./_web/js")
 	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(js)))
 
-	// Serve pages.
-	mux.Handle("/", http.HandlerFunc(s.servePage))
+	// Serve pages with static routes.
+	mux.HandleFunc("/", s.serveStaticRoutePage)
+
+	// Serve pages with dynamic routes.
+	mux.Handle("/queue/", http.StripPrefix("/queue/", http.HandlerFunc(s.serveQueue)))
 }
 
-func (s Service) servePage(rw http.ResponseWriter, r *http.Request) {
-	// Find page using regular expressions.
-	exists := false
-	page := Page{}
-	for ex, p := range s.pages {
-		if ex.MatchString(r.URL.Path) {
-			exists = true
-			page = p
-			break
-		}
-	}
+func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
+	id := r.URL.Path[len("/queue/"):]
 
+	// There are 9 queues.
+	switch id {
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		s.renderPage(rw, r, s.pages["/queue"])
+
+	default:
+		// TODO: render 404 template.
+		http.Error(rw, msgNotFound, http.StatusNotFound)
+		return
+	}
+}
+
+func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
+	// Find page using regular expressions.
+	page, exists := s.pages[r.URL.Path]
 	if !exists {
+		// TODO: render 404 template.
 		http.Error(rw, msgNotFound, http.StatusNotFound)
 		return
 	}
 
+	s.renderPage(rw, r, page)
+}
+
+func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 	c, err := r.Cookie("Auth")
 	if err == nil {
 		player, err := s.repo.SelectPlayerBySessionId(c.Value)
 		if err == nil {
-			page.Name = player.Name
+			p.base.PlayerName = player.Name
 		}
 	}
 
-	if err := page.template.Execute(rw, page); err != nil {
+	if err := p.template.Execute(rw, p); err != nil {
 		log.Print(err)
 		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
 	}
