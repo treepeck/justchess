@@ -1,9 +1,9 @@
 package web
 
 import (
+	"html/template"
 	"log"
 	"net/http"
-	"text/template"
 
 	"justchess/internal/db"
 )

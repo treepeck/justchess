@@ -1,6 +1,6 @@
 package web
 
-import "text/template"
+import "html/template"
 
 // Relative path to a base.tmpl file.
 const basePath string = "./_web/base.tmpl"
