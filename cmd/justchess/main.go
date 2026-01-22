@@ -32,11 +32,10 @@ func main() {
 	authService.RegisterRoutes(mux)
 
 	// Parse and store page templates.
-	pages, err := web.ParsePages()
+	webService, err := web.InitService(repo)
 	if err != nil {
 		log.Panic(err)
 	}
-	webService := web.NewService(pages, repo)
 	webService.RegisterRoutes(mux)
 
 	wsService := ws.NewService(repo)

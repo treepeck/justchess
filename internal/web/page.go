@@ -22,7 +22,7 @@ type queueData struct {
 
 // page combines the data objects and a parsed template.
 type page struct {
-	base     baseData
-	data     any
+	Base     baseData
+	Data     any
 	template *template.Template
 }

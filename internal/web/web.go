@@ -40,7 +40,7 @@ func InitService(r db.Repo) (Service, error) {
 		if err != nil {
 			return Service{}, err
 		}
-		pages[data.url] = page{base: data.base, template: t}
+		pages[data.url] = page{Base: data.base, template: t}
 	}
 
 	return Service{pages: pages, repo: r}, nil
@@ -102,7 +102,9 @@ func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 	if err == nil {
 		player, err := s.repo.SelectPlayerBySessionId(c.Value)
 		if err == nil {
-			p.base.PlayerName = player.Name
+			p.Base.PlayerName = player.Name
+		} else {
+			p.Base.PlayerName = "signup"
 		}
 	}
 

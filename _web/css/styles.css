@@ -282,7 +282,7 @@ button:hover {
   left: -50%;
   content: "";
   position: fixed;
-  background-image: url("/images/background.png");
+  background-image: url("/images/background.svg");
   transform: rotate(15deg);
   filter: blur(2px);
   animation: slide-background 120s ease-in-out infinite;

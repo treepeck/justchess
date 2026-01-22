@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="icon" href="/images/favicon.png" type="image/png">
-  <title>{{ .Title }} &ndash; JustChess.org</title>
-  <script src="{{ .Script }}" type="module"></script>
+  <title>{{ .Base.Title }} &ndash; JustChess.org</title>
+  <script src="{{ .Base.Script }}" type="module"></script>
 </head>
 
 <body>
@@ -15,7 +15,7 @@
     <nav>
       <div class="logo"><a href="/">JustChess</a></div>
 
-      <a href="/{{ .Name }}">{{ .Name }}</a>
+      <a href="/{{ .Base.PlayerName }}">{{ .Base.PlayerName }}</a>
     </nav>
   </header>
 
