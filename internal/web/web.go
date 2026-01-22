@@ -64,7 +64,7 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(js)))
 
 	// Serve pages with static routes.
-	mux.HandleFunc("/", s.serveStaticRoutePage)
+	mux.Handle("/", http.HandlerFunc(s.serveStaticRoutePage))
 
 	// Serve pages with dynamic routes.
 	mux.Handle("/queue/", http.StripPrefix("/queue/", http.HandlerFunc(s.serveQueue)))
@@ -86,7 +86,6 @@ func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
-	// Find page using regular expressions.
 	page, exists := s.pages[r.URL.Path]
 	if !exists {
 		// TODO: render 404 template.
