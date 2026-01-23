@@ -114,7 +114,7 @@ func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 
 	page := s.pages["/game"]
 	// Fill up the template with more game data.
-	page.Data = gameData{WhiteId: g.WhiteId, BlackId: g.BlackId}
+	page.Data = g
 
 	s.renderPage(rw, r, page)
 }

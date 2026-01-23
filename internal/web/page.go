@@ -20,13 +20,6 @@ type queueData struct {
 	Bonus   int
 }
 
-type gameData struct {
-	WhiteId string
-	BlackId string
-	Control int
-	Bonus   int
-}
-
 // page combines the data objects and a parsed template.
 type page struct {
 	Base     baseData
