@@ -25,9 +25,16 @@ type event struct {
 	sender *client
 }
 
-type addRoomEvent struct {
-	playerIDs [2]string
-	roomId    string
-	control   int
-	bonus     int
+type createRoomEvent struct {
+	id      string
+	whiteId string
+	blackId string
+	control int
+	bonus   int
+	res     chan error
+}
+
+type findRoomEvent struct {
+	id  string
+	res chan room
 }

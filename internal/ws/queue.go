@@ -2,10 +2,12 @@ package ws
 
 import (
 	"encoding/json"
+	"log"
+	"math/rand/v2"
+	"time"
+
 	"justchess/internal/matchmaking"
 	"justchess/internal/randgen"
-	"log"
-	"time"
 )
 
 const matchmakingTick = 3 * time.Second
@@ -21,7 +23,7 @@ type queue struct {
 	bonus   int
 }
 
-func newQueue(control, bonus int) queue {
+func newQueue(control int, bonus int) queue {
 	return queue{
 		ticker:     time.NewTicker(matchmakingTick),
 		pool:       matchmaking.NewPool(),
@@ -33,7 +35,7 @@ func newQueue(control, bonus int) queue {
 	}
 }
 
-func (q queue) listenEvents(add chan addRoomEvent) {
+func (q queue) listenEvents(create chan<- createRoomEvent) {
 	for {
 		select {
 		case c := <-q.register:
@@ -59,13 +61,28 @@ func (q queue) listenEvents(add chan addRoomEvent) {
 					break
 				}
 				roomId := randgen.GenId(randgen.IdLen)
-				// Add room to service.
-				add <- addRoomEvent{
-					playerIDs: match,
-					roomId:    roomId,
-					control:   q.control,
-					bonus:     q.bonus,
+
+				// Randomly select players' sides.
+				whiteId, blackId := match[0], match[1]
+				if rand.IntN(2) == 1 {
+					whiteId = match[1]
+					blackId = match[0]
 				}
+
+				// Send create room event.
+				e := createRoomEvent{
+					id: roomId, whiteId: whiteId, blackId: blackId,
+					control: q.control, bonus: q.bonus, res: make(chan error, 1),
+				}
+				create <- e
+
+				// Wait for the response.
+				err := <-e.res
+				if err != nil {
+					// Don't redirect clients since the room wasn't created.
+					continue
+				}
+
 				// Notify clients.
 				q.sendRedirect(match, roomId)
 			}

@@ -72,38 +72,3 @@ const interval = 500 // Milliseconds.
 const initial = Date.now()
 let expected = initial + interval
 setTimeout(timeTick, interval)
-
-switch (id) {
-	case "2":
-		timeControl.textContent = "Control: 2 minutes"
-		timeBonus.textContent = "Bonus: 1 second"
-		break
-	case "3":
-		timeControl.textContent = "Control: 3 minutes"
-		timeBonus.textContent = "Bonus: 0 seconds"
-		break
-	case "4":
-		timeControl.textContent = "Control: 3 minutes"
-		timeBonus.textContent = "Bonus: 2 seconds"
-		break
-	case "5":
-		timeControl.textContent = "Control: 5 minutes"
-		timeBonus.textContent = "Bonus: 0 seconds"
-		break
-	case "6":
-		timeControl.textContent = "Control: 5 minutes"
-		timeBonus.textContent = "Bonus: 2 seconds"
-		break
-	case "7":
-		timeControl.textContent = "Control: 10 minutes"
-		timeBonus.textContent = "Bonus: 0 seconds"
-		break
-	case "8":
-		timeControl.textContent = "Control: 10 minutes"
-		timeBonus.textContent = "Bonus: 10 seconds"
-		break
-	case "9":
-		timeControl.textContent = "Control: 15 minutes"
-		timeBonus.textContent = "Bonus: 10 seconds"
-		break
-}

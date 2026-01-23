@@ -22,11 +22,12 @@ const (
 
 	// Game.
 
-	insertGame = `INSERT INTO game (id, white_id, black_id, period_id, result,
-	termination) VALUES (?, ?, ?, ?, ?, ?)`
+	insertGame = `INSERT INTO game (id, white_id, black_id,
+		time_control, time_bonus)
+	VALUES (?, ?, ?, ?, ?)`
 
-	selectGameById = `SELECT (id, white_id, black_id, result, termination,
-	created_at) FROM game WHERE id = ?`
+	// Select game by id excluding the abandoned games.
+	selectGameById = `SELECT * FROM game WHERE id = ? AND termination != 1`
 
 	// Session.
 
@@ -89,9 +90,8 @@ func (r Repo) SelectPlayerBySessionId(id string) (Player, error) {
 }
 
 // InsertGame inserts a single record into the game table.
-func (r Repo) InsertGame(id, whiteId, blackId string, periodId int,
-	res Result, t Termination) error {
-	_, err := r.pool.Exec(insertGame, id, whiteId, blackId, res, t)
+func (r Repo) InsertGame(id, whiteId, blackId string, control, bonus int) error {
+	_, err := r.pool.Exec(insertGame, id, whiteId, blackId, control, bonus)
 	return err
 }
 
@@ -101,8 +101,8 @@ func (r Repo) SelectGameById(id string) (Game, error) {
 	row := r.pool.QueryRow(selectGameById, id)
 
 	var g Game
-	return g, row.Scan(&g.Id, &g.WhiteId, &g.BlackId, &g.Result, &g.Termination,
-		&g.CreatedAt)
+	return g, row.Scan(&g.Id, &g.WhiteId, &g.BlackId, &g.Control, &g.Bonus,
+		&g.Result, &g.Termination, &g.CreatedAt)
 }
 
 // InsertSession inserts a single record into the session table.

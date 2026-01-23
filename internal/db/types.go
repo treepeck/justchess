@@ -31,30 +31,32 @@ type Game struct {
 	Id          string      `json:"id"`
 	WhiteId     string      `json:"whiteId"`
 	BlackId     string      `json:"blackId"`
+	Control     int         `json:"control"`
+	Bonus       int         `json:"bonus"`
 	Result      Result      `json:"result"`
 	Termination Termination `json:"termination"`
 }
 
 // Result represents the possible outcomes of a chess game.
-type Result string
+type Result int
 
 const (
-	ResultWhiteWon Result = "0-1"
-	ResultBlackWon Result = "1-0"
-	ResultDraw     Result = "1/2-1/2"
-	ResultUnknown  Result = "*"
+	Unknown Result = iota
+	WhiteWon
+	BlackWon
+	Draw
 )
 
 // Termination represents the reason for the conclusion of the game.  While the
-// Result types gives the result of the game, it does not provide any extra
+// [Result] types gives the result of the game, it does not provide any extra
 // information and so the Termination type is defined for this purpose.
-type Termination string
+type Termination int
 
 const (
-	TerminationAbandoned       Termination = "abandoned"
-	TerminationAdjudication    Termination = "adjudication"
-	TerminationNormal          Termination = "normal"
-	TerminationRulesInfraction Termination = "rules infraction"
-	TerminationTimeForfeit     Termination = "time forfeit"
-	TerminationUnterminated    Termination = "unterminated"
+	Unterminated Termination = iota
+	Abandoned
+	Adjudication
+	Normal
+	RulesInfraction
+	TimeForfeit
 )

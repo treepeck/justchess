@@ -68,21 +68,55 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 
 	// Serve pages with dynamic routes.
 	mux.Handle("/queue/", http.StripPrefix("/queue/", http.HandlerFunc(s.serveQueue)))
+	mux.Handle("/game/", http.StripPrefix("/game/", http.HandlerFunc(s.serveGame)))
 }
 
 func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/queue/"):]
+	page := s.pages["/queue"]
 
 	// There are 9 queues.
-	switch id {
-	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		s.renderPage(rw, r, s.pages["/queue"])
+	switch r.URL.Path {
+	case "1":
+		page.Data = queueData{Control: 1, Bonus: 0}
+	case "2":
+		page.Data = queueData{Control: 2, Bonus: 1}
+	case "3":
+		page.Data = queueData{Control: 3, Bonus: 0}
+	case "4":
+		page.Data = queueData{Control: 3, Bonus: 2}
+	case "5":
+		page.Data = queueData{Control: 5, Bonus: 0}
+	case "6":
+		page.Data = queueData{Control: 5, Bonus: 2}
+	case "7":
+		page.Data = queueData{Control: 10, Bonus: 0}
+	case "8":
+		page.Data = queueData{Control: 10, Bonus: 10}
+	case "9":
+		page.Data = queueData{Control: 15, Bonus: 10}
 
 	default:
 		// TODO: render 404 template.
 		http.Error(rw, msgNotFound, http.StatusNotFound)
 		return
 	}
+
+	s.renderPage(rw, r, page)
+}
+
+func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
+	g, err := s.repo.SelectGameById(r.URL.Path)
+	if err != nil {
+		// TODO: render 404 template.
+		http.Error(rw, msgNotFound, http.StatusNotFound)
+		return
+	}
+
+	page := s.pages["/game"]
+	// Fill up the template with more game data.
+	page.Data = gameData{WhiteId: g.WhiteId, BlackId: g.BlackId}
+
+	s.renderPage(rw, r, page)
 }
 
 func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {

@@ -2,7 +2,6 @@ package ws
 
 import (
 	"log"
-	"math/rand/v2"
 	"net/http"
 
 	"justchess/internal/db"
@@ -34,8 +33,9 @@ type handshake struct {
 
 type Service struct {
 	repo   db.Repo
-	add    chan addRoomEvent
+	create chan createRoomEvent
 	remove chan string
+	find   chan findRoomEvent
 	rooms  map[string]room
 	queues map[string]queue
 }
@@ -43,8 +43,9 @@ type Service struct {
 func NewService(r db.Repo) Service {
 	s := Service{
 		repo:   r,
-		add:    make(chan addRoomEvent),
+		create: make(chan createRoomEvent),
 		remove: make(chan string),
+		find:   make(chan findRoomEvent),
 		rooms:  make(map[string]room),
 	}
 
@@ -69,10 +70,23 @@ func NewService(r db.Repo) Service {
 		q := newQueue(param.control, param.bonus)
 		s.queues[param.id] = q
 		// Will run until the program exists.
-		go q.listenEvents(s.add)
+		go q.listenEvents(s.create)
 	}
 
 	return s
+}
+
+func (s Service) ListenEvents() {
+	for {
+		select {
+		case e := <-s.create:
+			s.createRoom(e)
+		case id := <-s.remove:
+			s.removeRoom(id)
+		case e := <-s.find:
+			e.res <- s.rooms[e.id]
+		}
+	}
 }
 
 // RegisterRoutes registers endpoints to the specified mux.
@@ -105,8 +119,13 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	room, exists := s.rooms[id]
-	if exists {
+	e := findRoomEvent{
+		id:  id,
+		res: make(chan room, 1),
+	}
+	s.find <- e
+	room := <-e.res
+	if room.register != nil {
 		room.register <- h
 		// Wait for the response.
 		<-h.ch
@@ -116,25 +135,23 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 	http.Error(rw, msgNotFound, http.StatusNotFound)
 }
 
-func (s Service) ListenEvents() {
-	for {
-		select {
-		case e := <-s.add:
-			// Randomly select players' sides.
-			whiteId := e.playerIDs[0]
-			blackId := e.playerIDs[1]
-			// 50/50 chance.
-			if rand.IntN(2) == 0 {
-				whiteId = e.playerIDs[1]
-				blackId = e.playerIDs[0]
-			}
-			r := newRoom(e.roomId, whiteId, blackId)
-			s.rooms[e.roomId] = r
-			go r.listenEvents(s.remove)
-			log.Print("room added")
+func (s Service) createRoom(e createRoomEvent) {
+	err := s.repo.InsertGame(e.id, e.whiteId, e.blackId, e.control, e.bonus)
+	defer func() { e.res <- err }()
 
-		case roomId := <-s.remove:
-			delete(s.rooms, roomId)
-		}
+	if err != nil {
+		log.Print(err)
+		return
 	}
+
+	r := newRoom(e.id, e.whiteId, e.blackId)
+	go r.listenEvents(s.remove)
+	s.rooms[e.id] = r
+
+	log.Printf("room %s created", e.id)
+}
+
+func (s Service) removeRoom(id string) {
+	delete(s.rooms, id)
+	log.Printf("room %s removed", id)
 }
