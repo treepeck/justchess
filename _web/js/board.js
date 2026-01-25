@@ -81,7 +81,7 @@ export default class Board {
 		this.#draggedPiece = null
 
 		this.#square = this.#size / 8
-		this.#piece = 32
+		this.#piece = 300
 
 		// Initialize default piece placement.
 		// prettier-ignore
@@ -102,12 +102,12 @@ export default class Board {
 		for (let rank = 0; rank < 8; rank++) {
 			for (let file = 0; file < 8; file++) {
 				// Draw board squares.
-				this.#context.fillStyle = "white"
+				this.#context.fillStyle = "#e2d3c4"
 				if (
 					(rank % 2 !== 0 && file % 2 !== 0) ||
 					(rank % 2 === 0 && file % 2 === 0)
 				) {
-					this.#context.fillStyle = "black"
+					this.#context.fillStyle = "#8e684b"
 				}
 				const x = file * this.#square
 				const y = this.#size - this.#square - rank * this.#square

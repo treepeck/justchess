@@ -1,7 +1,7 @@
 import Board from "/js/board.js"
 
 const sheet = new Image()
-sheet.src = "/images/sheet.png"
+sheet.src = "/images/sheet.svg"
 sheet.onload = () => {
 	const ctx = boardCanvas.getContext("2d")
 	const board = new Board(ctx, sheet)

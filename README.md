@@ -11,8 +11,11 @@ development environment.
 
 Copyright (c) 2024-2026 Artem Bielikov
 
-The source code and JustChess fonts are licensed under the Mozilla Public<br/>
+The source code is licensed under the Mozilla Public<br/>
 License, v. 2.0.  See the [LICENSE](LICENSE) file for details.
 
 The Ubuntu fonts are licensed under the Ubuntu Font License, v. 1.0.<br/>
 See the [UbuntuFonts-LICENCE.txt](_web/fonts/UbuntuFonts-LICENCE.txt) file for details.
+
+The JustChess*.woff2 fonts and images are licensed under the
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license.
