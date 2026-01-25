@@ -79,8 +79,6 @@ export default class Board {
 		this.#size = 0
 		this.#selectedSquare = -1
 		this.#draggedPiece = null
-
-		this.#square = this.#size / 8
 		this.#piece = 300
 
 		// Initialize default piece placement.
@@ -109,6 +107,7 @@ export default class Board {
 				) {
 					this.#context.fillStyle = "#8e684b"
 				}
+
 				const x = file * this.#square
 				const y = this.#size - this.#square - rank * this.#square
 				this.#context.fillRect(x, y, this.#square, this.#square)
@@ -121,6 +120,8 @@ export default class Board {
 				}
 
 				// Draw dragged piece.
+				// Make dragged piece a bit bigger.
+				const size = Math.round(this.#square * 1.1)
 				if (this.#draggedPiece !== null) {
 					this.#context.drawImage(
 						this.#sheet,
@@ -130,8 +131,8 @@ export default class Board {
 						this.#piece,
 						this.#draggedPiece.x,
 						this.#draggedPiece.y,
-						this.#square,
-						this.#square
+						size,
+						size
 					)
 				}
 
@@ -158,10 +159,18 @@ export default class Board {
 	 * @param {number} size
 	 */
 	setSize(size) {
-		this.#size = size
-		this.#square = this.#size / 8
+		const dpr = window.devicePixelRatio || 1
+		if (
+			size * dpr >=
+			this.#context.canvas.style.getPropertyValue("max-width")
+		) {
+			this.#size = Math.round(size * dpr)
+			this.#context.scale(dpr, dpr)
+		} else {
+			this.#size = Math.round(size)
+		}
 
-		// Resize canvas.
+		this.#square = Math.round(this.#size / 8)
 		this.#context.canvas.width = this.#size
 		this.#context.canvas.height = this.#size
 
@@ -189,8 +198,8 @@ export default class Board {
 			// Update board state.
 			this.#squares[this.#selectedSquare] = Piece.NP
 			this.#draggedPiece = {
-				x: x - this.#square / 2, // Center piece horizontally.
-				y: y - this.#square / 2, // Center piece vertically.
+				x: Math.round(x - (this.#square * 1.1) / 2), // Center piece horizontally.
+				y: Math.round(y - (this.#square * 1.1) / 2), // Center piece vertically.
 				from: this.#selectedSquare,
 				piece: piece,
 			}
