@@ -15,7 +15,7 @@ func main() {
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
 
 	log.Print("Connecting to db...")
-	pool, err := db.OpenDB(os.Getenv("MYSQL_URL"))
+	pool, err := db.OpenDB(os.Getenv("DB_DSN"))
 	if err != nil {
 		log.Panic(err)
 	}

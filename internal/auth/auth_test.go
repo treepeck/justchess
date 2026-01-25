@@ -12,7 +12,7 @@ import (
 )
 
 func initServiceOrPanic() Service {
-	pool, err := db.OpenDB(os.Getenv("MYSQL_TEST_URL"))
+	pool, err := db.OpenDB(os.Getenv("TEST_DB_DSN"))
 	if err != nil {
 		panic(err)
 	}
