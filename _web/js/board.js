@@ -183,8 +183,11 @@ export default class Board {
 	 */
 	onMouseDown(e) {
 		const rect = this.#context.canvas.getBoundingClientRect()
-		const x = e.clientX - rect.left
-		const y = e.clientY - rect.top
+		const scaleX = this.#context.canvas.width / rect.width
+		const scaleY = this.#context.canvas.height / rect.height
+
+		const x = (e.clientX - rect.left) * scaleX
+		const y = (e.clientY - rect.top) * scaleY
 
 		const file = Math.floor(x / this.#square)
 		const rank = Math.floor((this.#size - y) / this.#square)
@@ -218,9 +221,14 @@ export default class Board {
 
 			if (isLeftButtonPressed) {
 				const rect = this.#context.canvas.getBoundingClientRect()
+				const scaleX = this.#context.canvas.width / rect.width
+				const scaleY = this.#context.canvas.height / rect.height
+
+				const x = (e.clientX - rect.left) * scaleX - this.#square / 2
+				const y = (e.clientY - rect.top) * scaleY - this.#square / 2
 				// Move dragged piece with the cursor.
-				this.#draggedPiece.x = e.clientX - rect.left - this.#square / 2
-				this.#draggedPiece.y = e.clientY - rect.top - this.#square / 2
+				this.#draggedPiece.x = x
+				this.#draggedPiece.y = y
 
 				this.#render()
 			} else {
@@ -237,8 +245,11 @@ export default class Board {
 	 */
 	onMouseUp(e) {
 		const rect = this.#context.canvas.getBoundingClientRect()
-		const x = e.clientX - rect.left
-		const y = e.clientY - rect.top
+		const scaleX = this.#context.canvas.width / rect.width
+		const scaleY = this.#context.canvas.height / rect.height
+
+		const x = (e.clientX - rect.left) * scaleX
+		const y = (e.clientY - rect.top) * scaleY
 
 		const file = Math.floor(x / this.#square)
 		const rank = Math.floor((this.#size - y) / this.#square)
