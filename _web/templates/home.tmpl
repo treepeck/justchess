@@ -3,26 +3,26 @@
   <h2>Choose a <span id="helpText">time control</span></h2>
 
   <div class="grid">
-    <button id="cell1">1+0</button>
-    <button id="cell2">2+1</button>
-    <button id="cell3">3+0</button>
-    <button id="cell4">3+2</button>
-    <button id="cell5">5+0</button>
-    <button id="cell6">5+2</button>
-    <button id="cell7">10+0</button>
-    <button id="cell8">10+10</button>
-    <button id="cell9">15+10</button>
+    <button class="cell" id="cell1">1+0</button>
+    <button class="cell" id="cell2">2+1</button>
+    <button class="cell" id="cell3">3+0</button>
+    <button class="cell" id="cell4">3+2</button>
+    <button class="cell" id="cell5">5+0</button>
+    <button class="cell" id="cell6">5+2</button>
+    <button class="cell" id="cell7">10+0</button>
+    <button class="cell" id="cell8">10+10</button>
+    <button class="cell" id="cell9">15+10</button>
   </div>
 
-  <div id="helpWindow">
-    <div>
+  <div class="help-container" id="help">
+    <div class="help-content">
       <h2><b>What is time control?</b></h2>
 
       <p>Each chess game has a time limit.</p>
       <p>The first number indicates the amount of minutes given to each player.</p>
       <p>The second number indicates the amount of seconds added after each move.</p>
 
-      <button id="closeHelp">OK</button>
+      <button id="closehelp">OK</button>
   </div>
 </main>
 {{ end }}

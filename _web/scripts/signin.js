@@ -1,7 +1,12 @@
-// Page guard.
-if (document.body.dataset.page !== "signin") {
-	return
-}
+;(() => {
+	// Page guard.
+	if (document.getElementsByTagName("form")[0]?.dataset.page !== "signin") {
+		return
+	}
+
+	authForm.addEventListener("submit", submitForm)
+	passwordToggle.addEventListener("click", togglePassword)
+})()
 
 function submitForm(event) {
 	event.preventDefault()
@@ -55,6 +60,3 @@ function togglePassword() {
 		passwordToggle.style.backgroundImage = "url('/images/show.png')"
 	}
 }
-
-authForm.addEventListener("submit", submitForm)
-passwordToggle.addEventListener("click", togglePassword)

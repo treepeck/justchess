@@ -1,0 +1,42 @@
+.notification-container {
+  position: fixed;
+  bottom: 40px;
+  right: 20px;
+}
+
+.notification {
+  display: flex;
+  gap: 10px;
+  user-select: none;
+  text-align: center;
+  align-items: center;
+  padding: 10px;
+  margin: 10px 0 10px 0;
+  animation: popup 1s ease-in-out 1;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.notification button {
+  width: 40px;
+  height: 40px;
+  font-weight: bold;
+  border: 2px solid var(--container-foreground);
+  border-radius: 50%;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+@keyframes popup {
+  from {
+    z-index: -1;
+    opacity: 0;
+  }
+
+  to {
+    z-index: 1;
+    opacity: 1;
+  }
+}

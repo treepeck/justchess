@@ -14,7 +14,6 @@
   src: url("/fonts/JustChessClock-Regular.woff2") format("woff2");
 }
 
-/* White theme colors by default. */
 :root {
   --background: #e2d3c4;
   --foreground: #34211d;
@@ -61,7 +60,22 @@ button {
 }
 
 button {
-  cursor: pointer;
+  cursor: pointer !important;
+  transition: background-color 0.75s ease-in-out, border-color 0.75s ease-in-out,
+    color 0.75s ease-in-out !important;
+}
+
+button:focus {
+  outline: none !important;
+  color: var(--container-background) !important;
+  background-color: var(--container-foreground) !important;
+  border: 2px solid var(--container-background) !important;
+}
+
+button:hover {
+  color: var(--container-background) !important;
+  background-color: var(--container-foreground) !important;
+  border: 2px solid var(--container-background) !important;
 }
 
 header {
@@ -109,112 +123,6 @@ footer div {
   margin: auto auto 0 0;
   user-select: none;
   font-weight: bold;
-}
-
-/* TODO: hack to apply hover effect on all buttons. Rewrite without !important. */
-button {
-  transition: background-color 0.75s ease-in-out, border-color 0.75s ease-in-out,
-    color 0.75s ease-in-out !important;
-}
-
-button:focus {
-  outline: none;
-  color: var(--container-background) !important;
-  background-color: var(--container-foreground) !important;
-  border: 2px solid var(--container-background) !important;
-}
-
-button:hover {
-  color: var(--container-background) !important;
-  background-color: var(--container-foreground) !important;
-  border: 2px solid var(--container-background) !important;
-}
-
-/* Help window. */
-
-#helpText {
-  text-decoration: underline;
-  cursor: help;
-}
-
-#helpText:hover {
-  color: var(--url-hover);
-}
-
-#helpWindow {
-  position: fixed;
-  top: 0;
-  left: 0;
-  display: flex;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity ease-in-out 0.75s, z-index ease-out 0.75s;
-  user-select: none;
-  backdrop-filter: blur(7px);
-}
-
-#helpWindow.show {
-  z-index: 1;
-  opacity: 1;
-}
-
-#helpWindow div {
-  user-select: none;
-  font-size: x-large;
-  text-align: center;
-  margin: auto;
-  border-radius: 20px;
-  padding: 20px;
-  line-height: 2;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
-}
-
-#helpWindow p {
-  text-align: left;
-  padding: 0 20px 0 20px;
-}
-
-#helpWindow button {
-  height: 50px;
-  width: 95%;
-  border-radius: 15px;
-  font-weight: bold;
-  margin: 10px;
-  border: 2px solid var(--container-foreground);
-  color: var(--container-foreground);
-  background-color: var(--container-background);
-}
-
-/* Notification popup. */
-
-.notification {
-  display: flex;
-  gap: 5px;
-  user-select: none;
-  text-align: center;
-  align-items: center;
-  position: fixed;
-  padding: 10px;
-  bottom: 50px;
-  right: 20px;
-  animation: popup 1s ease-in-out 1;
-  border: 2px solid var(--container-foreground);
-  border-radius: 15px;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
-}
-
-.notification button {
-  width: 40px;
-  height: 40px;
-  font-weight: bold;
-  border: 2px solid var(--container-foreground);
-  border-radius: 50%;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
 }
 
 /* Confirmation window. */
@@ -270,33 +178,11 @@ button:hover {
   gap: 20px;
 }
 
-@keyframes popup {
-  from {
-    z-index: -1;
-    opacity: 0;
-  }
-
-  to {
-    z-index: 1;
-    opacity: 1;
-  }
-}
-
-@media screen and (min-width: 400px) {
-  #authForm h1 {
-    font-size: xx-large;
-  }
-}
-
 @media screen and (min-width: 600px) {
   /* Make background animation slower on larger screens. */
   .column-container::before {
     transform: rotate(15deg) scale(1.5);
     animation: slide-background 340s ease-in-out infinite;
-  }
-
-  #authForm {
-    min-width: 600px;
   }
 }
 

@@ -1,7 +1,25 @@
-// Page guard.
-if (document.body.dataset.page !== "signup") {
-	return
-}
+import HelpWindow from "./utils/help"
+;(() => {
+	// Page guard.
+	if (document.getElementsByTagName("form")[0]?.dataset.page !== "signup") {
+		return
+	}
+
+	authForm.addEventListener("submit", submitForm)
+	passwordToggle.addEventListener("click", togglePassword)
+
+	helpText.onclick = () => {
+		HelpWindow.show("help")
+	}
+
+	cancelSubmit.addEventListener("click", () => {
+		confirmWindow.classList.remove("show")
+	})
+	confirmSubmit.addEventListener("click", () => {
+		const data = new FormData(authForm)
+		confirmHandler(data)
+	})
+})()
 
 // Regular expressions to validate the user input.
 const nameEx = /^[a-zA-Z0-9]{2,60}$/i
@@ -28,7 +46,7 @@ function submitForm(event) {
 	}
 }
 
-function confirmHandler() {
+function confirmHandler(data) {
 	// Hide confirmation window.
 	confirmWindow.classList.remove("show")
 
@@ -125,24 +143,3 @@ function togglePassword() {
 		passwordToggle.style.backgroundImage = "url('/images/show.png')"
 	}
 }
-
-authForm.addEventListener("submit", submitForm)
-passwordToggle.addEventListener("click", togglePassword)
-
-helpText.addEventListener("click", () => {
-	helpWindow.classList.add("show")
-
-	// Focus close button.
-	closeHelp.focus()
-})
-
-closeHelp.addEventListener("click", () => {
-	helpWindow.classList.remove("show")
-})
-
-cancelSubmit.addEventListener("click", () => {
-	confirmWindow.classList.remove("show")
-})
-confirmSubmit.addEventListener("click", () => {
-	confirmHandler()
-})

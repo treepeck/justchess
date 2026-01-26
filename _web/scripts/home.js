@@ -1,24 +1,19 @@
-// Page guard.
-if (document.body.dataset.page !== "home") {
-	return
-}
+import HelpWindow from "./utils/help"
+;(() => {
+	// Page guard.
+	if (document.getElementsByTagName("main")[0]?.dataset.page !== "home") {
+		return
+	}
 
-for (let i = 1; i <= 9; i++) {
-	const cell = document.getElementById(`cell${i}`)
-	cell.addEventListener("click", () => {
-		// Redirect the user to the queue page.
-		window.location.href = `http://localhost:3502/queue/${i}`
-	})
-}
+	helpText.onclick = () => {
+		HelpWindow.show("help")
+	}
 
-// Show and hide help window.
-helpText.addEventListener("click", () => {
-	helpWindow.classList.toggle("show")
-
-	// Focus close button.
-	closeHelp.focus()
-})
-
-closeHelp.addEventListener("click", () => {
-	helpWindow.classList.toggle("show")
-})
+	for (let i = 1; i <= 9; i++) {
+		const cell = document.getElementById(`cell${i}`)
+		cell.addEventListener("click", () => {
+			// Redirect the user to the queue page.
+			window.location.href = `http://localhost:3502/queue/${i}`
+		})
+	}
+})()

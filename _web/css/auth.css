@@ -84,3 +84,15 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+
+@media screen and (min-width: 400px) {
+  #authForm h1 {
+    font-size: xx-large;
+  }
+}
+
+@media screen and (min-width: 600px) {
+  #authForm {
+    min-width: 600px;
+  }
+}
