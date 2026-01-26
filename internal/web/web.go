@@ -27,11 +27,11 @@ func InitService(r db.Repo) (Service, error) {
 		tmplPath string
 		base     baseData
 	}{
-		{"/", "./_web/pages/home.tmpl", baseData{Title: "Home", Script: "/js/home.js"}},
-		{"/queue", "./_web/pages/queue.tmpl", baseData{Title: "Queue", Script: "/js/queue.js"}},
-		{"/signup", "./_web/pages/signup.tmpl", baseData{Title: "Sign up", Script: "/js/signup.js"}},
-		{"/signin", "./_web/pages/signin.tmpl", baseData{Title: "Sign in", Script: "/js/signin.js"}},
-		{"/game", "./_web/pages/game.tmpl", baseData{Title: "Game", Script: "/js/game.js"}},
+		{"/", "./_web/templates/home.tmpl", baseData{Title: "Home"}},
+		{"/queue", "./_web/templates/queue.tmpl", baseData{Title: "Queue"}},
+		{"/signup", "./_web/templates/signup.tmpl", baseData{Title: "Sign up"}},
+		{"/signin", "./_web/templates/signin.tmpl", baseData{Title: "Sign in"}},
+		{"/game", "./_web/templates/game.tmpl", baseData{Title: "Game"}},
 	}
 
 	pages := make(map[string]page, len(pagesData))
@@ -47,9 +47,9 @@ func InitService(r db.Repo) (Service, error) {
 }
 
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	// Serve files from the _web/css folder.
-	css := http.Dir("./_web/css")
-	mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(css)))
+	// Serve js and css bundles.
+	bundles := http.Dir("./_web/bundles")
+	mux.Handle("/bundles/", http.StripPrefix("/bundles/", http.FileServer(bundles)))
 
 	// Serve files from the _web/fonts folder.
 	fonts := http.Dir("./_web/fonts")
@@ -58,10 +58,6 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	// Serve files from the _web/images folder.
 	images := http.Dir("./_web/images")
 	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(images)))
-
-	// Serve files from the _web/js folder.
-	js := http.Dir("./_web/js")
-	mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(js)))
 
 	// Serve pages with static routes.
 	mux.Handle("/", http.HandlerFunc(s.serveStaticRoutePage))

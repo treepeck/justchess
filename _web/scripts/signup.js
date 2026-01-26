@@ -1,3 +1,8 @@
+// Page guard.
+if (document.body.dataset.page !== "signup") {
+	return
+}
+
 // Regular expressions to validate the user input.
 const nameEx = /^[a-zA-Z0-9]{2,60}$/i
 const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/i

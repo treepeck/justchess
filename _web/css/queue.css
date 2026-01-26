@@ -1,0 +1,20 @@
+.queue-content {
+  width: 95%;
+  max-width: 600px;
+  text-align: center;
+  aspect-ratio: 1/1;
+  margin: 0 auto auto auto;
+  padding: 20px;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+#countUp {
+  width: 100%;
+  font-size: 70px;
+  user-select: none;
+  font-family: "ChessClock";
+  /* background */
+}

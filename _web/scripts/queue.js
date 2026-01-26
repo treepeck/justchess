@@ -1,5 +1,10 @@
-import showNotification from "/js/notification.js"
-import { EventAction } from "/js/ws.js"
+// Page guard.
+if (document.body.dataset.page !== "queue") {
+	return
+}
+
+import showNotification from "./notification"
+import { EventAction } from "./ws"
 
 // Queue id is the last element of the pathname.
 const id = window.location.pathname.split("/").at(-1)

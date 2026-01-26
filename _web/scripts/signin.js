@@ -1,3 +1,8 @@
+// Page guard.
+if (document.body.dataset.page !== "signin") {
+	return
+}
+
 function submitForm(event) {
 	event.preventDefault()
 	event.stopPropagation()
