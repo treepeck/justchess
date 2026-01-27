@@ -23,6 +23,14 @@
   --container-background: rgb(37, 22, 22, 85%);
   --container-foreground: #b5936e;
   --max-width: 1600px;
+
+  /* font variabels */
+  --title-small: 2rem;
+  --title-medium: 2.5rem;
+
+  --text-small: 0.85rem;
+  --text-medium: 1rem;
+  --text-large: 1.25rem;
 }
 
 /* Remove default margin and padding. */
@@ -108,15 +116,17 @@ main {
 }
 
 footer {
+  margin-top: 1rem;
   width: 100%;
   color: var(--container-foreground);
   background-color: var(--container-background);
+  font-size: var(--text-small);
 }
 
 footer div {
   max-width: var(--max-width);
-  display: flex;
   margin: 0 auto 0 auto;
+  text-align: center;
 }
 
 #ping {
@@ -176,6 +186,12 @@ footer div {
 .column-container {
   flex-direction: column;
   gap: 20px;
+}
+
+@media (width >= 30rem) {
+  footer {
+    font-size: var(--text-medium);
+  }
 }
 
 @media screen and (min-width: 600px) {

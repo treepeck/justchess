@@ -10,6 +10,7 @@
   transition: opacity ease-in-out 0.75s, z-index ease-out 0.75s;
   user-select: none;
   backdrop-filter: blur(7px);
+  padding: 1rem;
 }
 
 .help-container.show {
@@ -18,20 +19,26 @@
 }
 
 .help-content {
+  padding: 1rem;
+  font-size: var(--text-medium);
   user-select: none;
-  font-size: x-large;
+  /* font-size: x-large; */
   text-align: center;
   margin: auto;
   border-radius: 20px;
-  padding: 20px;
+  padding: 1rem;
   line-height: 2;
   color: var(--container-foreground);
   background-color: var(--container-background);
 }
 
+.help-content h2 {
+  margin-bottom: 0.25rem;
+}
+
 .help-content p {
   text-align: left;
-  padding: 0 20px 0 20px;
+  /* padding: 0 20px 0 20px; */
 }
 
 .help-content button {
@@ -52,4 +59,11 @@
 
 #helpText:hover {
   color: var(--url-hover);
+}
+
+@media (width >= 30rem) {
+  .help-content {
+    font-size: var(--text-large);
+    padding: 2rem;
+  }
 }
