@@ -2,7 +2,8 @@
 export const EventAction = {
 	Ping: 0,
 	Pong: 1,
-	MakeMove: 2,
-	ClientsCounter: 3,
-	Redirect: 4,
+	Chat: 2,
+	MakeMove: 3,
+	ClientsCounter: 4,
+	Redirect: 5,
 }

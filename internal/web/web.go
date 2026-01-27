@@ -131,9 +131,9 @@ func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 	if err == nil {
 		player, err := s.repo.SelectPlayerBySessionId(c.Value)
 		if err == nil {
-			p.Base.PlayerName = player.Name
+			p.Base.Player = player
 		} else {
-			p.Base.PlayerName = "signup"
+			p.Base.Player.Name = "signup"
 		}
 	}
 

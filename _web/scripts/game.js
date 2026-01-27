@@ -1,5 +1,5 @@
 import Notification from "./utils/notification"
-import { EventAction } from "./ws"
+import { EventAction } from "./utils/ws"
 import Board from "./utils/board"
 ;(() => {
 	// Page guard.
@@ -21,7 +21,9 @@ import Board from "./utils/board"
 		)
 	}
 	socket.onmessage = (raw) => {
-		const { action, payload } = JSON.parse(raw.data)
+		const e = JSON.parse(raw.data)
+		const action = e.a
+		const payload = e.p
 
 		switch (action) {
 			case EventAction.Ping:
