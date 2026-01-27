@@ -11,7 +11,8 @@ const (
 	// Client's actions.
 	actionPing eventAction = iota
 	actionPong
-	actionMakeMove
+	actionChat
+	actionMove
 
 	// Server's actions.
 	actionClientsCounter
