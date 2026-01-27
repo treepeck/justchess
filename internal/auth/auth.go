@@ -3,10 +3,11 @@
 package auth
 
 import (
-	"justchess/internal/db"
-	"justchess/internal/randgen"
 	"net/http"
 	"regexp"
+
+	"justchess/internal/db"
+	"justchess/internal/randgen"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,13 +30,13 @@ const (
 	sessionsThreshold int = 5
 )
 
-// Service wraps the database repository and provides methods for handling
-// authorization and authentication HTTP requests.
+// Service wraps the database repositories and provides methods for handling
+// authorization and authentication of HTTP requests.
 type Service struct {
-	repo db.Repo
+	playerRepo db.PlayerRepo
 }
 
-func NewService(r db.Repo) Service { return Service{repo: r} }
+func NewService(repo db.PlayerRepo) Service { return Service{playerRepo: repo} }
 
 // RegisterRoutes registers enpoints to the specified ServeMux.
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
@@ -74,7 +75,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	playerId := randgen.GenId(randgen.IdLen)
-	if s.repo.InsertPlayer(playerId, name, email, pwdHash) != nil {
+	if s.playerRepo.Insert(playerId, name, email, pwdHash) != nil {
 		http.Error(rw, msgConflict, http.StatusConflict)
 		return
 	}
@@ -109,7 +110,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := s.repo.SelectPlayerByEmail(email)
+	p, err := s.playerRepo.SelectByEmail(email)
 	if err != nil {
 		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
@@ -121,7 +122,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessions, err := s.repo.SelectSessionsByPlayerId(p.Id)
+	sessions, err := s.playerRepo.SelectSessionByPlayerId(p.Id)
 	if err != nil {
 		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
@@ -139,7 +140,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		// Delete the oldest session to replace it with the new one.
-		if err = s.repo.DeleteSessionById(sessions[ind].Id); err != nil {
+		if err = s.playerRepo.DeleteSessionById(sessions[ind].Id); err != nil {
 			http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 			return
 		}
@@ -154,7 +155,7 @@ func (s Service) genSession(rw http.ResponseWriter, playerId string) {
 	// Use generated unique string as session value.
 	sessionId := randgen.GenId(randgen.SessionIdLen)
 
-	if err := s.repo.InsertSession(sessionId, playerId); err != nil {
+	if err := s.playerRepo.InsertSession(sessionId, playerId); err != nil {
 		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
 	}

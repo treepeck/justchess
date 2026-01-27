@@ -3,12 +3,13 @@
 package auth
 
 import (
-	"justchess/internal/db"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+
+	"justchess/internal/db"
 )
 
 func initServiceOrPanic() Service {
@@ -17,7 +18,7 @@ func initServiceOrPanic() Service {
 		panic(err)
 	}
 
-	return NewService(db.NewRepo(pool))
+	return NewService(db.NewPlayerRepo(pool))
 }
 
 func TestSignup(t *testing.T) {
