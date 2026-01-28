@@ -1,13 +1,14 @@
 package matchmaking
 
 import (
+	"iter"
 	"log"
 	"math"
 )
 
 const (
-	defaultThreshold = 500.0
-	maxThreshold     = 3000.0
+	defaultMaxGap = 500.0
+	gapLimit      = 3000.0
 )
 
 // Pool wraps a single Red-Black Tree and provides implementation of the
@@ -34,19 +35,18 @@ func (p Pool) Leave(id string, rating float64) {
 	log.Printf("Player %s leaves matchmaking", id)
 }
 
-func (p Pool) Size() int {
-	return p.tree.size
-}
-
 // MakeMatches finds best matches between all players in the pool. Every found
 // match is send to a result channel.
 // The results channel will be closed after algorithm finishes.
-func (p Pool) MakeMatches(results chan<- [2]string) {
-	p.makeMatches(p.tree.root, results)
-	close(results)
+func (p Pool) MakeMatches() iter.Seq[[2]string] {
+	n := p.tree.root
+
+	return func(yield func([2]string) bool) {
+		p.makeMatches(n, yield)
+	}
 }
 
-func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
+func (p Pool) makeMatches(n *redBlackNode, yield func([2]string) bool) {
 	if n == p.tree.leaf {
 		return
 	}
@@ -62,23 +62,18 @@ func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
 
 	// Find the match which has the lowest rating gap.
 	var best *redBlackNode
-	bestGap := -1.0
+	bestGap := gapLimit
 	for _, match := range matches {
-		// Skip possible leaf nodes.
-		if match == p.tree.leaf {
+		// Skip leaf and duplicate nodes. A single client is allowed to join
+		// multiple times.
+		if match == p.tree.leaf || match.key.playerId == n.key.playerId {
 			continue
 		}
 
 		gap := math.Abs(n.key.rating - match.key.rating)
-		if bestGap == -1.0 {
-			best = match
-			bestGap = gap
-			continue
-		}
-
 		if gap < bestGap {
-			best = match
 			bestGap = gap
+			best = match
 		}
 	}
 
@@ -86,33 +81,34 @@ func (p Pool) makeMatches(n *redBlackNode, results chan<- [2]string) {
 		return
 	}
 
-	// Check does the lowest gap exceeds the alowed threshold.
-	if bestGap <= n.key.threshold && bestGap <= best.key.threshold {
-		// Notify service about created rooms.
-		results <- [2]string{n.key.playerId, best.key.playerId}
+	// Check does the best gap exceeds the allowed rating gap.
+	if bestGap <= n.key.maxGap && bestGap <= best.key.maxGap {
+		if !yield([2]string{n.key.playerId, best.key.playerId}) {
+			return
+		}
 
-		// Remove nodes from tree.
+		// Remove matched nodes from tree.
 		p.tree.removeNode(p.tree.search(n.key.rating, n.key.playerId))
 		p.tree.removeNode(p.tree.search(best.key.rating, best.key.playerId))
 
 		// Call function recursively.
-		p.makeMatches(p.tree.root, results)
+		p.makeMatches(p.tree.root, yield)
 		return
 	}
 
 	// Call function recursively on left and right subtrees.
 	if n.left != p.tree.leaf {
-		p.makeMatches(n.left, results)
+		p.makeMatches(n.left, yield)
 	}
 
 	if n.right != p.tree.leaf {
-		p.makeMatches(n.right, results)
+		p.makeMatches(n.right, yield)
 	}
 }
 
-// ExpandThresholds expands rating threshold of each thee node so that players
-// with greater rating gaps can be paired together.
-func (p Pool) ExpandThresholds() {
+// ExpandRatingGaps expands the allowed rating gap of each player so that players
+// with larger rating gaps can eventually be paired together.
+func (p Pool) ExpandRatingGaps() {
 	if p.tree.size < 1 {
 		return
 	}
@@ -120,8 +116,8 @@ func (p Pool) ExpandThresholds() {
 }
 
 func (p Pool) expandThresholds(n *redBlackNode) {
-	if n.key.threshold < maxThreshold {
-		n.key.threshold += defaultThreshold
+	if n.key.maxGap < gapLimit {
+		n.key.maxGap += defaultMaxGap
 	}
 
 	if n.left != p.tree.leaf {

@@ -154,16 +154,7 @@ func TestMakeMatches(t *testing.T) {
 		}
 
 		got := make([][2]string, 0)
-
-		results := make(chan [2]string)
-
-		go pool.MakeMatches(results)
-
-		for {
-			match, ok := <-results
-			if !ok {
-				break
-			}
+		for match := range pool.MakeMatches() {
 			got = append(got, match)
 		}
 
@@ -179,7 +170,7 @@ func TestMakeMatches(t *testing.T) {
 	}
 }
 
-func TestExpandThresholds(t *testing.T) {
+func TestExpandRatingGaps(t *testing.T) {
 	testcases := []struct {
 		thresholds []float64
 		expected   []float64
@@ -195,15 +186,15 @@ func TestExpandThresholds(t *testing.T) {
 
 		for j := range len(tc.thresholds) {
 			n := pool.tree.spawn(tc.thresholds[j], "")
-			n.key.threshold = tc.thresholds[j]
+			n.key.maxGap = tc.thresholds[j]
 			pool.tree.insertNode(n)
 		}
 
-		pool.ExpandThresholds()
+		pool.ExpandRatingGaps()
 		got := bfs(pool.tree)
 
-		for j, threshold := range tc.expected {
-			if threshold != got[j].key.threshold {
+		for j, maxGap := range tc.expected {
+			if maxGap != got[j].key.maxGap {
 				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expected[j], got[j])
 			}
 		}
@@ -264,7 +255,7 @@ func BenchmarkRemoveNode(b *testing.B) {
 	}
 }
 
-func BenchmarkExpandThresholds(b *testing.B) {
+func BenchmarkExpandRatingGaps(b *testing.B) {
 	pool := NewPool()
 
 	i := float64(0)
@@ -273,6 +264,24 @@ func BenchmarkExpandThresholds(b *testing.B) {
 	}
 
 	for b.Loop() {
-		pool.ExpandThresholds()
+		pool.ExpandRatingGaps()
 	}
+}
+
+func BenchmarkMakeMatches(b *testing.B) {
+	pool := NewPool()
+
+	i := float64(0)
+	for ; i <= 10000; i++ {
+		pool.tree.insertNode(pool.tree.spawn(i, ""))
+	}
+
+	cnt := 0
+	for b.Loop() {
+		for range pool.MakeMatches() {
+			cnt++
+		}
+	}
+
+	b.Logf("matches counter: %d", cnt)
 }

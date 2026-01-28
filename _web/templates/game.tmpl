@@ -1,9 +1,9 @@
 {{ define "content" }}
 <main class="row-container" data-page="game">
   <div class="board-container">
-    <p>Black: {{ .Data.BlackId }} Rating: </p>
+    <p>Black: {{ .Data.Black.Name }} Rating: {{ .Data.Black.Rating }}</p>
     <canvas id="boardCanvas"></canvas>
-    <p>White id: {{ .Data.WhiteId }}</p>
+    <p>White: {{ .Data.White.Name }} Rating: {{ .Data.White.Rating }}</p>
   </div>
 </main>
 {{ end }}

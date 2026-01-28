@@ -38,6 +38,10 @@ import { EventAction } from "./utils/ws"
 				window.location.href = `http://localhost:3502/game/${payload}`
 				break
 
+			case EventAction.Error:
+				notification.create(payload)
+				break
+
 			default:
 				notification.create("Unknown event recieved from server.")
 		}

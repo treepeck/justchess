@@ -4,7 +4,7 @@ type nodeKey struct {
 	playerId string
 	rating   float64
 	// Max allowed rating gap between players.
-	threshold float64
+	maxGap float64
 }
 
 // redBlackNode represents the Red-Black Tree node.
@@ -381,7 +381,7 @@ func (t *redBlackTree) transplant(u, v *redBlackNode) {
 // creates a new node with specified value and default fields.
 func (t *redBlackTree) spawn(rating float64, playerId string) *redBlackNode {
 	return &redBlackNode{
-		key:    nodeKey{rating: rating, playerId: playerId, threshold: defaultThreshold},
+		key:    nodeKey{rating: rating, playerId: playerId, maxGap: defaultMaxGap},
 		isRed:  true,
 		parent: t.leaf,
 		left:   t.leaf,

@@ -17,6 +17,7 @@ const (
 	// Server's actions.
 	actionClientsCounter
 	actionRedirect
+	actionError
 )
 
 type event struct {

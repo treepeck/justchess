@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"justchess/internal/db"
-
 	"github.com/gorilla/websocket"
 )
 
@@ -22,9 +20,8 @@ const (
 	maxMessageSize = 1024
 )
 
-// client wraps a single active connection and player info.
+// client wraps a single socket.
 type client struct {
-	player db.Player
 	// Timestamp when the last ping event was sent to measure the network delay.
 	pingTimestamp time.Time
 	// send is a channel which recieves events that the client will write to
@@ -42,12 +39,11 @@ type client struct {
 	hasAnsweredPing bool
 }
 
-// newClient creates a new client and sets the WebSocket connection properties.
-func newClient(p db.Player, conn *websocket.Conn) *client {
+// newClient creates a new client and sets the connection properties.
+func newClient(conn *websocket.Conn) *client {
 	now := time.Now()
 
 	c := &client{
-		player:        p,
 		send:          make(chan []byte, 192),
 		conn:          conn,
 		ping:          0,

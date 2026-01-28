@@ -6,4 +6,5 @@ export const EventAction = {
 	Move: 3,
 	ClientsCounter: 4,
 	Redirect: 5,
+	Error: 6,
 }
