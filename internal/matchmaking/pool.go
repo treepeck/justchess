@@ -35,9 +35,9 @@ func (p Pool) Leave(id string, rating float64) {
 	log.Printf("Player %s leaves matchmaking", id)
 }
 
-// MakeMatches finds best matches between all players in the pool. Every found
-// match is send to a result channel.
-// The results channel will be closed after algorithm finishes.
+// MakeMatches finds and sequentially yields best matches between all players
+// in the pool.  Handles multple nodes from a single player by avoiding to match
+// them.
 func (p Pool) MakeMatches() iter.Seq[[2]string] {
 	n := p.tree.root
 
