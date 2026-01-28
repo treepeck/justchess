@@ -39,7 +39,6 @@ import { EventAction } from "./utils/ws"
 				break
 
 			default:
-				console.log(action)
 				notification.create("Unknown event recieved from server.")
 		}
 	}

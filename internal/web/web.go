@@ -15,13 +15,14 @@ const (
 )
 
 type Service struct {
-	repo db.Repo
+	playerRepo db.PlayerRepo
+	gameRepo   db.GameRepo
 	// maps URL path to a [Page].
 	pages map[string]page
 }
 
 // InitService tries to parse the template files and stores them in the [Service].
-func InitService(r db.Repo) (Service, error) {
+func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 	pagesData := []struct {
 		url      string
 		tmplPath string
@@ -32,6 +33,7 @@ func InitService(r db.Repo) (Service, error) {
 		{"/signup", "./_web/templates/signup.tmpl", baseData{Title: "Sign up"}},
 		{"/signin", "./_web/templates/signin.tmpl", baseData{Title: "Sign in"}},
 		{"/game", "./_web/templates/game.tmpl", baseData{Title: "Game"}},
+		{"/404", "./_web/templates/404.tmpl", baseData{Title: "Not found"}},
 	}
 
 	pages := make(map[string]page, len(pagesData))
@@ -43,7 +45,11 @@ func InitService(r db.Repo) (Service, error) {
 		pages[data.url] = page{Base: data.base, template: t}
 	}
 
-	return Service{pages: pages, repo: r}, nil
+	return Service{
+		pages:      pages,
+		playerRepo: pr,
+		gameRepo:   gr,
+	}, nil
 }
 
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
@@ -68,43 +74,45 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
-	page := s.pages["/queue"]
+	var data queueData
 
 	// There are 9 queues.
 	switch r.URL.Path {
 	case "1":
-		page.Data = queueData{Control: 1, Bonus: 0}
+		data = queueData{Control: 1, Bonus: 0}
 	case "2":
-		page.Data = queueData{Control: 2, Bonus: 1}
+		data = queueData{Control: 2, Bonus: 1}
 	case "3":
-		page.Data = queueData{Control: 3, Bonus: 0}
+		data = queueData{Control: 3, Bonus: 0}
 	case "4":
-		page.Data = queueData{Control: 3, Bonus: 2}
+		data = queueData{Control: 3, Bonus: 2}
 	case "5":
-		page.Data = queueData{Control: 5, Bonus: 0}
+		data = queueData{Control: 5, Bonus: 0}
 	case "6":
-		page.Data = queueData{Control: 5, Bonus: 2}
+		data = queueData{Control: 5, Bonus: 2}
 	case "7":
-		page.Data = queueData{Control: 10, Bonus: 0}
+		data = queueData{Control: 10, Bonus: 0}
 	case "8":
-		page.Data = queueData{Control: 10, Bonus: 10}
+		data = queueData{Control: 10, Bonus: 10}
 	case "9":
-		page.Data = queueData{Control: 15, Bonus: 10}
+		data = queueData{Control: 15, Bonus: 10}
 
 	default:
-		// TODO: render 404 template.
-		http.Error(rw, msgNotFound, http.StatusNotFound)
+		p := s.pages["/404"]
+		s.renderPage(rw, r, p)
 		return
 	}
 
-	s.renderPage(rw, r, page)
+	p := s.pages["/queue"]
+	p.Data = data
+	s.renderPage(rw, r, p)
 }
 
 func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
-	g, err := s.repo.SelectGameById(r.URL.Path)
+	g, err := s.gameRepo.SelectById(r.URL.Path)
 	if err != nil {
-		// TODO: render 404 template.
-		http.Error(rw, msgNotFound, http.StatusNotFound)
+		p := s.pages["/404"]
+		s.renderPage(rw, r, p)
 		return
 	}
 
@@ -118,9 +126,7 @@ func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
 	page, exists := s.pages[r.URL.Path]
 	if !exists {
-		// TODO: render 404 template.
-		http.Error(rw, msgNotFound, http.StatusNotFound)
-		return
+		page = s.pages["/404"]
 	}
 
 	s.renderPage(rw, r, page)
@@ -129,7 +135,7 @@ func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
 func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 	c, err := r.Cookie("Auth")
 	if err == nil {
-		player, err := s.repo.SelectPlayerBySessionId(c.Value)
+		player, err := s.playerRepo.SelectBySessionId(c.Value)
 		if err == nil {
 			p.Base.Player = player
 		} else {

@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/treepeck/chego"
@@ -41,8 +42,11 @@ func (r room) listenEvents(remove chan string) {
 		case c := <-r.unregister:
 			r.handleUnregister(c)
 
-		case <-r.handle:
-			// TODO: handle player events.
+		case e := <-r.handle:
+			switch e.Action {
+			case actionChat:
+				r.handleChat(e)
+			}
 		}
 	}
 }
@@ -78,4 +82,24 @@ func (r room) handleUnregister(c *client) {
 
 	delete(r.clients, c.player.Id)
 	log.Printf("client %s leaved room %s", c.player.Id, r.id)
+}
+
+// broadcasts chat message.
+// TODO: sanitize and rate limir messages.
+func (r room) handleChat(e event) {
+	r.broadcast(e)
+}
+
+// broadcast even among all connected clients.  It's the caller's responsibility
+// to encode the event payload.
+func (r room) broadcast(e event) {
+	raw, err := json.Marshal(e)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	for _, c := range r.clients {
+		c.send <- raw
+	}
 }

@@ -21,24 +21,25 @@ func main() {
 	}
 	defer pool.Close()
 
-	// Initialize database repository.
-	repo := db.NewRepo(pool)
+	// Initialize database repositories.
+	pr := db.NewPlayerRepo(pool)
+	gr := db.NewGameRepo(pool)
 	log.Print("Successfully connected to db.")
 
 	log.Print("Initializing services...")
 	mux := http.NewServeMux()
 
-	authService := auth.NewService(repo)
+	authService := auth.NewService(pr)
 	authService.RegisterRoutes(mux)
 
 	// Parse and store page templates.
-	webService, err := web.InitService(repo)
+	webService, err := web.InitService(pr, gr)
 	if err != nil {
 		log.Panic(err)
 	}
 	webService.RegisterRoutes(mux)
 
-	wsService := ws.NewService(repo)
+	wsService := ws.NewService(pr, gr)
 	wsService.RegisterRoutes(mux)
 	go wsService.ListenEvents()
 	log.Print("Successfully initialized services.")

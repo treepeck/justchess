@@ -1,8 +1,8 @@
 /**
- * Enum representing chess pieces mapped to integer values.
- * @typedef {number} Piece
+ * Enum representing chess pieces.
+ * @enum {typeof Piece[keyof typeof Piece]}
  */
-const Piece = Object.freeze({
+const Piece = /** @type {const} */ ({
 	WP: 0,
 	BP: 1,
 	WN: 2,
@@ -15,10 +15,32 @@ const Piece = Object.freeze({
 	BQ: 9,
 	WK: 10,
 	BK: 11,
-	NP: -1, // No piece.
+	NP: -1,
 })
 
-export default class Board {
+/**
+ * @typedef {Object} Position
+ * @property {number} x - The horizontal pixel coordinate on the canvas.
+ * @property {number} y - The vertical pixel coordinate on the canvas.
+ * @property {number} square - Index of the square [0-63].
+ */
+
+/**
+ * Piece which is currently being dragged. Null is case no piece is being
+ * dragged.
+ * @typedef {Object} DraggedPiece
+ * @property {Piece} piece - Piece type.
+ * @property {Position} position
+ */
+
+/**
+ * @callback MoveCallback
+ * @param {number} from
+ * @param {number} to
+ * @returns {boolean}
+ */
+
+export default class BoardCanvas {
 	/**
 	 * Context to which the board will be rendered.
 	 * @type {CanvasRenderingContext2D}
@@ -40,15 +62,6 @@ export default class Board {
 	 */
 	#sheet
 	/**
-	 * Piece which is currently being dragged. Null is case no piece is being
-	 * dragged.
-	 * @typedef {Object} DraggedPiece
-	 * @property {number} x - The horizontal pixel coordinate on the canvas.
-	 * @property {number} y - The vertical pixel coordinate on the canvas.
-	 * @property {number} from - Source position of the dragged piece (originating square).
-	 * @property {Piece} piece - Piece type.
-	 */
-	/**
 	 * @type {DraggedPiece}
 	 */
 	#draggedPiece
@@ -64,22 +77,39 @@ export default class Board {
 	#square
 	/**
 	 * Size of an individual piece sprite on the spritesheet.
-	 * @constant
 	 * @type {number}
 	 */
 	#piece
+	/**
+	 * Callback function which is called when the player performs the move.
+	 * @type {MoveCallback}
+	 */
+	#onMove
 
 	/**
-	 * @param {CanvasRenderingContext2D} ctx
 	 * @param {Image} sheet
+	 * @param {MoveCallback} onMove
 	 */
-	constructor(ctx, sheet) {
-		this.#context = ctx
+	constructor(sheet, onMove) {
+		// Add event listeners.
+		boardCanvas.addEventListener("mousedown", (e) => {
+			this.onMouseDown(e)
+		})
+		boardCanvas.addEventListener("mousemove", (e) => {
+			this.onMouseMove(e)
+		})
+		boardCanvas.addEventListener("mouseup", (e) => {
+			this.onMouseUp(e)
+		})
+
+		this.#context = boardCanvas.getContext("2d")
 		this.#sheet = sheet
 		this.#size = 0
 		this.#selectedSquare = -1
 		this.#draggedPiece = null
 		this.#piece = 300
+		// Assign onMove callback.
+		this.#onMove = onMove
 
 		// Initialize default piece placement.
 		// prettier-ignore
@@ -96,7 +126,7 @@ export default class Board {
 	}
 
 	/** Renders the board. */
-	#render() {
+	render() {
 		for (let rank = 0; rank < 8; rank++) {
 			for (let file = 0; file < 8; file++) {
 				// Draw board squares.
@@ -174,7 +204,7 @@ export default class Board {
 		this.#context.canvas.width = this.#size
 		this.#context.canvas.height = this.#size
 
-		this.#render()
+		this.render()
 	}
 
 	/**
@@ -182,24 +212,33 @@ export default class Board {
 	 * @param {MouseEvent} e
 	 */
 	onMouseDown(e) {
-		const rect = this.#context.canvas.getBoundingClientRect()
-		const scaleX = this.#context.canvas.width / rect.width
-		const scaleY = this.#context.canvas.height / rect.height
+		const { x, y, square } = this.#getPositionOfEvent(e)
 
-		const x = (e.clientX - rect.left) * scaleX
-		const y = (e.clientY - rect.top) * scaleY
+		const selected =
+			this.#selectedSquare > -1
+				? this.#squares[this.#selectedSquare]
+				: Piece.NP
 
-		const file = Math.floor(x / this.#square)
-		const rank = Math.floor((this.#size - y) / this.#square)
+		if (selected !== Piece.NP) {
+			// Perform the move and update the position if it was successfull.
+			if (
+				square !== this.#selectedSquare &&
+				this.#onMove(this.#selectedSquare, square)
+			) {
+				this.#squares[square] = selected
+				this.#squares[this.#selectedSquare] = Piece.NP
+				this.#selectedSquare = -1
+				this.render()
+				return
+			}
+		}
 
-		this.#selectedSquare = 8 * rank + file
-
-		// Begin piece drag.  Temporary remove the piece from its square while
-		// its being dragged.
-		if (this.#squares[this.#selectedSquare] !== Piece.NP) {
-			const piece = this.#squares[this.#selectedSquare]
-			// Update board state.
-			this.#squares[this.#selectedSquare] = Piece.NP
+		this.#selectedSquare = square
+		const piece = this.#squares[square]
+		if (piece !== Piece.NP) {
+			// Temporary remove the piece from its square while its being dragged.
+			this.#squares[square] = Piece.NP
+			// Begin piece drag.
 			this.#draggedPiece = {
 				x: Math.round(x - (this.#square * 1.1) / 2), // Center piece horizontally.
 				y: Math.round(y - (this.#square * 1.1) / 2), // Center piece vertically.
@@ -208,7 +247,7 @@ export default class Board {
 			}
 		}
 
-		this.#render()
+		this.render()
 	}
 
 	/**
@@ -220,17 +259,12 @@ export default class Board {
 			const isLeftButtonPressed = e.buttons === 1
 
 			if (isLeftButtonPressed) {
-				const rect = this.#context.canvas.getBoundingClientRect()
-				const scaleX = this.#context.canvas.width / rect.width
-				const scaleY = this.#context.canvas.height / rect.height
+				const { x, y } = this.#getPositionOfEvent(e)
+				// Center and move dragged piece with the cursor.
+				this.#draggedPiece.x = x - this.#square / 2
+				this.#draggedPiece.y = y - this.#square / 2
 
-				const x = (e.clientX - rect.left) * scaleX - this.#square / 2
-				const y = (e.clientY - rect.top) * scaleY - this.#square / 2
-				// Move dragged piece with the cursor.
-				this.#draggedPiece.x = x
-				this.#draggedPiece.y = y
-
-				this.#render()
+				this.render()
 			} else {
 				// Return the dragged piece into its originating position.
 				this.#squares[this.#selectedSquare] = this.#draggedPiece.piece
@@ -244,6 +278,37 @@ export default class Board {
 	 * @param {MouseEvent} e
 	 */
 	onMouseUp(e) {
+		// Shortcut: no move to be performed.
+		if (!this.#draggedPiece) {
+			return
+		}
+
+		// End piece drag.
+		const piece = this.#draggedPiece.piece
+		this.#squares[this.#selectedSquare] = piece
+		this.#draggedPiece = null
+
+		const { square } = this.#getPositionOfEvent(e)
+		// Shortcut: to and from squares are the same.
+		if (square === this.#selectedSquare) {
+			this.render()
+			return
+		}
+
+		// Perform the move and update the position if it was successfull.
+		if (this.#onMove(this.#selectedSquare, square)) {
+			this.#squares[square] = piece
+			this.#squares[this.#selectedSquare] = Piece.NP
+			this.#selectedSquare = -1
+		}
+		this.render()
+	}
+
+	/**
+	 * @param {MouseEvent} e
+	 * @returns {Position}
+	 */
+	#getPositionOfEvent(e) {
 		const rect = this.#context.canvas.getBoundingClientRect()
 		const scaleX = this.#context.canvas.width / rect.width
 		const scaleY = this.#context.canvas.height / rect.height
@@ -254,12 +319,10 @@ export default class Board {
 		const file = Math.floor(x / this.#square)
 		const rank = Math.floor((this.#size - y) / this.#square)
 
-		if (this.#draggedPiece !== null) {
-			// End piece drag.
-			this.#squares[8 * rank + file] = this.#draggedPiece.piece
-			this.#draggedPiece = null
-
-			this.#render()
+		return {
+			x: x,
+			y: y,
+			square: 8 * rank + file,
 		}
 	}
 }

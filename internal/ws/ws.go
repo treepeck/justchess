@@ -31,21 +31,23 @@ type handshake struct {
 }
 
 type Service struct {
-	repo   db.Repo
-	create chan createRoomEvent
-	remove chan string
-	find   chan findRoomEvent
-	rooms  map[string]room
-	queues map[string]queue
+	playerRepo db.PlayerRepo
+	gameRepo   db.GameRepo
+	create     chan createRoomEvent
+	remove     chan string
+	find       chan findRoomEvent
+	rooms      map[string]room
+	queues     map[string]queue
 }
 
-func NewService(r db.Repo) Service {
+func NewService(pr db.PlayerRepo, gr db.GameRepo) Service {
 	s := Service{
-		repo:   r,
-		create: make(chan createRoomEvent),
-		remove: make(chan string),
-		find:   make(chan findRoomEvent),
-		rooms:  make(map[string]room),
+		playerRepo: pr,
+		gameRepo:   gr,
+		create:     make(chan createRoomEvent),
+		remove:     make(chan string),
+		find:       make(chan findRoomEvent),
+		rooms:      make(map[string]room),
 	}
 
 	s.queues = make(map[string]queue, 9)
@@ -101,7 +103,7 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := s.repo.SelectPlayerBySessionId(c.Value)
+	p, err := s.playerRepo.SelectBySessionId(c.Value)
 	if err != nil {
 		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
@@ -135,7 +137,7 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) createRoom(e createRoomEvent) {
-	err := s.repo.InsertGame(e.id, e.whiteId, e.blackId, e.control, e.bonus)
+	err := s.gameRepo.Insert(e.id, e.whiteId, e.blackId, e.control, e.bonus)
 	defer func() { e.res <- err }()
 
 	if err != nil {
