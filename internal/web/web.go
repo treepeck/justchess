@@ -133,13 +133,12 @@ func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
+	p.Base.Player.Name = "signup"
 	c, err := r.Cookie("Auth")
 	if err == nil {
 		player, err := s.playerRepo.SelectBySessionId(c.Value)
 		if err == nil {
 			p.Base.Player = player
-		} else {
-			p.Base.Player.Name = "signup"
 		}
 	}
 
