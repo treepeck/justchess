@@ -2,19 +2,28 @@
   width: 95%;
   max-width: 600px;
   text-align: center;
-  aspect-ratio: 1/1;
   margin: 0 auto auto auto;
   padding: 20px;
   border: 2px solid var(--container-foreground);
   border-radius: 15px;
   color: var(--container-foreground);
   background-color: var(--container-background);
+  font-size: var(--text-large);
 }
 
 #countUp {
-  width: 100%;
-  font-size: 70px;
+  /* font-size: 70px; prev value */
+  font-size: 3rem;
   user-select: none;
   font-family: "ChessClock";
-  /* background */
+}
+
+@media (width >= 30rem) {
+  .queue-content {
+      font-size: var(--title-small);
+  }
+
+  #countUp {
+    font-size: 5rem;
+  }
 }

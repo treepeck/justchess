@@ -131,7 +131,9 @@ footer div {
 }
 
 #ping {
-  margin: auto auto 0 0;
+  /* margin: auto 0 0; */
+  margin-left: 0.5rem;
+  font-size: var(--text-medium);
   user-select: none;
   font-weight: bold;
 }
@@ -196,6 +198,11 @@ footer div {
 @media (width >= 30rem) {
   footer {
     font-size: var(--text-medium);
+  }
+
+  #ping {
+    margin-left: 1rem;
+    font-size: var(--text-large);
   }
 
   .player-name {
