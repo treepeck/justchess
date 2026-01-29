@@ -22,7 +22,7 @@
 
 .column-container .grid {
   width: 95%;
-  max-width: 600px;
+  max-width: 500px;
   display: grid;
   margin: 0 auto auto auto;
   grid-template-columns: repeat(3, 1fr);

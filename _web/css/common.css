@@ -88,7 +88,8 @@ button:hover {
 
 header {
   width: 100%;
-  padding: 5px;
+  padding: 5px 15px;
+  margin-bottom: 1rem;
   user-select: none;
   font-size: larger;
   color: var(--container-foreground);
@@ -98,7 +99,7 @@ header {
 header nav {
   max-width: var(--max-width);
   display: flex;
-  margin: 0 auto 0 auto;
+  align-items: center;
 }
 
 header nav .logo {
@@ -188,9 +189,17 @@ footer div {
   gap: 20px;
 }
 
+.player-name {
+  font-size: var(--text-large);
+}
+
 @media (width >= 30rem) {
   footer {
     font-size: var(--text-medium);
+  }
+
+  .player-name {
+    font-size: var(--title-small);
   }
 }
 
