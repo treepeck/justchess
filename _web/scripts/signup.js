@@ -137,9 +137,9 @@ function togglePassword() {
 	const curr = passwordInput.getAttribute("type")
 	if (curr === "password") {
 		passwordInput.setAttribute("type", "text")
-		passwordToggle.style.backgroundImage = "url('/images/hide.png')"
+		passwordToggle.style.backgroundImage = "url('/images/hide.svg')"
 	} else {
 		passwordInput.setAttribute("type", "password")
-		passwordToggle.style.backgroundImage = "url('/images/show.png')"
+		passwordToggle.style.backgroundImage = "url('/images/show.svg')"
 	}
 }
