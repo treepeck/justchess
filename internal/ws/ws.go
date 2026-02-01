@@ -21,13 +21,14 @@ const (
 	msgInternalError string = "The connection cannot be established. Please reload the page"
 	msgUnauthorized  string = "Sign in to start playing"
 	msgNotFound      string = "Room doesn't exist"
+	msgConflict      string = "Please close the previous tab and reload this page"
 )
 
 type handshake struct {
-	r      *http.Request
-	rw     http.ResponseWriter
-	player db.Player
-	ch     chan struct{}
+	r          *http.Request
+	rw         http.ResponseWriter
+	player     db.Player
+	isConflict chan bool
 }
 
 type Service struct {
@@ -109,14 +110,19 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h := handshake{rw: rw, r: r, ch: make(chan struct{}), player: p}
+	h := handshake{rw: rw, r: r, isConflict: make(chan bool, 1), player: p}
 
+	// Get room or queue id.
 	id := h.r.URL.Query().Get("id")
+
+	// Try to register the client in a queue.
 	queue, exists := s.queues[id]
 	if exists {
 		queue.register <- h
-		// Wait for the response.
-		<-h.ch
+		// Handle queue response.
+		if <-h.isConflict {
+			http.Error(rw, msgConflict, http.StatusConflict)
+		}
 		return
 	}
 
@@ -126,14 +132,16 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 	}
 	s.find <- e
 	room := <-e.res
-	if room.register != nil {
-		room.register <- h
-		// Wait for the response.
-		<-h.ch
-		return
+	if room.register == nil {
+		http.Error(rw, msgNotFound, http.StatusNotFound)
 	}
 
-	http.Error(rw, msgNotFound, http.StatusNotFound)
+	// Try to register the client in a room.
+	room.register <- h
+	// Handle room response.
+	if <-h.isConflict {
+		http.Error(rw, msgConflict, http.StatusConflict)
+	}
 }
 
 func (s Service) createRoom(e createRoomEvent) {

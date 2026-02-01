@@ -38,6 +38,8 @@ func (p Pool) Leave(id string, rating float64) {
 // MakeMatches finds and sequentially yields best matches between all players
 // in the pool.  Handles multple nodes from a single player by avoiding to match
 // them.
+// NOTE: It's a caller's responsiblity to ensure that a pool does not contain
+// multiple nodes from a single client.
 func (p Pool) MakeMatches() iter.Seq[[2]string] {
 	n := p.tree.root
 
@@ -64,9 +66,8 @@ func (p Pool) makeMatches(n *redBlackNode, yield func([2]string) bool) {
 	var best *redBlackNode
 	bestGap := gapLimit
 	for _, match := range matches {
-		// Skip leaf and duplicate nodes. A single client is allowed to join
-		// multiple times.
-		if match == p.tree.leaf || match.key.playerId == n.key.playerId {
+		// Skip leaf nodes.
+		if match == p.tree.leaf {
 			continue
 		}
 
@@ -77,12 +78,8 @@ func (p Pool) makeMatches(n *redBlackNode, yield func([2]string) bool) {
 		}
 	}
 
-	if best == nil {
-		return
-	}
-
 	// Check does the best gap exceeds the allowed rating gap.
-	if bestGap <= n.key.maxGap && bestGap <= best.key.maxGap {
+	if best != nil && bestGap <= n.key.maxGap && bestGap <= best.key.maxGap {
 		if !yield([2]string{n.key.playerId, best.key.playerId}) {
 			return
 		}

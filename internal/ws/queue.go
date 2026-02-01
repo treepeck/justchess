@@ -6,7 +6,6 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"justchess/internal/db"
 	"justchess/internal/matchmaking"
 	"justchess/internal/randgen"
 )
@@ -23,8 +22,8 @@ type queue struct {
 	ticker     *time.Ticker
 	pool       matchmaking.Pool
 	register   chan handshake
-	unregister chan *client
-	clients    map[*client]db.Player
+	unregister chan string
+	clients    map[string]*client
 	// Matchmaking parameters.
 	control int
 	bonus   int
@@ -35,8 +34,8 @@ func newQueue(control int, bonus int) queue {
 		ticker:     time.NewTicker(matchmakingTick),
 		pool:       matchmaking.NewPool(),
 		register:   make(chan handshake),
-		unregister: make(chan *client),
-		clients:    make(map[*client]db.Player),
+		unregister: make(chan string),
+		clients:    make(map[string]*client),
 		control:    control,
 		bonus:      bonus,
 	}
@@ -52,8 +51,8 @@ func (q queue) listenEvents(create chan<- createRoomEvent) {
 			q.handleRegister(c)
 			q.broadcastClientsCounter()
 
-		case c := <-q.unregister:
-			q.handleUnregister(c)
+		case id := <-q.unregister:
+			q.handleUnregister(id)
 			q.broadcastClientsCounter()
 
 		case <-q.ticker.C:
@@ -66,37 +65,41 @@ func (q queue) listenEvents(create chan<- createRoomEvent) {
 }
 
 func (q queue) handleRegister(h handshake) {
-	// Write to the response channel so that request cannot be closed.
-	defer func() { h.ch <- struct{}{} }()
+	// Deny the connection if the client is already in the queue.
+	if _, exist := q.clients[h.player.Id]; exist {
+		h.isConflict <- true
+		return
+	}
 
 	conn, err := upgrader.Upgrade(h.rw, h.r, nil)
+	h.isConflict <- false
 	if err != nil {
 		// upgrader writes the response, so simply return here.
 		return
 	}
 
-	c := newClient(conn)
+	c := newClient(conn, h.player)
 	go c.read(q.unregister, nil)
 	go c.write()
 
-	q.clients[c] = h.player
+	q.clients[h.player.Id] = c
 
 	// Join the matchmaking pool.
 	q.pool.Join(h.player.Id, h.player.Rating)
 	log.Printf("client %s joined queue", h.player.Id)
 }
 
-func (q queue) handleUnregister(c *client) {
-	p, exists := q.clients[c]
+func (q queue) handleUnregister(id string) {
+	c, exists := q.clients[id]
 	if !exists {
 		log.Printf("client is not registered")
 		return
 	}
 
-	delete(q.clients, c)
-	q.pool.Leave(p.Id, p.Rating)
+	delete(q.clients, id)
+	q.pool.Leave(c.player.Id, c.player.Rating)
 
-	log.Printf("client %s leaved queue", p.Id)
+	log.Printf("client %s leaved queue", id)
 }
 
 func (q queue) handleMatch(match [2]string, create chan<- createRoomEvent) {
@@ -141,8 +144,8 @@ func (q queue) sendEvent(players [2]string, a eventAction, payload string) {
 		return
 	}
 
-	for c, p := range q.clients {
-		if p.Id == players[0] || p.Id == players[1] {
+	for _, id := range players {
+		if c := q.clients[id]; c != nil {
 			c.send <- e
 		}
 	}
@@ -163,7 +166,7 @@ func (q queue) broadcastClientsCounter() {
 		return
 	}
 
-	for c := range q.clients {
+	for _, c := range q.clients {
 		c.send <- e
 	}
 }

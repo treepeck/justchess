@@ -18,12 +18,12 @@ type redBlackNode struct {
 
 // Red-Black Tree satisfies the following properties:
 //
-//	(*) Every node is either red or black;
-//	(*) The root is black;
-//	(*) The leaf node is black;
-//	(*) If a node is red, both its children are black;
-//	(*) For each node, all simple paths from the node to descendant leaves
-//	contain the same number of black nodes.
+//   - Every node is either red or black;
+//   - The root is black;
+//   - The leaf node is black;
+//   - If a node is red, both its children are black;
+//   - For each node, all simple paths from the node to descendant leaves
+//     contain the same number of black nodes.
 type redBlackTree struct {
 	root *redBlackNode
 	leaf *redBlackNode

@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	"justchess/internal/db"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -20,8 +22,9 @@ const (
 	maxMessageSize = 1024
 )
 
-// client wraps a single socket.
+// client wraps a single socket and player info.
 type client struct {
+	player db.Player
 	// Timestamp when the last ping event was sent to measure the network delay.
 	pingTimestamp time.Time
 	// send is a channel which recieves events that the client will write to
@@ -40,10 +43,11 @@ type client struct {
 }
 
 // newClient creates a new client and sets the connection properties.
-func newClient(conn *websocket.Conn) *client {
+func newClient(conn *websocket.Conn, p db.Player) *client {
 	now := time.Now()
 
 	c := &client{
+		player:        p,
 		send:          make(chan []byte, 192),
 		conn:          conn,
 		ping:          0,
@@ -63,7 +67,7 @@ func newClient(conn *websocket.Conn) *client {
 // Pong events are handled by the client itself.  In the case of other event,
 // they are forwarded to the forward channel.  If an event cannot be read, the
 // connection will be closed.
-func (c *client) read(unregister chan<- *client, forward chan<- event) {
+func (c *client) read(unregister chan<- string, forward chan<- event) {
 	defer c.cleanup(unregister)
 
 	var e event
@@ -148,8 +152,8 @@ func (c *client) handlePong() error {
 }
 
 // cleanup closes the connection and unregisters the client from the gatekeeper.
-func (c *client) cleanup(unregister chan<- *client) {
-	unregister <- c
+func (c *client) cleanup(unregister chan<- string) {
+	unregister <- c.player.Id
 	close(c.send)
 	c.conn.Close()
 }
