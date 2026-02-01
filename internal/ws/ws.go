@@ -37,7 +37,7 @@ type Service struct {
 	create     chan createRoomEvent
 	remove     chan string
 	find       chan findRoomEvent
-	rooms      map[string]room
+	rooms      map[string]*room
 	queues     map[string]queue
 }
 
@@ -48,7 +48,7 @@ func NewService(pr db.PlayerRepo, gr db.GameRepo) Service {
 		create:     make(chan createRoomEvent),
 		remove:     make(chan string),
 		find:       make(chan findRoomEvent),
-		rooms:      make(map[string]room),
+		rooms:      make(map[string]*room),
 	}
 
 	s.queues = make(map[string]queue, 9)
@@ -128,12 +128,13 @@ func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
 
 	e := findRoomEvent{
 		id:  id,
-		res: make(chan room, 1),
+		res: make(chan *room, 1),
 	}
 	s.find <- e
 	room := <-e.res
-	if room.register == nil {
+	if room == nil {
 		http.Error(rw, msgNotFound, http.StatusNotFound)
+		return
 	}
 
 	// Try to register the client in a room.
@@ -161,6 +162,9 @@ func (s Service) createRoom(e createRoomEvent) {
 }
 
 func (s Service) removeRoom(id string) {
+	// TODO: Write the last known room state to the database.
+	// TODO: update the player's ratings after completed games.
+
 	delete(s.rooms, id)
 	log.Printf("room %s removed", id)
 }

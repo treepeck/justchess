@@ -10,19 +10,21 @@ import (
 )
 
 const (
-// Disconnected player has 30 seconds to reconnect.  If the player doesn't
-// reconnect within the specified time period, victory is awarded to the
-// other player if they are online.  If both players are disconnected the
-// game is marked as abandoned.
-// reconnectDeadline int = 30
+	// Disconnected player has N seconds to reconnect.  If the player doesn't
+	// reconnect within the specified time period, victory is awarded to the
+	// other player if they are online.  If both players are disconnected the
+	// game is marked as abandoned and will not be scored.
+	reconnectDeadline int = 60
 )
 
 type room struct {
-	game    *chego.Game
-	id      string
-	whiteId string
-	blackId string
-	clients map[string]*client
+	game               *chego.Game
+	id                 string
+	whiteId            string
+	blackId            string
+	whiteReconnectTime int
+	blackReconnectTime int
+	clients            map[string]*client
 	// When timeToLive is equal to 0, the room will destroy itself.
 	register   chan handshake
 	unregister chan string
@@ -30,21 +32,23 @@ type room struct {
 	clock      *time.Ticker
 }
 
-func newRoom(id, whiteId, blackId string) room {
-	return room{
-		game:       chego.NewGame(),
-		id:         id,
-		whiteId:    whiteId,
-		blackId:    blackId,
-		clients:    make(map[string]*client),
-		register:   make(chan handshake),
-		unregister: make(chan string),
-		handle:     make(chan event),
-		clock:      time.NewTicker(time.Second),
+func newRoom(id, whiteId, blackId string) *room {
+	return &room{
+		game:               chego.NewGame(),
+		id:                 id,
+		whiteId:            whiteId,
+		blackId:            blackId,
+		whiteReconnectTime: reconnectDeadline,
+		blackReconnectTime: reconnectDeadline,
+		clients:            make(map[string]*client),
+		register:           make(chan handshake),
+		unregister:         make(chan string),
+		handle:             make(chan event),
+		clock:              time.NewTicker(time.Second),
 	}
 }
 
-func (r *room) listenEvents(remove chan string) {
+func (r room) listenEvents(remove chan string) {
 	defer func() { remove <- r.id }()
 
 	for {
@@ -59,11 +63,22 @@ func (r *room) listenEvents(remove chan string) {
 			switch e.Action {
 			case actionChat:
 				r.handleChat(e)
+
+			case actionMove:
+				r.handleMove(e)
 			}
 
 		case <-r.clock.C:
 			r.handleTimeTick()
 
+			// Destroy the room if both players have been disconnected for a while.
+			if r.whiteReconnectTime < 1 && r.blackReconnectTime < 1 {
+				return
+			} else if r.whiteReconnectTime < 1 {
+				// TODO: award the black player with victory.
+			} else if r.blackReconnectTime < 1 {
+				// TODO: award the white player with victory.
+			}
 		}
 	}
 }
@@ -101,11 +116,19 @@ func (r room) handleUnregister(id string) {
 	log.Printf("client %s leaves room %s", id, r.id)
 }
 
-func (r room) handleTimeTick() {
-	// If there are no players in the room, decrement the ttl.
-	if len(r.clients) == 0 {
-
+func (r *room) handleTimeTick() {
+	if _, isConnected := r.clients[r.whiteId]; !isConnected {
+		r.whiteReconnectTime--
 	}
+
+	if _, isConnected := r.clients[r.blackId]; !isConnected {
+		r.blackReconnectTime--
+	}
+}
+
+func (r *room) handleMove(e event) {
+	// Check if it is the player's turn.
+
 }
 
 func (r room) handleChat(e event) {

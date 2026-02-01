@@ -1,4 +1,4 @@
-package matchmaking
+package mm
 
 type nodeKey struct {
 	playerId string

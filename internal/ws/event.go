@@ -38,5 +38,5 @@ type createRoomEvent struct {
 
 type findRoomEvent struct {
 	id  string
-	res chan room
+	res chan *room
 }

@@ -1,4 +1,4 @@
-package matchmaking
+package mm
 
 import (
 	"iter"

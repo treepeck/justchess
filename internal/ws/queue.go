@@ -6,7 +6,7 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"justchess/internal/matchmaking"
+	"justchess/internal/mm"
 	"justchess/internal/randgen"
 )
 
@@ -20,7 +20,7 @@ const (
 
 type queue struct {
 	ticker     *time.Ticker
-	pool       matchmaking.Pool
+	pool       mm.Pool
 	register   chan handshake
 	unregister chan string
 	clients    map[string]*client
@@ -32,7 +32,7 @@ type queue struct {
 func newQueue(control int, bonus int) queue {
 	return queue{
 		ticker:     time.NewTicker(matchmakingTick),
-		pool:       matchmaking.NewPool(),
+		pool:       mm.NewPool(),
 		register:   make(chan handshake),
 		unregister: make(chan string),
 		clients:    make(map[string]*client),
