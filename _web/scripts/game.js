@@ -1,6 +1,7 @@
 import Notification from "./utils/notification"
 import { EventAction } from "./utils/ws"
 import BoardCanvas from "./utils/board"
+import addMessage from "./utils/chat"
 
 /**
  * @typedef {Object} BoardState
@@ -38,6 +39,10 @@ import BoardCanvas from "./utils/board"
 				ping.textContent = `Ping: ${payload} ms`
 				break
 
+			case EventAction.Chat:
+				addMessage(payload)
+				break
+
 			default:
 				notification.create("Unknown event recieved from server.")
 		}
@@ -64,5 +69,29 @@ import BoardCanvas from "./utils/board"
 	 */
 	function onMove(from, to) {
 		return false
+	}
+
+	function sendChat() {
+		const msg = chatInput.value
+		if (msg.length < 1) {
+			return
+		}
+
+		socket.send(
+			JSON.stringify({
+				a: EventAction.Chat,
+				p: msg,
+			})
+		)
+	}
+
+	chatSend.onclick = () => {
+		sendChat()
+	}
+
+	chatInput.onkeydown = (e) => {
+		if (e.key === "Enter") {
+			sendChat()
+		}
 	}
 })()

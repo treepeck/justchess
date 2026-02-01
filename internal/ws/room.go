@@ -1,9 +1,9 @@
 package ws
 
 import (
-	"bytes"
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/treepeck/chego"
@@ -109,12 +109,18 @@ func (r room) handleTimeTick() {
 }
 
 func (r room) handleChat(e event) {
-	// Prepend the player name before the message and sanizite it.
-	// Sanitize the message.
-	e.Payload = append(
-		[]byte(e.sender.player.Name+": "),
-		bytes.TrimSpace(bytes.ReplaceAll(e.Payload, []byte{'\n'}, []byte{' '}))...,
-	)
+	var b strings.Builder
+	// Append opening quote.
+	b.WriteByte('"')
+	// Append sender's name.
+	b.WriteString(e.sender.player.Name)
+	b.WriteString(": ")
+	// Append message.
+	b.WriteString(strings.TrimSpace(strings.ReplaceAll(string(e.Payload), "\"", " ")))
+	// Append final quote.
+	b.WriteByte('"')
+
+	e.Payload = json.RawMessage(b.String())
 	r.broadcast(e)
 }
 

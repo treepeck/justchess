@@ -1,9 +1,25 @@
 {{ define "content" }}
 <main class="row-container" data-page="game">
+  <div class="chat">
+    <h3>Chat</h3>
+    <div id="messageContainer"></div>
+    <div class="input-container">
+      <input
+        id="chatInput"
+        type="text"
+        placeholder="Enter your message"
+        autocomplete="off"
+      />
+      <div id="chatSend"></div>
+    </div>
+  </div>
+
   <div class="board-container">
     <p>Black: {{ .Data.Black.Name }} Rating: {{ .Data.Black.Rating }}</p>
     <canvas id="boardCanvas"></canvas>
     <p>White: {{ .Data.White.Name }} Rating: {{ .Data.White.Rating }}</p>
   </div>
+
+  <div id="ping">Ping: ? ms</div>
 </main>
 {{ end }}
