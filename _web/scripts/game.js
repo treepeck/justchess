@@ -85,7 +85,20 @@ class Game {
 	}
 }
 
-;() => {
+/**
+ * @returns {Promise<HTMLImageElement>}
+ */
+function loadSheet() {
+	return new Promise((resolve, reject) => {
+		const sheet = new Image()
+		sheet.onload = () => resolve(sheet)
+		sheet.onerror = (err) => reject(err)
+
+		sheet.src = "/images/sheet.svg"
+	})
+}
+
+async function main() {
 	// Page guard.
 	const container = document.getElementById("container")
 	if (!container || container.dataset.page !== "game") {
@@ -99,49 +112,62 @@ class Game {
 	}
 	const id = path[path.length - 1]
 
-	// Render board canvas.
-	const sheet = new Image()
-	sheet.src = "/images/sheet.svg"
-	sheet.onload = () => {
-		const canvas = document.getElementById("boardCanvas")
-		if (!canvas || !(canvas instanceof HTMLCanvasElement)) return
-
-		const ctx = canvas.getContext("2d")
-		if (!ctx) return
-
-		const board = new BoardCanvas(ctx, sheet, null)
-		board.render()
-
-		// Add event listeners.
-		canvas.addEventListener("mousedown", (e) => {
-			board.onMouseDown(e)
-		})
-		canvas.addEventListener("mousemove", (e) => {
-			board.onMouseMove(e)
-		})
-		canvas.addEventListener("mouseup", (e) => {
-			board.onMouseUp(e)
-		})
-
-		// Responsive board.
-		const observer = new ResizeObserver((entries) => {
-			for (const entry of entries) {
-				board.setSize(entry.contentRect.width)
-			}
-		})
-		observer.observe(canvas)
+	/** @type {HTMLImageElement | null} */
+	let sheet = null
+	try {
+		sheet = await loadSheet()
+	} catch (err) {
+		console.error(err)
 	}
+	if (!sheet) return
 
-	const game = null
+	const canvas = document.getElementById("boardCanvas")
+	if (!canvas || !(canvas instanceof HTMLCanvasElement)) return
+
+	const ctx = canvas.getContext("2d")
+	if (!ctx) return
+
+	const board = new BoardCanvas(ctx, sheet, null)
+	board.render()
+
+	// Add event listeners.
+	canvas.onmousedown = (e) => board.onMouseDown(e)
+	canvas.onmousemove = (e) => board.onMouseMove(e)
+	canvas.onmouseup = (e) => board.onMouseUp(e)
+
+	// Make board responsive.
+	const observer = new ResizeObserver((entries) => {
+		for (const entry of entries) {
+			board.setSize(entry.contentRect.width)
+		}
+	})
+	observer.observe(canvas)
+
+	/** @type {Game | null} */
+	let game = null
 
 	// @ts-expect-error - API_URL comes from webpack.
-	const socket = new WebSocket(`${API_URL}/game/${id}`)
+	const socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
 
 	const notification = new Notification()
 	socket.onclose = () => {
 		if (game) {
 			notification.create("Please reload the page to reconnect.")
 		}
+	}
+
+	/** @type {import("./chess/board").MoveCallback} */
+	function moveHandler(from, to) {
+		if (!game) return false
+
+		for (let i = 0; i < game.legalMoves.length; i++) {
+			const move = game.legalMoves[i]
+			if (move.from == from && move.to == to) {
+				socket.send(JSON.stringify({ a: EventAction.Move, p: i }))
+				return true
+			}
+		}
+		return false
 	}
 
 	socket.onmessage = (raw) => {
@@ -157,6 +183,18 @@ class Game {
 				const ping = document.getElementById("ping")
 				if (ping) ping.textContent = `Ping: ${payload} ms`
 				break
+
+			case EventAction.Game:
+				game = new Game(payload, board)
+				board.moveHandler = moveHandler
+				break
+
+			case EventAction.Move:
+				if (!game) return
+				game.handleMove(payload)
+				break
 		}
 	}
 }
+
+main()

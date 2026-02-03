@@ -17,7 +17,10 @@ function submitForm(event) {
 	btn.textContent = "Submitting..."
 
 	const data = new FormData(event.target)
-	const params = new URLSearchParams(data.toString())
+	// @ts-expect-error
+	const params = new URLSearchParams(data)
+
+	console.log(params)
 
 	signIn(params).then((err) => {
 		error.textContent = "Sign in failed: " + err
@@ -64,10 +67,10 @@ async function signIn(data) {
 			const curr = input.getAttribute("type")
 			if (curr === "password") {
 				input.setAttribute("type", "text")
-				toggle.style.backgroundImage = "url('/images/hide.png')"
+				toggle.style.backgroundImage = "url('/images/hide.svg')"
 			} else {
 				input.setAttribute("type", "password")
-				toggle.style.backgroundImage = "url('/images/show.png')"
+				toggle.style.backgroundImage = "url('/images/show.svg')"
 			}
 		}
 	}

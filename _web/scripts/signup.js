@@ -45,7 +45,8 @@ function confirmHandler(data) {
 	btn.disabled = true
 	btn.textContent = "Submitting..."
 
-	const params = new URLSearchParams(data.toString())
+	// @ts-expect-error
+	const params = new URLSearchParams(data)
 
 	signUp(params).then((err) => {
 		const error = document.getElementById("serverError")
@@ -158,19 +159,21 @@ async function signUp(data) {
 		HelpWindow.show("help")
 	}
 
-	const confirm = document.getElementById("confirmWindow")
-	if (!confirm) return
+	const confirmWind = document.getElementById("confirmWindow")
+	if (!confirmWind) return
 
 	const cancel = document.getElementById("cancelSubmit")
 	if (!cancel) return
 	cancel.onclick = () => {
-		confirm.classList.remove("show")
+		confirmWind.classList.remove("show")
 	}
 
-	confirm.addEventListener("click", () => {
+	const confirm = document.getElementById("confirmSubmit")
+	if (!confirm) return
+	confirm.onclick = () => {
 		const data = new FormData(form)
 		confirmHandler(data)
-	})
+	}
 
 	const toggle = document.getElementById("passwordToggle")
 	if (toggle) {
@@ -181,10 +184,10 @@ async function signUp(data) {
 			const curr = input.getAttribute("type")
 			if (curr === "password") {
 				input.setAttribute("type", "text")
-				toggle.style.backgroundImage = "url('/images/hide.png')"
+				toggle.style.backgroundImage = "url('/images/hide.svg')"
 			} else {
 				input.setAttribute("type", "password")
-				toggle.style.backgroundImage = "url('/images/show.png')"
+				toggle.style.backgroundImage = "url('/images/show.svg')"
 			}
 		}
 	}

@@ -4,6 +4,7 @@
   text-align: center;
   color: var(--container-foreground);
   background-color: var(--container-background);
+  border-radius: 15px;
 }
 
 .chat #messageContainer {

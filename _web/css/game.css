@@ -11,3 +11,19 @@
   border: 2px solid var(--container-background);
   border-radius: 10px;
 }
+
+.move-table {
+  margin: auto;
+  padding: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+}
+
+.miniprofile {
+  display: flex;
+  gap: 10px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+}

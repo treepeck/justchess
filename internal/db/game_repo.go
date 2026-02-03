@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"time"
+
+	"github.com/treepeck/chego"
 )
 
 // The following block of constants declares SQL queries used to access and
@@ -38,48 +40,36 @@ const (
 		g.time_bonus,
 		g.result,
 		g.termination,
-		g.created_at
+		g.created_at,
+		g.updated_at
 	FROM game g
 	JOIN player w ON g.white_id = w.id
 	JOIN player b ON g.black_id = b.id
 	WHERE g.id = ? AND g.termination != 1`
+
+	// Updates the
+	updateGame = `
+	UPDATE g game
+	SET
+		result = ?,
+		termination = ?,
+		updated_at = CURRENT_TIMESTAMP
+	WHERE g.id = ?
+	`
 )
 
 // Game represents the state of a single completed chess game.
 type Game struct {
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Id          string
 	White       Player
 	Black       Player
 	Control     int
 	Bonus       int
-	Result      Result
-	Termination Termination
+	Result      chego.Result
+	Termination chego.Termination
 }
-
-// Result represents the possible outcomes of a chess game.
-type Result int
-
-const (
-	Unknown Result = iota
-	WhiteWon
-	BlackWon
-	Draw
-)
-
-// Termination represents the reason for the conclusion of the game.  While the
-// [Result] types gives the result of the game, it does not provide any extra
-// information and so the Termination type is defined for this purpose.
-type Termination int
-
-const (
-	Unterminated Termination = iota
-	Abandoned
-	Adjudication
-	Normal
-	RulesInfraction
-	TimeForfeit
-)
 
 // GameRepo wraps the database connection pool and provides methods to access
 // and modify the game table.
@@ -121,5 +111,13 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 		&g.Result,
 		&g.Termination,
 		&g.CreatedAt,
+		&g.UpdatedAt,
 	)
+}
+
+// Update updates a single record with the specified id in the game table by
+// setting the table columns to the provided values.
+func (r GameRepo) Update(res chego.Result, t chego.Termination, id string) error {
+	_, err := r.pool.Exec(updateGame, res, t, id)
+	return err
 }

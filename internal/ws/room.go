@@ -17,8 +17,16 @@ const (
 	reconnectDeadline int = 60
 )
 
+type completedMove struct {
+	San  string     `json:"s"`
+	Move chego.Move `json:"m"`
+	// Remaining time on the player's clock.
+	TimeLeft int `json:"t"`
+}
+
 type room struct {
 	game               *chego.Game
+	moves              []completedMove
 	id                 string
 	whiteId            string
 	blackId            string
@@ -34,10 +42,11 @@ type room struct {
 
 func newRoom(id, whiteId, blackId string) *room {
 	return &room{
-		game:               chego.NewGame(),
 		id:                 id,
 		whiteId:            whiteId,
 		blackId:            blackId,
+		moves:              make([]completedMove, 0),
+		game:               chego.NewGame(),
 		whiteReconnectTime: reconnectDeadline,
 		blackReconnectTime: reconnectDeadline,
 		clients:            make(map[string]*client),
@@ -103,6 +112,19 @@ func (r room) handleRegister(h handshake) {
 
 	r.clients[h.player.Id] = c
 	log.Printf("client %s joined room %s", h.player.Id, r.id)
+
+	// Send the game state so that the client can sync.
+	raw, err := newEncodedEvent(actionGame, gamePayload{
+		LegalMoves:       r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
+		Moves:            r.moves,
+		IsWhiteConnected: r.clients[r.whiteId] != nil,
+		IsBlackConnected: r.clients[r.blackId] != nil,
+	})
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	c.send <- raw
 }
 
 func (r room) handleUnregister(id string) {
@@ -126,9 +148,33 @@ func (r *room) handleTimeTick() {
 	}
 }
 
-func (r *room) handleMove(e event) {
-	// Check if it is the player's turn.
+func (r room) handleMove(e event) {
+	// TODO: Check if it is the player's turn.
 
+	var index byte
+	err := json.Unmarshal(e.Payload, &index)
+	if err != nil || index >= r.game.LegalMoves.LastMoveIndex {
+		return
+	}
+
+	// Store the remaining time.
+	tl := r.game.WhiteTime
+	if len(r.moves)&2 == 0 {
+		tl = r.game.BlackTime
+	}
+
+	// Perform and store the move.
+	m := r.game.LegalMoves.Moves[index]
+	r.moves = append(r.moves, completedMove{
+		San:      r.game.PushMove(m),
+		Move:     m,
+		TimeLeft: tl,
+	})
+
+	r.broadcast(actionMove, movePayload{
+		LegalMoves: r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
+		Move:       r.moves[len(r.moves)-1],
+	})
 }
 
 func (r room) handleChat(e event) {
@@ -144,13 +190,12 @@ func (r room) handleChat(e event) {
 	b.WriteByte('"')
 
 	e.Payload = json.RawMessage(b.String())
-	r.broadcast(e)
+	r.broadcast(actionChat, b.String())
 }
 
-// broadcast event among all connected clients.  It's the caller's responsibility
-// to encode the event payload.
-func (r room) broadcast(e event) {
-	raw, err := json.Marshal(e)
+// broadcast encodes and sends the event to all connected clients.
+func (r room) broadcast(a eventAction, payload any) {
+	raw, err := newEncodedEvent(a, payload)
 	if err != nil {
 		log.Print(err)
 		return

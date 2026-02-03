@@ -15,12 +15,9 @@ import { EventAction } from "./ws/event"
 	const cnt = document.getElementById("clientsCounter")
 
 	// @ts-expect-error - API_URL comes from webpack.
-	const socket = new WebSocket(`${API_URL}/game/${id}`)
+	const socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
 
 	const notification = new Notification()
-	socket.onclose = () => {
-		notification.create("Please reload the page to reconnect.")
-	}
 	socket.onerror = () => {
 		notification.create("Please reload the page to reconnect.")
 	}

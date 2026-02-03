@@ -1,0 +1,38 @@
+/**
+ * Must match the event actions defined in [justchess/internal/ws/event.go].
+ * @enum {typeof EventAction[keyof typeof EventAction]}
+ */
+export const EventAction = /** @type {const} */ ({
+	Ping: 0,
+	Pong: 1,
+	Chat: 2,
+	Move: 3,
+	Game: 4,
+	ClientsCounter: 5,
+	Redirect: 6,
+	Error: 7,
+})
+
+/**
+ * Arbitrary event recieved from the server.
+ * @typedef {Object} Event
+ * @property {EventAction} a
+ * @property {any} p - Specific type depents on the action.
+ */
+
+/**
+ * @typedef {Object} MovePayload
+ * @property {import("../chess/move.js").Move[]} lm - Legal moves for the next player.
+ * @property {import("../chess/move.js").CompletedMove} m
+ */
+
+/**
+ * Payload of the event with Game action.
+ * @typedef {Object} GamePayload
+ * @property {import("../chess/move.js").Move[]} lm - Legal moves for current turn.
+ * @property {import("../chess/move.js").CompletedMove[]} m - All completed moves.
+ * @property {number} wt - White player's remaining time.
+ * @property {number} bt - Black player's remaining time.
+ * @property {boolean} w - Is white player connected.
+ * @property {boolean} b - Is black player connected.
+ */

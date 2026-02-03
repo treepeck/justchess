@@ -163,6 +163,7 @@ func (s Service) createRoom(e createRoomEvent) {
 
 func (s Service) removeRoom(id string) {
 	// TODO: Write the last known room state to the database.
+	// s.gameRepo.Update()
 	// TODO: update the player's ratings after completed games.
 
 	delete(s.rooms, id)
