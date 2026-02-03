@@ -1,7 +1,8 @@
 import HelpWindow from "./utils/help"
 ;(() => {
 	// Page guard.
-	if (document.getElementsByTagName("main")[0]?.dataset.page !== "home") {
+	const container = document.getElementById("container")
+	if (!container || container.dataset.page !== "home") {
 		return
 	}
 

@@ -1,11 +1,12 @@
 import HelpWindow from "./utils/help"
 ;(() => {
 	// Page guard.
-	if (document.getElementsByTagName("form")[0]?.dataset.page !== "signup") {
+	const form = document.getElementById("authForm")
+	if (!form) {
 		return
 	}
 
-	authForm.addEventListener("submit", submitForm)
+	form.addEventListener("submit", submitForm)
 	passwordToggle.addEventListener("click", togglePassword)
 
 	helpText.onclick = () => {
