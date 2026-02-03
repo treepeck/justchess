@@ -15,9 +15,26 @@
   </div>
 
   <div class="board-container">
-    <p>Black: {{ .Data.Black.Name }} Rating: {{ .Data.Black.Rating }}</p>
+    <div class="miniprofile">
+      <a href="/player/{{ .Data.Black.Name }}">{{ .Data.Black.Name }}</a>
+      <div class="rating">{{ .Data.Black.Rating }}</div>
+      <div id="blackTimer">00:00</div>
+      <div id="isBlackConnected"></div>
+    </div>
+
     <canvas id="boardCanvas"></canvas>
-    <p>White: {{ .Data.White.Name }} Rating: {{ .Data.White.Rating }}</p>
+
+    <div class="miniprofile">
+      <a href="/player/{{ .Data.White.Name }}">{{ .Data.White.Name }}</a>
+      <div class="rating">{{ .Data.White.Rating }}</div>
+      <div id="whiteTimer">00:00</div>
+      <div id="isWhiteConnected"></div>
+    </div>
+  </div>
+
+  <div class="move-table">
+    <h3>Moves</h3>
+    <div id="tableBody"></div>
   </div>
 
   <div id="ping">Ping: ? ms</div>
