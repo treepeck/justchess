@@ -1,4 +1,4 @@
-import { Move, MoveType } from "./move"
+import { Square, Move, MoveType } from "./move"
 
 /**
  * Enum representing chess pieces.
@@ -350,6 +350,27 @@ export default class BoardCanvas {
 		switch (move.moveType) {
 			case MoveType.Castling:
 				// Update rook position.
+				switch (move.to) {
+					case Square.G1: // White O-O.
+						this.#squares[Square.H1] = Piece.NP
+						this.#squares[Square.F1] = Piece.WR
+						break
+
+					case Square.C1: // White O-O-O.
+						this.#squares[Square.A1] = Piece.NP
+						this.#squares[Square.D1] = Piece.WR
+						break
+
+					case Square.G8: // Black O-O.
+						this.#squares[Square.H8] = Piece.NP
+						this.#squares[Square.F8] = Piece.WR
+						break
+
+					case Square.C8: // Black O-O-O.
+						this.#squares[Square.A8] = Piece.NP
+						this.#squares[Square.D8] = Piece.WR
+						break
+				}
 				break
 
 			case MoveType.EnPassant:

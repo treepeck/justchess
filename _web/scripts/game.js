@@ -14,6 +14,17 @@ function appendMove(san) {
 }
 
 /**
+ * Appends the message to the DOM.
+ * @param {string} message
+ */
+function appendMessage(message) {
+	const msgDiv = document.createElement("div")
+	msgDiv.classList.add("message")
+	msgDiv.textContent = message
+	getElement("messageContainer").appendChild(msgDiv)
+}
+
+/**
  * @returns {Promise<HTMLImageElement>}
  */
 function loadSheet() {
@@ -84,6 +95,28 @@ async function main() {
 		notification.create("Please reload the page to reconnect.")
 	}
 
+	// Handle chat messages.
+	const chat = /** @type {HTMLInputElement} */ (getElement("chatInput"))
+	const sendChat = () => {
+		if (chat.value.length < 1) return
+
+		appendMessage("You: " + chat.value)
+
+		socket.send(
+			JSON.stringify({
+				a: EventAction.Chat,
+				p: chat.value,
+			})
+		)
+		// Reset the input value after submitting the message.
+		chat.value = ""
+	}
+	// Handle chat messages.
+	chat.onclick = () => sendChat()
+	chat.onkeydown = (e) => {
+		if (e.key === "Enter") sendChat()
+	}
+
 	// Handle messages.
 	socket.onmessage = (raw) => {
 		/** @type {import("./ws/event").Event} */
@@ -96,6 +129,10 @@ async function main() {
 				// Respond with pong.
 				socket.send(JSON.stringify({ a: EventAction.Pong, p: null }))
 				getElement("ping").textContent = `Ping: ${payload} ms`
+				break
+
+			case EventAction.Chat:
+				appendMessage(JSON.parse(payload))
 				break
 
 			case EventAction.Game:
