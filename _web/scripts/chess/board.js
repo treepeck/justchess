@@ -85,6 +85,10 @@ export default class BoardCanvas {
 	 * @type {number}
 	 */
 	#piece
+	/**
+	 * @type {number}
+	 */
+	#hoveredSquare
 
 	/** @type {MoveHandler} */
 	moveHandler
@@ -99,6 +103,7 @@ export default class BoardCanvas {
 		this.#sheet = sheet
 		this.#size = 0
 		this.#selectedSquare = -1
+		this.#hoveredSquare = -1
 		this.#draggedPiece = null
 		this.#piece = 300
 		// Assign moveHandler callback.
@@ -174,6 +179,19 @@ export default class BoardCanvas {
 						this.#square,
 						this.#square
 					)
+				}
+
+				// Draw hovered square.
+				if (ind === this.#hoveredSquare) {
+					const isLegal = this.legalMoves.find(
+						(move) =>
+							move.from === this.#selectedSquare &&
+							move.to === ind
+					)
+
+					this.#context.strokeStyle = isLegal ? "green" : "gray"
+					this.#context.lineWidth = 3
+					this.#context.strokeRect(x, y, this.#square, this.#square)
 				}
 			}
 		}
@@ -266,22 +284,23 @@ export default class BoardCanvas {
 	 * @param {MouseEvent} e
 	 */
 	onMouseMove(e) {
+		const { x, y, square } = this.#getPositionOfEvent(e)
+		this.#hoveredSquare = square
+
 		if (this.#draggedPiece !== null) {
 			const isLeftButtonPressed = e.buttons === 1
 
 			if (isLeftButtonPressed) {
-				const { x, y } = this.#getPositionOfEvent(e)
 				// Center and move dragged piece with the cursor.
 				this.#draggedPiece.position.x = x - this.#square / 2
 				this.#draggedPiece.position.y = y - this.#square / 2
-
-				this.render()
 			} else {
 				// Return the dragged piece into its originating position.
 				this.#squares[this.#selectedSquare] = this.#draggedPiece.piece
 				this.#draggedPiece = null
 			}
 		}
+		this.render()
 	}
 
 	/**
