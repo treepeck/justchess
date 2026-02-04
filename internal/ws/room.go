@@ -174,7 +174,7 @@ func (r room) handleMove(e event) {
 	r.broadcast(actionMove, movePayload{
 		LegalMoves: r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
 		Move:       r.moves[len(r.moves)-1],
-	})
+	}, e.sender.player.Id)
 }
 
 func (r room) handleChat(e event) {
@@ -190,11 +190,11 @@ func (r room) handleChat(e event) {
 	b.WriteByte('"')
 
 	e.Payload = json.RawMessage(b.String())
-	r.broadcast(actionChat, b.String())
+	r.broadcast(actionChat, b.String(), e.sender.player.Id)
 }
 
 // broadcast encodes and sends the event to all connected clients.
-func (r room) broadcast(a eventAction, payload any) {
+func (r room) broadcast(a eventAction, payload any, excludeId string) {
 	raw, err := newEncodedEvent(a, payload)
 	if err != nil {
 		log.Print(err)
@@ -202,6 +202,8 @@ func (r room) broadcast(a eventAction, payload any) {
 	}
 
 	for _, c := range r.clients {
-		c.send <- raw
+		if c.player.Id != excludeId {
+			c.send <- raw
+		}
 	}
 }
