@@ -1,4 +1,4 @@
-import { MoveType } from "./move"
+import { Move, MoveType } from "./move"
 
 /**
  * Enum representing chess pieces.
@@ -22,10 +22,9 @@ const Piece = /** @type {const} */ ({
 
 /**
  * Function which is called when the player performs the move.
- * @callback MoveCallback
- * @param {number} from
- * @param {number} to
- * @returns {boolean}
+ * @callback MoveHandler
+ * @param {number} moveIndex
+ * @returns {void}
  */
 
 /**
@@ -73,6 +72,10 @@ export default class BoardCanvas {
 	 */
 	#squares
 	/**
+	 * @type {Move[]}
+	 */
+	legalMoves
+	/**
 	 * Size of an individual square on the canvas in pixels.
 	 * @type {number}
 	 */
@@ -83,13 +86,13 @@ export default class BoardCanvas {
 	 */
 	#piece
 
-	/** @type {MoveCallback | null} */
+	/** @type {MoveHandler} */
 	moveHandler
 
 	/**
 	 * @param {CanvasRenderingContext2D} context
 	 * @param {HTMLImageElement} sheet
-	 * @param {MoveCallback | null} moveHandler
+	 * @param {MoveHandler} moveHandler
 	 */
 	constructor(context, sheet, moveHandler) {
 		this.#context = context
@@ -100,6 +103,8 @@ export default class BoardCanvas {
 		this.#piece = 300
 		// Assign moveHandler callback.
 		this.moveHandler = moveHandler
+
+		this.legalMoves = []
 
 		// Initialize default piece placement.
 		// prettier-ignore
@@ -199,6 +204,17 @@ export default class BoardCanvas {
 		this.render()
 	}
 
+	/** @param {Move[]} moves */
+	setLegalMoves(moves) {
+		this.legalMoves = []
+		for (const encoded of moves) {
+			// @ts-expect-error
+			this.legalMoves.push(new Move(encoded))
+		}
+
+		this.render()
+	}
+
 	/**
 	 * Handles player's clicks on the canvas.
 	 * @param {MouseEvent} e
@@ -211,18 +227,17 @@ export default class BoardCanvas {
 				? this.#squares[this.#selectedSquare]
 				: Piece.NP
 
-		if (
-			selected !== Piece.NP &&
-			square !== this.#selectedSquare &&
-			this.moveHandler
-		) {
-			// Perform the move and update the position if it was successfull.
-			if (this.moveHandler(this.#selectedSquare, square)) {
-				this.#squares[square] = selected
-				this.#squares[this.#selectedSquare] = Piece.NP
-				this.#selectedSquare = -1
-				this.render()
-				return
+		if (selected !== Piece.NP && square !== this.#selectedSquare) {
+			for (let i = 0; i < this.legalMoves.length; i++) {
+				const move = this.legalMoves[i]
+				if (move.from == this.#selectedSquare && move.to == square) {
+					this.moveHandler(i)
+					// Perform the move and update the position.
+					this.makeMove(move)
+					this.#selectedSquare = -1
+					this.render()
+					return
+				}
 			}
 		}
 
@@ -291,14 +306,15 @@ export default class BoardCanvas {
 			return
 		}
 
-		if (
-			this.moveHandler &&
-			this.moveHandler(this.#selectedSquare, square)
-		) {
-			// Perform the move and update the position.
-			this.#squares[square] = piece
-			this.#squares[this.#selectedSquare] = Piece.NP
-			this.#selectedSquare = -1
+		for (let i = 0; i < this.legalMoves.length; i++) {
+			const move = this.legalMoves[i]
+			if (move.from == this.#selectedSquare && move.to == square) {
+				this.moveHandler(i)
+				// Perform the move and update the position.
+				this.makeMove(move)
+				this.#selectedSquare = -1
+				break
+			}
 		}
 		this.render()
 	}
@@ -308,6 +324,7 @@ export default class BoardCanvas {
 	 * @param {import("./move").Move} move
 	 */
 	makeMove(move) {
+		console.log(move, move.from, move.to)
 		const piece = this.#squares[move.from]
 		this.#squares[move.from] = Piece.NP
 

@@ -1,3 +1,4 @@
+import { getElement } from "./utils/dom"
 import Notification from "./utils/notification"
 import { EventAction } from "./ws/event"
 ;(() => {
@@ -11,8 +12,6 @@ import { EventAction } from "./ws/event"
 		return
 	}
 	const id = path[path.length - 1]
-
-	const cnt = document.getElementById("clientsCounter")
 
 	// @ts-expect-error - API_URL comes from webpack.
 	const socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
@@ -32,14 +31,13 @@ import { EventAction } from "./ws/event"
 			case EventAction.Ping:
 				// Respond with pong.
 				socket.send(JSON.stringify({ a: EventAction.Pong, p: null }))
-				const ping = document.getElementById("ping")
-				if (ping) ping.textContent = `Ping: ${payload} ms`
+				getElement("ping").textContent = `Ping: ${payload} ms`
 				break
 
 			case EventAction.ClientsCounter:
-				if (cnt) {
-					cnt.textContent = `Players in queue: ${payload}`
-				}
+				getElement(
+					"clientsCounter"
+				).textContent = `Players in queue: ${payload}`
 				break
 
 			case EventAction.Redirect:
@@ -55,9 +53,6 @@ import { EventAction } from "./ws/event"
 	}
 
 	// Self-adjusting countup timer.
-	const timer = document.getElementById("countUp")
-	if (!timer) return
-
 	const interval = 500 // Milliseconds.
 	const initial = Date.now()
 	let expected = initial + interval
@@ -76,9 +71,9 @@ import { EventAction } from "./ws/event"
 			seconds -= 60 * minutes
 		}
 
-		timer.textContent = `${minutes > 9 ? minutes : `0${minutes}`}:${
-			seconds > 9 ? seconds : `0${seconds}`
-		}`
+		getElement("countUp").textContent = `${
+			minutes > 9 ? minutes : `0${minutes}`
+		}:${seconds > 9 ? seconds : `0${seconds}`}`
 
 		setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
 	}

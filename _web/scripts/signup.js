@@ -1,4 +1,5 @@
 import HelpWindow from "./utils/help"
+import { getElement } from "./utils/dom"
 
 // Regular expressions to validate the user input.
 const nameEx = /^[a-zA-Z0-9]{2,60}$/i
@@ -13,8 +14,7 @@ function submitForm(event) {
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	const error = document.getElementById("serverError")
-	if (error) error.textContent = ""
+	getElement("serverError").textContent = ""
 
 	const data = new FormData(event.target)
 
@@ -25,23 +25,18 @@ function submitForm(event) {
 
 	if (validateInput(name.toString(), email.toString(), password.toString())) {
 		// Show confirmation window.
-		const confirm = document.getElementById("confirmWindow")
-		if (confirm) confirm.classList.add("show")
-
-		const cancel = document.getElementById("cancelSubmit")
-		if (cancel) cancel.focus()
+		getElement("confirmWindow").classList.add("show")
+		getElement("cancelSubmit").focus()
 	}
 }
 
 /** @param {FormData} data */
 function confirmHandler(data) {
-	// Hide confirmation window.
-	const confirm = document.getElementById("confirmWindow")
-	if (confirm) confirm.classList.remove("show")
+	// Hide confirmation window
+	getElement("confirmWindow").classList.remove("show")
 
 	// Disable the button while the request is being processed.
-	const btn = document.getElementById("submitBtn")
-	if (!btn || !(btn instanceof HTMLButtonElement)) return
+	const btn = /** @type {HTMLButtonElement} */ (getElement("submitBtn"))
 	btn.disabled = true
 	btn.textContent = "Submitting..."
 
@@ -49,8 +44,7 @@ function confirmHandler(data) {
 	const params = new URLSearchParams(data)
 
 	signUp(params).then((err) => {
-		const error = document.getElementById("serverError")
-		if (error) error.textContent = "Sign up failed: " + err
+		getElement("serverError").textContent = "Sign up failed: " + err
 
 		// Enable the submit button.
 		btn.disabled = false
@@ -68,8 +62,7 @@ function confirmHandler(data) {
 function validateInput(name, email, password) {
 	let isValid = true
 
-	let error = document.getElementById("nameError")
-	if (!error) return false
+	let error = getElement("nameError")
 	if (name.length < 2) {
 		error.textContent = "Must be at least 2 characters long"
 		isValid = false
@@ -84,8 +77,7 @@ function validateInput(name, email, password) {
 		error.textContent = ""
 	}
 
-	error = document.getElementById("emailError")
-	if (!error) return false
+	error = getElement("emailError")
 	if (email.length < 3) {
 		error.textContent = "Must be at least 3 characters long"
 		isValid = false
@@ -97,8 +89,7 @@ function validateInput(name, email, password) {
 		error.textContent = ""
 	}
 
-	error = document.getElementById("passwordError")
-	if (!error) return false
+	error = getElement("passwordError")
 	if (password.length < 5) {
 		error.textContent = "Must be at least 5 characters long"
 		isValid = false
@@ -143,52 +134,37 @@ async function signUp(data) {
 
 ;(() => {
 	// Page guard.
-	const form = document.getElementById("authForm")
-	if (
-		!form ||
-		form.dataset.page !== "signup" ||
-		!(form instanceof HTMLFormElement)
+	const form = /** @type {HTMLFormElement} */ (
+		document.getElementById("authForm")
 	)
-		return
+	if (!form || form.dataset.page !== "signup") return
 
 	form.onsubmit = submitForm
 
-	const text = document.getElementById("helpText")
-	if (!text) return
-	text.onclick = () => {
+	getElement("helpText").onclick = () => {
 		HelpWindow.show("help")
 	}
 
-	const confirmWind = document.getElementById("confirmWindow")
-	if (!confirmWind) return
-
-	const cancel = document.getElementById("cancelSubmit")
-	if (!cancel) return
-	cancel.onclick = () => {
-		confirmWind.classList.remove("show")
+	getElement("cancelSubmit").onclick = () => {
+		getElement("confirmWindow").classList.remove("show")
 	}
 
-	const confirm = document.getElementById("confirmSubmit")
-	if (!confirm) return
-	confirm.onclick = () => {
+	getElement("confirmSubmit").onclick = () => {
 		const data = new FormData(form)
 		confirmHandler(data)
 	}
 
-	const toggle = document.getElementById("passwordToggle")
-	if (toggle) {
-		toggle.onclick = () => {
-			const input = document.getElementById("passwordInput")
-			if (!input) return
+	const toggle = getElement("passwordToggle")
+	toggle.onclick = () => {
+		const input = getElement("passwordInput")
 
-			const curr = input.getAttribute("type")
-			if (curr === "password") {
-				input.setAttribute("type", "text")
-				toggle.style.backgroundImage = "url('/images/hide.svg')"
-			} else {
-				input.setAttribute("type", "password")
-				toggle.style.backgroundImage = "url('/images/show.svg')"
-			}
+		const curr = input.getAttribute("type")
+		if (curr === "password") {
+			input.setAttribute("type", "text")
+			toggle.style.backgroundImage = "url('/images/hide.svg')"
+		} else {
+			input.setAttribute("type", "password")
+			toggle.style.backgroundImage = "url('/images/show.svg')"
 		}
 	}
 })()

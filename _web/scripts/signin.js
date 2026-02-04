@@ -1,3 +1,5 @@
+import { getElement } from "./utils/dom"
+
 /** @param {SubmitEvent} event */
 function submitForm(event) {
 	event.preventDefault()
@@ -6,13 +8,10 @@ function submitForm(event) {
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	const error = document.getElementById("serverError")
-	if (!error) return
-	error.textContent = ""
+	getElement("serverError").textContent = ""
 
 	// Disable the button while the request is being processed.
-	const btn = document.getElementById("submitBtn")
-	if (!btn || !(btn instanceof HTMLButtonElement)) return
+	const btn = /** @type {HTMLButtonElement} */ (getElement("submitBtn"))
 	btn.disabled = true
 	btn.textContent = "Submitting..."
 
@@ -23,7 +22,7 @@ function submitForm(event) {
 	console.log(params)
 
 	signIn(params).then((err) => {
-		error.textContent = "Sign in failed: " + err
+		getElement("serverError").textContent = "Sign in failed: " + err
 
 		// Enable the submit button.
 		btn.disabled = false
@@ -58,20 +57,17 @@ async function signIn(data) {
 
 	form.onsubmit = submitForm
 
-	const toggle = document.getElementById("passwordToggle")
-	if (toggle) {
-		toggle.onclick = () => {
-			const input = document.getElementById("passwordInput")
-			if (!input) return
+	const toggle = getElement("passwordToggle")
+	toggle.onclick = () => {
+		const input = getElement("passwordInput")
 
-			const curr = input.getAttribute("type")
-			if (curr === "password") {
-				input.setAttribute("type", "text")
-				toggle.style.backgroundImage = "url('/images/hide.svg')"
-			} else {
-				input.setAttribute("type", "password")
-				toggle.style.backgroundImage = "url('/images/show.svg')"
-			}
+		const curr = input.getAttribute("type")
+		if (curr === "password") {
+			input.setAttribute("type", "text")
+			toggle.style.backgroundImage = "url('/images/hide.svg')"
+		} else {
+			input.setAttribute("type", "password")
+			toggle.style.backgroundImage = "url('/images/show.svg')"
 		}
 	}
 })()

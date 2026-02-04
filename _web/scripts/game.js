@@ -2,87 +2,15 @@ import Notification from "./utils/notification"
 import { EventAction } from "./ws/event"
 import BoardCanvas from "./chess/board"
 import { Move } from "./chess/move"
+import { getElement } from "./utils/dom"
 
-/** Manages the state of the active game. */
-class Game {
-	/**
-	 * @type {Move[]}
-	 */
-	legalMoves
-	/**
-	 * @type {number}
-	 */
-	whiteTime
-	/**
-	 * @type {number}
-	 */
-	blackTime
-	/**
-	 * @type {boolean}
-	 */
-	isWhiteConnected
-	/**
-	 * @type {boolean}
-	 */
-	isBlackConnected
-	/**
-	 * @type {BoardCanvas}
-	 */
-	board
+/** @param {string} san */
+function appendMove(san) {
+	const moveDiv = document.createElement("div")
+	moveDiv.classList.add("move")
+	moveDiv.textContent = san
 
-	/**
-	 * @param {import("./ws/event").GamePayload} payload
-	 * @param {BoardCanvas} board
-	 */
-	constructor(payload, board) {
-		this.#setLegalMoves(payload.lm)
-
-		for (const completedMove of payload.m) {
-			this.#appendMove(completedMove)
-		}
-
-		this.whiteTime = payload.wt
-		this.blackTime = payload.bt
-		this.isWhiteConnected = payload.w
-		this.isBlackConnected = payload.b
-
-		this.board = board
-	}
-
-	/** @param {import("./ws/event").MovePayload} payload */
-	handleMove(payload) {
-		this.#setLegalMoves(payload.lm)
-
-		this.#appendMove(payload.m)
-
-		// Update player's clock.
-		if (this.legalMoves.length % 2 == 0) {
-			this.whiteTime = payload.m.t
-		} else {
-			this.blackTime = payload.m.t
-		}
-
-		this.board.makeMove(payload.m.m)
-	}
-
-	/** @param {Move[]} moves */
-	#setLegalMoves(moves) {
-		this.legalMoves = []
-		for (const encoded of moves) {
-			this.legalMoves.push(new Move(Number(encoded)))
-		}
-	}
-
-	/** @param {import("./chess/move").CompletedMove} move */
-	#appendMove(move) {
-		const table = document.getElementById("tableBody")
-		if (!table) return
-
-		const moveDiv = document.createElement("div")
-		moveDiv.classList.add("move")
-		moveDiv.textContent = move.s
-		table.appendChild(moveDiv)
-	}
+	getElement("tableBody").appendChild(moveDiv)
 }
 
 /**
@@ -112,6 +40,7 @@ async function main() {
 	}
 	const id = path[path.length - 1]
 
+	// Load sprite sheet.
 	/** @type {HTMLImageElement | null} */
 	let sheet = null
 	try {
@@ -121,13 +50,16 @@ async function main() {
 	}
 	if (!sheet) return
 
-	const canvas = document.getElementById("boardCanvas")
-	if (!canvas || !(canvas instanceof HTMLCanvasElement)) return
+	// Render chessboard on the canvas.
+	const canvas = /** @type {HTMLCanvasElement} */ (getElement("boardCanvas"))
 
-	const ctx = canvas.getContext("2d")
-	if (!ctx) return
+	const ctx = /** @type {CanvasRenderingContext2D} */ (
+		canvas.getContext("2d")
+	)
 
-	const board = new BoardCanvas(ctx, sheet, null)
+	const board = new BoardCanvas(ctx, sheet, (moveIndex) => {
+		socket.send(JSON.stringify({ a: EventAction.Move, p: moveIndex }))
+	})
 	board.render()
 
 	// Add event listeners.
@@ -143,33 +75,16 @@ async function main() {
 	})
 	observer.observe(canvas)
 
-	/** @type {Game | null} */
-	let game = null
-
+	// Initialize WebSocket connection.
 	// @ts-expect-error - API_URL comes from webpack.
 	const socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
 
 	const notification = new Notification()
-	socket.onclose = () => {
-		if (game) {
-			notification.create("Please reload the page to reconnect.")
-		}
+	socket.onerror = () => {
+		notification.create("Please reload the page to reconnect.")
 	}
 
-	/** @type {import("./chess/board").MoveCallback} */
-	function moveHandler(from, to) {
-		if (!game) return false
-
-		for (let i = 0; i < game.legalMoves.length; i++) {
-			const move = game.legalMoves[i]
-			if (move.from == from && move.to == to) {
-				socket.send(JSON.stringify({ a: EventAction.Move, p: i }))
-				return true
-			}
-		}
-		return false
-	}
-
+	// Handle messages.
 	socket.onmessage = (raw) => {
 		/** @type {import("./ws/event").Event} */
 		const e = JSON.parse(raw.data)
@@ -180,18 +95,38 @@ async function main() {
 			case EventAction.Ping:
 				// Respond with pong.
 				socket.send(JSON.stringify({ a: EventAction.Pong, p: null }))
-				const ping = document.getElementById("ping")
-				if (ping) ping.textContent = `Ping: ${payload} ms`
+				getElement("ping").textContent = `Ping: ${payload} ms`
 				break
 
 			case EventAction.Game:
-				game = new Game(payload, board)
-				board.moveHandler = moveHandler
+				/** @type {import("./ws/event").GamePayload} */
+				const pGame = { ...payload }
+
+				board.setLegalMoves(pGame.lm)
+
+				for (const completedMove of pGame.m) {
+					// @ts-expect-error
+					const move = new Move(completedMove.m)
+					board.makeMove(move)
+					appendMove(completedMove.s)
+				}
+
+				getElement("isWhiteConnected").textContent = payload.w
+				getElement("isBlackConnected").textContent = payload.b
+
 				break
 
 			case EventAction.Move:
-				if (!game) return
-				game.handleMove(payload)
+				/** @type {import("./ws/event").MovePayload} */
+				const pMove = { ...payload }
+
+				board.setLegalMoves(pMove.lm)
+
+				appendMove(pMove.m.s)
+
+				// @ts-expect-error
+				const move = new Move(pMove.m.m)
+				board.makeMove(move)
 				break
 		}
 	}

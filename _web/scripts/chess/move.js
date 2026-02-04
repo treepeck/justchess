@@ -42,7 +42,9 @@ export class Move {
 	constructor(raw) {
 		this.to = raw & 0x3f
 		this.from = (raw >> 6) & 0x3f
+		// @ts-expect-error
 		this.promoPiece = (raw >> 12) & 0x3
+		// @ts-expect-error
 		this.moveType = (raw >> 14) & 0x3
 	}
 }
