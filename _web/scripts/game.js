@@ -21,6 +21,7 @@ function appendMessage(message) {
 	const msgDiv = document.createElement("div")
 	msgDiv.classList.add("message")
 	msgDiv.textContent = message
+
 	getElement("messageContainer").appendChild(msgDiv)
 }
 
@@ -99,9 +100,6 @@ async function main() {
 	const chat = /** @type {HTMLInputElement} */ (getElement("chatInput"))
 	const sendChat = () => {
 		if (chat.value.length < 1) return
-
-		appendMessage("You: " + chat.value)
-
 		socket.send(
 			JSON.stringify({
 				a: EventAction.Chat,
@@ -112,7 +110,7 @@ async function main() {
 		chat.value = ""
 	}
 	// Handle chat messages.
-	chat.onclick = () => sendChat()
+	getElement("chatSend").onclick = () => sendChat()
 	chat.onkeydown = (e) => {
 		if (e.key === "Enter") sendChat()
 	}
@@ -132,10 +130,20 @@ async function main() {
 				break
 
 			case EventAction.Chat:
-				appendMessage(JSON.parse(payload))
+				appendMessage(payload)
+				break
+
+			case EventAction.Conn:
+				appendMessage(`Player ${payload} joined`)
+				break
+
+			case EventAction.Disc:
+				appendMessage(`Player ${payload} leaved`)
 				break
 
 			case EventAction.Game:
+				console.log(payload)
+
 				/** @type {import("./ws/event").GamePayload} */
 				const pGame = { ...payload }
 
@@ -147,9 +155,6 @@ async function main() {
 					board.makeMove(move)
 					appendMove(completedMove.s)
 				}
-
-				getElement("isWhiteConnected").textContent = payload.w
-				getElement("isBlackConnected").textContent = payload.b
 
 				break
 
@@ -164,6 +169,10 @@ async function main() {
 				// @ts-expect-error
 				const move = new Move(pMove.m.m)
 				board.makeMove(move)
+				break
+
+			case EventAction.Error:
+				notification.create(payload)
 				break
 		}
 	}

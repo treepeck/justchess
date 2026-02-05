@@ -34,7 +34,12 @@ type client struct {
 	// sequentially, since the Gorilla WebSocket library allows only one
 	// concurrent writer to a connection at a time.
 	send chan []byte
-	conn *websocket.Conn
+	// forward is a channel to which the client will send events.
+	forward chan event
+	// unregister is a channel to which the client will send to unregister themself
+	// from the room or queue.
+	unregister chan string
+	conn       *websocket.Conn
 	// Network delay in milliseconds.
 	ping int
 	// New ping event must be sent only when the client responses to the
@@ -67,8 +72,8 @@ func newClient(conn *websocket.Conn, p db.Player) *client {
 // Pong events are handled by the client itself.  In the case of other event,
 // they are forwarded to the forward channel.  If an event cannot be read, the
 // connection will be closed.
-func (c *client) read(unregister chan<- string, forward chan<- event) {
-	defer c.cleanup(unregister)
+func (c *client) read() {
+	defer c.cleanup()
 
 	var e event
 	for {
@@ -79,9 +84,9 @@ func (c *client) read(unregister chan<- string, forward chan<- event) {
 		if e.Action == actionPong {
 			c.handlePong()
 		} else {
-			if forward != nil {
+			if c.forward != nil {
 				e.sender = c
-				forward <- e
+				c.forward <- e
 			}
 		}
 	}
@@ -152,8 +157,10 @@ func (c *client) handlePong() error {
 }
 
 // cleanup closes the connection and unregisters the client from the gatekeeper.
-func (c *client) cleanup(unregister chan<- string) {
-	unregister <- c.player.Id
+func (c *client) cleanup() {
+	if c.unregister != nil {
+		c.unregister <- c.player.Id
+	}
 	close(c.send)
 	c.conn.Close()
 }

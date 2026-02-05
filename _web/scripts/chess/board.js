@@ -250,10 +250,7 @@ export default class BoardCanvas {
 				const move = this.legalMoves[i]
 				if (move.from == this.#selectedSquare && move.to == square) {
 					this.moveHandler(i)
-					// Perform the move and update the position.
-					this.makeMove(move)
 					this.#selectedSquare = -1
-					this.render()
 					return
 				}
 			}
@@ -315,7 +312,7 @@ export default class BoardCanvas {
 
 		// End piece drag.
 		const piece = this.#draggedPiece.piece
-		this.#squares[this.#selectedSquare] = piece
+		this.#squares[this.#draggedPiece.from] = piece
 		this.#draggedPiece = null
 
 		const { square } = this.#getPositionOfEvent(e)
@@ -329,10 +326,8 @@ export default class BoardCanvas {
 			const move = this.legalMoves[i]
 			if (move.from == this.#selectedSquare && move.to == square) {
 				this.moveHandler(i)
-				// Perform the move and update the position.
-				this.makeMove(move)
 				this.#selectedSquare = -1
-				break
+				return
 			}
 		}
 		this.render()
@@ -363,12 +358,12 @@ export default class BoardCanvas {
 
 					case Square.G8: // Black O-O.
 						this.#squares[Square.H8] = Piece.NP
-						this.#squares[Square.F8] = Piece.WR
+						this.#squares[Square.F8] = Piece.BR
 						break
 
 					case Square.C8: // Black O-O-O.
 						this.#squares[Square.A8] = Piece.NP
-						this.#squares[Square.D8] = Piece.WR
+						this.#squares[Square.D8] = Piece.BR
 						break
 				}
 				break

@@ -8,9 +8,11 @@ export const EventAction = /** @type {const} */ ({
 	Chat: 2,
 	Move: 3,
 	Game: 4,
-	ClientsCounter: 5,
-	Redirect: 6,
-	Error: 7,
+	Conn: 5,
+	Disc: 6,
+	ClientsCounter: 7,
+	Redirect: 8,
+	Error: 9,
 })
 
 /**
@@ -33,6 +35,4 @@ export const EventAction = /** @type {const} */ ({
  * @property {import("../chess/move.js").CompletedMove[]} m - All completed moves.
  * @property {number} wt - White player's remaining time.
  * @property {number} bt - Black player's remaining time.
- * @property {boolean} w - Is white player connected.
- * @property {boolean} b - Is black player connected.
  */

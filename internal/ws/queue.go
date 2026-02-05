@@ -18,33 +18,43 @@ const (
 	matchmakingTick = 3 * time.Second
 )
 
-type queue struct {
-	ticker     *time.Ticker
-	pool       mm.Pool
-	register   chan handshake
-	unregister chan string
-	clients    map[string]*client
-	// Matchmaking parameters.
-	control int
+// control defines the chess game time limit.  Minutes is the number of minutes
+// given to each player at the beginning of the match.  Bonus is the number of
+// seconds added to a player's clock after each completed move.
+// Only players who have selected the same control can be paired together.
+type control struct {
+	minutes int
 	bonus   int
 }
 
-func newQueue(control int, bonus int) queue {
+// Predefined controls.
+var controls = [9]control{{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10}}
+
+type queue struct {
+	ticker     *time.Ticker
+	pool       mm.Pool
+	register   chan *client
+	unregister chan string
+	clients    map[string]*client
+	// Matchmaking parameters.
+	control control
+}
+
+func newQueue(id byte) queue {
 	return queue{
 		ticker:     time.NewTicker(matchmakingTick),
 		pool:       mm.NewPool(),
-		register:   make(chan handshake),
+		register:   make(chan *client),
 		unregister: make(chan string),
 		clients:    make(map[string]*client),
-		control:    control,
-		bonus:      bonus,
+		control:    controls[id-1],
 	}
 }
 
 // listenEvent handles concurrent client registration, unregistration and
-// matchmaking ticks. create chan is used to notify the service about new
-// matched.
-func (q queue) listenEvents(create chan<- createRoomEvent) {
+// matchmaking ticks. create chan is used to notify the [Service] about new
+// game room.
+func (q queue) listenEvents(create chan<- createRoom) {
 	for {
 		select {
 		case c := <-q.register:
@@ -57,36 +67,58 @@ func (q queue) listenEvents(create chan<- createRoomEvent) {
 
 		case <-q.ticker.C:
 			for match := range q.pool.MakeMatches() {
-				q.handleMatch(match, create)
+				// Handle matches.
+				roomId := randgen.GenId(randgen.IdLen)
+
+				// Randomly select players' sides.
+				whiteId, blackId := match[0], match[1]
+				if rand.IntN(2) == 1 {
+					whiteId = match[1]
+					blackId = match[0]
+				}
+
+				// Send create room event.
+				e := createRoom{
+					id:      roomId,
+					whiteId: whiteId,
+					blackId: blackId,
+					control: q.control,
+					res:     make(chan error, 1),
+				}
+				create <- e
+
+				// Handle response.
+				if <-e.res != nil {
+					// Notify clients about error.
+					q.sendEvent(match, actionError, msgRoomCreationFailed)
+				} else {
+					// Redirect clients to game room.
+					q.sendEvent(match, actionRedirect, roomId)
+				}
 			}
 			q.pool.ExpandRatingGaps()
 		}
 	}
 }
 
-func (q queue) handleRegister(h handshake) {
+func (q queue) handleRegister(c *client) {
 	// Deny the connection if the client is already in the queue.
-	if _, exist := q.clients[h.player.Id]; exist {
-		h.isConflict <- true
+	if _, exist := q.clients[c.player.Id]; exist {
+		// Send error event to the client.
+		if raw, err := newEncodedEvent(actionError, msgConflict); err == nil {
+			c.send <- raw
+		} else {
+			log.Print(err)
+		}
 		return
 	}
 
-	conn, err := upgrader.Upgrade(h.rw, h.r, nil)
-	h.isConflict <- false
-	if err != nil {
-		// upgrader writes the response, so simply return here.
-		return
-	}
+	log.Printf("client %s joined queue", c.player.Id)
 
-	c := newClient(conn, h.player)
-	go c.read(q.unregister, nil)
-	go c.write()
-
-	q.clients[h.player.Id] = c
-
+	c.unregister = q.unregister
+	q.clients[c.player.Id] = c
 	// Join the matchmaking pool.
-	q.pool.Join(h.player.Id, h.player.Rating)
-	log.Printf("client %s joined queue", h.player.Id)
+	q.pool.Join(c.player.Id, c.player.Rating)
 }
 
 func (q queue) handleUnregister(id string) {
@@ -100,34 +132,6 @@ func (q queue) handleUnregister(id string) {
 	q.pool.Leave(c.player.Id, c.player.Rating)
 
 	log.Printf("client %s leaved queue", id)
-}
-
-func (q queue) handleMatch(match [2]string, create chan<- createRoomEvent) {
-	roomId := randgen.GenId(randgen.IdLen)
-
-	// Randomly select players' sides.
-	whiteId, blackId := match[0], match[1]
-	if rand.IntN(2) == 1 {
-		whiteId = match[1]
-		blackId = match[0]
-	}
-
-	// Send create room event.
-	e := createRoomEvent{
-		id: roomId, whiteId: whiteId, blackId: blackId,
-		control: q.control, bonus: q.bonus, res: make(chan error, 1),
-	}
-	create <- e
-
-	// Wait for the response.
-	err := <-e.res
-	if err != nil {
-		// Notify clients about error.
-		q.sendEvent(match, actionError, msgRoomCreationFailed)
-	} else {
-		// Redirect clients to game room.
-		q.sendEvent(match, actionRedirect, roomId)
-	}
 }
 
 func (q queue) sendEvent(players [2]string, a eventAction, payload string) {

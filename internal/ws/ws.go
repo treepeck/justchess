@@ -1,3 +1,4 @@
+// Package ws implements the WebSocket server.
 package ws
 
 import (
@@ -9,6 +10,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	msgNotFound string = "Connection will be closed: provided id is not valid."
+	msgConflict string = "Please close any previous tabs and reload the page to reconnect"
+)
+
 // upgrader is used to establish a WebSocket connection.
 // It is safe for concurrent use.
 var upgrader = websocket.Upgrader{
@@ -16,27 +22,26 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-// Declaration of error messages.
-const (
-	msgInternalError string = "The connection cannot be established. Please reload the page"
-	msgUnauthorized  string = "Sign in to start playing"
-	msgNotFound      string = "Room doesn't exist"
-	msgConflict      string = "Please close the previous tab and reload this page"
-)
-
-type handshake struct {
-	r          *http.Request
-	rw         http.ResponseWriter
-	player     db.Player
-	isConflict chan bool
+type createRoom struct {
+	id, whiteId, blackId string
+	control              control
+	res                  chan error
 }
 
+type findRegister struct {
+	id  string
+	res chan chan *client
+}
+
+// Service manages the [room] lifecycle (creation and deletion), handles
+// incomming handshake requests, and modifies the database (stores completed
+// games and updated player's ratings).
 type Service struct {
 	playerRepo db.PlayerRepo
 	gameRepo   db.GameRepo
-	create     chan createRoomEvent
+	create     chan createRoom
 	remove     chan string
-	find       chan findRoomEvent
+	find       chan findRegister
 	rooms      map[string]*room
 	queues     map[string]queue
 }
@@ -45,127 +50,118 @@ func NewService(pr db.PlayerRepo, gr db.GameRepo) Service {
 	s := Service{
 		playerRepo: pr,
 		gameRepo:   gr,
-		create:     make(chan createRoomEvent),
+		create:     make(chan createRoom),
 		remove:     make(chan string),
-		find:       make(chan findRoomEvent),
+		find:       make(chan findRegister),
 		rooms:      make(map[string]*room),
+		queues:     make(map[string]queue, 9),
 	}
 
-	s.queues = make(map[string]queue, 9)
-	// Add queue for each game mode.
-	var params = []struct {
-		id      string
-		control int
-		bonus   int
-	}{
-		{"1", 1, 0},
-		{"2", 2, 1},
-		{"3", 3, 0},
-		{"4", 3, 2},
-		{"5", 5, 0},
-		{"6", 5, 2},
-		{"7", 10, 0},
-		{"8", 10, 10},
-		{"9", 15, 10},
-	}
-	for _, param := range params {
-		q := newQueue(param.control, param.bonus)
-		s.queues[param.id] = q
-		// Will run until the program exists.
+	for i := byte(1); i < 10; i++ {
+		q := newQueue(i)
 		go q.listenEvents(s.create)
+		s.queues[string(i+'0')] = q
 	}
 
 	return s
+}
+
+// RegisterRoute registers the handshake enpoint to the specified ServeMux.
+func (s Service) RegisterRoute(mux *http.ServeMux) {
+	mux.HandleFunc("/ws", s.handshake)
 }
 
 func (s Service) ListenEvents() {
 	for {
 		select {
 		case e := <-s.create:
-			s.createRoom(e)
+			s.handleCreateRoom(e)
 		case id := <-s.remove:
-			s.removeRoom(id)
+			s.handleRemoveRoom(id)
 		case e := <-s.find:
-			e.res <- s.rooms[e.id]
+			if q, exist := s.queues[e.id]; exist {
+				e.res <- q.register
+			} else if r, exist := s.rooms[e.id]; exist {
+				e.res <- r.register
+			} else {
+				e.res <- nil
+			}
 		}
 	}
 }
 
-// RegisterRoutes registers endpoints to the specified mux.
-func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /ws", s.serveWS)
-}
-
-// Concurrently accepts the WebSocket handshake requests.
-func (s Service) serveWS(rw http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie("Auth")
+// handshake handles WebSocket handshake requests.  Each incoming request must
+// include an 'id' parameter that identifies the room or queue the client is
+// attempting to join.  The request will be denied if the session cookie is
+// missing or expired.
+//
+// An error event will be sent to the client immediately after the connection
+// is opened in the following cases:
+//   - No room or queue exists with the provided id;
+//   - The client is already registered in the room or queue.
+//
+// The connection will be closed after the error event is sent.
+func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
+	session, err := r.Cookie("Auth")
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	p, err := s.playerRepo.SelectBySessionId(c.Value)
+	p, err := s.playerRepo.SelectBySessionId(session.Value)
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	h := handshake{rw: rw, r: r, isConflict: make(chan bool, 1), player: p}
+	id := r.URL.Query().Get("id")
 
-	// Get room or queue id.
-	id := h.r.URL.Query().Get("id")
-
-	// Try to register the client in a queue.
-	queue, exists := s.queues[id]
-	if exists {
-		queue.register <- h
-		// Handle queue response.
-		if <-h.isConflict {
-			http.Error(rw, msgConflict, http.StatusConflict)
-		}
+	// Create WebSocket connection.
+	conn, err := upgrader.Upgrade(rw, r, nil)
+	if err != nil {
+		// Simply return here since the upgrader writes the response.
 		return
 	}
+	c := newClient(conn, p)
+	go c.read()
+	go c.write()
 
-	e := findRoomEvent{
+	// Search for a room or queue with the given id.
+	e := findRegister{
 		id:  id,
-		res: make(chan *room, 1),
+		res: make(chan chan *client, 1),
 	}
 	s.find <- e
-	room := <-e.res
-	if room == nil {
-		http.Error(rw, msgNotFound, http.StatusNotFound)
+
+	// Handle response.
+	if register := <-e.res; register != nil {
+		register <- c
 		return
 	}
 
-	// Try to register the client in a room.
-	room.register <- h
-	// Handle room response.
-	if <-h.isConflict {
-		http.Error(rw, msgConflict, http.StatusConflict)
+	// Send error event to the client.
+	if raw, err := newEncodedEvent(actionError, msgNotFound); err == nil {
+		c.send <- raw
 	}
+	c.conn.Close()
 }
 
-func (s Service) createRoom(e createRoomEvent) {
-	err := s.gameRepo.Insert(e.id, e.whiteId, e.blackId, e.control, e.bonus)
+func (s Service) handleCreateRoom(e createRoom) {
+	err := s.gameRepo.Insert(e.id, e.whiteId, e.blackId, e.control.minutes, e.control.bonus)
 	defer func() { e.res <- err }()
-
 	if err != nil {
-		log.Print(err)
 		return
 	}
+
+	log.Printf("room %s created", e.id)
 
 	r := newRoom(e.id, e.whiteId, e.blackId)
 	go r.listenEvents(s.remove)
-	s.rooms[e.id] = r
 
-	log.Printf("room %s created", e.id)
+	s.rooms[e.id] = r
 }
 
-func (s Service) removeRoom(id string) {
-	// TODO: Write the last known room state to the database.
-	// s.gameRepo.Update()
-	// TODO: update the player's ratings after completed games.
-
-	delete(s.rooms, id)
+func (s Service) handleRemoveRoom(id string) {
 	log.Printf("room %s removed", id)
+	delete(s.rooms, id)
 }
