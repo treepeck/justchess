@@ -1,77 +1,37 @@
 #authForm {
+  width: 95%;
+  max-width: 600px;
   display: flex;
   margin: auto;
   padding: 20px;
   flex-direction: column;
-  gap: 10px;
+  gap: 20px;
 }
 
-#authForm h1 {
-  font-size: larger;
+.auth-form-header {
+  font-size: xx-large;
   font-weight: bold;
   text-align: center;
   margin-bottom: 10px;
 }
 
-#authForm section {
+.auth-form-input-container {
   display: grid;
   font-size: x-large;
   grid-template-rows: 1fr 1fr;
 }
 
-input {
-  width: 100%;
-  font-size: x-large;
-  font-weight: bold;
-  padding: 5px;
-  line-height: 1.5;
-  border: none;
-  border-radius: 10px;
-  background-color: var(--input-background);
-}
-
-input:focus {
-  outline: var(--input-background);
-}
-
-#authForm #submitBtn {
-  width: 60%;
-  margin: auto;
-  padding: 10px;
-  font-size: x-large;
-  border: 2px solid var(--container-background);
-  border-radius: 15px;
-  color: var(--container-foreground);
-  background: var(--container-background);
-}
-
-#authForm p {
-  font-size: large;
-  color: red;
-}
-
-#authForm .form-footer {
-  margin: auto;
-  padding-top: 10px;
-  font-size: large;
-  color: var(--foreground);
-}
-
-.form-footer a {
-  color: var(--url-hover);
-}
-
-.password-container {
+.auth-form-input-password {
   display: flex;
   border-radius: 10px;
   background: var(--input-background);
 }
 
-#authForm .password-container input {
+#authFormPasswordInput {
   background-color: transparent;
 }
 
-.password-container div {
+#authFormPasswordToggle {
   height: 80%;
   aspect-ratio: 1/1;
   margin: auto 5px auto 5px;
@@ -85,14 +45,75 @@ input:focus {
   background-repeat: no-repeat;
 }
 
-@media screen and (min-width: 400px) {
-  #authForm h1 {
-    font-size: xx-large;
-  }
+.auth-form-error {
+  font-size: large;
+  color: red;
 }
 
-@media screen and (min-width: 600px) {
-  #authForm {
-    min-width: 600px;
+#authFormSubmitButton {
+  width: 60%;
+  margin: auto;
+  padding: 10px;
+  font-size: x-large;
+  border-radius: 15px;
+}
+
+.auth-form-footer {
+  margin: auto;
+  padding-top: 10px;
+  font-size: large;
+  color: var(--foreground);
+}
+
+#confirmDialog {
+  position: fixed;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  user-select: none;
+  z-index: -1;
+  opacity: 0;
+  backdrop-filter: blur(6px);
+  transition: z-index 1s ease-in-out, opacity 1s ease-in-out;
+}
+
+#confirmDialog.show {
+  z-index: 1;
+  opacity: 1;
+}
+
+.confirm-dialog-content {
+  width: 95%;
+  max-width: 750px;
+  margin: auto;
+  padding: 15px;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  text-align: center;
+}
+
+.confirm-dialog-header {
+  font-size: x-large;
+  font-weight: bold;
+}
+
+.confirm-dialog-buttons {
+  display: flex;
+}
+
+.confirm-dialog-buttons button {
+  line-height: 2;
+  flex: 1;
+  margin: 10px;
+  border-radius: 15px;
+}
+
+@media screen and (min-width: 400px) {
+  .auth-form-header {
+    font-size: xx-large;
   }
 }

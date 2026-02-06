@@ -142,8 +142,6 @@ async function main() {
 				break
 
 			case EventAction.Game:
-				console.log(payload)
-
 				/** @type {import("./ws/event").GamePayload} */
 				const pGame = { ...payload }
 

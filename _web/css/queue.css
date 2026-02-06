@@ -1,18 +1,33 @@
-.queue-content {
-  width: 95%;
-  max-width: 600px;
-  text-align: center;
-  aspect-ratio: 1/1;
+.queue-info-header {
+  font-size: xx-large;
+  font-weight: bold;
+  margin: auto auto 0 auto;
+}
+
+.queue-info-container {
+  display: flex;
+  flex-direction: column;
   margin: 0 auto auto auto;
-  padding: 20px;
+  padding: 50px;
   border: 2px solid var(--container-foreground);
   border-radius: 15px;
   color: var(--container-foreground);
   background-color: var(--container-background);
+  font-size: x-large;
+  text-align: center;
+  gap: 20px;
 }
 
-#countUp {
-  width: 100%;
+.queue-info-control {
+  font-size: x-large;
+}
+
+#clientsCounter {
+  margin: 0 0 20px 0;
+}
+
+#countUpTimer {
+  margin: 10px 0 0 0;
   font-size: 70px;
   user-select: none;
   font-family: "ChessClock";

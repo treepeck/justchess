@@ -1,72 +1,21 @@
-/* Animated background. */
-.column-container::before {
-  width: 200%;
-  height: 200%;
-  top: -50%;
-  left: -50%;
-  content: "";
-  position: fixed;
-  background-image: url("/images/background.png");
-  transform: rotate(15deg);
-  filter: blur(2px);
-  animation: slide-background 120s ease-in-out infinite;
-  z-index: -1;
-}
-
-.column-container h2 {
+.time-control-grid-header {
+  font-size: xx-large;
+  font-weight: bold;
   margin: auto auto 0 auto;
 }
 
-.column-container .grid {
+.time-control-grid {
   width: 95%;
   max-width: 600px;
   display: grid;
-  margin: 0 auto auto auto;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
+  margin: 0 auto auto auto;
 }
 
-.cell {
-  font-size: larger;
+.time-control-grid-cell {
   aspect-ratio: 1/1;
   font-weight: bold;
-  border: 2px solid var(--container-foreground);
   border-radius: 15%;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
-}
-
-@keyframes slide-background {
-  0% {
-    background-position-x: 0;
-    background-position-y: 0;
-  }
-
-  25% {
-    background-position-x: 100vw;
-    background-position-y: -100vh;
-  }
-
-  50% {
-    background-position-x: 0;
-    background-position-y: 0;
-  }
-
-  75% {
-    background-position-x: -100vw;
-    background-position-y: 100vh;
-  }
-
-  100% {
-    background-position-x: 0;
-    background-position-y: 0;
-  }
-}
-
-@media screen and (min-width: 600px) {
-  /* Make background animation slower on larger screens. */
-  .column-container::before {
-    transform: rotate(15deg) scale(1.5);
-    animation: slide-background 340s ease-in-out infinite;
-  }
+  font-size: x-large;
 }

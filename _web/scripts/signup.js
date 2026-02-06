@@ -1,5 +1,5 @@
-import HelpWindow from "./utils/help"
 import { getElement } from "./utils/dom"
+import showHelpDialog from "./utils/help_dialog"
 
 // Regular expressions to validate the user input.
 const nameEx = /^[a-zA-Z0-9]{2,60}$/i
@@ -14,29 +14,31 @@ function submitForm(event) {
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	getElement("serverError").textContent = ""
+	getElement("authFormServerError").textContent = ""
 
 	const data = new FormData(event.target)
 
 	const name = data.get("name")
 	const email = data.get("email")
 	const password = data.get("password")
-	if (!name || !email || !password) return
+	if (name == null || email == null || password == null) return
 
 	if (validateInput(name.toString(), email.toString(), password.toString())) {
 		// Show confirmation window.
-		getElement("confirmWindow").classList.add("show")
-		getElement("cancelSubmit").focus()
+		getElement("confirmDialog").classList.add("show")
+		getElement("confirmDialogCancelButton").focus()
 	}
 }
 
 /** @param {FormData} data */
 function confirmHandler(data) {
 	// Hide confirmation window
-	getElement("confirmWindow").classList.remove("show")
+	getElement("confirmDialog").classList.remove("show")
 
 	// Disable the button while the request is being processed.
-	const btn = /** @type {HTMLButtonElement} */ (getElement("submitBtn"))
+	const btn = /** @type {HTMLButtonElement} */ (
+		getElement("authFormSubmitButton")
+	)
 	btn.disabled = true
 	btn.textContent = "Submitting..."
 
@@ -44,7 +46,7 @@ function confirmHandler(data) {
 	const params = new URLSearchParams(data)
 
 	signUp(params).then((err) => {
-		getElement("serverError").textContent = "Sign up failed: " + err
+		getElement("authFormServerError").textContent = "Sign up failed: " + err
 
 		// Enable the submit button.
 		btn.disabled = false
@@ -62,7 +64,7 @@ function confirmHandler(data) {
 function validateInput(name, email, password) {
 	let isValid = true
 
-	let error = getElement("nameError")
+	let error = getElement("authFormNameError")
 	if (name.length < 2) {
 		error.textContent = "Must be at least 2 characters long"
 		isValid = false
@@ -77,7 +79,7 @@ function validateInput(name, email, password) {
 		error.textContent = ""
 	}
 
-	error = getElement("emailError")
+	error = getElement("authFormEmailError")
 	if (email.length < 3) {
 		error.textContent = "Must be at least 3 characters long"
 		isValid = false
@@ -89,7 +91,7 @@ function validateInput(name, email, password) {
 		error.textContent = ""
 	}
 
-	error = getElement("passwordError")
+	error = getElement("authFormPasswordError")
 	if (password.length < 5) {
 		error.textContent = "Must be at least 5 characters long"
 		isValid = false
@@ -141,22 +143,21 @@ async function signUp(data) {
 
 	form.onsubmit = submitForm
 
-	getElement("helpText").onclick = () => {
-		HelpWindow.show("help")
+	getElement("emailHelpDialogActivator").onclick = () =>
+		showHelpDialog("emailHelpDialog")
+
+	getElement("confirmDialogCancelButton").onclick = () => {
+		getElement("confirmDialog").classList.remove("show")
 	}
 
-	getElement("cancelSubmit").onclick = () => {
-		getElement("confirmWindow").classList.remove("show")
-	}
-
-	getElement("confirmSubmit").onclick = () => {
+	getElement("confirmDialogConfirmButton").onclick = () => {
 		const data = new FormData(form)
 		confirmHandler(data)
 	}
 
-	const toggle = getElement("passwordToggle")
+	const toggle = getElement("authFormPasswordToggle")
 	toggle.onclick = () => {
-		const input = getElement("passwordInput")
+		const input = getElement("authFormPasswordInput")
 
 		const curr = input.getAttribute("type")
 		if (curr === "password") {

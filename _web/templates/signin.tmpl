@@ -1,38 +1,37 @@
 {{ define "content" }}
 <form id="authForm" data-page="signin">
-  <h1>Sign in to your account</h1>
+  <div class="auth-form-header">Sign in to your account</div>
 
-  <section>
-    <label>Email address</label>
+  <div class="auth-form-input-container">
+    <div>Email address</div>
     <input
       type="text"
       name="email"
       autocomplete="off"
       placeholder="magnus@carlsen.com"
     />
-    <p id="emailError"></p>
-  </section>
+  </div>
 
-  <section>
-    <label>Password</label>
-    <div class="password-container">
+  <div class="auth-form-input-container">
+    <div>Password</div>
+
+    <div class="auth-form-input-password">
       <input
-        id="passwordInput"
+        id="authFormPasswordInput"
         type="password"
         name="password"
         autocomplete="off"
         placeholder="*************"
       />
-      <div id="passwordToggle"></div>
+      <div id="authFormPasswordToggle"></div>
     </div>
-    <p id="passwordError"></p>
-  </section>
+  </div>
 
-  <p id="serverError"></p>
-  <button type="submit" id="submitBtn">Sign in</button>
+  <div id="authFormServerError" class="auth-form-error"></div>
+  <button id="authFormSubmitButton">Sign in</button>
 
-  <p class="form-footer">
+  <div class="auth-form-footer">
     Doesn't have an account? <a href="/signup">Sign up</a>
-  </p>
+  </div>
 </form>
 {{ end }}

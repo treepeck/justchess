@@ -1,3 +1,5 @@
+import { getElement } from "./dom"
+
 export default class Notification {
 	/**
 	 * Notification container.
@@ -17,9 +19,8 @@ export default class Notification {
 		this.#container = document.createElement("div")
 		this.#container.classList.add("notification-container")
 
-		// Append container to main.
-		const main = document.getElementsByTagName("main")[0]
-		main.appendChild(this.#container)
+		// Append notification container to the main container.
+		getElement("mainContainer").appendChild(this.#container)
 
 		this.#count = 0
 	}
@@ -37,6 +38,7 @@ export default class Notification {
 
 		// Create close button for notification.
 		const btn = document.createElement("button")
+		btn.classList.add("notification-close-button")
 		btn.textContent = "X"
 		btn.onclick = () => {
 			this.#remove(notification.id)

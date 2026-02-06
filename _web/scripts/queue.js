@@ -3,7 +3,7 @@ import Notification from "./utils/notification"
 import { EventAction } from "./ws/event"
 ;(() => {
 	// Page guard.
-	const container = document.getElementById("container")
+	const container = document.getElementById("mainContainer")
 	if (!container || container.dataset.page !== "queue") return
 
 	const path = window.location.pathname.split("/")
@@ -71,7 +71,7 @@ import { EventAction } from "./ws/event"
 			seconds -= 60 * minutes
 		}
 
-		getElement("countUp").textContent = `${
+		getElement("countUpTimer").textContent = `${
 			minutes > 9 ? minutes : `0${minutes}`
 		}:${seconds > 9 ? seconds : `0${seconds}`}`
 

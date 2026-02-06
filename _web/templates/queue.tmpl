@@ -1,15 +1,16 @@
 {{ define "content" }}
-<main id="container" class="column-container" data-page="queue">
-  <h2>Finding an opponent...</h2>
+<div id="mainContainer" data-page="queue">
+  <div class="queue-info-header">Finding an opponent...</div>
 
-  <div class="queue-content">
-    <div>Control: {{ .Data.Control }} min.</div>
-    <div>Bonus: {{ .Data.Bonus }} sec.</div>
-    <div>Rating: {{ .Base.Player.Rating }}</div>
-    <div id="countUp">00:00</div>
+  <div class="queue-info-container">
     <div id="clientsCounter">Players in queue: ?</div>
+    <div class="queue-info-control">
+      Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s
+    </div>
+    <div>Rating: {{ .Base.Player.Rating }}</div>
+    <div id="countUpTimer">00:00</div>
   </div>
 
   <div id="ping">Ping: ? ms</div>
-</main>
+</div>
 {{ end }}

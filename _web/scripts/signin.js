@@ -8,10 +8,13 @@ function submitForm(event) {
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	getElement("serverError").textContent = ""
+	const error = getElement("authFormServerError")
+	error.textContent = ""
 
 	// Disable the button while the request is being processed.
-	const btn = /** @type {HTMLButtonElement} */ (getElement("submitBtn"))
+	const btn = /** @type {HTMLButtonElement} */ (
+		getElement("authFormSubmitButton")
+	)
 	btn.disabled = true
 	btn.textContent = "Submitting..."
 
@@ -22,7 +25,7 @@ function submitForm(event) {
 	console.log(params)
 
 	signIn(params).then((err) => {
-		getElement("serverError").textContent = "Sign in failed: " + err
+		error.textContent = "Sign in failed: " + err
 
 		// Enable the submit button.
 		btn.disabled = false
@@ -57,9 +60,9 @@ async function signIn(data) {
 
 	form.onsubmit = submitForm
 
-	const toggle = getElement("passwordToggle")
+	const toggle = getElement("authFormPasswordToggle")
 	toggle.onclick = () => {
-		const input = getElement("passwordInput")
+		const input = getElement("authFormPasswordInput")
 
 		const curr = input.getAttribute("type")
 		if (curr === "password") {

@@ -1,70 +1,76 @@
 {{ define "content" }}
 <form id="authForm" data-page="signup">
-  <h1>Create a new account</h1>
+  <div class="auth-form-header">Create a new account</div>
 
-  <section>
-    <label>Username</label>
+  <div class="auth-form-input-container">
+    <div>Username</div>
     <input
       type="text"
       name="name"
       autocomplete="off"
       placeholder="MagnusCarlsen"
     />
-    <p id="nameError"></p>
-  </section>
+    <div class="auth-form-error" id="authFormNameError"></div>
+  </div>
 
-  <section>
-    <label><span id="helpText">Email address</span></label>
+  <div class="auth-form-input-container">
+    <div class="help-dialog-activator" id="emailHelpDialogActivator">
+      Email address
+    </div>
     <input
       type="text"
       name="email"
       autocomplete="off"
       placeholder="magnus@carlsen.com"
     />
-    <p id="emailError"></p>
-  </section>
+    <div class="auth-form-error" id="authFormEmailError"></div>
+  </div>
 
-  <section>
-    <label>Password</label>
-    <div class="password-container">
+  <div class="auth-form-input-container">
+    <div>Password</div>
+
+    <div class="auth-form-input-password">
       <input
-        id="passwordInput"
+        id="authFormPasswordInput"
         type="password"
         name="password"
         autocomplete="off"
         placeholder="*************"
       />
-      <div id="passwordToggle"></div>
+      <div id="authFormPasswordToggle"></div>
     </div>
-    <p id="passwordError"></p>
-  </section>
 
-  <p id="serverError"></p>
-  <button type="submit" id="submitBtn">Sign up</button>
+    <div class="auth-form-error" id="authFormPasswordError"></div>
+  </div>
 
-  <p class="form-footer">
+  <div id="authFormServerError" class="auth-form-error"></div>
+  <button id="authFormSubmitButton">Sign up</button>
+
+  <div class="auth-form-footer">
     Already have an account? <a href="/signin">Sign in</a>
-  </p>
+  </div>
 </form>
 
-<div class="help-container" id="help">
-  <div class="help-content">
+<div id="emailHelpDialog" class="help-dialog-container">
+  <div class="help-dialog-content">
     <h2><b>Why do I need to enter my email address?</b></h2>
 
     <p>To securely reset your password if you forget it.</p>
     <p>Your email will never be shared or used for any other purpose.</p>
 
-    <button id="closehelp">OK</button>
+    <button id="emailHelpDialogCloseButton" class="help-dialog-close-button">OK</button>
   </div>
 </div>
 
-<div id="confirmWindow">
-  <div class="confirm-content">
-    <h2><b>Please note</b></h2>
-    <p>Accounts with offensive or inappropriate names will be blocked.</p>
-    <div class="buttons">
-    <button id="cancelSubmit">Cancel</button>
-    <button id="confirmSubmit">Confirm</button>
+<div id="confirmDialog">
+  <div class="confirm-dialog-content">
+    <div class="confirm-dialog-header">Please note</div>
+
+    <div>Accounts with offensive or inappropriate names will be blocked.</div>
+
+    <div class="confirm-dialog-buttons">
+      <button id="confirmDialogCancelButton">Cancel</button>
+      <button id="confirmDialogConfirmButton">Confirm</button>
     </div>
   </div>
 </div>

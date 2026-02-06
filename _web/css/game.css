@@ -1,30 +1,150 @@
+.chat-container {
+  width: 95%;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  order: 3;
+  margin: auto;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+}
+
+.chat-header {
+  font-size: x-large;
+  font-weight: bold;
+  text-align: center;
+}
+
+.chat-messages {
+  width: 100%;
+  height: 200px;
+  overflow-y: scroll;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+}
+
+.chat-input-container {
+  display: flex;
+  border-radius: 10px;
+  background: var(--input-background);
+}
+
+#chatInput {
+  background-color: transparent;
+}
+
+#chatSendButton {
+  height: 48px;
+  aspect-ratio: 1/1;
+  margin: auto 5px auto 5px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+  background-image: url("/images/send.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .board-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  order: 1;
   margin: auto;
   width: 95%;
   max-width: 650px;
 }
 
-#boardCanvas {
+.board-miniprofile {
+  display: flex;
+  font-size: x-large;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  gap: 10px;
+  width: 100%;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+}
+
+.board-miniprofile a {
+  overflow: hidden;
+  font-weight: bold;
+  width: 25%;
+}
+
+.board-miniprofile-timer {
+  margin: auto 0 auto auto;
+  font-family: "ChessClock";
+  user-select: none;
+  font-size: 35px;
+}
+
+.board-content {
   width: 100%;
   aspect-ratio: 1/1;
-  cursor: pointer;
   border: 2px solid var(--container-background);
-  border-radius: 10px;
-}
-
-.move-table {
-  margin: auto;
-  padding: 15px;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
   border-radius: 15px;
-  overflow-y: scroll;
+  background-image: url("/images/board.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  cursor: pointer;
 }
 
-.miniprofile {
+.move-table-container {
+  width: 95%;
+  max-width: 350px;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  order: 3;
+  margin: auto;
   color: var(--container-foreground);
   background-color: var(--container-background);
   border-radius: 15px;
+}
+
+.move-table-header {
+  font-size: x-large;
+  font-weight: bold;
+  text-align: center;
+}
+
+.move-table-moves {
+  width: 100%;
+  height: 200px;
+  overflow-y: scroll;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+}
+
+/* Reorder elements on larger screens. */
+@media screen and (min-width: 1200px) {
+  #mainContainer[data-page="game"] {
+    flex-direction: row;
+  }
+
+  .chat-container {
+    order: 1;
+  }
+
+  .chat-messages {
+    height: 500px;
+  }
+
+  .board-container {
+    order: 2;
+  }
+
+  .move-table-container {
+    order: 3;
+  }
 }

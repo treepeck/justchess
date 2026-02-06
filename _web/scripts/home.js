@@ -1,14 +1,14 @@
 import { getElement } from "./utils/dom"
-import HelpWindow from "./utils/help"
+import showHelpDialog from "./utils/help_dialog"
 ;(() => {
 	// Page guard.
-	const container = document.getElementById("container")
+	const container = document.getElementById("mainContainer")
 	if (!container || container.dataset.page !== "home") {
 		return
 	}
 
-	getElement("helpText").onclick = () => {
-		HelpWindow.show("help")
+	getElement("timeControlHelpDialogActivator").onclick = () => {
+		showHelpDialog("timeControlHelpDialog")
 	}
 
 	for (let i = 1; i <= 9; i++) {

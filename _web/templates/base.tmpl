@@ -11,18 +11,20 @@
 </head>
 
 <body>
-  <header>
-    <nav>
-      <div class="logo"><a href="/">JustChess</a></div>
+  <div class="header-container">
+    <div class="header-content">
+      <a class="header-site-logo" href="/">JustChess</a>
 
-      <a href="/{{ .Base.Player.Name }}">{{ .Base.Player.Name }}</a>
-    </nav>
-  </header>
+      <a class="header-player-profile" href="/{{ .Base.Player.Name }}">
+        {{ .Base.Player.Name }}
+      </a>
+    </div>
+  </div>
 
   {{ block "content" . }}{{ end }}
 
-  <footer>
-    <div>
+  <div class="footer-container">
+    <div class="footer-content">
       &copy; 2026 JustChess
     </div>
   </footer>

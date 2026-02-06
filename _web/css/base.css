@@ -1,0 +1,205 @@
+@font-face {
+  font-family: "Ubuntu";
+  src: url("/fonts/UbuntuSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Ubuntu";
+  src: url("/fonts/UbuntuSans-Bold.woff2") format("woff2");
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: "ChessClock";
+  src: url("/fonts/JustChessClock-Regular.woff2") format("woff2");
+}
+
+:root {
+  --background: #e2d3c4;
+  --foreground: #34211d;
+  --text-hover: #1c6741;
+  --input-background: #b5936e69;
+  --input-placeholder: rgba(73, 72, 72, 0.564);
+  --container-background: rgb(37, 22, 22, 85%);
+  --container-foreground: #b5936e;
+  --max-width: 1600px;
+}
+
+/* Remove default margin and padding. */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* Count element size taking margins and paddings into account. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: "Ubuntu";
+  color: var(--foreground);
+  background: var(--background);
+}
+
+a,
+input,
+button {
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+input {
+  padding: 5px;
+  line-height: 2;
+  width: 100%;
+  font-size: x-large;
+  font-weight: bold;
+  padding: 5px;
+  border: none;
+  border-radius: 10px;
+  background-color: var(--input-background);
+}
+
+input:hover,
+input:focus {
+  outline: var(--input-background);
+}
+
+a:hover {
+  color: var(--text-hover);
+}
+
+button {
+  border: none;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  transition: background-color 0.75s ease-in-out, border-color 0.75s ease-in-out,
+    color 0.75s ease-in-out;
+}
+
+button:hover,
+button:focus {
+  outline: none;
+  color: var(--container-background);
+  background-color: var(--container-foreground);
+}
+
+.header-container {
+  width: 100%;
+  padding: 5px;
+  padding: 20px;
+  user-select: none;
+  font-size: larger;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.header-content {
+  max-width: var(--max-width);
+  display: flex;
+  margin: 0 auto 0 auto;
+  font-weight: bold;
+  line-height: 100%;
+}
+
+.header-site-logo {
+  font-size: xx-large;
+  margin: 0 auto 0 0;
+}
+
+.header-player-profile {
+  font-size: x-large;
+  margin: 0 0 0 auto;
+}
+
+#mainContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: auto;
+  gap: 20px;
+  padding: 15px;
+}
+
+#ping {
+  font-size: x-large;
+  font-weight: bold;
+  margin: 10px auto 10px 10px;
+}
+
+.footer-container {
+  width: 100%;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.footer-content {
+  max-width: var(--max-width);
+  display: flex;
+  margin: 0 auto 0 auto;
+}
+
+/* Animated background applied on home and queue pages. */
+#mainContainer[data-page="home"]::before,
+#mainContainer[data-page="queue"]::before {
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  content: "";
+  position: fixed;
+  background-image: url("/images/board.svg");
+  transform: rotate(15deg);
+  filter: blur(2px);
+  animation: slide-background 300s infinite;
+  z-index: -1;
+}
+
+@keyframes slide-background {
+  0% {
+    background-position-x: 0;
+    background-position-y: 0;
+  }
+
+  25% {
+    background-position-x: 100vw;
+    background-position-y: -100vh;
+  }
+
+  50% {
+    background-position-x: 0;
+    background-position-y: 0;
+  }
+
+  75% {
+    background-position-x: -100vw;
+    background-position-y: 100vh;
+  }
+
+  100% {
+    background-position-x: 0;
+    background-position-y: 0;
+  }
+}
+
+@media screen and (min-width: 600px) {
+  /* Make background animation slower on larger screens. */
+  #mainContainer[data-page="home"]::before,
+  #mainContainer[data-page="queue"]::before {
+    transform: rotate(15deg) scale(2);
+    animation: slide-background 800s infinite;
+  }
+}

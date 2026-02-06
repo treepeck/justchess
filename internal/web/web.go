@@ -120,6 +120,8 @@ func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 	// Fill up the template with more game data.
 	page.Data = g
 
+	page.Base.Title = g.White.Name + " vs " + g.Black.Name
+
 	s.renderPage(rw, r, page)
 }
 

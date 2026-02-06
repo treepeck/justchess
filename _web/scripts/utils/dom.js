@@ -5,6 +5,6 @@
  */
 export function getElement(id) {
 	const el = document.getElementById(id)
-	if (!el) throw new Error("Missing element.")
+	if (!el) throw new Error(`Missing element ${id}.`)
 	return el
 }
