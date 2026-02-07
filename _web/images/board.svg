@@ -7,12 +7,36 @@
    viewBox="0 0 600 600.00003"
    version="1.1"
    id="svg5"
+   sodipodi:docname="board.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview69"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     showgrid="false"
+     inkscape:zoom="0.69"
+     inkscape:cx="268.84058"
+     inkscape:cy="346.37681"
+     inkscape:window-width="1519"
+     inkscape:window-height="745"
+     inkscape:window-x="775"
+     inkscape:window-y="102"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg5" />
   <defs
      id="defs2" />
   <g
-     id="layer1">
+     id="layer1"
+     transform="rotate(90,300.03613,299.98864)">
     <rect
        style="fill:#8e684b;fill-opacity:1;stroke:none;stroke-width:123.178;stroke-linecap:square;stroke-linejoin:bevel;stroke-miterlimit:9.8;stroke-dasharray:none"
        id="rect208"

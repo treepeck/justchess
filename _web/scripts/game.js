@@ -7,13 +7,29 @@ import Notification from "./utils/notification"
 /**
  * Appends move SAN to moves table.
  * @param {string} san
+ * @param {number} moveIndex
  */
-function appendMoveToTable(san) {
-	const moveDiv = document.createElement("div")
-	moveDiv.classList.add("move")
-	moveDiv.textContent = san
+function appendMoveToTable(san, moveIndex) {
+	// Half move index.
+	const ply = Math.ceil(moveIndex / 2)
+	console.log(ply)
 
-	getElement("moveTable").appendChild(moveDiv)
+	// Append the half-move index.
+	if (moveIndex % 2 !== 0) {
+		// Append new row to the table after each black move.
+		const row = document.createElement("div")
+		// Assign unique id to each table row.
+		row.id = `row${ply}`
+		row.classList.add("move-table-row")
+		row.textContent = `${ply}.`
+		getElement("moveTable").appendChild(row)
+	}
+
+	// Append move to the row.
+	const move = document.createElement("div")
+	move.textContent = san
+	move.classList.add("move-table-san")
+	getElement(`row${ply}`).appendChild(move)
 }
 
 /**
@@ -28,12 +44,21 @@ function appendChatMessage(msg) {
 	getElement("chatMessages").appendChild(msgDiv)
 }
 
+/**
+ * @typedef {Object} CompletedMove
+ * @property {Move} m - Encoded move.
+ * @property {number} t - Remaining time on the player's clock.
+ * @property {string} s - Standard Algebraic Notation of the move.
+ */
+
 ;(() => {
 	// Page guard.
 	const container = document.getElementById("mainContainer")
 	if (!container || container.dataset.page !== "game") {
 		return
 	}
+
+	const completedMoves = /** @type {CompletedMove[]} */ ([])
 
 	// Initialize WebSocket connection.
 	const path = window.location.pathname.split("/")
@@ -103,10 +128,11 @@ function appendChatMessage(msg) {
 				board.setLegalMoves(pGame.lm)
 
 				for (const completedMove of pGame.m) {
-					// @ts-expect-error
+					// Store completed move.
+					completedMoves.push(completedMove)
 					const move = new Move(completedMove.m)
 					board.makeMove(move)
-					appendMoveToTable(completedMove.s)
+					appendMoveToTable(completedMove.s, completedMoves.length)
 				}
 
 				break
@@ -115,11 +141,13 @@ function appendChatMessage(msg) {
 				/** @type {import("./ws/event").MovePayload} */
 				const pMove = { ...payload }
 
+				// Store completed move.
+				completedMoves.push(pMove.m)
+
 				board.setLegalMoves(pMove.lm)
 
-				appendMoveToTable(pMove.m.s)
+				appendMoveToTable(pMove.m.s, completedMoves.length)
 
-				// @ts-expect-error
 				const move = new Move(pMove.m.m)
 				board.makeMove(move)
 				break

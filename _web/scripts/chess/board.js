@@ -257,6 +257,13 @@ export default class Board {
 				break
 		}
 
+		// Remove captured piece if it is present.
+		const captured = this.#pieces.get(move.to)
+		if (captured !== undefined) {
+			this.#pieces.delete(move.to)
+			this.#element.removeChild(captured.element)
+		}
+
 		// Move piece to the destination square.
 		// TODO: handle promotion moves.
 		this.#movePiece(move.from, move.to)
