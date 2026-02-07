@@ -1,403 +1,375 @@
-import { Square, Move, MoveType } from "./move"
+import { getElement } from "../utils/dom"
+import { Piece, PieceType } from "./piece"
+import { Move, MoveType, Square } from "./move"
 
 /**
- * Enum representing chess pieces.
- * @enum {typeof Piece[keyof typeof Piece]}
- */
-const Piece = /** @type {const} */ ({
-	WP: 0,
-	BP: 1,
-	WN: 2,
-	BN: 3,
-	WB: 4,
-	BB: 5,
-	WR: 6,
-	BR: 7,
-	WQ: 8,
-	BQ: 9,
-	WK: 10,
-	BK: 11,
-	NP: -1,
-})
-
-/**
- * Function which is called when the player performs the move.
- * @callback MoveHandler
- * @param {number} moveIndex
- * @returns {void}
+ * @typedef {Object} Position
+ * @property {number} x - Horizontal pixel coordinate on the board element.
+ * @property {number} y - Vertical pixel coordinate on the board element.
+ * @property {Square} square - Index of the square.
  */
 
 /**
- * Wrapper around the HTML canvas that renders and manages the chessboard state.
+ * Wrapper around the HTML element that renders and manages the chessboard state.
  */
-export default class BoardCanvas {
+export default class Board {
 	/**
-	 * Context to which the board will be rendered.
-	 * @type {CanvasRenderingContext2D}
+	 * Reference to the element in which the board will be rendered.
+	 * @type {HTMLDivElement}
 	 */
-	#context
+	#element
 	/**
-	 * Canvas size in pixels.
+	 * Piece placement.
+	 * @type {Map<Square, Piece>}
+	 */
+	#pieces
+	/**
+	 * @type {Move[]}
+	 */
+	#legalMoves
+	/**
+	 * @type {PieceType}
+	 */
+	#draggedPiece
+	/**
+	 * @type {Square}
+	 */
+	#selectedSquare
+	/**
+	 * Board element size in pixels.
 	 * @type {number}
 	 */
 	#size
 	/**
-	 * Index of the selected square. -1 means that no square is selected.
-	 * @type {number}
-	 */
-	#selectedSquare
-	/**
-	 * Spritesheet.
-	 * @type {HTMLImageElement}
-	 */
-	#sheet
-	/**
-	 * @typedef {Object} Position
-	 * @property {number} x - The horizontal pixel coordinate on the canvas.
-	 * @property {number} y - The vertical pixel coordinate on the canvas.
-	 * @property {number} square - Index of the square [0-63].
+	 * Function that handles the player's move.
+	 * @callback MoveHandler
+	 * @param {number} moveIndex
+	 * @returns {void}
 	 */
 	/**
-	 * Piece which is currently being dragged. Null in case no piece is being dragged.
-	 * @typedef {Object} DraggedPiece
-	 * @property {Piece} piece - Piece type.
-	 * @property {number} from - Initial piece position.
-	 * @property {Position} position
+	 * @type {MoveHandler}
 	 */
-	/** @type {DraggedPiece | null} */
-	#draggedPiece
-	/**
-	 * Piece placement.
-	 * @type {Piece[]}
-	 */
-	#squares
-	/**
-	 * @type {Move[]}
-	 */
-	legalMoves
-	/**
-	 * Size of an individual square on the canvas in pixels.
-	 * @type {number}
-	 */
-	#square
-	/**
-	 * Size of an individual piece sprite on the spritesheet.
-	 * @type {number}
-	 */
-	#piece
-	/**
-	 * @type {number}
-	 */
-	#hoveredSquare
-
-	/** @type {MoveHandler} */
-	moveHandler
+	#moveHandler
 
 	/**
-	 * @param {CanvasRenderingContext2D} context
-	 * @param {HTMLImageElement} sheet
+	 * @param {HTMLDivElement} element
 	 * @param {MoveHandler} moveHandler
 	 */
-	constructor(context, sheet, moveHandler) {
-		this.#context = context
-		this.#sheet = sheet
-		this.#size = 0
-		this.#selectedSquare = -1
-		this.#hoveredSquare = -1
-		this.#draggedPiece = null
-		this.#piece = 300
-		// Assign moveHandler callback.
-		this.moveHandler = moveHandler
+	constructor(element, moveHandler) {
+		this.#element = element
 
-		this.legalMoves = []
+		this.#selectedSquare = -1
+
+		this.#draggedPiece = PieceType.NP
+
+		this.#legalMoves = []
+
+		this.#moveHandler = moveHandler
+
+		// Initialize default board size.
+		this.#size = element.offsetWidth
+
+		this.#pieces = new Map()
 
 		// Initialize default piece placement.
-		// prettier-ignore
-		this.#squares = [
-			Piece.WR, Piece.WN, Piece.WB, Piece.WQ, Piece.WK, Piece.WB, Piece.WN, Piece.WR,
-			Piece.WP, Piece.WP, Piece.WP, Piece.WP, Piece.WP, Piece.WP, Piece.WP, Piece.WP,
-			Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP,
-			Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP,
-			Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP,
-			Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP, Piece.NP,
-			Piece.BP, Piece.BP, Piece.BP, Piece.BP, Piece.BP, Piece.BP, Piece.BP, Piece.BP,
-			Piece.BR, Piece.BN, Piece.BB, Piece.BQ, Piece.BK, Piece.BB, Piece.BN, Piece.BR,
-		]
-	}
 
-	/** Renders the board. */
-	render() {
-		for (let rank = 0; rank < 8; rank++) {
-			for (let file = 0; file < 8; file++) {
-				// Draw board squares.
-				this.#context.fillStyle = "#e2d3c4"
-				if (
-					(rank % 2 !== 0 && file % 2 !== 0) ||
-					(rank % 2 === 0 && file % 2 === 0)
-				) {
-					this.#context.fillStyle = "#8e684b"
-				}
-
-				const x = file * this.#square
-				const y = this.#size - this.#square - rank * this.#square
-				this.#context.fillRect(x, y, this.#square, this.#square)
-
-				const ind = 8 * rank + file
-				// Draw selected this.#square.
-				if (ind === this.#selectedSquare) {
-					this.#context.fillStyle = "green"
-					this.#context.fillRect(x, y, this.#square, this.#square)
-				}
-
-				// Draw dragged piece.
-				// Make dragged piece a bit bigger.
-				const size = Math.round(this.#square * 1.1)
-				if (this.#draggedPiece !== null) {
-					this.#context.drawImage(
-						this.#sheet,
-						Math.floor(this.#draggedPiece.piece / 2) * this.#piece,
-						this.#draggedPiece.piece % 2 === 0 ? 0 : this.#piece,
-						this.#piece,
-						this.#piece,
-						this.#draggedPiece.position.x,
-						this.#draggedPiece.position.y,
-						size,
-						size
-					)
-				}
-
-				// Draw pieces.
-				if (this.#squares[ind] !== Piece.NP) {
-					this.#context.drawImage(
-						this.#sheet,
-						Math.floor(this.#squares[ind] / 2) * this.#piece,
-						this.#squares[ind] % 2 === 0 ? 0 : this.#piece,
-						this.#piece,
-						this.#piece,
-						x,
-						y,
-						this.#square,
-						this.#square
-					)
-				}
-
-				// Draw hovered square.
-				if (ind === this.#hoveredSquare) {
-					const isLegal = this.legalMoves.find(
-						(move) =>
-							move.from === this.#selectedSquare &&
-							move.to === ind
-					)
-
-					this.#context.strokeStyle = isLegal ? "green" : "gray"
-					this.#context.lineWidth = 3
-					this.#context.strokeRect(x, y, this.#square, this.#square)
-				}
-			}
+		// Add white pawns.
+		for (let i = 0; i < 8; i++) {
+			this.#appendPiece(new Piece(PieceType.WP), Square.A2 + i)
 		}
+
+		// Add white knights.
+		this.#appendPiece(new Piece(PieceType.WN), Square.B1)
+		this.#appendPiece(new Piece(PieceType.WN), Square.G1)
+
+		// Add white bishops.
+		this.#appendPiece(new Piece(PieceType.WB), Square.C1)
+		this.#appendPiece(new Piece(PieceType.WB), Square.F1)
+
+		// Add white rooks.
+		this.#appendPiece(new Piece(PieceType.WR), Square.A1)
+		this.#appendPiece(new Piece(PieceType.WR), Square.H1)
+
+		// Add white queen.
+		this.#appendPiece(new Piece(PieceType.WQ), Square.D1)
+
+		// Add white king.
+		this.#appendPiece(new Piece(PieceType.WK), Square.E1)
+
+		// Add black pawns.
+		for (let i = 0; i < 8; i++) {
+			this.#appendPiece(new Piece(PieceType.BP), Square.A7 + i)
+		}
+
+		// Add black knights.
+		this.#appendPiece(new Piece(PieceType.BN), Square.B8)
+		this.#appendPiece(new Piece(PieceType.BN), Square.G8)
+
+		// Add black bishops.
+		this.#appendPiece(new Piece(PieceType.BB), Square.C8)
+		this.#appendPiece(new Piece(PieceType.BB), Square.F8)
+
+		// Add black rooks.
+		this.#appendPiece(new Piece(PieceType.BR), Square.A8)
+		this.#appendPiece(new Piece(PieceType.BR), Square.H8)
+
+		// Add black queen.
+		this.#appendPiece(new Piece(PieceType.BQ), Square.D8)
+
+		// Add black king.
+		this.#appendPiece(new Piece(PieceType.BK), Square.E8)
 	}
 
 	/**
-	 * Rerender the board on a canvas when the size changes.
-	 * @param {number} size
-	 */
-	setSize(size) {
-		const dpr = window.devicePixelRatio || 1
-		if (
-			size * dpr >=
-			Number.parseInt(
-				this.#context.canvas.style.getPropertyValue("max-width")
-			)
-		) {
-			this.#size = Math.round(size * dpr)
-			this.#context.scale(dpr, dpr)
-		} else {
-			this.#size = Math.round(size)
-		}
-
-		this.#square = Math.round(this.#size / 8)
-		this.#context.canvas.width = this.#size
-		this.#context.canvas.height = this.#size
-
-		this.render()
-	}
-
-	/** @param {Move[]} moves */
-	setLegalMoves(moves) {
-		this.legalMoves = []
-		for (const encoded of moves) {
-			// @ts-expect-error
-			this.legalMoves.push(new Move(encoded))
-		}
-
-		this.render()
-	}
-
-	/**
-	 * Handles player's clicks on the canvas.
+	 * Handles player's click on the board element.
 	 * @param {MouseEvent} e
 	 */
 	onMouseDown(e) {
 		const { x, y, square } = this.#getPositionOfEvent(e)
 
-		const selected =
-			this.#selectedSquare > -1
-				? this.#squares[this.#selectedSquare]
-				: Piece.NP
+		const prev = document.getElementById("selectedSquare")
+		if (prev !== null) {
+			const from = this.#selectedSquare
 
-		if (selected !== Piece.NP && square !== this.#selectedSquare) {
-			for (let i = 0; i < this.legalMoves.length; i++) {
-				const move = this.legalMoves[i]
-				if (move.from == this.#selectedSquare && move.to == square) {
-					this.moveHandler(i)
-					this.#selectedSquare = -1
-					return
+			// Remove previous selected square.
+			this.#element.removeChild(prev)
+			this.#selectedSquare = -1
+
+			// Call move handler is the move is legal.
+			for (let i = 0; i < this.#legalMoves.length; i++) {
+				const move = this.#legalMoves[i]
+				if (move.from === from && move.to === square) {
+					this.#moveHandler(i)
 				}
-			}
-		}
-
-		this.#selectedSquare = square
-		const piece = this.#squares[square]
-		if (piece !== Piece.NP) {
-			// Temporary remove the piece from its square while its being dragged.
-			this.#squares[square] = Piece.NP
-			// Begin piece drag.
-			this.#draggedPiece = {
-				position: {
-					x: Math.round(x - (this.#square * 1.1) / 2), // Center piece horizontally.
-					y: Math.round(y - (this.#square * 1.1) / 2), // Center piece vertically.
-					square: square,
-				},
-				from: this.#selectedSquare,
-				piece: piece,
-			}
-		}
-
-		this.render()
-	}
-
-	/**
-	 * Handles player's mouse movement on the canvas.
-	 * @param {MouseEvent} e
-	 */
-	onMouseMove(e) {
-		const { x, y, square } = this.#getPositionOfEvent(e)
-		this.#hoveredSquare = square
-
-		if (this.#draggedPiece !== null) {
-			const isLeftButtonPressed = e.buttons === 1
-
-			if (isLeftButtonPressed) {
-				// Center and move dragged piece with the cursor.
-				this.#draggedPiece.position.x = x - this.#square / 2
-				this.#draggedPiece.position.y = y - this.#square / 2
-			} else {
-				// Return the dragged piece into its originating position.
-				this.#squares[this.#selectedSquare] = this.#draggedPiece.piece
-				this.#draggedPiece = null
-			}
-		}
-		this.render()
-	}
-
-	/**
-	 * Handles piece drops or regular moves.
-	 * @param {MouseEvent} e
-	 */
-	onMouseUp(e) {
-		// Shortcut: no move to be performed.
-		if (!this.#draggedPiece) {
-			return
-		}
-
-		// End piece drag.
-		const piece = this.#draggedPiece.piece
-		this.#squares[this.#draggedPiece.from] = piece
-		this.#draggedPiece = null
-
-		const { square } = this.#getPositionOfEvent(e)
-		// Shortcut: to and from squares are the same.
-		if (square === this.#selectedSquare) {
-			this.render()
-			return
-		}
-
-		for (let i = 0; i < this.legalMoves.length; i++) {
-			const move = this.legalMoves[i]
-			if (move.from == this.#selectedSquare && move.to == square) {
-				this.moveHandler(i)
-				this.#selectedSquare = -1
 				return
 			}
 		}
-		this.render()
+
+		const piece = this.#pieces.get(square)
+		if (piece !== undefined) {
+			// Remove piece from board while it's being dragged.
+			this.#pieces.delete(square)
+			this.#element.removeChild(piece.element)
+
+			// Append dragged piece to the board.
+			const dp = new Piece(piece.pieceType)
+			dp.element.id = "draggedPiece"
+			this.#element.appendChild(dp.element)
+
+			// Position dragged piece under the player's mouse cursor.
+			const squareSize = this.#size / 8
+			dp.element.style.setProperty("--x", `${x - squareSize / 2}px`)
+			dp.element.style.setProperty("--y", `${y - squareSize / 2}px`)
+
+			this.#draggedPiece = piece.pieceType
+		}
+
+		// Append new selected square to the board.
+		this.#appendSelectedSquare(square)
 	}
 
 	/**
-	 * TODO: handle caslting and promotion moves.
-	 * @param {import("./move").Move} move
+	 * Handles player's mouse movements above the board element.
+	 * @param {MouseEvent} e
+	 */
+	onMouseMove(e) {
+		if (this.#draggedPiece !== PieceType.NP) {
+			const { x, y } = this.#getPositionOfEvent(e)
+
+			// Position dragged piece under the player's mouse cursor.
+			const dp = getElement("draggedPiece")
+			const squareSize = this.#size / 8
+			dp.style.setProperty("--x", `${x - squareSize / 2}px`)
+			dp.style.setProperty("--y", `${y - squareSize / 2}px`)
+		}
+	}
+
+	/**
+	 * Handles player's mouse release on the board element.
+	 * @param {MouseEvent} e
+	 */
+	onMouseUp(e) {
+		const dp = this.#draggedPiece
+
+		if (dp !== PieceType.NP) {
+			// Restore piece placement.
+			this.#appendPiece(new Piece(dp), this.#selectedSquare)
+
+			// Call move handler if the move is valid.
+			const { square } = this.#getPositionOfEvent(e)
+			for (let i = 0; i < this.#legalMoves.length; i++) {
+				const move = this.#legalMoves[i]
+				if (move.from === this.#selectedSquare && move.to === square) {
+					this.#moveHandler(i)
+					break
+				}
+			}
+
+			// Remove dragged piece element from the board.
+			const el = getElement("draggedPiece")
+			this.#element.removeChild(el)
+			this.#draggedPiece = PieceType.NP
+
+			// Reset selected square.
+			this.#selectedSquare = -1
+			this.#element.removeChild(getElement("selectedSquare"))
+		}
+	}
+
+	/**
+	 * @param {Move} move
 	 */
 	makeMove(move) {
-		console.log(move, move.from, move.to)
-		const piece = this.#squares[move.from]
-		this.#squares[move.from] = Piece.NP
+		const piece = this.#pieces.get(move.from)
+		if (piece === undefined) throw new Error("Piece is not on the board")
 
 		switch (move.moveType) {
 			case MoveType.Castling:
 				// Update rook position.
 				switch (move.to) {
 					case Square.G1: // White O-O.
-						this.#squares[Square.H1] = Piece.NP
-						this.#squares[Square.F1] = Piece.WR
+						this.#movePiece(Square.H1, Square.F1)
 						break
 
 					case Square.C1: // White O-O-O.
-						this.#squares[Square.A1] = Piece.NP
-						this.#squares[Square.D1] = Piece.WR
+						this.#movePiece(Square.A1, Square.D1)
 						break
 
 					case Square.G8: // Black O-O.
-						this.#squares[Square.H8] = Piece.NP
-						this.#squares[Square.F8] = Piece.BR
+						this.#movePiece(Square.H8, Square.F8)
 						break
 
 					case Square.C8: // Black O-O-O.
-						this.#squares[Square.A8] = Piece.NP
-						this.#squares[Square.D8] = Piece.BR
+						this.#movePiece(Square.A8, Square.D8)
 						break
 				}
 				break
 
 			case MoveType.EnPassant:
-				// Remove captured piece from board.
+				const capturedSquare =
+					piece.pieceType === PieceType.WP ? move.to - 8 : move.to + 8
+				const captured = this.#pieces.get(capturedSquare)
+				if (captured === undefined)
+					throw new Error("Piece is not on board")
+
+				this.#pieces.delete(capturedSquare)
+				this.#element.removeChild(captured.element)
 				break
 		}
 
-		this.#squares[move.to] =
-			move.moveType === MoveType.Promotion ? move.promoPiece : piece
-
-		this.render()
+		// Move piece to the destination square.
+		// TODO: handle promotion moves.
+		this.#movePiece(move.from, move.to)
 	}
 
 	/**
+	 * Update piece positions when the elemen's size changes to make board responsive.
+	 * @param {number} size
+	 */
+	setSize(size) {
+		this.#size = Math.round(size)
+		this.#pieces.forEach((p, s) => this.#appendPiece(p, s))
+	}
+
+	/**
+	 * Updates legal moves on the board.
+	 * @param {Move[]} moves
+	 */
+	setLegalMoves(moves) {
+		this.#legalMoves = []
+		for (const encoded of moves) {
+			// @ts-expect-error
+			this.#legalMoves.push(new Move(encoded))
+		}
+	}
+
+	/**
+	 * @param {Square} from
+	 * @param {Square} to
+	 */
+	#movePiece(from, to) {
+		const piece = this.#pieces.get(from)
+		if (piece === undefined) throw new Error("Piece is not on the board")
+
+		// Update piece position.
+		this.#pieces.delete(from)
+		this.#pieces.set(to, piece)
+
+		const { x, y } = this.#square2Position(to)
+		piece.element.style.setProperty("--x", `${x}px`)
+		piece.element.style.setProperty("--y", `${y}px`)
+	}
+
+	/**
+	 * @param {Piece} piece
+	 * @param {Square} square
+	 */
+	#appendPiece(piece, square) {
+		if (this.#pieces.get(square) === undefined) {
+			this.#pieces.set(square, piece)
+		}
+
+		const pos = this.#square2Position(square)
+		piece.element.style.setProperty("--x", `${pos.x}px`)
+		piece.element.style.setProperty("--y", `${pos.y}px`)
+
+		this.#element.appendChild(piece.element)
+	}
+
+	/**
+	 * Appends the selected square element to the board.
+	 * @param {Square} square
+	 */
+	#appendSelectedSquare(square) {
+		this.#selectedSquare = square
+
+		const squareElement = document.createElement("div")
+		squareElement.id = "selectedSquare"
+
+		const pos = this.#square2Position(square)
+		squareElement.style.setProperty("--x", `${pos.x}px`)
+		squareElement.style.setProperty("--y", `${pos.y}px`)
+
+		this.#element.appendChild(squareElement)
+	}
+
+	/**
+	 * Returns the position of the triggered mouse event.
 	 * @param {MouseEvent} e
 	 * @returns {Position}
 	 */
 	#getPositionOfEvent(e) {
-		const rect = this.#context.canvas.getBoundingClientRect()
-		const scaleX = this.#context.canvas.width / rect.width
-		const scaleY = this.#context.canvas.height / rect.height
+		const squareSize = this.#size / 8
 
-		const x = (e.clientX - rect.left) * scaleX
-		const y = (e.clientY - rect.top) * scaleY
+		const rect = this.#element.getBoundingClientRect()
 
-		const file = Math.floor(x / this.#square)
-		const rank = Math.floor((this.#size - y) / this.#square)
+		const x = e.clientX - rect.left
+		const y = e.clientY - rect.top
+
+		const file = Math.floor(x / squareSize)
+		const rank = Math.floor((this.#size - y) / squareSize)
 
 		return {
 			x: x,
 			y: y,
 			square: 8 * rank + file,
+		}
+	}
+
+	/**
+	 * @param {Square} square
+	 * @returns {Position}
+	 */
+	#square2Position(square) {
+		const squareSize = this.#size / 8
+
+		const file = Math.floor(square % 8)
+		const rank = Math.floor(square / 8)
+
+		return {
+			x: file * squareSize,
+			y: this.#size - squareSize - rank * squareSize,
+			square: square,
 		}
 	}
 }

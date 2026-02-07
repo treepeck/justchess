@@ -1,50 +1,41 @@
-import Notification from "./utils/notification"
-import { EventAction } from "./ws/event"
-import BoardCanvas from "./chess/board"
+import Board from "./chess/board"
 import { Move } from "./chess/move"
 import { getElement } from "./utils/dom"
+import { EventAction } from "./ws/event"
+import Notification from "./utils/notification"
 
-/** @param {string} san */
-function appendMove(san) {
+/**
+ * Appends move SAN to moves table.
+ * @param {string} san
+ */
+function appendMoveToTable(san) {
 	const moveDiv = document.createElement("div")
 	moveDiv.classList.add("move")
 	moveDiv.textContent = san
 
-	getElement("tableBody").appendChild(moveDiv)
+	getElement("moveTable").appendChild(moveDiv)
 }
 
 /**
- * Appends the message to the DOM.
- * @param {string} message
+ * Appends chat message to the DOM.
+ * @param {string} msg
  */
-function appendMessage(message) {
+function appendChatMessage(msg) {
 	const msgDiv = document.createElement("div")
 	msgDiv.classList.add("message")
-	msgDiv.textContent = message
+	msgDiv.textContent = msg
 
-	getElement("messageContainer").appendChild(msgDiv)
+	getElement("chatMessages").appendChild(msgDiv)
 }
 
-/**
- * @returns {Promise<HTMLImageElement>}
- */
-function loadSheet() {
-	return new Promise((resolve, reject) => {
-		const sheet = new Image()
-		sheet.onload = () => resolve(sheet)
-		sheet.onerror = (err) => reject(err)
-
-		sheet.src = "/images/sheet.svg"
-	})
-}
-
-async function main() {
+;(() => {
 	// Page guard.
-	const container = document.getElementById("container")
+	const container = document.getElementById("mainContainer")
 	if (!container || container.dataset.page !== "game") {
 		return
 	}
 
+	// Initialize WebSocket connection.
 	const path = window.location.pathname.split("/")
 	if (path.length < 2) {
 		console.error("Invalid pathname.")
@@ -52,42 +43,6 @@ async function main() {
 	}
 	const id = path[path.length - 1]
 
-	// Load sprite sheet.
-	/** @type {HTMLImageElement | null} */
-	let sheet = null
-	try {
-		sheet = await loadSheet()
-	} catch (err) {
-		console.error(err)
-	}
-	if (!sheet) return
-
-	// Render chessboard on the canvas.
-	const canvas = /** @type {HTMLCanvasElement} */ (getElement("boardCanvas"))
-
-	const ctx = /** @type {CanvasRenderingContext2D} */ (
-		canvas.getContext("2d")
-	)
-
-	const board = new BoardCanvas(ctx, sheet, (moveIndex) => {
-		socket.send(JSON.stringify({ a: EventAction.Move, p: moveIndex }))
-	})
-	board.render()
-
-	// Add event listeners.
-	canvas.onmousedown = (e) => board.onMouseDown(e)
-	canvas.onmousemove = (e) => board.onMouseMove(e)
-	canvas.onmouseup = (e) => board.onMouseUp(e)
-
-	// Make board responsive.
-	const observer = new ResizeObserver((entries) => {
-		for (const entry of entries) {
-			board.setSize(entry.contentRect.width)
-		}
-	})
-	observer.observe(canvas)
-
-	// Initialize WebSocket connection.
 	// @ts-expect-error - API_URL comes from webpack.
 	const socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
 
@@ -110,7 +65,7 @@ async function main() {
 		chat.value = ""
 	}
 	// Handle chat messages.
-	getElement("chatSend").onclick = () => sendChat()
+	getElement("chatSendButton").onclick = () => sendChat()
 	chat.onkeydown = (e) => {
 		if (e.key === "Enter") sendChat()
 	}
@@ -130,15 +85,15 @@ async function main() {
 				break
 
 			case EventAction.Chat:
-				appendMessage(payload)
+				appendChatMessage(payload)
 				break
 
 			case EventAction.Conn:
-				appendMessage(`Player ${payload} joined`)
+				appendChatMessage(`Player ${payload} joined`)
 				break
 
 			case EventAction.Disc:
-				appendMessage(`Player ${payload} leaved`)
+				appendChatMessage(`Player ${payload} leaved`)
 				break
 
 			case EventAction.Game:
@@ -151,7 +106,7 @@ async function main() {
 					// @ts-expect-error
 					const move = new Move(completedMove.m)
 					board.makeMove(move)
-					appendMove(completedMove.s)
+					appendMoveToTable(completedMove.s)
 				}
 
 				break
@@ -162,7 +117,7 @@ async function main() {
 
 				board.setLegalMoves(pMove.lm)
 
-				appendMove(pMove.m.s)
+				appendMoveToTable(pMove.m.s)
 
 				// @ts-expect-error
 				const move = new Move(pMove.m.m)
@@ -174,6 +129,127 @@ async function main() {
 				break
 		}
 	}
-}
 
-main()
+	// Render board.
+	const boardDiv = /** @type {HTMLDivElement} */ (getElement("board"))
+	const board = new Board(boardDiv, (moveIndex) => {
+		socket.send(
+			JSON.stringify({
+				a: EventAction.Move,
+				p: moveIndex,
+			})
+		)
+	})
+
+	// Add event listeners.
+	boardDiv.onmousedown = (e) => board.onMouseDown(e)
+	boardDiv.onmousemove = (e) => board.onMouseMove(e)
+	boardDiv.onmouseup = (e) => board.onMouseUp(e)
+
+	// Make board responsive.
+	const observer = new ResizeObserver((entries) => {
+		for (const entry of entries) {
+			board.setSize(entry.contentRect.width)
+		}
+	})
+	observer.observe(boardDiv)
+})()
+
+// /*
+// import Notification from "./utils/notification"
+// import { EventAction } from "./ws/event"
+// import BoardCanvas from "./chess/board"
+// import { Move } from "./chess/move"
+// import { getElement } from "./utils/dom"
+
+// /** @param {string} san */
+// function appendMove(san) {
+// 	const moveDiv = document.createElement("div")
+// 	moveDiv.classList.add("move")
+// 	moveDiv.textContent = san
+
+// 	getElement("tableBody").appendChild(moveDiv)
+// }
+
+// /**
+//  * Appends the message to the DOM.
+//  * @param {string} message
+//  */
+// function appendMessage(message) {
+// 	const msgDiv = document.createElement("div")
+// 	msgDiv.classList.add("message")
+// 	msgDiv.textContent = message
+
+// 	getElement("messageContainer").appendChild(msgDiv)
+// }
+
+// /**
+//  * @returns {Promise<HTMLImageElement>}
+//  */
+// function loadSheet() {
+// 	return new Promise((resolve, reject) => {
+// 		const sheet = new Image()
+// 		sheet.onload = () => resolve(sheet)
+// 		sheet.onerror = (err) => reject(err)
+
+// 		sheet.src = "/images/sheet.svg"
+// 	})
+// }
+
+// async function main() {
+// 	// Page guard.
+// 	const container = document.getElementById("container")
+// 	if (!container || container.dataset.page !== "game") {
+// 		return
+// 	}
+
+// 	const path = window.location.pathname.split("/")
+// 	if (path.length < 2) {
+// 		console.error("Invalid pathname.")
+// 		return
+// 	}
+// 	const id = path[path.length - 1]
+
+// 	// Load sprite sheet.
+// 	/** @type {HTMLImageElement | null} */
+// 	let sheet = null
+// 	try {
+// 		sheet = await loadSheet()
+// 	} catch (err) {
+// 		console.error(err)
+// 	}
+// 	if (!sheet) return
+
+// 	// Render chessboard on the canvas.
+// 	const canvas = /** @type {HTMLCanvasElement} */ (getElement("boardCanvas"))
+
+// 	const ctx = /** @type {CanvasRenderingContext2D} */ (
+// 		canvas.getContext("2d")
+// 	)
+
+// 	const board = new BoardCanvas(ctx, sheet, (moveIndex) => {
+// 		socket.send(JSON.stringify({ a: EventAction.Move, p: moveIndex }))
+// 	})
+// 	board.render()
+
+// 	// Add event listeners.
+// 	canvas.onmousedown = (e) => board.onMouseDown(e)
+// 	canvas.onmousemove = (e) => board.onMouseMove(e)
+// 	canvas.onmouseup = (e) => board.onMouseUp(e)
+
+// 	// Make board responsive.
+// 	const observer = new ResizeObserver((entries) => {
+// 		for (const entry of entries) {
+// 			board.setSize(entry.contentRect.width)
+// 		}
+// 	})
+// 	observer.observe(canvas)
+
+// 	// Initialize WebSocket connection.
+// 	// @ts-expect-error - API_URL comes from webpack.
+// 	const socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
+
+// }
+
+// main()
+// */

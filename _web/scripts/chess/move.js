@@ -1,4 +1,4 @@
-/** @enum {typeof MoveType[keyof typeof MoveType]} */
+/** @enum {number} */
 export const MoveType = /** @type {const} */ ({
 	Normal: 0,
 	Castling: 1,
@@ -6,7 +6,7 @@ export const MoveType = /** @type {const} */ ({
 	EnPassant: 3,
 })
 
-/** @enum {typeof PromotionFlag[keyof typeof PromotionFlag]} */
+/** @enum {number} */
 export const PromotionFlag = /** @type {const} */ ({
 	Knight: 0,
 	Bishop: 1,
@@ -14,7 +14,7 @@ export const PromotionFlag = /** @type {const} */ ({
 	Queen: 3,
 })
 
-/** @enum {typeof Square[keyof typeof Square]} */
+/** @enum {number} */
 // prettier-ignore
 export const Square = /** @type {const} */ ({
 	A8: 56, B8: 57, C8: 58, D8: 59, E8: 60, F8: 61, G8: 62, H8: 63,
@@ -55,9 +55,7 @@ export class Move {
 	constructor(raw) {
 		this.to = raw & 0x3f
 		this.from = (raw >> 6) & 0x3f
-		// @ts-expect-error
 		this.promoPiece = (raw >> 12) & 0x3
-		// @ts-expect-error
 		this.moveType = (raw >> 14) & 0x3
 	}
 }

@@ -1,6 +1,7 @@
 .chat-container {
   width: 95%;
   max-width: 350px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -18,7 +19,7 @@
   text-align: center;
 }
 
-.chat-messages {
+#chatMessages {
   width: 100%;
   height: 200px;
   overflow-y: scroll;
@@ -53,11 +54,12 @@
 .board-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   order: 1;
   margin: auto;
   width: 95%;
-  max-width: 650px;
+  max-width: 600px;
+  border-radius: 15px;
+  background-color: var(--container-background);
 }
 
 .board-miniprofile {
@@ -65,12 +67,10 @@
   font-size: x-large;
   align-items: center;
   justify-content: center;
-  padding: 10px;
   gap: 10px;
+  padding: 10px;
   width: 100%;
   color: var(--container-foreground);
-  background-color: var(--container-background);
-  border-radius: 15px;
 }
 
 .board-miniprofile a {
@@ -80,27 +80,100 @@
 }
 
 .board-miniprofile-timer {
+  padding-bottom: 10px;
   margin: auto 0 auto auto;
   font-family: "ChessClock";
   user-select: none;
   font-size: 35px;
 }
 
-.board-content {
+#board {
   width: 100%;
   aspect-ratio: 1/1;
   border: 2px solid var(--container-background);
-  border-radius: 15px;
   background-image: url("/images/board.svg");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   cursor: pointer;
+  position: relative;
+}
+
+#board div {
+  width: 12.5%;
+  aspect-ratio: 1/1;
+  position: absolute;
+  transform: translate(var(--x), var(--y));
+}
+
+.piece {
+  background-image: url("/images/sheet.svg");
+  background-repeat: no-repeat;
+  background-size: 600% 200%;
+  background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
+  user-select: none;
+  z-index: 1;
+}
+
+.piece.WP {
+  --col: 0;
+  --row: 0;
+}
+.piece.WN {
+  --col: 1;
+  --row: 0;
+}
+.piece.WB {
+  --col: 2;
+  --row: 0;
+}
+.piece.WR {
+  --col: 3;
+  --row: 0;
+}
+.piece.WQ {
+  --col: 4;
+  --row: 0;
+}
+.piece.WK {
+  --col: 5;
+  --row: 0;
+}
+.piece.BP {
+  --col: 0;
+  --row: 1;
+}
+.piece.BN {
+  --col: 1;
+  --row: 1;
+}
+.piece.BB {
+  --col: 2;
+  --row: 1;
+}
+.piece.BR {
+  --col: 3;
+  --row: 1;
+}
+.piece.BQ {
+  --col: 4;
+  --row: 1;
+}
+.piece.BK {
+  --col: 5;
+  --row: 1;
+}
+
+#selectedSquare {
+  border: 5px solid green;
+  border-radius: 50%;
+  transform: translate(var(--x), var(--y));
 }
 
 .move-table-container {
   width: 95%;
   max-width: 350px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -118,7 +191,7 @@
   text-align: center;
 }
 
-.move-table-moves {
+#moveTable {
   width: 100%;
   height: 200px;
   overflow-y: scroll;
@@ -136,7 +209,7 @@
     order: 1;
   }
 
-  .chat-messages {
+  #chatMessages {
     height: 500px;
   }
 

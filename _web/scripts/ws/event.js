@@ -1,6 +1,6 @@
 /**
  * Must match the event actions defined in [justchess/internal/ws/event.go].
- * @enum {typeof EventAction[keyof typeof EventAction]}
+ * @enum {number}
  */
 export const EventAction = /** @type {const} */ ({
 	Ping: 0,
