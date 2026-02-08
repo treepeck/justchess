@@ -1,7 +1,7 @@
 .chat-container {
   width: 95%;
   max-width: 350px;
-  max-height: 600px;
+  max-height: 500px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -41,8 +41,8 @@
 }
 
 #chatSendButton {
+  width: 40px;
   height: 40px;
-  aspect-ratio: 1/1;
   margin: auto 5px auto 5px;
   border-radius: 50%;
   border: none;
@@ -60,7 +60,7 @@
   order: 1;
   margin: auto;
   width: 95%;
-  max-width: 600px;
+  max-width: 450px;
   border-radius: 15px;
   background-color: var(--container-background);
 }
@@ -102,11 +102,22 @@
   position: relative;
 }
 
-#board div {
-  width: 12.5%;
-  aspect-ratio: 1/1;
+#promotionDialog {
+  z-index: 10000;
+  user-select: none;
   position: absolute;
-  transform: translate(var(--x), var(--y));
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(5px);
+}
+
+.promotion-choice {
+  border: 2px solid var(--container-background);
+  transition: background-color 0.25s ease-in-out;
+}
+
+.promotion-choice:hover {
+  background-color: var(--container-background);
 }
 
 .piece {
@@ -116,6 +127,10 @@
   background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
   user-select: none;
   z-index: 1;
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  transform: translate(var(--x), var(--y));
 }
 
 .piece.WP {
@@ -170,13 +185,16 @@
 #selectedSquare {
   border: 5px solid green;
   border-radius: 50%;
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
   transform: translate(var(--x), var(--y));
 }
 
 .move-table-container {
   width: 95%;
   max-width: 350px;
-  max-height: 600px;
+  max-height: 500px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -204,7 +222,6 @@
 .move-table-san {
   flex: 1;
   font-weight: bold;
-  font-size: larger;
 }
 
 /* Reorder elements on larger screens. */

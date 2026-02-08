@@ -1,6 +1,6 @@
 import { getElement } from "../utils/dom"
 import { Piece, PieceType } from "./piece"
-import { Move, MoveType, Square } from "./move"
+import { Move, MoveType, PromotionFlag, Square } from "./move"
 
 /**
  * @typedef {Object} Position
@@ -200,7 +200,12 @@ export default class Board {
 			for (let i = 0; i < this.#legalMoves.length; i++) {
 				const move = this.#legalMoves[i]
 				if (move.from === this.#selectedSquare && move.to === square) {
-					this.#moveHandler(i)
+					if (move.moveType === MoveType.Promotion) {
+						const isWhite = dp % 2 === 0
+						this.#renderPromotionDialog(isWhite, move.to, i)
+					} else {
+						this.#moveHandler(i)
+					}
 					break
 				}
 			}
@@ -222,6 +227,13 @@ export default class Board {
 	makeMove(move) {
 		const piece = this.#pieces.get(move.from)
 		if (piece === undefined) throw new Error("Piece is not on the board")
+
+		// Remove captured piece if it is present.
+		const captured = this.#pieces.get(move.to)
+		if (captured !== undefined) {
+			this.#pieces.delete(move.to)
+			this.#element.removeChild(captured.element)
+		}
 
 		switch (move.moveType) {
 			case MoveType.Castling:
@@ -255,17 +267,45 @@ export default class Board {
 				this.#pieces.delete(capturedSquare)
 				this.#element.removeChild(captured.element)
 				break
-		}
 
-		// Remove captured piece if it is present.
-		const captured = this.#pieces.get(move.to)
-		if (captured !== undefined) {
-			this.#pieces.delete(move.to)
-			this.#element.removeChild(captured.element)
+			case MoveType.Promotion:
+				// Remove pawn.
+				this.#pieces.delete(move.from)
+				this.#element.removeChild(piece.element)
+
+				const isWhite = piece.pieceType % 2 === 0
+
+				// Place promoted piece.
+				switch (move.promoPiece) {
+					case PromotionFlag.Knight:
+						this.#appendPiece(
+							new Piece(isWhite ? PieceType.WN : PieceType.BN),
+							move.to
+						)
+						break
+					case PromotionFlag.Bishop:
+						this.#appendPiece(
+							new Piece(isWhite ? PieceType.WB : PieceType.BB),
+							move.to
+						)
+						break
+					case PromotionFlag.Rook:
+						this.#appendPiece(
+							new Piece(isWhite ? PieceType.WR : PieceType.BR),
+							move.to
+						)
+						break
+					case PromotionFlag.Queen:
+						this.#appendPiece(
+							new Piece(isWhite ? PieceType.WQ : PieceType.BQ),
+							move.to
+						)
+						break
+				}
+				return
 		}
 
 		// Move piece to the destination square.
-		// TODO: handle promotion moves.
 		this.#movePiece(move.from, move.to)
 	}
 
@@ -306,6 +346,55 @@ export default class Board {
 		piece.element.style.setProperty("--x", `${x}px`)
 		piece.element.style.setProperty("--y", `${y}px`)
 	}
+
+	/**
+	 * @param {boolean} isWhite
+	 * @param {Square} destination
+	 * @param {number} moveIndex
+	 */
+	#renderPromotionDialog(isWhite, destination, moveIndex) {
+		const dialog = document.createElement("div")
+		dialog.id = "promotionDialog"
+		dialog.onclick = () => {
+			this.#element.removeChild(getElement("promotionDialog"))
+		}
+
+		const promoPieces = [
+			new Piece(isWhite ? PieceType.WN : PieceType.BN),
+			new Piece(isWhite ? PieceType.WB : PieceType.BB),
+			new Piece(isWhite ? PieceType.WR : PieceType.BR),
+			new Piece(isWhite ? PieceType.WQ : PieceType.BQ),
+		]
+		for (let i = 0; i < promoPieces.length; i++) {
+			const piece = promoPieces[i]
+			piece.element.classList.add("promotion-choice")
+
+			// Add event listener.
+			piece.element.onclick = () => {
+				this.#moveHandler(moveIndex + i)
+			}
+
+			dialog.appendChild(piece.element)
+
+			const squareSize = this.#size / 8
+			const file = Math.floor(destination % 8)
+			const rank = Math.floor(destination / 8)
+
+			piece.element.style.setProperty("--x", `${file * squareSize}px`)
+			piece.element.style.setProperty(
+				"--y",
+				`${
+					this.#size -
+					squareSize -
+					(isWhite ? rank - i : rank + i) * squareSize
+				}px`
+			)
+		}
+
+		getElement("board").appendChild(dialog)
+	}
+
+	#removePromotionDialog() {}
 
 	/**
 	 * @param {Piece} piece

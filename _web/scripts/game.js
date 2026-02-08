@@ -12,7 +12,6 @@ import Notification from "./utils/notification"
 function appendMoveToTable(san, moveIndex) {
 	// Half move index.
 	const ply = Math.ceil(moveIndex / 2)
-	console.log(ply)
 
 	// Append the half-move index.
 	if (moveIndex % 2 !== 0) {

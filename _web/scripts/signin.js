@@ -22,8 +22,6 @@ function submitForm(event) {
 	// @ts-expect-error
 	const params = new URLSearchParams(data)
 
-	console.log(params)
-
 	signIn(params).then((err) => {
 		error.textContent = "Sign in failed: " + err
 
