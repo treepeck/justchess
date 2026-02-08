@@ -139,9 +139,15 @@ export default class Board {
 			for (let i = 0; i < this.#legalMoves.length; i++) {
 				const move = this.#legalMoves[i]
 				if (move.from === from && move.to === square) {
-					this.#moveHandler(i)
+					const piece = /** @type {Piece} */ (this.#pieces.get(from))
+					if (move.moveType === MoveType.Promotion) {
+						const isWhite = piece.pieceType % 2 === 0
+						this.#renderPromotionDialog(isWhite, move.to, i)
+					} else {
+						this.#moveHandler(i)
+					}
+					return
 				}
-				return
 			}
 		}
 
@@ -206,6 +212,9 @@ export default class Board {
 					} else {
 						this.#moveHandler(i)
 					}
+					// Reset selected square.
+					this.#selectedSquare = -1
+					this.#element.removeChild(getElement("selectedSquare"))
 					break
 				}
 			}
@@ -214,10 +223,6 @@ export default class Board {
 			const el = getElement("draggedPiece")
 			this.#element.removeChild(el)
 			this.#draggedPiece = PieceType.NP
-
-			// Reset selected square.
-			this.#selectedSquare = -1
-			this.#element.removeChild(getElement("selectedSquare"))
 		}
 	}
 

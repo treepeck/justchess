@@ -20,7 +20,12 @@ function appendMoveToTable(san, moveIndex) {
 		// Assign unique id to each table row.
 		row.id = `row${ply}`
 		row.classList.add("move-table-row")
-		row.textContent = `${ply}.`
+
+		const plyEl = document.createElement("div")
+		plyEl.classList.add("move-table-ply")
+		plyEl.textContent = `${ply}.`
+
+		row.appendChild(plyEl)
 		getElement("moveTable").appendChild(row)
 	}
 

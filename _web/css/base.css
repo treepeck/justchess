@@ -36,6 +36,7 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  scrollbar-color: var(--container-foreground) var(--container-background);
 }
 
 body {
@@ -98,9 +99,8 @@ button:focus {
 .header-container {
   width: 100%;
   padding: 5px;
-  padding: 20px;
+  padding: 10px;
   user-select: none;
-  font-size: larger;
   color: var(--container-foreground);
   background-color: var(--container-background);
 }
@@ -114,12 +114,12 @@ button:focus {
 }
 
 .header-site-logo {
-  font-size: xx-large;
+  font-size: x-large;
   margin: 0 auto 0 0;
 }
 
 .header-player-profile {
-  font-size: x-large;
+  font-size: large;
   margin: 0 0 0 auto;
 }
 
@@ -135,7 +135,7 @@ button:focus {
 }
 
 #ping {
-  font-size: x-large;
+  font-size: large;
   font-weight: bold;
   margin: 10px auto 10px 10px;
 }

@@ -67,7 +67,7 @@
 
 .board-miniprofile {
   display: flex;
-  font-size: x-large;
+  font-size: large;
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -198,7 +198,7 @@
   flex-direction: column;
   gap: 15px;
   padding: 15px;
-  order: 3;
+  order: 2;
   margin: auto;
   color: var(--container-foreground);
   background-color: var(--container-background);
@@ -212,21 +212,30 @@
 }
 
 .move-table-row {
+  width: 100%;
   display: flex;
-  gap: 30px;
-  align-items: center;
   line-height: 2;
+  gap: 10px;
+}
+
+.move-table-ply {
+  width: 10%;
+  overflow: hidden;
 }
 
 .move-table-san {
-  flex: 1;
-  font-weight: bold;
+  width: 45%;
+  text-align: start;
 }
 
 /* Reorder elements on larger screens. */
 @media screen and (min-width: 1200px) {
   #mainContainer[data-page="game"] {
     flex-direction: row;
+  }
+
+  .board-miniprofile {
+    font-size: x-large;
   }
 
   .chat-container {
