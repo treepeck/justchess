@@ -29,6 +29,13 @@ function appendMoveToTable(san, moveIndex) {
 	move.textContent = san
 	move.classList.add("move-table-san")
 	getElement(`row${ply}`).appendChild(move)
+
+	// Scroll table to bottom.
+	const table = getElement(`moveTable`)
+	table.scrollTo({
+		top: table.scrollHeight,
+		behavior: "smooth",
+	})
 }
 
 /**
@@ -40,7 +47,15 @@ function appendChatMessage(msg) {
 	msgDiv.classList.add("message")
 	msgDiv.textContent = msg
 
-	getElement("chatMessages").appendChild(msgDiv)
+	// Append chat message.
+	const container = getElement("chatMessages")
+	container.appendChild(msgDiv)
+
+	// Scroll chat to bottom.
+	container.scrollTo({
+		top: container.scrollHeight,
+		behavior: "smooth",
+	})
 }
 
 /**
