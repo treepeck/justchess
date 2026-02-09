@@ -1,16 +1,21 @@
-{{ define "content" }}
-<div id="mainContainer" data-page="queue">
-  <div class="queue-info-header">Finding an opponent...</div>
+{{ define "layout" }}
 
-  <div class="queue-info-container">
-    <div id="clientsCounter">Players in queue: ?</div>
-    <div class="queue-info-control">
-      Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s
-    </div>
-    <div>Rating: {{ .Base.Player.Rating }}</div>
-    <div id="countUpTimer">00:00</div>
+<h2 class="page-header">Finding an opponent...</h2>
+
+<div class="queue-info flex-container">
+  <div id="clientsCounter">Players in queue: ?</div>
+
+  <div class="queue-info-control">
+    Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s
   </div>
 
-  <div id="ping">Ping: ? ms</div>
+  <div>Rating: {{ .Base.Player.Rating }}</div>
+
+  <div id="countUpTimer">00:00</div>
 </div>
+
+<div id="ping">Ping: ? ms</div>
+
+<div id="queueGuard"></div>
+
 {{ end }}

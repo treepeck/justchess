@@ -1,20 +1,10 @@
-.queue-info-header {
-  font-size: xx-large;
-  font-weight: bold;
-  margin: auto auto 0 auto;
-}
-
-.queue-info-container {
-  display: flex;
+.queue-info {
   flex-direction: column;
-  margin: 0 auto auto auto;
-  padding: 50px;
-  border: 2px solid var(--container-foreground);
+  padding: 40px;
   border-radius: 15px;
   color: var(--container-foreground);
   background-color: var(--container-background);
   font-size: x-large;
-  text-align: center;
   gap: 20px;
 }
 

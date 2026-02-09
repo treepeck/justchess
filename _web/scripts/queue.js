@@ -1,62 +1,41 @@
-import { getElement } from "./utils/dom"
-import Notification from "./utils/notification"
+import { getOrPanic } from "./utils/dom"
 import { EventAction } from "./ws/event"
+import { Socket } from "./ws/socket"
+
+/** @type {import("./ws/socket").EventHandler} */
+function eventHandler(action, payload) {
+	switch (action) {
+		case EventAction.ClientsCounter:
+			// Update clients counter.
+			getOrPanic(
+				"clientsCounter"
+			).textContent = `Players in queue: ${payload}`
+			break
+
+		case EventAction.Redirect:
+			// Redirect to game room.
+			// @ts-expect-error - API_URL comes from webpack.
+			window.location.href = `${API_URL}/game/${payload}`
+			break
+
+		default:
+			throw new Error("Invalid event from server")
+	}
+}
+
 ;(() => {
 	// Page guard.
-	const container = document.getElementById("mainContainer")
-	if (!container || container.dataset.page !== "queue") return
+	if (!document.getElementById("queueGuard")) return
 
-	const path = window.location.pathname.split("/")
-	if (path.length < 2) {
-		console.error("Invalid pathname.")
-		return
-	}
-	const id = path[path.length - 1]
-
-	// @ts-expect-error - API_URL comes from webpack.
-	const socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
-
-	const notification = new Notification()
-	socket.onerror = () => {
-		notification.create("Please reload the page to reconnect.")
-	}
-
-	socket.onmessage = (raw) => {
-		/** @type {import("./ws/event").Event} */
-		const e = JSON.parse(raw.data)
-		const action = e.a
-		const payload = e.p
-
-		switch (action) {
-			case EventAction.Ping:
-				// Respond with pong.
-				socket.send(JSON.stringify({ a: EventAction.Pong, p: null }))
-				getElement("ping").textContent = `Ping: ${payload} ms`
-				break
-
-			case EventAction.ClientsCounter:
-				getElement(
-					"clientsCounter"
-				).textContent = `Players in queue: ${payload}`
-				break
-
-			case EventAction.Redirect:
-				// Redirect to game room.
-				// @ts-expect-error - API_URL comes from webpack.
-				window.location.href = `${API_URL}/game/${payload}`
-				break
-
-			case EventAction.Error:
-				notification.create(payload)
-				break
-		}
-	}
+	// Initialize connection.
+	new Socket(eventHandler)
 
 	// Self-adjusting countup timer.
 	const interval = 500 // Milliseconds.
 	const initial = Date.now()
 	let expected = initial + interval
 	setTimeout(() => countUpHandler(), interval)
+
 	const countUpHandler = () => {
 		const current = Date.now()
 		const delta = current - expected
@@ -71,7 +50,7 @@ import { EventAction } from "./ws/event"
 			seconds -= 60 * minutes
 		}
 
-		getElement("countUpTimer").textContent = `${
+		getOrPanic("countUpTimer").textContent = `${
 			minutes > 9 ? minutes : `0${minutes}`
 		}:${seconds > 9 ? seconds : `0${seconds}`}`
 

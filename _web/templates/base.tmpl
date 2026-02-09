@@ -11,21 +11,25 @@
 </head>
 
 <body>
-  <div class="header-container">
-    <div class="header-content">
-      <a class="header-site-logo" href="/">JustChess</a>
+  <header class="site-header">
+    <div class="site-header-layout">
+      <a class="site-header-logo" href="/">JustChess</a>
 
-      <a class="header-player-profile" href="/{{ .Base.Player.Name }}">
+      <a class="site-header-profile" href="/{{ .Base.Player.Name }}">
         {{ .Base.Player.Name }}
       </a>
     </div>
-  </div>
+  </header>
 
-  {{ block "content" . }}{{ end }}
+  <main id="main" class="site-layout flex-container">
+    {{ block "layout" . }}{{ end }}
+  </main>
 
-  <div class="footer-container">
-    <div class="footer-content">
-      &copy; 2026 JustChess
+  <footer class="site-footer">
+    <div class="site-footer-layout flex-container">
+      <div class="site-footer-copyright">
+        &copy; 2026 JustChess
+      </div>
     </div>
   </footer>
 </body>

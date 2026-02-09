@@ -1,12 +1,20 @@
-import { getElement } from "../utils/dom"
-import { Piece, PieceType } from "./piece"
 import { Move, MoveType, PromotionFlag, Square } from "./move"
+import { create, getOrPanic } from "../utils/dom"
+import { parsePiecePlacement } from "./fen"
+import { Piece, PieceType } from "./piece"
 
 /**
  * @typedef {Object} Position
  * @property {number} x - Horizontal pixel coordinate on the board element.
  * @property {number} y - Vertical pixel coordinate on the board element.
  * @property {Square} square - Index of the square.
+ */
+
+/**
+ * Function that handles the player's move.
+ * @callback MoveHandler
+ * @param {number} moveIndex
+ * @returns {void}
  */
 
 /**
@@ -41,12 +49,6 @@ export default class Board {
 	 */
 	#size
 	/**
-	 * Function that handles the player's move.
-	 * @callback MoveHandler
-	 * @param {number} moveIndex
-	 * @returns {void}
-	 */
-	/**
 	 * @type {MoveHandler}
 	 */
 	#moveHandler
@@ -72,52 +74,12 @@ export default class Board {
 		this.#pieces = new Map()
 
 		// Initialize default piece placement.
-
-		// Add white pawns.
-		for (let i = 0; i < 8; i++) {
-			this.#appendPiece(new Piece(PieceType.WP), Square.A2 + i)
+		const placements = parsePiecePlacement(
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+		)
+		for (const p of placements) {
+			this.#appendPiece(new Piece(p.t), p.s)
 		}
-
-		// Add white knights.
-		this.#appendPiece(new Piece(PieceType.WN), Square.B1)
-		this.#appendPiece(new Piece(PieceType.WN), Square.G1)
-
-		// Add white bishops.
-		this.#appendPiece(new Piece(PieceType.WB), Square.C1)
-		this.#appendPiece(new Piece(PieceType.WB), Square.F1)
-
-		// Add white rooks.
-		this.#appendPiece(new Piece(PieceType.WR), Square.A1)
-		this.#appendPiece(new Piece(PieceType.WR), Square.H1)
-
-		// Add white queen.
-		this.#appendPiece(new Piece(PieceType.WQ), Square.D1)
-
-		// Add white king.
-		this.#appendPiece(new Piece(PieceType.WK), Square.E1)
-
-		// Add black pawns.
-		for (let i = 0; i < 8; i++) {
-			this.#appendPiece(new Piece(PieceType.BP), Square.A7 + i)
-		}
-
-		// Add black knights.
-		this.#appendPiece(new Piece(PieceType.BN), Square.B8)
-		this.#appendPiece(new Piece(PieceType.BN), Square.G8)
-
-		// Add black bishops.
-		this.#appendPiece(new Piece(PieceType.BB), Square.C8)
-		this.#appendPiece(new Piece(PieceType.BB), Square.F8)
-
-		// Add black rooks.
-		this.#appendPiece(new Piece(PieceType.BR), Square.A8)
-		this.#appendPiece(new Piece(PieceType.BR), Square.H8)
-
-		// Add black queen.
-		this.#appendPiece(new Piece(PieceType.BQ), Square.D8)
-
-		// Add black king.
-		this.#appendPiece(new Piece(PieceType.BK), Square.E8)
 	}
 
 	/**
@@ -183,7 +145,7 @@ export default class Board {
 			const { x, y } = this.#getPositionOfEvent(e)
 
 			// Position dragged piece under the player's mouse cursor.
-			const dp = getElement("draggedPiece")
+			const dp = getOrPanic("draggedPiece")
 			const squareSize = this.#size / 8
 			dp.style.setProperty("--x", `${x - squareSize / 2}px`)
 			dp.style.setProperty("--y", `${y - squareSize / 2}px`)
@@ -214,13 +176,13 @@ export default class Board {
 					}
 					// Reset selected square.
 					this.#selectedSquare = -1
-					this.#element.removeChild(getElement("selectedSquare"))
+					this.#element.removeChild(getOrPanic("selectedSquare"))
 					break
 				}
 			}
 
 			// Remove dragged piece element from the board.
-			const el = getElement("draggedPiece")
+			const el = getOrPanic("draggedPiece")
 			this.#element.removeChild(el)
 			this.#draggedPiece = PieceType.NP
 		}
@@ -358,10 +320,9 @@ export default class Board {
 	 * @param {number} moveIndex
 	 */
 	#renderPromotionDialog(isWhite, destination, moveIndex) {
-		const dialog = document.createElement("div")
-		dialog.id = "promotionDialog"
+		const dialog = create("div", "", "promotionDialog")
 		dialog.onclick = () => {
-			this.#element.removeChild(getElement("promotionDialog"))
+			this.#element.removeChild(getOrPanic("promotionDialog"))
 		}
 
 		const promoPieces = [
@@ -396,10 +357,8 @@ export default class Board {
 			)
 		}
 
-		getElement("board").appendChild(dialog)
+		getOrPanic("board").appendChild(dialog)
 	}
-
-	#removePromotionDialog() {}
 
 	/**
 	 * @param {Piece} piece
@@ -424,14 +383,13 @@ export default class Board {
 	#appendSelectedSquare(square) {
 		this.#selectedSquare = square
 
-		const squareElement = document.createElement("div")
-		squareElement.id = "selectedSquare"
+		const selected = create("div", "", "selectedSquare")
 
 		const pos = this.#square2Position(square)
-		squareElement.style.setProperty("--x", `${pos.x}px`)
-		squareElement.style.setProperty("--y", `${pos.y}px`)
+		selected.style.setProperty("--x", `${pos.x}px`)
+		selected.style.setProperty("--y", `${pos.y}px`)
 
-		this.#element.appendChild(squareElement)
+		this.#element.appendChild(selected)
 	}
 
 	/**

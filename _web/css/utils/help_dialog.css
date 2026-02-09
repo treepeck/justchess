@@ -7,11 +7,11 @@
   color: var(--text-hover);
 }
 
-.help-dialog-container {
+.help-dialog {
+  padding: 20px;
   position: fixed;
   top: 0;
   left: 0;
-  display: flex;
   width: 100%;
   height: 100%;
   z-index: -1;
@@ -20,28 +20,39 @@
   backdrop-filter: blur(7px);
 }
 
-.help-dialog-container.show {
+.help-dialog.show {
   z-index: 1;
   opacity: 1;
 }
 
-.help-dialog-content {
-  margin: auto;
-  display: flex;
+.help-dialog-layout {
   flex-direction: column;
-  gap: 20px;
-  font-size: large;
-  text-align: center;
+  line-height: 2;
   border-radius: 15px;
   padding: 20px;
   color: var(--container-foreground);
   background-color: var(--container-background);
 }
 
-.help-dialog-close-button {
+.help-dialog-layout p {
+  width: 100%;
+}
+
+.help-dialog-header {
+  font-weight: bold;
+  font-size: x-large;
+}
+
+.help-dialog-close {
   width: 95%;
   height: 50px;
   border-radius: 15px;
   font-weight: bold;
   margin: 10px;
+}
+
+@media screen and (min-width: 600px) {
+  .help-dialog-layout {
+    font-size: large;
+  }
 }

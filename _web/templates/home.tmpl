@@ -1,34 +1,36 @@
-{{ define "content" }}
-<div id="mainContainer" data-page="home">
-  <div class="time-control-grid-header">
-    Choose a
-    <span class="help-dialog-activator" id="timeControlHelpDialogActivator">
-      time control
-    </span>
-  </div>
+{{ define "layout" }}
 
-  <div class="time-control-grid">
-    <button id="cell1" class="time-control-grid-cell">1+0</button>
-    <button id="cell2" class="time-control-grid-cell">2+1</button>
-    <button id="cell3" class="time-control-grid-cell">3+0</button>
-    <button id="cell4" class="time-control-grid-cell">3+2</button>
-    <button id="cell5" class="time-control-grid-cell">5+0</button>
-    <button id="cell6" class="time-control-grid-cell">5+2</button>
-    <button id="cell7" class="time-control-grid-cell">10+0</button>
-    <button id="cell8" class="time-control-grid-cell">10+10</button>
-    <button id="cell9" class="time-control-grid-cell">15+10</button>
-  </div>
+<h2 class="page-header">
+Choose a
+<span id="helpDialogActivator" class="help-dialog-activator">
+  time control
+</span>
+</h2>
 
-  <div id="timeControlHelpDialog" class="help-dialog-container">
-    <div class="help-dialog-content">
-      <h2><b>What is time control?</b></h2>
+<div class="control-grid">
+  <button id="cell1" class="control-grid-cell">1+0</button>
+  <button id="cell2" class="control-grid-cell">2+1</button>
+  <button id="cell3" class="control-grid-cell">3+0</button>
+  <button id="cell4" class="control-grid-cell">3+2</button>
+  <button id="cell5" class="control-grid-cell">5+0</button>
+  <button id="cell6" class="control-grid-cell">5+2</button>
+  <button id="cell7" class="control-grid-cell">10+0</button>
+  <button id="cell8" class="control-grid-cell">10+10</button>
+  <button id="cell9" class="control-grid-cell">15+10</button>
+</div>
 
-      <p>Each chess game has a time limit.</p>
-      <p>The first number indicates the amount of minutes given to each player.</p>
-      <p>The second number indicates the amount of seconds added after each move.</p>
+<div id="helpDialog" class="help-dialog flex-container">
+  <div class="help-dialog-layout flex-container">
+    <div class="help-dialog-header">What is time control?</div>
 
-      <button id="timeControlHelpDialogCloseButton" class="help-dialog-close-button">OK</button>
-    </div>
+    <p>Each chess game has a time limit.</p>
+    <p>The first number indicates the amount of minutes given to each player.</p>
+    <p>The second number indicates the amount of seconds added after each move.</p>
+
+    <button id="helpDialogClose" class="help-dialog-close">OK</button>
   </div>
 </div>
+
+<div id="homeGuard"></div>
+
 {{ end }}

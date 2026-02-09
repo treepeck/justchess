@@ -31,7 +31,8 @@
   padding: 0;
 }
 
-/* Count element size taking margins and paddings into account. */
+/* Count element size taking margins and paddings into account.
+   Style all scrollbars on the page. */
 *,
 *::before,
 *::after {
@@ -41,10 +42,7 @@
 
 body {
   width: 100%;
-  height: 100%;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   font-family: "Ubuntu";
   color: var(--foreground);
   background: var(--background);
@@ -62,14 +60,17 @@ button {
 
 input {
   padding: 5px;
-  line-height: 2;
+  line-height: 1.5;
   width: 100%;
-  font-size: x-large;
+  font-size: large;
   font-weight: bold;
-  padding: 5px;
   border: none;
   border-radius: 10px;
   background-color: var(--input-background);
+}
+
+input::placeholder {
+  color: var(--input-placeholder);
 }
 
 input:hover,
@@ -96,41 +97,46 @@ button:focus {
   background-color: var(--container-foreground);
 }
 
-.header-container {
+.flex-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.site-header {
   width: 100%;
-  padding: 5px;
   padding: 10px;
-  user-select: none;
   color: var(--container-foreground);
   background-color: var(--container-background);
 }
 
-.header-content {
+.site-header-layout {
   max-width: var(--max-width);
   display: flex;
   margin: 0 auto 0 auto;
   font-weight: bold;
-  line-height: 100%;
 }
 
-.header-site-logo {
+.site-header-logo {
   font-size: x-large;
   margin: 0 auto 0 0;
 }
 
-.header-player-profile {
+.site-header-profile {
   font-size: large;
   margin: 0 0 0 auto;
 }
 
-#mainContainer {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+.site-layout {
+  /* height: 100vh; */
   max-width: var(--max-width);
+  padding: 10px;
+  flex-direction: column;
   margin: auto;
-  gap: 20px;
+}
+
+.page-header {
+  font-weight: bold;
   padding: 15px;
 }
 
@@ -140,21 +146,25 @@ button:focus {
   margin: 10px auto 10px 10px;
 }
 
-.footer-container {
+.site-footer {
   width: 100%;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
+  padding: 10px;
+  color: var(--container-background);
 }
 
-.footer-content {
+.site-footer-layout {
   max-width: var(--max-width);
-  display: flex;
   margin: 0 auto 0 auto;
 }
 
+.site-footer-copyright {
+  font-weight: bold;
+  font-size: large;
+}
+
 /* Animated background applied on home and queue pages. */
-#mainContainer[data-page="home"]::before,
-#mainContainer[data-page="queue"]::before {
+#homeGuard::before,
+#queueGuard::before {
   width: 200%;
   height: 200%;
   top: -50%;
@@ -197,8 +207,8 @@ button:focus {
 
 @media screen and (min-width: 600px) {
   /* Make background animation slower on larger screens. */
-  #mainContainer[data-page="home"]::before,
-  #mainContainer[data-page="queue"]::before {
+  #homeGuard::before,
+  #queueGuard::before {
     transform: rotate(15deg) scale(2);
     animation: slide-background 800s infinite;
   }

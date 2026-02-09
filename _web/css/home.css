@@ -1,21 +1,22 @@
-.time-control-grid-header {
-  font-size: xx-large;
-  font-weight: bold;
-  margin: auto auto 0 auto;
-}
-
-.time-control-grid {
+.control-grid {
   width: 95%;
   max-width: 500px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
-  margin: 0 auto auto auto;
+  margin-bottom: 20px;
 }
 
-.time-control-grid-cell {
+.control-grid-cell {
   aspect-ratio: 1/1;
   font-weight: bold;
   border-radius: 15%;
   font-size: x-large;
+}
+
+@media screen and (min-width: 600px) {
+  /* Make header bigger on larger screens. */
+  .page-header {
+    font-size: xx-large;
+  }
 }

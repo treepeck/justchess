@@ -1,4 +1,4 @@
-import { getElement } from "./dom"
+import { getOrPanic, create } from "./dom"
 
 export default class Notification {
 	/**
@@ -16,11 +16,12 @@ export default class Notification {
 	 * Appends notification container to the DOM.
 	 */
 	constructor() {
-		this.#container = document.createElement("div")
-		this.#container.classList.add("notification-container")
+		this.#container = /** @type {HTMLDivElement} */ (
+			create("div", "notification-container")
+		)
 
 		// Append notification container to the main container.
-		getElement("mainContainer").appendChild(this.#container)
+		getOrPanic("main").appendChild(this.#container)
 
 		this.#count = 0
 	}
@@ -30,15 +31,15 @@ export default class Notification {
 	 * @param {string} message
 	 */
 	create(message) {
-		const notification = document.createElement("div")
-		notification.classList.add("notification")
-		// Assign unique id to each notification.
-		notification.id = `notification${this.#count}`
+		const notification = create(
+			"div",
+			"notification",
+			`notification${this.#count}`
+		)
 		notification.textContent = message
 
 		// Create close button for notification.
-		const btn = document.createElement("button")
-		btn.classList.add("notification-close-button")
+		const btn = create("button", "notification-close-button")
 		btn.textContent = "X"
 		btn.onclick = () => {
 			this.#remove(notification.id)

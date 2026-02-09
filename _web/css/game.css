@@ -1,22 +1,29 @@
-.chat-container {
-  width: 95%;
-  max-width: 350px;
-  max-height: 500px;
+.active-game-layout {
+  width: 100%;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.game-container {
   display: flex;
   flex-direction: column;
+  width: 95%;
+  max-width: 500px;
   gap: 15px;
   padding: 15px;
-  order: 3;
-  margin: auto;
   color: var(--container-foreground);
   background-color: var(--container-background);
   border-radius: 15px;
 }
 
-.chat-header {
+.game-container-header {
   font-size: x-large;
   font-weight: bold;
   text-align: center;
+}
+
+.chat {
+  order: 3;
 }
 
 .scrollable-container {
@@ -29,7 +36,7 @@
   font-size: large;
 }
 
-.chat-input-container {
+.chat-input {
   display: flex;
   border-radius: 10px;
   background: var(--input-background);
@@ -40,29 +47,31 @@
   background-color: transparent;
 }
 
-#chatSendButton {
+#chatInput::placeholder {
+  color: var(--container-foreground);
+}
+
+#chatSend {
   width: 40px;
   height: 40px;
   margin: auto 5px auto 5px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  background-color: transparent;
   background-image: url("/images/send.svg");
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-.board-container {
+.board-layout {
   display: flex;
   flex-direction: column;
   order: 1;
-  margin: auto;
   width: 95%;
   max-width: 500px;
-  border-radius: 15px;
   background-color: var(--container-background);
+  border-radius: 15px;
 }
 
 .board-miniprofile {
@@ -80,6 +89,10 @@
   overflow: hidden;
   font-weight: bold;
   width: 25%;
+}
+
+.board-miniprofile-rating {
+  font-size: medium;
 }
 
 .board-miniprofile-timer {
@@ -190,25 +203,8 @@
   transform: translate(var(--x), var(--y));
 }
 
-.move-table-container {
-  width: 95%;
-  max-width: 350px;
-  max-height: 500px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding: 15px;
+.move-table {
   order: 2;
-  margin: auto;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
-  border-radius: 15px;
-}
-
-.move-table-header {
-  font-size: x-large;
-  font-weight: bold;
-  text-align: center;
 }
 
 .move-table-row {
@@ -225,12 +221,13 @@
 
 .move-table-san {
   width: 45%;
+  font-weight: bold;
   text-align: start;
 }
 
 /* Reorder elements on larger screens. */
 @media screen and (min-width: 1200px) {
-  #mainContainer[data-page="game"] {
+  .active-game-layout {
     flex-direction: row;
   }
 
@@ -238,19 +235,27 @@
     font-size: x-large;
   }
 
-  .chat-container {
+  .game-container {
+    width: 25%;
+  }
+
+  .chat {
     order: 1;
   }
 
   .scrollable-container {
-    height: 500px;
+    height: 350px;
   }
 
-  .board-container {
+  .board {
     order: 2;
   }
 
-  .move-table-container {
+  .move-table {
     order: 3;
+  }
+
+  .board-miniprofile-rating {
+    font-size: x-large;
   }
 }

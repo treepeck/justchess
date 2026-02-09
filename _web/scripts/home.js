@@ -1,18 +1,15 @@
-import { getElement } from "./utils/dom"
+import { getOrPanic } from "./utils/dom"
 import showHelpDialog from "./utils/help_dialog"
 ;(() => {
 	// Page guard.
-	const container = document.getElementById("mainContainer")
-	if (!container || container.dataset.page !== "home") {
-		return
-	}
+	if (!document.getElementById("homeGuard")) return
 
-	getElement("timeControlHelpDialogActivator").onclick = () => {
-		showHelpDialog("timeControlHelpDialog")
+	getOrPanic("helpDialogActivator").onclick = () => {
+		showHelpDialog("helpDialog")
 	}
 
 	for (let i = 1; i <= 9; i++) {
-		getElement(`cell${i}`).onclick = () => {
+		getOrPanic(`cell${i}`).onclick = () => {
 			// Redirect the user to the queue page.
 			//@ts-expect-error - API_URL comes from webpack.
 			window.location.href = `${API_URL}/queue/${i}`

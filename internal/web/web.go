@@ -32,8 +32,8 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 		{"/queue", "./_web/templates/queue.tmpl", baseData{Title: "Queue"}},
 		{"/signup", "./_web/templates/signup.tmpl", baseData{Title: "Sign up"}},
 		{"/signin", "./_web/templates/signin.tmpl", baseData{Title: "Sign in"}},
-		{"/game", "./_web/templates/game.tmpl", baseData{Title: "Game"}},
-		{"/404", "./_web/templates/404.tmpl", baseData{Title: "Not found"}},
+		{"/game", "./_web/templates/active_game.tmpl", baseData{Title: "Game"}},
+		{"/error", "./_web/templates/error.tmpl", baseData{Title: "Error"}},
 	}
 
 	pages := make(map[string]page, len(pagesData))
@@ -98,7 +98,7 @@ func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
 		data = queueData{Control: 15, Bonus: 10}
 
 	default:
-		p := s.pages["/404"]
+		p := s.pages["/error"]
 		s.renderPage(rw, r, p)
 		return
 	}
@@ -111,7 +111,7 @@ func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
 func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 	g, err := s.gameRepo.SelectById(r.URL.Path)
 	if err != nil {
-		p := s.pages["/404"]
+		p := s.pages["/error"]
 		s.renderPage(rw, r, p)
 		return
 	}
@@ -128,7 +128,7 @@ func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
 	page, exists := s.pages[r.URL.Path]
 	if !exists {
-		page = s.pages["/404"]
+		page = s.pages["/error"]
 	}
 
 	s.renderPage(rw, r, page)

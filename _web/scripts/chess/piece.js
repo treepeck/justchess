@@ -1,3 +1,5 @@
+import { create } from "../utils/dom"
+
 /**
  * Enum representing chess pieces.
  * @enum {number}
@@ -33,9 +35,8 @@ export class Piece {
 	 * @param {PieceType} pieceType
 	 */
 	constructor(pieceType) {
-		this.element = document.createElement("div")
-		this.element.classList.add("piece", pieceType2String(pieceType))
-
+		this.element = /** @type {HTMLDivElement} */ (create("div", "piece"))
+		this.element.classList.add(`${pieceType2String(pieceType)}`)
 		this.pieceType = pieceType
 	}
 }

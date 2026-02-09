@@ -1,72 +1,73 @@
-{{ define "content" }}
-<form id="authForm" data-page="signup">
-  <div class="auth-form-header">Create a new account</div>
+{{ define "layout" }}
 
-  <div class="auth-form-input-container">
-    <div>Username</div>
-    <input
-      type="text"
-      name="name"
-      autocomplete="off"
-      placeholder="MagnusCarlsen"
-    />
-    <div class="auth-form-error" id="authFormNameError"></div>
-  </div>
+<form id="authForm" class="flex-container">
 
-  <div class="auth-form-input-container">
-    <div class="help-dialog-activator" id="emailHelpDialogActivator">
-      Email address
-    </div>
-    <input
-      type="text"
-      name="email"
-      autocomplete="off"
-      placeholder="magnus@carlsen.com"
-    />
-    <div class="auth-form-error" id="authFormEmailError"></div>
-  </div>
+<h2 class="page-header">Create a new account</h2>
 
-  <div class="auth-form-input-container">
-    <div>Password</div>
-
-    <div class="auth-form-input-password">
-      <input
-        id="authFormPasswordInput"
-        type="password"
-        name="password"
-        autocomplete="off"
-        placeholder="*************"
-      />
-      <div id="authFormPasswordToggle"></div>
-    </div>
-
-    <div class="auth-form-error" id="authFormPasswordError"></div>
-  </div>
-
-  <div id="authFormServerError" class="auth-form-error"></div>
-  <button id="authFormSubmitButton">Sign up</button>
-
-  <div class="auth-form-footer">
-    Already have an account? <a href="/signin">Sign in</a>
-  </div>
-</form>
-
-<div id="emailHelpDialog" class="help-dialog-container">
-  <div class="help-dialog-content">
-    <h2><b>Why do I need to enter my email address?</b></h2>
-
-    <p>To securely reset your password if you forget it.</p>
-    <p>Your email will never be shared or used for any other purpose.</p>
-
-    <button id="emailHelpDialogCloseButton" class="help-dialog-close-button">OK</button>
-  </div>
+<div class="auth-form-input">
+  <p class="auth-form-label">Username</p>
+  <input
+    type="text"
+    name="name"
+    autocomplete="off"
+    placeholder="MagnusCarlsen"
+  />
+  <div class="auth-form-error" id="authFormNameError"></div>
 </div>
 
-<div id="confirmDialog">
-  <div class="confirm-dialog-content">
+<div class="auth-form-input">
+  <p class="help-dialog-activator auth-form-label" id="emailHelpDialogActivator">
+    Email address
+  </p>
+  <input
+    type="text"
+    name="email"
+    autocomplete="off"
+    placeholder="magnus@carlsen.com"
+  />
+  <div class="auth-form-error" id="authFormEmailError"></div>
+</div>
+
+<div class="auth-form-input">
+  <p class="auth-form-label">Password</p>
+  <div class="auth-form-password">
+    <input
+      id="authFormPasswordInput"
+      type="password"
+      name="password"
+      autocomplete="off"
+      placeholder="*************"
+    />
+    <div id="authFormPasswordToggle"></div>
+  </div>
+
+  <div class="auth-form-error" id="authFormPasswordError"></div>
+</div>
+
+<div id="authFormServerError" class="auth-form-error"></div>
+<button id="authFormSubmitButton">Sign up</button>
+
+<footer class="auth-form-footer">
+  Already have an account? <a href="/signin">Sign in</a>
+</footer>
+</form>
+
+<div id="emailHelpDialog" class="help-dialog flex-container">
+<div class="help-dialog-layout flex-container">
+  <div class="help-dialog-header">Why do I need to enter my email address?</div>
+
+  <p>To securely reset your password if you forget it.</p>
+  <p>Your email will never be shared or used for any other purpose.</p>
+
+  <button id="emailHelpDialogClose" class="help-dialog-close">OK</button>
+</div>
+</div>
+
+<div id="confirmDialog" class="flex-container">
+  <div class="confirm-dialog-layout flex-container">
     <div class="confirm-dialog-header">Please note</div>
 
-    <div>Accounts with offensive or inappropriate names will be blocked.</div>
+    <p>Accounts with offensive or inappropriate names will be <b>blocked</b>.</p>
 
     <div class="confirm-dialog-buttons">
       <button id="confirmDialogCancelButton">Cancel</button>
@@ -74,4 +75,9 @@
     </div>
   </div>
 </div>
+
+<div id="signupGuard"></div>
+
+</div>
+
 {{ end }}

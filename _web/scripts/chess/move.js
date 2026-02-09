@@ -59,3 +59,10 @@ export class Move {
 		this.moveType = (raw >> 14) & 0x3
 	}
 }
+
+/**
+ * @typedef {Object} CompletedMove
+ * @property {Move} m - Encoded move.
+ * @property {number} t - Remaining time on the player's clock.
+ * @property {string} s - Standard Algebraic Notation of the move.
+ */

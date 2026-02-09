@@ -1,4 +1,4 @@
-import { getElement } from "./utils/dom"
+import { getOrPanic } from "./utils/dom"
 
 /** @param {SubmitEvent} event */
 function submitForm(event) {
@@ -8,18 +8,18 @@ function submitForm(event) {
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	const error = getElement("authFormServerError")
+	const error = getOrPanic("authFormServerError")
 	error.textContent = ""
 
 	// Disable the button while the request is being processed.
 	const btn = /** @type {HTMLButtonElement} */ (
-		getElement("authFormSubmitButton")
+		getOrPanic("authFormSubmitButton")
 	)
 	btn.disabled = true
 	btn.textContent = "Submitting..."
 
 	const data = new FormData(event.target)
-	// @ts-expect-error
+	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
 	const params = new URLSearchParams(data)
 
 	signIn(params).then((err) => {
@@ -53,14 +53,13 @@ async function signIn(data) {
 
 ;(() => {
 	// Page guard.
-	const form = document.getElementById("authForm")
-	if (!form || form.dataset.page !== "signin") return
+	if (!document.getElementById("signinGuard")) return
 
-	form.onsubmit = submitForm
+	getOrPanic("authForm").onsubmit = submitForm
 
-	const toggle = getElement("authFormPasswordToggle")
+	const toggle = getOrPanic("authFormPasswordToggle")
 	toggle.onclick = () => {
-		const input = getElement("authFormPasswordInput")
+		const input = getOrPanic("authFormPasswordInput")
 
 		const curr = input.getAttribute("type")
 		if (curr === "password") {
