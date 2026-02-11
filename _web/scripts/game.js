@@ -80,6 +80,7 @@ function appendChatMessage(msg) {
 				break
 			case EventAction.Disc:
 				appendChatMessage(`Player ${payload} leaved`)
+				break
 			// Synchronize game state.
 			case EventAction.Game:
 				/**
