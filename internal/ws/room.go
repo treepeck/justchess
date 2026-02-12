@@ -164,6 +164,7 @@ func (r *room) handleMove(e event) {
 		San:      r.game.PushMove(m),
 		Move:     m,
 		TimeLeft: tl,
+		index:    index,
 	})
 
 	r.broadcast(actionMove, movePayload{

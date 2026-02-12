@@ -56,10 +56,12 @@ func newEncodedEvent(a eventAction, payload any) ([]byte, error) {
 }
 
 type completedMove struct {
-	San  string     `json:"s"`
-	Move chego.Move `json:"m"`
+	San string `json:"s"`
 	// Remaining time on the player's clock.
-	TimeLeft int `json:"t"`
+	TimeLeft int        `json:"t"`
+	Move     chego.Move `json:"m"`
+	// Index in the move list.
+	index byte
 }
 
 // gamePayload is a payload for the event with [Game] action.
