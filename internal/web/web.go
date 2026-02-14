@@ -4,8 +4,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 
 	"justchess/internal/db"
+
+	"github.com/treepeck/chego"
 )
 
 // Declaration of error messages.
@@ -13,6 +16,9 @@ const (
 	msgNotFound        string = "The requested page doesn't exist"
 	msgInvalidTemplate string = "The requested page cannot be rendered"
 )
+
+// Template path prefix.
+const tmplPrefix = "./_web/templates"
 
 type Service struct {
 	playerRepo db.PlayerRepo
@@ -24,21 +30,28 @@ type Service struct {
 // InitService tries to parse the template files and stores them in the [Service].
 func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 	pagesData := []struct {
-		url      string
-		tmplPath string
-		base     baseData
+		url   string
+		tmpls []string
+		base  baseData
 	}{
-		{"/", "./_web/templates/home.tmpl", baseData{Title: "Home"}},
-		{"/queue", "./_web/templates/queue.tmpl", baseData{Title: "Queue"}},
-		{"/signup", "./_web/templates/signup.tmpl", baseData{Title: "Sign up"}},
-		{"/signin", "./_web/templates/signin.tmpl", baseData{Title: "Sign in"}},
-		{"/game", "./_web/templates/active_game.tmpl", baseData{Title: "Game"}},
-		{"/error", "./_web/templates/error.tmpl", baseData{Title: "Error"}},
+		{"/", []string{"/home.tmpl"}, baseData{Title: "Home"}},
+		{"/queue", []string{"/queue.tmpl"}, baseData{Title: "Queue"}},
+		{"/signup", []string{"/signup.tmpl"}, baseData{Title: "Sign up"}},
+		{"/signin", []string{"/signin.tmpl"}, baseData{Title: "Sign in"}},
+		{"/active", []string{"/active_game.tmpl", "/board.tmpl"}, baseData{}},
+		{"/arhive", []string{"/archive_game.tmpl", "/board.tmpl"}, baseData{}},
+		{"/error", []string{"/error.tmpl"}, baseData{Title: "Error"}},
 	}
 
 	pages := make(map[string]page, len(pagesData))
 	for _, data := range pagesData {
-		t, err := template.ParseFiles(basePath, data.tmplPath)
+		paths := append([]string{"/base.tmpl"}, data.tmpls...)
+		// Append template prefix to each path.
+		for i, path := range paths {
+			paths[i] = tmplPrefix + path
+		}
+
+		t, err := template.ParseFiles(paths...)
 		if err != nil {
 			return Service{}, err
 		}
@@ -73,38 +86,20 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("/game/", http.StripPrefix("/game/", http.HandlerFunc(s.serveGame)))
 }
 
+// Possible time controls.
+var controls = [9]queueData{
+	{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10},
+}
+
 func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
-	var data queueData
-
-	// There are 9 queues.
-	switch r.URL.Path {
-	case "1":
-		data = queueData{Control: 1, Bonus: 0}
-	case "2":
-		data = queueData{Control: 2, Bonus: 1}
-	case "3":
-		data = queueData{Control: 3, Bonus: 0}
-	case "4":
-		data = queueData{Control: 3, Bonus: 2}
-	case "5":
-		data = queueData{Control: 5, Bonus: 0}
-	case "6":
-		data = queueData{Control: 5, Bonus: 2}
-	case "7":
-		data = queueData{Control: 10, Bonus: 0}
-	case "8":
-		data = queueData{Control: 10, Bonus: 10}
-	case "9":
-		data = queueData{Control: 15, Bonus: 10}
-
-	default:
+	id, err := strconv.Atoi(r.URL.Path)
+	if err != nil || id < 0 || id > 8 {
 		p := s.pages["/error"]
 		s.renderPage(rw, r, p)
-		return
 	}
 
 	p := s.pages["/queue"]
-	p.Data = data
+	p.Data = controls[id]
 	s.renderPage(rw, r, p)
 }
 
@@ -116,7 +111,12 @@ func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page := s.pages["/game"]
+	page := s.pages["/active"]
+	// If the game was been already terminated, serve the corresponding page.
+	if g.Termination != chego.Unterminated {
+		page = s.pages["/archive"]
+	}
+
 	// Fill up the template with more game data.
 	page.Data = g
 

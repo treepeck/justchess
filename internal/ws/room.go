@@ -50,7 +50,7 @@ func newRoom(id, whiteId, blackId string) *room {
 	}
 }
 
-func (r room) listenEvents(remove chan<- string) {
+func (r *room) listenEvents(remove chan<- string) {
 	defer func() { remove <- r.id }()
 
 	for {
@@ -68,6 +68,15 @@ func (r room) listenEvents(remove chan<- string) {
 
 			case actionMove:
 				r.handleMove(e)
+				if r.game.IsCheckmate() {
+					if len(r.moves)%2 == 0 {
+						r.game.Result = chego.BlackWon
+					} else {
+						r.game.Result = chego.WhiteWon
+					}
+
+					r.game.Termination = chego.Normal
+				}
 			}
 
 		case <-r.clock.C:
@@ -85,7 +94,7 @@ func (r room) listenEvents(remove chan<- string) {
 	}
 }
 
-func (r room) handleRegister(c *client) {
+func (r *room) handleRegister(c *client) {
 	// Deny the connection if the client is already in the queue.
 	if _, exist := r.clients[c.player.Id]; exist {
 		// Send error event to the client.
@@ -118,7 +127,7 @@ func (r room) handleRegister(c *client) {
 	r.broadcast(actionConn, c.player.Name)
 }
 
-func (r room) handleUnregister(id string) {
+func (r *room) handleUnregister(id string) {
 	c, exists := r.clients[id]
 	if !exists {
 		log.Printf("client is not registered")
@@ -173,7 +182,7 @@ func (r *room) handleMove(e event) {
 	})
 }
 
-func (r room) handleChat(e event) {
+func (r *room) handleChat(e event) {
 	var b strings.Builder
 	// Append sender's name.
 	b.WriteString(e.sender.player.Name)
@@ -186,7 +195,7 @@ func (r room) handleChat(e event) {
 }
 
 // broadcast encodes and sends the event to all connected clients.
-func (r room) broadcast(a eventAction, payload any) {
+func (r *room) broadcast(a eventAction, payload any) {
 	raw, err := newEncodedEvent(a, payload)
 	if err != nil {
 		log.Print(err)

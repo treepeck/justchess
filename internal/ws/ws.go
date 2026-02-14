@@ -8,6 +8,7 @@ import (
 	"justchess/internal/db"
 
 	"github.com/gorilla/websocket"
+	"github.com/treepeck/chego"
 )
 
 const (
@@ -162,6 +163,23 @@ func (s Service) handleCreateRoom(e createRoom) {
 }
 
 func (s Service) handleRemoveRoom(id string) {
+	r, exist := s.rooms[id]
+	if !exist {
+		return
+	}
+
+	// Encode moves.
+	indices := make([]byte, len(r.moves))
+	for i, m := range r.moves {
+		indices[i] = m.index
+	}
+	encoded := chego.HuffmanEncoding(indices)
+
+	err := s.gameRepo.Update(r.game.Result, r.game.Termination, len(r.moves), encoded, id)
+	if err != nil {
+		log.Print(err)
+	}
+
 	log.Printf("room %s removed", id)
 	delete(s.rooms, id)
 }

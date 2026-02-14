@@ -5,9 +5,6 @@ import (
 	"justchess/internal/db"
 )
 
-// Relative path to a base.tmpl file.
-const basePath string = "./_web/templates/base.tmpl"
-
 // baseData is a data object used to fill up the base.tmpl file while executing
 // a template.
 type baseData struct {
