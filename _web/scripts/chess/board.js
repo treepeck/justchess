@@ -54,39 +54,45 @@ export default class Board {
 	#moveHandler
 
 	/**
-	 * @param {HTMLDivElement} element
 	 * @param {MoveHandler} moveHandler
 	 */
-	constructor(element, moveHandler) {
-		this.#element = element
-
+	constructor(moveHandler) {
+		this.#element = /** @type {HTMLDivElement} */ (getOrPanic("board"))
 		this.#selectedSquare = -1
-
 		this.#draggedPiece = PieceType.NP
-
 		this.#legalMoves = []
-
 		this.#moveHandler = moveHandler
 
 		// Initialize default board size.
-		this.#size = element.offsetWidth
-
-		this.#pieces = new Map()
+		this.#size = this.#element.offsetWidth
 
 		// Initialize default piece placement.
-		const placements = parsePiecePlacement(
+		this.#pieces = new Map()
+		for (const p of parsePiecePlacement(
 			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-		)
-		for (const p of placements) {
+		)) {
 			this.#appendPiece(new Piece(p.t), p.s)
 		}
+
+		// Add board event listeners.
+		this.#element.onmousedown = (e) => this.#onMouseDown(e)
+		this.#element.onmousemove = (e) => this.#onMouseMove(e)
+		this.#element.onmouseup = (e) => this.#onMouseUp(e)
+
+		// Make board responsive.
+		const observer = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				this.#setSize(entry.contentRect.width)
+			}
+		})
+		observer.observe(this.#element)
 	}
 
 	/**
 	 * Handles player's click on the board element.
 	 * @param {MouseEvent} e
 	 */
-	onMouseDown(e) {
+	#onMouseDown(e) {
 		const { x, y, square } = this.#getPositionOfEvent(e)
 
 		const prev = document.getElementById("selectedSquare")
@@ -140,7 +146,7 @@ export default class Board {
 	 * Handles player's mouse movements above the board element.
 	 * @param {MouseEvent} e
 	 */
-	onMouseMove(e) {
+	#onMouseMove(e) {
 		if (this.#draggedPiece !== PieceType.NP) {
 			const { x, y } = this.#getPositionOfEvent(e)
 
@@ -156,7 +162,7 @@ export default class Board {
 	 * Handles player's mouse release on the board element.
 	 * @param {MouseEvent} e
 	 */
-	onMouseUp(e) {
+	#onMouseUp(e) {
 		const dp = this.#draggedPiece
 
 		if (dp !== PieceType.NP) {
@@ -280,7 +286,7 @@ export default class Board {
 	 * Update piece positions when the elemen's size changes to make board responsive.
 	 * @param {number} size
 	 */
-	setSize(size) {
+	#setSize(size) {
 		this.#size = Math.round(size)
 		this.#pieces.forEach((p, s) => this.#appendPiece(p, s))
 	}

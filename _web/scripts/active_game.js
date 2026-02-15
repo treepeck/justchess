@@ -82,21 +82,7 @@ function appendChatMessage(msg) {
 	}
 
 	// Render chessboard.
-	const el = /** @type {HTMLDivElement} */ (getOrPanic("board"))
-	const board = new Board(el, moveHandler)
-
-	// Add board event listeners.
-	el.onmousedown = (e) => board.onMouseDown(e)
-	el.onmousemove = (e) => board.onMouseMove(e)
-	el.onmouseup = (e) => board.onMouseUp(e)
-
-	// Make board responsive.
-	const observer = new ResizeObserver((entries) => {
-		for (const entry of entries) {
-			board.setSize(entry.contentRect.width)
-		}
-	})
-	observer.observe(el)
+	const board = new Board(moveHandler)
 
 	// Completed moves storage.
 	const moves = /** @type {import("./chess/move").CompletedMove[]} */ ([])
