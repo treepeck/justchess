@@ -39,7 +39,7 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 		{"/signup", []string{"/signup.tmpl"}, baseData{Title: "Sign up"}},
 		{"/signin", []string{"/signin.tmpl"}, baseData{Title: "Sign in"}},
 		{"/active", []string{"/active_game.tmpl", "/board.tmpl"}, baseData{}},
-		{"/arhive", []string{"/archive_game.tmpl", "/board.tmpl"}, baseData{}},
+		{"/archive", []string{"/archive_game.tmpl", "/board.tmpl"}, baseData{}},
 		{"/error", []string{"/error.tmpl"}, baseData{Title: "Error"}},
 	}
 

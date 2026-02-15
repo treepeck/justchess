@@ -1,0 +1,38 @@
+.chat-layout {
+  order: 3;
+}
+
+.chat-input {
+  display: flex;
+  border-radius: 10px;
+  background: var(--input-background);
+}
+
+#chatInput {
+  font-size: large;
+  background-color: transparent;
+}
+
+#chatInput::placeholder {
+  color: var(--container-foreground);
+}
+
+#chatSend {
+  width: 40px;
+  height: 40px;
+  margin: auto 5px auto 5px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background-image: url("/images/send.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Reorder elements on larger screens. */
+@media screen and (min-width: 1200px) {
+  .chat-layout {
+    order: 1;
+  }
+}

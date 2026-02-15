@@ -1,3 +1,5 @@
+import { getOrPanic, create } from "../utils/dom"
+
 /** @enum {number} */
 export const MoveType = /** @type {const} */ ({
 	Normal: 0,
@@ -58,6 +60,39 @@ export class Move {
 		this.promoPiece = (raw >> 12) & 0x3
 		this.moveType = (raw >> 14) & 0x3
 	}
+}
+
+/**
+ * Appends move SAN to moves table.
+ * @param {string} san
+ * @param {number} moveIndex
+ */
+export function appendMoveToTable(san, moveIndex) {
+	// Half move index.
+	const ply = Math.ceil(moveIndex / 2)
+
+	// Append row to the table after each black move.
+	if (moveIndex % 2 !== 0) {
+		const row = create("div", "moves-row", `row${ply}`)
+		// Append half-move index to the row.
+		const ind = create("div", "moves-ply")
+		ind.textContent = `${ply}.`
+		row.appendChild(ind)
+		// Append row to the table.
+		getOrPanic("moves").appendChild(row)
+	}
+
+	// Append move to the row.
+	const move = create("div", "moves-san")
+	move.textContent = san
+	getOrPanic(`row${ply}`).appendChild(move)
+
+	// Scroll table to bottom.
+	const table = getOrPanic(`moves`)
+	table.scrollTo({
+		top: table.scrollHeight,
+		behavior: "smooth",
+	})
 }
 
 /**

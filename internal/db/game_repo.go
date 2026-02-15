@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/treepeck/chego"
@@ -69,7 +70,7 @@ type Game struct {
 	UpdatedAt   time.Time
 	Id          string
 	MovesLength int
-	Moves       []chego.DecodedMove
+	Moves       json.RawMessage
 	White       Player
 	Black       Player
 	Control     int
@@ -131,7 +132,10 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 
 	// Decode moves if the game has been terminated.
 	if g.Termination != chego.Unterminated {
-		g.Moves = chego.HuffmanDecoding(encoded, g.MovesLength)
+		raw, err := json.Marshal(chego.HuffmanDecoding(encoded, g.MovesLength))
+		if err == nil {
+			g.Moves = raw
+		}
 	}
 	return g, nil
 }

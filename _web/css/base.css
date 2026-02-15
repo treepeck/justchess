@@ -103,6 +103,40 @@ button:focus {
   justify-content: center;
 }
 
+.scrollable-container {
+  width: 100%;
+  height: 200px;
+  overflow-y: scroll;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+  padding: 10px;
+  font-size: large;
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  width: 95%;
+  max-width: 500px;
+  gap: 15px;
+  padding: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+}
+
+.game-container-header {
+  font-size: x-large;
+  font-weight: bold;
+  text-align: center;
+}
+
+.game-layout {
+  width: 100%;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .site-header {
   width: 100%;
   padding: 10px;
@@ -211,5 +245,19 @@ button:focus {
   #queueGuard::before {
     transform: rotate(15deg) scale(2);
     animation: slide-background 800s infinite;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  .scrollable-container {
+    height: 350px;
+  }
+
+  .game-container {
+    width: 25%;
+  }
+
+  .game-layout {
+    flex-direction: row;
   }
 }

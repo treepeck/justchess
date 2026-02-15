@@ -1,54 +1,26 @@
 {{ define "layout" }}
 
-<div class="active-game-layout flex-container">
+<div class="game-layout flex-container">
+  <div class="chat-layout game-container">
+    <header class="game-container-header">Chat</header>
+    <div id="chat" class="scrollable-container"></div>
 
-<div class="chat game-container">
-  <header class="game-container-header">Chat</header>
-  <div id="chatMessages" class="scrollable-container"></div>
-
-  <div class="chat-input">
-    <input
-      id="chatInput"
-      type="text"
-      placeholder="Enter your message"
-      autocomplete="off"
-    />
-    <div id="chatSend"></div>
-  </div>
-</div>
-
-<div class="board-layout">
-  <div class="board-miniprofile">
-    <a href="/player/{{ .Data.White.Name }}">{{ .Data.White.Name }}</a>
-    <div class="board-miniprofile-rating">({{ .Data.White.Rating }} mmr)</div>
-    <div id="whiteTimer" class="board-miniprofile-timer">00:00</div>
+    <div class="chat-input">
+      <input
+        id="chatInput"
+        type="text"
+        placeholder="Enter your message"
+        autocomplete="off"
+      />
+      <div id="chatSend"></div>
+    </div>
   </div>
 
-  <div id="board"></div>
-
-  <div class="board-miniprofile">
-    <a href="/player/{{ .Data.Black.Name }}">{{ .Data.Black.Name }}</a>
-    <div class="board-miniprofile-rating">({{ .Data.Black.Rating }} mmr)</div>
-    <div id="blackTimer" class="board-miniprofile-timer">00:00</div>
-  </div>
-</div>
-
-<div id="moveTableContainer" class="move-table game-container">
-  <header class="game-container-header">Moves</header>
-  <div id="moveTable" class="scrollable-container"></div>
-
-  <div class="move-table-controls">
-    <button class="move-table-button"> <- </button>
-    <button class="move-table-button"> < </button>
-    <button class="move-table-button"> > </button>
-    <button class="move-table-button"> -> </button>
-  </div>
-</div>
-
+  {{ block "board" . }}{{ end }}
 </div>
 
 <div id="ping">Ping: ? ms</div>
 
-<div id="gameGuard"></div>
+<div id="activeGameGuard"></div>
 
 {{ end }}

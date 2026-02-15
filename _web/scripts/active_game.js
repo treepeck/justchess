@@ -2,40 +2,7 @@ import { getOrPanic, create } from "./utils/dom"
 import { EventAction } from "./ws/event"
 import { Socket } from "./ws/socket"
 import Board from "./chess/board"
-import { Move } from "./chess/move"
-
-/**
- * Appends move SAN to moves table.
- * @param {string} san
- * @param {number} moveIndex
- */
-function appendMoveToTable(san, moveIndex) {
-	// Half move index.
-	const ply = Math.ceil(moveIndex / 2)
-
-	// Append row to the table after each black move.
-	if (moveIndex % 2 !== 0) {
-		const row = create("div", "move-table-row", `row${ply}`)
-		// Append half-move index to the row.
-		const ind = create("div", "move-table-ply")
-		ind.textContent = `${ply}.`
-		row.appendChild(ind)
-		// Append row to the table.
-		getOrPanic("moveTable").appendChild(row)
-	}
-
-	// Append move to the row.
-	const move = create("div", "move-table-san")
-	move.textContent = san
-	getOrPanic(`row${ply}`).appendChild(move)
-
-	// Scroll table to bottom.
-	const table = getOrPanic(`moveTable`)
-	table.scrollTo({
-		top: table.scrollHeight,
-		behavior: "smooth",
-	})
-}
+import { appendMoveToTable, Move } from "./chess/move"
 
 /**
  * Appends chat message to the DOM.
@@ -46,7 +13,7 @@ function appendChatMessage(msg) {
 	message.textContent = msg
 
 	// Append message to chat.
-	const container = getOrPanic("chatMessages")
+	const container = getOrPanic("chat")
 	container.appendChild(message)
 
 	// Scroll chat to bottom.
@@ -58,7 +25,7 @@ function appendChatMessage(msg) {
 
 ;(() => {
 	// Page guard.
-	if (!document.getElementById("gameGuard")) return
+	if (!document.getElementById("activeGameGuard")) return
 
 	/** @param {import("./chess/move").CompletedMove} move */
 	const store = (move) => {
