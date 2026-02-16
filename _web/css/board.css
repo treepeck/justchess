@@ -74,51 +74,63 @@
   transform: translate(var(--x), var(--y));
 }
 
-.piece.WP {
+/* White pawn. */
+.piece.P {
   --col: 0;
   --row: 0;
 }
-.piece.WN {
+/* White knight. */
+.piece.N {
   --col: 1;
   --row: 0;
 }
-.piece.WB {
+/* White bishop. */
+.piece.B {
   --col: 2;
   --row: 0;
 }
-.piece.WR {
+/* White rook. */
+.piece.R {
   --col: 3;
   --row: 0;
 }
-.piece.WQ {
+/* White queen. */
+.piece.Q {
   --col: 4;
   --row: 0;
 }
-.piece.WK {
+/* White king. */
+.piece.K {
   --col: 5;
   --row: 0;
 }
-.piece.BP {
+/* Black pawn. */
+.piece.p {
   --col: 0;
   --row: 1;
 }
-.piece.BN {
+/* Black knight. */
+.piece.n {
   --col: 1;
   --row: 1;
 }
-.piece.BB {
+/* Black bishop. */
+.piece.b {
   --col: 2;
   --row: 1;
 }
-.piece.BR {
+/* Black rook. */
+.piece.r {
   --col: 3;
   --row: 1;
 }
-.piece.BQ {
+/* Black queen. */
+.piece.q {
   --col: 4;
   --row: 1;
 }
-.piece.BK {
+/* Black king. */
+.piece.k {
   --col: 5;
   --row: 1;
 }
@@ -158,6 +170,15 @@
   width: 45%;
   font-weight: bold;
   text-align: start;
+  cursor: pointer;
+}
+
+.current {
+  color: white;
+}
+
+.moves-san:hover {
+  background-color: var(--text-hover);
 }
 
 /* Reorder elements on bigger screens. */

@@ -1,7 +1,12 @@
-import { Move, MoveType, PromotionFlag, Square } from "./move"
+import {
+	Move,
+	MoveType,
+	PromotionFlag,
+	Square,
+	highlightCurrentMove,
+} from "./move"
 import { create, getOrPanic } from "../utils/dom"
-import { parsePiecePlacement } from "./fen"
-import { Piece, PieceType } from "./piece"
+import { Piece, PieceType, pieceType2String } from "./piece"
 
 /**
  * @typedef {Object} Position
@@ -16,6 +21,27 @@ import { Piece, PieceType } from "./piece"
  * @param {number} moveIndex
  * @returns {void}
  */
+
+/** Fen string of the initial position. */
+const initPlacement = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+
+/**
+ * Map of piece symbols to piece types to parse fen strings.
+ * @type {Map<string, PieceType>}
+ */
+const mapping = new Map()
+mapping.set("P", PieceType.WP)
+mapping.set("p", PieceType.BP)
+mapping.set("N", PieceType.WN)
+mapping.set("n", PieceType.BN)
+mapping.set("B", PieceType.WB)
+mapping.set("b", PieceType.BB)
+mapping.set("R", PieceType.WR)
+mapping.set("r", PieceType.BR)
+mapping.set("Q", PieceType.WQ)
+mapping.set("q", PieceType.BQ)
+mapping.set("K", PieceType.WK)
+mapping.set("k", PieceType.BK)
 
 /**
  * Wrapper around the HTML element that renders and manages the chessboard state.
@@ -44,6 +70,16 @@ export default class Board {
 	 */
 	#selectedSquare
 	/**
+	 * Fen strings of reached positions during the game.
+	 * @type {string[]}
+	 */
+	fens
+	/**
+	 * Index of the current displayed position.
+	 * @type {number}
+	 */
+	currentFen
+	/**
 	 * Board element size in pixels.
 	 * @type {number}
 	 */
@@ -58,21 +94,20 @@ export default class Board {
 	 */
 	constructor(moveHandler) {
 		this.#element = /** @type {HTMLDivElement} */ (getOrPanic("board"))
+		this.#pieces = /** @type {Map<Square, Piece>} */ (new Map())
+
+		this.parsePiecePlacement(initPlacement)
+
 		this.#selectedSquare = -1
 		this.#draggedPiece = PieceType.NP
 		this.#legalMoves = []
 		this.#moveHandler = moveHandler
 
+		this.fens = [initPlacement]
+		this.currentFen = 0
+
 		// Initialize default board size.
 		this.#size = this.#element.offsetWidth
-
-		// Initialize default piece placement.
-		this.#pieces = new Map()
-		for (const p of parsePiecePlacement(
-			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-		)) {
-			this.#appendPiece(new Piece(p.t), p.s)
-		}
 
 		// Add board event listeners.
 		this.#element.onmousedown = (e) => this.#onMouseDown(e)
@@ -86,115 +121,106 @@ export default class Board {
 			}
 		})
 		observer.observe(this.#element)
-	}
 
-	/**
-	 * Handles player's click on the board element.
-	 * @param {MouseEvent} e
-	 */
-	#onMouseDown(e) {
-		const { x, y, square } = this.#getPositionOfEvent(e)
-
-		const prev = document.getElementById("selectedSquare")
-		if (prev !== null) {
-			const from = this.#selectedSquare
-
-			// Remove previous selected square.
-			this.#element.removeChild(prev)
-			this.#selectedSquare = -1
-
-			// Call move handler is the move is legal.
-			for (let i = 0; i < this.#legalMoves.length; i++) {
-				const move = this.#legalMoves[i]
-				if (move.from === from && move.to === square) {
-					const piece = /** @type {Piece} */ (this.#pieces.get(from))
-					if (move.moveType === MoveType.Promotion) {
-						const isWhite = piece.pieceType % 2 === 0
-						this.#renderPromotionDialog(isWhite, move.to, i)
-					} else {
-						this.#moveHandler(i)
-					}
-					return
-				}
-			}
-		}
-
-		const piece = this.#pieces.get(square)
-		if (piece !== undefined) {
-			// Remove piece from board while it's being dragged.
-			this.#pieces.delete(square)
-			this.#element.removeChild(piece.element)
-
-			// Append dragged piece to the board.
-			const dp = new Piece(piece.pieceType)
-			dp.element.id = "draggedPiece"
-			this.#element.appendChild(dp.element)
-
-			// Position dragged piece under the player's mouse cursor.
-			const squareSize = this.#size / 8
-			dp.element.style.setProperty("--x", `${x - squareSize / 2}px`)
-			dp.element.style.setProperty("--y", `${y - squareSize / 2}px`)
-
-			this.#draggedPiece = piece.pieceType
-		}
-
-		// Append new selected square to the board.
-		this.#appendSelectedSquare(square)
-	}
-
-	/**
-	 * Handles player's mouse movements above the board element.
-	 * @param {MouseEvent} e
-	 */
-	#onMouseMove(e) {
-		if (this.#draggedPiece !== PieceType.NP) {
-			const { x, y } = this.#getPositionOfEvent(e)
-
-			// Position dragged piece under the player's mouse cursor.
-			const dp = getOrPanic("draggedPiece")
-			const squareSize = this.#size / 8
-			dp.style.setProperty("--x", `${x - squareSize / 2}px`)
-			dp.style.setProperty("--y", `${y - squareSize / 2}px`)
-		}
-	}
-
-	/**
-	 * Handles player's mouse release on the board element.
-	 * @param {MouseEvent} e
-	 */
-	#onMouseUp(e) {
-		const dp = this.#draggedPiece
-
-		if (dp !== PieceType.NP) {
-			// Restore piece placement.
-			this.#appendPiece(new Piece(dp), this.#selectedSquare)
-
-			// Call move handler if the move is valid.
-			const { square } = this.#getPositionOfEvent(e)
-			for (let i = 0; i < this.#legalMoves.length; i++) {
-				const move = this.#legalMoves[i]
-				if (move.from === this.#selectedSquare && move.to === square) {
-					if (move.moveType === MoveType.Promotion) {
-						const isWhite = dp % 2 === 0
-						this.#renderPromotionDialog(isWhite, move.to, i)
-					} else {
-						this.#moveHandler(i)
-					}
-					// Reset selected square.
-					this.#selectedSquare = -1
-					this.#element.removeChild(getOrPanic("selectedSquare"))
+		// Go through move history using keyboard.
+		document.onkeydown = (e) => {
+			switch (e.key) {
+				case "ArrowUp":
+					this.currentFen = this.fens.length - 1
 					break
-				}
+				case "ArrowRight":
+					if (this.currentFen == this.fens.length - 1) return
+					this.currentFen += 1
+					break
+				case "ArrowDown":
+					this.currentFen = 0
+					break
+				case "ArrowLeft":
+					if (this.currentFen == 0) return
+					this.currentFen -= 1
+					break
 			}
-
-			// Remove dragged piece element from the board.
-			const el = getOrPanic("draggedPiece")
-			this.#element.removeChild(el)
-			this.#draggedPiece = PieceType.NP
+			highlightCurrentMove(this.currentFen)
+			this.parsePiecePlacement(this.fens[this.currentFen])
 		}
 	}
 
 	/**
+	 * Parses the Fen string and updates the position state.
+	 * @param {string} fen
+	 */
+	parsePiecePlacement(fen) {
+		// Remove previous pieces from board.
+		this.#pieces.clear()
+		while (this.#element.firstChild) {
+			this.#element.removeChild(this.#element.firstChild)
+		}
+
+		const rows = fen.split("/")
+		let sqInd = 0
+		for (let i = 7; i >= 0; i--) {
+			for (let j = 0; j < rows[i].length; j++) {
+				let next = mapping.get(rows[i][j])
+				if (next !== undefined) {
+					this.#appendPiece(new Piece(next), sqInd)
+					sqInd++
+				} else {
+					// Skip empty squares.
+					sqInd += parseInt(rows[i][j])
+				}
+			}
+		}
+	}
+
+	/**
+	 * Serializes the current position into a Fen string.
+	 * @returns {string}
+	 */
+	serializePiecePlacement() {
+		let fen = ""
+		// Convert map to array for more convinient serializing.
+		const board = /** @type {PieceType[]} */ ([])
+		// Go through all squares.
+		for (let i = 0; i < 64; i++) {
+			const piece = this.#pieces.get(i)
+			// Add piece to board.
+			board[i] = piece !== undefined ? piece.pieceType : PieceType.NP
+		}
+
+		let emptySquares = 0
+		for (let rank = 7; rank >= 0; rank--) {
+			for (let file = 0; file < 8; file++) {
+				const square = 8 * rank + file
+
+				if (board[square] === PieceType.NP) {
+					emptySquares++
+				} else {
+					if (emptySquares > 0) {
+						fen += emptySquares.toString()
+						emptySquares = 0
+					}
+					fen += pieceType2String(board[square])
+				}
+
+				// Add rank separators.
+				if ((square + 1) % 8 === 0) {
+					if (emptySquares > 0) {
+						fen += emptySquares.toString()
+						emptySquares = 0
+					}
+					// Don't add separator in the end of string.
+					if (square !== 7) {
+						fen += "/"
+					}
+				}
+			}
+		}
+		return fen
+	}
+
+	/**
+	 * Does not affect reachedFes or currentFen. Simply performs the move.
+	 * It's the caller's responsibility to ensure that move is legal.
 	 * @param {Move} move
 	 */
 	makeMove(move) {
@@ -283,15 +309,6 @@ export default class Board {
 	}
 
 	/**
-	 * Update piece positions when the elemen's size changes to make board responsive.
-	 * @param {number} size
-	 */
-	#setSize(size) {
-		this.#size = Math.round(size)
-		this.#pieces.forEach((p, s) => this.#appendPiece(p, s))
-	}
-
-	/**
 	 * Updates legal moves on the board.
 	 * @param {Move[]} moves
 	 */
@@ -301,6 +318,123 @@ export default class Board {
 			// @ts-expect-error
 			this.#legalMoves.push(new Move(encoded))
 		}
+	}
+
+	/**
+	 * Handles player's click on the board element.
+	 * @param {MouseEvent} e
+	 */
+	#onMouseDown(e) {
+		const { x, y, square } = this.#getPositionOfEvent(e)
+
+		const prev = document.getElementById("selectedSquare")
+		if (prev !== null) {
+			const from = this.#selectedSquare
+
+			// Remove previous selected square.
+			this.#element.removeChild(prev)
+			this.#selectedSquare = -1
+
+			// Call move handler is the move is legal.
+			for (let i = 0; i < this.#legalMoves.length; i++) {
+				const move = this.#legalMoves[i]
+				if (move.from === from && move.to === square) {
+					const piece = /** @type {Piece} */ (this.#pieces.get(from))
+					if (move.moveType === MoveType.Promotion) {
+						const isWhite = piece.pieceType % 2 === 0
+						this.#renderPromotionDialog(isWhite, move.to, i)
+					} else {
+						this.makeMove(move)
+						this.#moveHandler(i)
+					}
+					return
+				}
+			}
+		}
+
+		const piece = this.#pieces.get(square)
+		if (piece !== undefined) {
+			// Remove piece from board while it's being dragged.
+			this.#pieces.delete(square)
+			this.#element.removeChild(piece.element)
+
+			// Append dragged piece to the board.
+			const dp = new Piece(piece.pieceType)
+			dp.element.id = "draggedPiece"
+			this.#element.appendChild(dp.element)
+
+			// Position dragged piece under the player's mouse cursor.
+			const squareSize = this.#size / 8
+			dp.element.style.setProperty("--x", `${x - squareSize / 2}px`)
+			dp.element.style.setProperty("--y", `${y - squareSize / 2}px`)
+
+			this.#draggedPiece = piece.pieceType
+		}
+
+		// Append new selected square to the board.
+		this.#appendSelectedSquare(square)
+	}
+
+	/**
+	 * Handles player's mouse movements above the board element.
+	 * @param {MouseEvent} e
+	 */
+	#onMouseMove(e) {
+		if (this.#draggedPiece !== PieceType.NP) {
+			const { x, y } = this.#getPositionOfEvent(e)
+
+			// Position dragged piece under the player's mouse cursor.
+			const dp = getOrPanic("draggedPiece")
+			const squareSize = this.#size / 8
+			dp.style.setProperty("--x", `${x - squareSize / 2}px`)
+			dp.style.setProperty("--y", `${y - squareSize / 2}px`)
+		}
+	}
+
+	/**
+	 * Handles player's mouse release on the board element.
+	 * @param {MouseEvent} e
+	 */
+	#onMouseUp(e) {
+		const dp = this.#draggedPiece
+
+		if (dp !== PieceType.NP) {
+			// Restore piece placement.
+			this.#appendPiece(new Piece(dp), this.#selectedSquare)
+
+			// Call move handler if the move is valid.
+			const { square } = this.#getPositionOfEvent(e)
+			for (let i = 0; i < this.#legalMoves.length; i++) {
+				const move = this.#legalMoves[i]
+				if (move.from === this.#selectedSquare && move.to === square) {
+					if (move.moveType === MoveType.Promotion) {
+						const isWhite = dp % 2 === 0
+						this.#renderPromotionDialog(isWhite, move.to, i)
+					} else {
+						this.makeMove(move)
+						this.#moveHandler(i)
+					}
+					// Reset selected square.
+					this.#selectedSquare = -1
+					this.#element.removeChild(getOrPanic("selectedSquare"))
+					break
+				}
+			}
+
+			// Remove dragged piece element from the board.
+			const el = getOrPanic("draggedPiece")
+			this.#element.removeChild(el)
+			this.#draggedPiece = PieceType.NP
+		}
+	}
+
+	/**
+	 * Update piece positions when the elemen's size changes to make board responsive.
+	 * @param {number} size
+	 */
+	#setSize(size) {
+		this.#size = Math.round(size)
+		this.#pieces.forEach((p, s) => this.#appendPiece(p, s))
 	}
 
 	/**
@@ -343,6 +477,7 @@ export default class Board {
 
 			// Add event listener.
 			piece.element.onclick = () => {
+				this.makeMove(this.#legalMoves[moveIndex + i])
 				this.#moveHandler(moveIndex + i)
 			}
 

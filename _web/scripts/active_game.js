@@ -2,7 +2,7 @@ import { getOrPanic, create } from "./utils/dom"
 import { EventAction } from "./ws/event"
 import { Socket } from "./ws/socket"
 import Board from "./chess/board"
-import { appendMoveToTable, Move } from "./chess/move"
+import { appendMoveToTable, highlightCurrentMove } from "./chess/move"
 
 /**
  * Appends chat message to the DOM.
@@ -29,11 +29,18 @@ function appendChatMessage(msg) {
 
 	/** @param {import("./chess/move").CompletedMove} move */
 	const store = (move) => {
-		// Store completed move.
-		moves.push(move)
-		// @ts-ignore - Call Move constructor to correctly initialize fields.
-		board.makeMove(new Move(move.m))
-		appendMoveToTable(move.s, moves.length)
+		// Update position.
+		board.parsePiecePlacement(move.f)
+		board.fens.push(move.f)
+		board.currentFen = board.fens.length - 1
+
+		appendMoveToTable(move.s, board.currentFen, (index) => {
+			board.currentFen = index
+			highlightCurrentMove(index)
+			board.parsePiecePlacement(board.fens[index])
+		})
+
+		highlightCurrentMove(board.currentFen)
 	}
 
 	/** @type {import("./ws/socket").EventHandler} */
@@ -83,9 +90,6 @@ function appendChatMessage(msg) {
 
 	// Render chessboard.
 	const board = new Board(moveHandler)
-
-	// Completed moves storage.
-	const moves = /** @type {import("./chess/move").CompletedMove[]} */ ([])
 
 	// Handle chat messages.
 	const chat = /** @type {HTMLInputElement} */ (getOrPanic("chatInput"))

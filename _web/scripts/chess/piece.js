@@ -45,31 +45,31 @@ export class Piece {
  * @param {PieceType} pieceType
  * @returns {string}
  */
-function pieceType2String(pieceType) {
+export function pieceType2String(pieceType) {
 	switch (pieceType) {
 		case PieceType.WP:
-			return "WP"
+			return "P"
 		case PieceType.BP:
-			return "BP"
+			return "p"
 		case PieceType.WN:
-			return "WN"
+			return "N"
 		case PieceType.BN:
-			return "BN"
+			return "n"
 		case PieceType.WB:
-			return "WB"
+			return "B"
 		case PieceType.BB:
-			return "BB"
+			return "b"
 		case PieceType.WR:
-			return "WR"
+			return "R"
 		case PieceType.BR:
-			return "BR"
+			return "r"
 		case PieceType.WQ:
-			return "WQ"
+			return "Q"
 		case PieceType.BQ:
-			return "BQ"
+			return "q"
 		case PieceType.WK:
-			return "WK"
+			return "K"
 		default:
-			return "BK"
+			return "k"
 	}
 }

@@ -56,7 +56,10 @@ func newEncodedEvent(a eventAction, payload any) ([]byte, error) {
 }
 
 type completedMove struct {
+	// Standard Algebraic Notation of the move.
 	San string `json:"s"`
+	// Piece placement Fen field after completing the move.
+	Fen string `json:"f"`
 	// Remaining time on the player's clock.
 	TimeLeft int        `json:"t"`
 	Move     chego.Move `json:"m"`

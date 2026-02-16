@@ -171,6 +171,7 @@ func (r *room) handleMove(e event) {
 	m := r.game.LegalMoves.Moves[index]
 	r.moves = append(r.moves, completedMove{
 		San:      r.game.PushMove(m),
+		Fen:      chego.SerializeBitboards(r.game.Position.Bitboards),
 		Move:     m,
 		TimeLeft: tl,
 		index:    index,
