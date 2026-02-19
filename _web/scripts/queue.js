@@ -1,3 +1,4 @@
+import { formatTime } from "./utils/clock"
 import { getOrPanic } from "./utils/dom"
 import { EventAction } from "./ws/event"
 import { Socket } from "./ws/socket"
@@ -44,15 +45,7 @@ function eventHandler(action, payload) {
 			expected += delta
 		}
 		expected += interval
-		let seconds = Math.floor((current - initial) / 1000)
-		const minutes = Math.floor(seconds / 60)
-		if (minutes > 0) {
-			seconds -= 60 * minutes
-		}
-
-		getOrPanic("countUpTimer").textContent = `${
-			minutes > 9 ? minutes : `0${minutes}`
-		}:${seconds > 9 ? seconds : `0${seconds}`}`
+		formatTime("countUpTimer", Math.floor((current - initial) / 1000))
 
 		setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
 	}

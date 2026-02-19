@@ -133,7 +133,7 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 	// Decode moves if the game has been terminated.
 	if g.Termination != chego.Unterminated {
 		raw, err := json.Marshal(chego.HuffmanDecoding(encoded, g.MovesLength))
-		if err == nil {
+		if err != nil {
 			g.Moves = raw
 		}
 	}

@@ -33,13 +33,18 @@ type room struct {
 	clock      *time.Ticker
 }
 
-func newRoom(id, whiteId, blackId string) *room {
+func newRoom(id, whiteId, blackId string, control, bonus int) *room {
+	g := chego.NewGame()
+	g.SetClock(control*60, bonus)
+
+	log.Printf("control: %d, bonus: %d", control, bonus)
+
 	return &room{
 		id:                 id,
 		whiteId:            whiteId,
 		blackId:            blackId,
 		moves:              make([]completedMove, 0),
-		game:               chego.NewGame(),
+		game:               g,
 		whiteReconnectTime: reconnectDeadline,
 		blackReconnectTime: reconnectDeadline,
 		clients:            make(map[string]*client),
@@ -81,14 +86,10 @@ func (r *room) listenEvents(remove chan<- string) {
 
 		case <-r.clock.C:
 			r.handleTimeTick()
-
 			// Destroy the room if both players have been disconnected for a while.
 			if r.whiteReconnectTime < 1 && r.blackReconnectTime < 1 {
+				r.clock.Stop()
 				return
-			} else if r.whiteReconnectTime < 1 {
-				// TODO: award the black player with victory.
-			} else if r.blackReconnectTime < 1 {
-				// TODO: award the white player with victory.
 			}
 		}
 	}
@@ -141,13 +142,46 @@ func (r *room) handleUnregister(id string) {
 	r.broadcast(actionDisc, c.player.Name)
 }
 
+// handleTimeTick decrements the time on active player's clock.
 func (r *room) handleTimeTick() {
+	// If some player is disconnected, decrement their allowed reconnect time.
 	if _, isConnected := r.clients[r.whiteId]; !isConnected {
 		r.whiteReconnectTime--
 	}
-
 	if _, isConnected := r.clients[r.blackId]; !isConnected {
 		r.blackReconnectTime--
+	}
+	// Terminate the game if one of the player failed to reconnect.
+	if r.whiteReconnectTime < 1 || r.blackReconnectTime < 1 {
+		r.game.Termination = chego.TimeForfeit
+		r.game.Result = chego.BlackWon
+		if r.blackReconnectTime < 1 {
+			r.game.Result = chego.WhiteWon
+		}
+		return
+	}
+
+	// Decrement player's clock time.
+	if r.game.Position.ActiveColor == chego.ColorWhite {
+		r.game.WhiteTime--
+	} else {
+		r.game.BlackTime--
+	}
+
+	// Terminate the game due to the time forfeit.
+	if r.game.WhiteTime == 0 || r.game.BlackTime == 0 {
+		// Accord to chess rules, the game is draw if opponent doesn't have
+		// sufficient material to checkmate you.
+		if r.game.IsInsufficientMaterial() {
+			r.game.Termination = chego.TimeForfeit
+			r.game.Result = chego.Draw
+		} else {
+			r.game.Termination = chego.TimeForfeit
+			r.game.Result = chego.BlackWon
+			if r.game.BlackTime == 0 {
+				r.game.Result = chego.WhiteWon
+			}
+		}
 	}
 }
 
@@ -161,21 +195,19 @@ func (r *room) handleMove(e event) {
 		return
 	}
 
-	// Store the remaining time.
-	tl := r.game.WhiteTime
-	if len(r.moves)&2 == 0 {
-		tl = r.game.BlackTime
-	}
-
 	// Perform and store the move.
 	m := r.game.LegalMoves.Moves[index]
-	r.moves = append(r.moves, completedMove{
+	completed := completedMove{
 		San:      r.game.PushMove(m),
 		Fen:      chego.SerializeBitboards(r.game.Position.Bitboards),
 		Move:     m,
-		TimeLeft: tl,
+		TimeLeft: r.game.WhiteTime,
 		index:    index,
-	})
+	}
+	if r.game.Position.ActiveColor == chego.ColorWhite {
+		completed.TimeLeft = r.game.BlackTime
+	}
+	r.moves = append(r.moves, completed)
 
 	r.broadcast(actionMove, movePayload{
 		LegalMoves: r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],

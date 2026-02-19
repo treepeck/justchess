@@ -4,7 +4,9 @@
   <div class="board-miniprofile flex-container">
     <a href="/player/{{ .Data.Black.Name }}">{{ .Data.Black.Name }}</a>
     <div class="board-miniprofile-rating">({{ .Data.Black.Rating }} mmr)</div>
-    <div id="blackTimer" class="board-miniprofile-timer">00:00</div>
+    <div id="blackClock" class="board-miniprofile-clock">
+      {{ formatTime .Data.Control }}
+    </div>
   </div>
 
   <div id="board"></div>
@@ -12,7 +14,9 @@
   <div class="board-miniprofile flex-container">
     <a href="/player/{{ .Data.White.Name }}">{{ .Data.White.Name }}</a>
     <div class="board-miniprofile-rating">({{ .Data.White.Rating }} mmr)</div>
-    <div id="whiteTimer" class="board-miniprofile-timer">00:00</div>
+    <div id="whiteClock" class="board-miniprofile-clock">
+      {{ formatTime .Data.Control }}
+    </div>
   </div>
 </div>
 

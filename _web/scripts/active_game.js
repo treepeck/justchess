@@ -1,8 +1,9 @@
+import { appendMoveToTable, highlightCurrentMove } from "./chess/move"
+import { formatTime, Clock, Color } from "./utils/clock"
 import { getOrPanic, create } from "./utils/dom"
 import { EventAction } from "./ws/event"
 import { Socket } from "./ws/socket"
 import Board from "./chess/board"
-import { appendMoveToTable, highlightCurrentMove } from "./chess/move"
 
 /**
  * Appends chat message to the DOM.
@@ -43,6 +44,9 @@ function appendChatMessage(msg) {
 		highlightCurrentMove(board.currentFen)
 	}
 
+	const clock = new Clock(5 * 60, true, Color.White)
+	clock.start(1000)
+
 	/** @type {import("./ws/socket").EventHandler} */
 	const eventHandler = (action, payload) => {
 		switch (action) {
@@ -67,6 +71,11 @@ function appendChatMessage(msg) {
 				for (const move of pGame.m) {
 					store(move)
 				}
+				// Set player's clock.
+				clock.setTime(Color.White, pGame.wt)
+				clock.setTime(Color.Black, pGame.bt)
+				clock.color =
+					board.currentFen % 2 !== 0 ? Color.Black : Color.White
 				break
 			case EventAction.Move:
 				/**
@@ -77,6 +86,13 @@ function appendChatMessage(msg) {
 				// Update legal moves.
 				board.setLegalMoves(pMove.lm)
 				store(pMove.m)
+				// Update player's clock.
+				if (board.currentFen % 2 !== 0) {
+					clock.setTime(Color.White, pMove.m.t)
+				} else {
+					clock.setTime(Color.Black, pMove.m.t)
+				}
+				clock.switchColor()
 				break
 		}
 	}

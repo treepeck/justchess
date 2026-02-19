@@ -156,7 +156,7 @@ func (s Service) handleCreateRoom(e createRoom) {
 
 	log.Printf("room %s created", e.id)
 
-	r := newRoom(e.id, e.whiteId, e.blackId)
+	r := newRoom(e.id, e.whiteId, e.blackId, e.control.minutes, e.control.bonus)
 	go r.listenEvents(s.remove)
 
 	s.rooms[e.id] = r

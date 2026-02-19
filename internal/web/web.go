@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"justchess/internal/db"
 
@@ -18,7 +19,7 @@ const (
 )
 
 // Template path prefix.
-const tmplPrefix = "./_web/templates"
+const tmplPrefix = "./_web/templates/"
 
 type Service struct {
 	playerRepo db.PlayerRepo
@@ -34,24 +35,38 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 		tmpls []string
 		base  baseData
 	}{
-		{"/", []string{"/home.tmpl"}, baseData{Title: "Home"}},
-		{"/queue", []string{"/queue.tmpl"}, baseData{Title: "Queue"}},
-		{"/signup", []string{"/signup.tmpl"}, baseData{Title: "Sign up"}},
-		{"/signin", []string{"/signin.tmpl"}, baseData{Title: "Sign in"}},
-		{"/active", []string{"/active_game.tmpl", "/board.tmpl"}, baseData{}},
-		{"/archive", []string{"/archive_game.tmpl", "/board.tmpl"}, baseData{}},
-		{"/error", []string{"/error.tmpl"}, baseData{Title: "Error"}},
+		{"/", []string{"home.tmpl"}, baseData{Title: "Home"}},
+		{"/queue", []string{"queue.tmpl"}, baseData{Title: "Queue"}},
+		{"/signup", []string{"signup.tmpl"}, baseData{Title: "Sign up"}},
+		{"/signin", []string{"signin.tmpl"}, baseData{Title: "Sign in"}},
+		{"/active", []string{"active_game.tmpl", "board.tmpl"}, baseData{}},
+		{"/archive", []string{"archive_game.tmpl", "board.tmpl"}, baseData{}},
+		{"/error", []string{"error.tmpl"}, baseData{Title: "Error"}},
 	}
 
+	// Parse and store templates to avoid reparsing them on each HTTP request.
 	pages := make(map[string]page, len(pagesData))
 	for _, data := range pagesData {
-		paths := append([]string{"/base.tmpl"}, data.tmpls...)
+		t := template.New("base.tmpl")
+
+		// Add funcs to specific templates.
+		switch data.url {
+		case "/archive", "/active":
+			t.Funcs(template.FuncMap{
+				"formatTime": formatTime,
+			})
+		}
+
+		// Construct filepaths necessary to parse a complete template.
 		// Append template prefix to each path.
+		paths := append([]string{"base.tmpl"}, data.tmpls[:]...)
 		for i, path := range paths {
 			paths[i] = tmplPrefix + path
 		}
 
-		t, err := template.ParseFiles(paths...)
+		// Parse page template.
+		var err error
+		t, err = t.ParseFiles(paths...)
 		if err != nil {
 			return Service{}, err
 		}
@@ -99,7 +114,7 @@ func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	p := s.pages["/queue"]
-	p.Data = controls[id]
+	p.Data = controls[id-1]
 	s.renderPage(rw, r, p)
 }
 
@@ -148,4 +163,18 @@ func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 		log.Print(err)
 		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
 	}
+}
+
+// formatTime formats the given minutes into a string:
+// 5 -> "05:00"
+// 10 -> "10:00"
+func formatTime(minutes int) string {
+	var b strings.Builder
+
+	if minutes < 10 {
+		b.WriteByte('0')
+	}
+	b.WriteString(strconv.Itoa(minutes))
+	b.WriteString(":00")
+	return b.String()
 }
