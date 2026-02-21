@@ -1,11 +1,11 @@
 import { getOrPanic } from "./utils/dom"
-import showHelpDialog from "./utils/help_dialog"
+import showDialog from "./utils/dialog"
 ;(() => {
 	// Page guard.
 	if (!document.getElementById("homeGuard")) return
 
 	getOrPanic("helpDialogActivator").onclick = () => {
-		showHelpDialog("helpDialog")
+		showDialog("helpDialog")
 	}
 
 	for (let i = 1; i <= 9; i++) {

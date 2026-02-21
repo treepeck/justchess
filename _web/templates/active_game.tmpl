@@ -21,6 +21,17 @@
 
 <div id="ping">Ping: ? ms</div>
 
+<div id="endgameDialog" class="dialog flex-container">
+  <div class="dialog-layout">
+    <p class="dialog-header">Game over</p>
+
+    <p id="endgameDialogResult">{{ formatResult .Data.Result }}</p>
+    <p id="endgameDialogTermination">{{ formatTermination .Data.Termination }}</p>
+
+    <button id="endgameDialogClose" class="dialog-close">OK</button>
+  </div>
+</div>
+
 <div id="activeGameGuard"></div>
 
 {{ end }}

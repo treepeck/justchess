@@ -44,7 +44,8 @@ const (
 		g.moves,
 		g.termination,
 		g.created_at,
-		g.updated_at
+		g.updated_at,
+		g.time_differences
 	FROM game g
 	JOIN player w ON g.white_id = w.id
 	JOIN player b ON g.black_id = b.id
@@ -59,24 +60,25 @@ const (
 		termination = ?,
 		moves_length = ?,
 		moves = ?,
+		time_differences = ?,
 		updated_at = CURRENT_TIMESTAMP
-	WHERE game.id = ?
-	`
+	WHERE game.id = ?`
 )
 
 // Game represents the state of a single completed chess game.
 type Game struct {
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Id          string
-	MovesLength int
-	Moves       json.RawMessage
-	White       Player
-	Black       Player
-	Control     int
-	Bonus       int
-	Result      chego.Result
-	Termination chego.Termination
+	White           Player
+	Black           Player
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Moves           json.RawMessage
+	TimeDifferences []int
+	Id              string
+	MovesLength     int
+	Control         int
+	Bonus           int
+	Result          chego.Result
+	Termination     chego.Termination
 }
 
 // GameRepo wraps the database connection pool and provides methods to access
@@ -103,6 +105,7 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 
 	var g Game
 	var encoded []byte
+	var compressed []byte
 	if err := row.Scan(
 		// Scan white player.
 		&g.White.Id,
@@ -126,6 +129,7 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 		&g.Termination,
 		&g.CreatedAt,
 		&g.UpdatedAt,
+		&compressed,
 	); err != nil {
 		return g, err
 	}
@@ -136,13 +140,16 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 		if err != nil {
 			g.Moves = raw
 		}
+		g.TimeDifferences = chego.DecompressTimeDiffs(compressed, g.MovesLength)
 	}
 	return g, nil
 }
 
 // Update updates a single record with the specified id in the game table by
 // setting the table columns to the provided values.
-func (r GameRepo) Update(res chego.Result, t chego.Termination, movesLength int, moves []byte, id string) error {
-	_, err := r.pool.Exec(updateGame, res, t, movesLength, moves, id)
+func (r GameRepo) Update(res chego.Result, t chego.Termination, movesLength int,
+	moves, compressedDiffs []byte, id string) error {
+	_, err := r.pool.Exec(updateGame, res, t, movesLength, moves,
+		compressedDiffs, id)
 	return err
 }

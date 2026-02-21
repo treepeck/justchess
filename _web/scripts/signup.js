@@ -1,5 +1,5 @@
 import { getOrPanic } from "./utils/dom"
-import showHelpDialog from "./utils/help_dialog"
+import showDialog from "./utils/dialog"
 
 // Regular expressions to validate the user input.
 const nameEx = /^[a-zA-Z0-9]{2,60}$/i
@@ -142,7 +142,7 @@ async function signUp(data) {
 	form.onsubmit = submitForm
 
 	getOrPanic("emailHelpDialogActivator").onclick = () =>
-		showHelpDialog("emailHelpDialog")
+		showDialog("emailHelpDialog")
 
 	getOrPanic("confirmDialogCancelButton").onclick = () => {
 		getOrPanic("confirmDialog").classList.remove("show")

@@ -64,41 +64,6 @@
   color: var(--text-hover);
 }
 
-#confirmDialog {
-  position: fixed;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  user-select: none;
-  z-index: -1;
-  opacity: 0;
-  backdrop-filter: blur(6px);
-  transition: z-index 1s ease-in-out, opacity 1s ease-in-out;
-}
-
-#confirmDialog.show {
-  z-index: 1;
-  opacity: 1;
-}
-
-.confirm-dialog-layout {
-  flex-direction: column;
-  width: 95%;
-  gap: 15px;
-  max-width: 500px;
-  padding: 15px;
-  border-radius: 15px;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
-  text-align: center;
-}
-
-.confirm-dialog-header {
-  font-size: x-large;
-  font-weight: bold;
-}
-
 .confirm-dialog-buttons {
   display: flex;
   width: 100%;

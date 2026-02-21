@@ -1,7 +1,8 @@
 import { appendMoveToTable, highlightCurrentMove } from "./chess/move"
-import { formatTime, Clock, Color } from "./utils/clock"
 import { getOrPanic, create } from "./utils/dom"
+import { Clock, Color } from "./utils/clock"
 import { EventAction } from "./ws/event"
+import showDialog from "./utils/dialog"
 import { Socket } from "./ws/socket"
 import Board from "./chess/board"
 
@@ -77,6 +78,17 @@ function appendChatMessage(msg) {
 				clock.color =
 					board.currentFen % 2 !== 0 ? Color.Black : Color.White
 				break
+			case EventAction.End:
+				/**
+				 * Decode payload.
+				 * @type {import("./ws/event").EndPayload}
+				 */
+				const pEnd = { ...payload }
+
+				getOrPanic("endgameDialogResult").textContent = pEnd.r
+				getOrPanic("endgameDialogTermination").textContent = pEnd.t
+				showDialog("endgameDialog")
+				break
 			case EventAction.Move:
 				/**
 				 * Decode payload.
@@ -88,9 +100,9 @@ function appendChatMessage(msg) {
 				store(pMove.m)
 				// Update player's clock.
 				if (board.currentFen % 2 !== 0) {
-					clock.setTime(Color.White, pMove.m.t)
+					clock.setTime(Color.White, pMove.t)
 				} else {
-					clock.setTime(Color.Black, pMove.m.t)
+					clock.setTime(Color.Black, pMove.t)
 				}
 				clock.switchColor()
 				break

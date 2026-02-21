@@ -162,7 +162,6 @@ button:focus {
 }
 
 .site-layout {
-  /* height: 100vh; */
   max-width: var(--max-width);
   padding: 10px;
   flex-direction: column;

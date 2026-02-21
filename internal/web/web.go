@@ -51,9 +51,11 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 
 		// Add funcs to specific templates.
 		switch data.url {
-		case "/archive", "/active":
+		case "/active", "/archive":
 			t.Funcs(template.FuncMap{
-				"formatTime": formatTime,
+				"formatTime":        formatTime,
+				"formatResult":      FormatResult,
+				"formatTermination": FormatTermination,
 			})
 		}
 
@@ -177,4 +179,44 @@ func formatTime(minutes int) string {
 	b.WriteString(strconv.Itoa(minutes))
 	b.WriteString(":00")
 	return b.String()
+}
+
+// FormatResult returns the string representation of the result.
+func FormatResult(r chego.Result) string {
+	switch r {
+	case chego.WhiteWon:
+		return "White won"
+	case chego.BlackWon:
+		return "Black won"
+	case chego.Draw:
+		return "Draw"
+	default:
+		return "Unknown"
+	}
+}
+
+// FormatTermination returns the string representation of the termination.
+func FormatTermination(t chego.Termination) string {
+	switch t {
+	case chego.Abandoned:
+		return "game abandoned"
+	case chego.Agreement:
+		return "by agreement"
+	case chego.Checkmate:
+		return "by checkmate"
+	case chego.FiftyMoves:
+		return "by fifty moves rule"
+	case chego.TimeForfeit:
+		return "by time forfeit"
+	case chego.InsufficientMaterial:
+		return "by insufficient material"
+	case chego.ThreefoldRepetition:
+		return "by threefold repetition"
+	case chego.Resignation:
+		return "by resignation"
+	case chego.Stalemate:
+		return "by stalemate"
+	default:
+		return "unterminated"
+	}
 }

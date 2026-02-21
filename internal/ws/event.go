@@ -22,6 +22,8 @@ const (
 	// Game represents the current game state sent to each client after
 	// connecting to a [room], allowing them to synchronize.
 	actionGame
+	// End is the endgame info.
+	actionEnd
 	// Conn is broadcast by a [room] to notify clients about a player connection.
 	actionConn
 	// Disc is broadcast by a [room] to notify clients about a player disconnection.
@@ -59,9 +61,8 @@ type completedMove struct {
 	// Standard Algebraic Notation of the move.
 	San string `json:"s"`
 	// Piece placement Fen field after completing the move.
-	Fen string `json:"f"`
-	// Remaining time on the player's clock.
-	TimeLeft int        `json:"t"`
+	Fen      string `json:"f"`
+	timeDiff int
 	Move     chego.Move `json:"m"`
 	// Index in the move list.
 	index byte
@@ -76,6 +77,13 @@ type gamePayload struct {
 }
 
 type movePayload struct {
-	LegalMoves []chego.Move  `json:"lm"`
-	Move       completedMove `json:"m"`
+	LegalMoves []chego.Move `json:"lm"`
+	// Remaining seconds on clock after making the move.
+	TimeLeft int           `json:"t"`
+	Move     completedMove `json:"m"`
+}
+
+type endPayload struct {
+	Termination string `json:"t"`
+	Result      string `json:"r"`
 }

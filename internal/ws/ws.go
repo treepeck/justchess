@@ -168,15 +168,21 @@ func (s Service) handleRemoveRoom(id string) {
 		return
 	}
 
-	// Encode moves.
+	// Prepare moves and time differences for encoding.
 	indices := make([]byte, len(r.moves))
+	diffs := make([]int, len(r.moves))
 	for i, m := range r.moves {
 		indices[i] = m.index
+		diffs[i] = m.timeDiff
 	}
-	encoded := chego.HuffmanEncoding(indices)
 
-	err := s.gameRepo.Update(r.game.Result, r.game.Termination, len(r.moves), encoded, id)
-	if err != nil {
+	if err := s.gameRepo.Update(
+		r.game.Result, r.game.Termination,
+		len(r.moves),
+		chego.HuffmanEncoding(indices),
+		chego.CompressTimeDiffs(diffs),
+		id,
+	); err != nil {
 		log.Print(err)
 	}
 

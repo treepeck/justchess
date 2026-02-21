@@ -8,11 +8,12 @@ export const EventAction = /** @type {const} */ ({
 	Chat: 2,
 	Move: 3,
 	Game: 4,
-	Conn: 5,
-	Disc: 6,
-	ClientsCounter: 7,
-	Redirect: 8,
-	Error: 9,
+	End: 5,
+	Conn: 6,
+	Disc: 7,
+	ClientsCounter: 8,
+	Redirect: 9,
+	Error: 10,
 })
 
 /**
@@ -25,6 +26,7 @@ export const EventAction = /** @type {const} */ ({
 /**
  * @typedef {Object} MovePayload
  * @property {import("../chess/move.js").Move[]} lm - Legal moves for the next player.
+ * @property {number} t - Remaining time on the player's clock.
  * @property {import("../chess/move.js").CompletedMove} m
  */
 
@@ -35,4 +37,11 @@ export const EventAction = /** @type {const} */ ({
  * @property {import("../chess/move.js").CompletedMove[]} m - All completed moves.
  * @property {number} wt - White player's remaining time.
  * @property {number} bt - Black player's remaining time.
+ */
+
+/**
+ * Payload of the event with End action.
+ * @typedef {Object} EndPayload
+ * @property {string} t - Formatted termination.
+ * @property {string} r - Formatted result.
  */

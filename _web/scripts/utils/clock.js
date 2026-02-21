@@ -65,14 +65,14 @@ export class Clock {
 	 * @param {number} interval Milliseconds.
 	 */
 	async start(interval) {
+		// Sleep for a single interval.
 		while (this.isActive) {
-			// Sleep for a single interval.
 			await new Promise((res) => setTimeout(res, interval))
 			// Handle time tick.
-			if (this.color == Color.White) {
+			if (this.color == Color.White && this.whiteTime > 1) {
 				this.whiteTime--
 				formatTime("whiteClock", this.whiteTime)
-			} else {
+			} else if (this.blackTime > 1) {
 				this.blackTime--
 				formatTime("blackClock", this.blackTime)
 			}

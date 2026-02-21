@@ -7,7 +7,7 @@
   color: var(--text-hover);
 }
 
-.help-dialog {
+.dialog {
   padding: 20px;
   position: fixed;
   top: 0;
@@ -20,12 +20,14 @@
   backdrop-filter: blur(7px);
 }
 
-.help-dialog.show {
+.dialog.show {
   z-index: 1;
   opacity: 1;
 }
 
-.help-dialog-layout {
+.dialog-layout {
+  min-width: 200px;
+  text-align: center;
   flex-direction: column;
   line-height: 2;
   border-radius: 15px;
@@ -34,16 +36,16 @@
   background-color: var(--container-background);
 }
 
-.help-dialog-layout p {
+.dialog-layout p {
   width: 100%;
 }
 
-.help-dialog-header {
+.dialog-header {
   font-weight: bold;
   font-size: x-large;
 }
 
-.help-dialog-close {
+.dialog-close {
   width: 95%;
   height: 50px;
   border-radius: 15px;
@@ -52,7 +54,7 @@
 }
 
 @media screen and (min-width: 600px) {
-  .help-dialog-layout {
+  .dialog-layout {
     font-size: large;
   }
 }

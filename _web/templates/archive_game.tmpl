@@ -4,6 +4,17 @@
   {{ block "board" . }}{{ end }}
 </div>
 
+<div id="endgameDialog" class="flex-container">
+  <div class="endgame-dialog-layout">
+    <p class="endgame-dialog-header">Game over</p>
+
+    <p class="endgame-dialog-result">{{ formatResult .Data.Result }}</p>
+    <p class="endgame-dialog-termination">{{ formatTermination .Data.Termination }}</p>
+
+    <button id="endgameDialogClose">OK</button>
+  </div>
+</div>
+
 <div id="archiveGameGuard"></div>
 
 {{ end }}

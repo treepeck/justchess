@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"justchess/internal/web"
 	"log"
 	"strings"
 	"time"
@@ -79,8 +80,11 @@ func (r *room) listenEvents(remove chan<- string) {
 					} else {
 						r.game.Result = chego.WhiteWon
 					}
-
-					r.game.Termination = chego.Normal
+					r.game.Termination = chego.Checkmate
+					r.broadcast(actionEnd, endPayload{
+						Termination: web.FormatTermination(r.game.Termination),
+						Result:      web.FormatResult(r.game.Result),
+					})
 				}
 			}
 
@@ -187,6 +191,10 @@ func (r *room) handleTimeTick() {
 
 func (r *room) handleMove(e event) {
 	// TODO: Check if it is the player's turn.
+	before := r.game.WhiteTime
+	if r.game.Position.ActiveColor == chego.ColorBlack {
+		before = r.game.BlackTime
+	}
 
 	var index byte
 	err := json.Unmarshal(e.Payload, &index)
@@ -201,16 +209,17 @@ func (r *room) handleMove(e event) {
 		San:      r.game.PushMove(m),
 		Fen:      chego.SerializeBitboards(r.game.Position.Bitboards),
 		Move:     m,
-		TimeLeft: r.game.WhiteTime,
+		timeDiff: r.game.WhiteTime - before,
 		index:    index,
 	}
 	if r.game.Position.ActiveColor == chego.ColorWhite {
-		completed.TimeLeft = r.game.BlackTime
+		completed.timeDiff = r.game.BlackTime - before
 	}
 	r.moves = append(r.moves, completed)
 
 	r.broadcast(actionMove, movePayload{
 		LegalMoves: r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
+		TimeLeft:   before + r.game.TimeBonus,
 		Move:       r.moves[len(r.moves)-1],
 	})
 }

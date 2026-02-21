@@ -74,7 +74,10 @@ export function highlightCurrentMove(index) {
 	if (index > 0) {
 		const row = getOrPanic(`row${Math.ceil(index / 2)}`)
 		const collection = row.getElementsByClassName("moves-san")
-		collection.item(index % 2 == 0 ? 1 : 0).classList.add("current")
+		const item = collection.item(index % 2 == 0 ? 1 : 0)
+		if (item !== null) {
+			item.classList.add("current")
+		}
 	}
 }
 
@@ -123,6 +126,5 @@ export function appendMoveToTable(san, moveIndex, sanClickHandler) {
  * @typedef {Object} CompletedMove
  * @property {Move} m - Encoded move.
  * @property {string} f - Serialized piece placement.
- * @property {number} t - Remaining time on the player's clock.
  * @property {string} s - Standard Algebraic Notation of the move.
  */
