@@ -104,7 +104,7 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 }
 
 // Possible time controls.
-var controls = [9]queueData{
+var Controls = [9]QueueData{
 	{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10},
 }
 
@@ -116,7 +116,7 @@ func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	p := s.pages["/queue"]
-	p.Data = controls[id-1]
+	p.Data = Controls[id-1]
 	s.renderPage(rw, r, p)
 }
 

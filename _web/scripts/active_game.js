@@ -88,6 +88,8 @@ function appendChatMessage(msg) {
 				getOrPanic("endgameDialogResult").textContent = pEnd.r
 				getOrPanic("endgameDialogTermination").textContent = pEnd.t
 				showDialog("endgameDialog")
+				// Stop clock after game is over.
+				clock.isActive = false
 				break
 			case EventAction.Move:
 				/**

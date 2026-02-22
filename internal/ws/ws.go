@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"justchess/internal/db"
+	"justchess/internal/web"
 
 	"github.com/gorilla/websocket"
 	"github.com/treepeck/chego"
@@ -25,7 +26,7 @@ var upgrader = websocket.Upgrader{
 
 type createRoom struct {
 	id, whiteId, blackId string
-	control              control
+	control              web.QueueData
 	res                  chan error
 }
 
@@ -148,7 +149,7 @@ func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) handleCreateRoom(e createRoom) {
-	err := s.gameRepo.Insert(e.id, e.whiteId, e.blackId, e.control.minutes, e.control.bonus)
+	err := s.gameRepo.Insert(e.id, e.whiteId, e.blackId, e.control.Control, e.control.Bonus)
 	defer func() { e.res <- err }()
 	if err != nil {
 		return
@@ -156,7 +157,7 @@ func (s Service) handleCreateRoom(e createRoom) {
 
 	log.Printf("room %s created", e.id)
 
-	r := newRoom(e.id, e.whiteId, e.blackId, e.control.minutes, e.control.bonus)
+	r := newRoom(e.id, e.whiteId, e.blackId, e.control.Control, e.control.Bonus)
 	go r.listenEvents(s.remove)
 
 	s.rooms[e.id] = r

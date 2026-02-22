@@ -12,9 +12,9 @@ type baseData struct {
 	Player db.Player
 }
 
-// queueData is a data object used to fill up the queue.tmpl file while executing
+// QueueData is a data object used to fill up the queue.tmpl file while executing
 // a template.
-type queueData struct {
+type QueueData struct {
 	Control int
 	Bonus   int
 }

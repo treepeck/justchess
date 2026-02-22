@@ -8,6 +8,7 @@ import (
 
 	"justchess/internal/mm"
 	"justchess/internal/randgen"
+	"justchess/internal/web"
 )
 
 const (
@@ -18,18 +19,6 @@ const (
 	matchmakingTick = 3 * time.Second
 )
 
-// control defines the chess game time limit.  Minutes is the number of minutes
-// given to each player at the beginning of the match.  Bonus is the number of
-// seconds added to a player's clock after each completed move.
-// Only players who have selected the same control can be paired together.
-type control struct {
-	minutes int
-	bonus   int
-}
-
-// Predefined controls.
-var controls = [9]control{{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10}}
-
 type queue struct {
 	ticker     *time.Ticker
 	pool       mm.Pool
@@ -37,7 +26,7 @@ type queue struct {
 	unregister chan string
 	clients    map[string]*client
 	// Matchmaking parameters.
-	control control
+	control web.QueueData
 }
 
 func newQueue(id byte) queue {
@@ -47,7 +36,7 @@ func newQueue(id byte) queue {
 		register:   make(chan *client),
 		unregister: make(chan string),
 		clients:    make(map[string]*client),
-		control:    controls[id-1],
+		control:    web.Controls[id-1],
 	}
 }
 

@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	// Disconnected player has N seconds to reconnect.  If the player doesn't
+	// Disconnected player has 30 seconds to reconnect.  If the player doesn't
 	// reconnect within the specified time period, victory is awarded to the
 	// other player if they are online.  If both players are disconnected the
 	// game is marked as abandoned and will not be scored.
-	reconnectDeadline int = 60
+	reconnectDeadline int = 30
 )
 
 type room struct {
@@ -74,18 +74,6 @@ func (r *room) listenEvents(remove chan<- string) {
 
 			case actionMove:
 				r.handleMove(e)
-				if r.game.IsCheckmate() {
-					if len(r.moves)%2 == 0 {
-						r.game.Result = chego.BlackWon
-					} else {
-						r.game.Result = chego.WhiteWon
-					}
-					r.game.Termination = chego.Checkmate
-					r.broadcast(actionEnd, endPayload{
-						Termination: web.FormatTermination(r.game.Termination),
-						Result:      web.FormatResult(r.game.Result),
-					})
-				}
 			}
 
 		case <-r.clock.C:
@@ -157,11 +145,19 @@ func (r *room) handleTimeTick() {
 	}
 	// Terminate the game if one of the player failed to reconnect.
 	if r.whiteReconnectTime < 1 || r.blackReconnectTime < 1 {
-		r.game.Termination = chego.TimeForfeit
-		r.game.Result = chego.BlackWon
-		if r.blackReconnectTime < 1 {
-			r.game.Result = chego.WhiteWon
+		if len(r.moves) < 2 {
+			// Mark game as abandoned if less then 2 moves were made.
+			r.endGame(chego.Abandoned, chego.Unknown)
+		} else if r.blackReconnectTime < 1 {
+			r.endGame(chego.TimeForfeit, chego.WhiteWon)
+		} else {
+			r.endGame(chego.TimeForfeit, chego.BlackWon)
 		}
+		return
+	}
+
+	// Shortcut: game is already over.
+	if r.game.Result != chego.Unknown {
 		return
 	}
 
@@ -174,32 +170,42 @@ func (r *room) handleTimeTick() {
 
 	// Terminate the game due to the time forfeit.
 	if r.game.WhiteTime == 0 || r.game.BlackTime == 0 {
-		// Accord to chess rules, the game is draw if opponent doesn't have
-		// sufficient material to checkmate you.
 		if r.game.IsInsufficientMaterial() {
-			r.game.Termination = chego.TimeForfeit
-			r.game.Result = chego.Draw
+			// Accord to chess rules, the game is draw if opponent doesn't have
+			// sufficient material to checkmate you.
+			r.endGame(chego.TimeForfeit, chego.Draw)
+		} else if len(r.moves) < 2 {
+			// Mark game as abandoned if less then 2 moves were made.
+			r.endGame(chego.Abandoned, chego.Unknown)
 		} else {
-			r.game.Termination = chego.TimeForfeit
-			r.game.Result = chego.BlackWon
 			if r.game.BlackTime == 0 {
-				r.game.Result = chego.WhiteWon
+				r.endGame(chego.TimeForfeit, chego.WhiteWon)
+			} else {
+				r.endGame(chego.TimeForfeit, chego.BlackWon)
 			}
 		}
 	}
 }
 
+// handleMove validates, performes, stores, and broadcasts the move.
+// Also ends the game if some endgame state is reached.
 func (r *room) handleMove(e event) {
-	// TODO: Check if it is the player's turn.
+	// Deny the move if the player doesn't cannot move in current position.
+	if (len(r.moves)%2 == 0 && e.sender.player.Id != r.whiteId) ||
+		(len(r.moves)%2 != 0 && e.sender.player.Id != r.blackId) {
+		return
+	}
+
+	// Store time to calculate time difference.
 	before := r.game.WhiteTime
 	if r.game.Position.ActiveColor == chego.ColorBlack {
 		before = r.game.BlackTime
 	}
 
+	// Deny the move if it is not legal.
 	var index byte
 	err := json.Unmarshal(e.Payload, &index)
 	if err != nil || index >= r.game.LegalMoves.LastMoveIndex {
-		e.sender.conn.Close()
 		return
 	}
 
@@ -222,6 +228,23 @@ func (r *room) handleMove(e event) {
 		TimeLeft:   before + r.game.TimeBonus,
 		Move:       r.moves[len(r.moves)-1],
 	})
+
+	// End the game according to the rules of chess.
+	if r.game.IsCheckmate() {
+		if len(r.moves)%2 == 0 {
+			r.endGame(chego.Checkmate, chego.BlackWon)
+		} else {
+			r.endGame(chego.Checkmate, chego.WhiteWon)
+		}
+	} else if r.game.IsInsufficientMaterial() {
+		r.endGame(chego.InsufficientMaterial, chego.Draw)
+	} else if r.game.IsThreefoldRepetition() {
+		r.endGame(chego.ThreefoldRepetition, chego.Draw)
+	} else if r.game.LegalMoves.LastMoveIndex == 0 {
+		r.endGame(chego.Stalemate, chego.Draw)
+	} else if r.game.Position.HalfmoveCnt == 50 {
+		r.endGame(chego.FiftyMoves, chego.Draw)
+	}
 }
 
 func (r *room) handleChat(e event) {
@@ -234,6 +257,16 @@ func (r *room) handleChat(e event) {
 
 	e.Payload = json.RawMessage(b.String())
 	r.broadcast(actionChat, b.String())
+}
+
+// Sets the game termination and results and broadcasts [actionEnd] event.
+func (r *room) endGame(t chego.Termination, res chego.Result) {
+	r.game.Termination = t
+	r.game.Result = res
+	r.broadcast(actionEnd, endPayload{
+		Termination: web.FormatTermination(t),
+		Result:      web.FormatResult(res),
+	})
 }
 
 // broadcast encodes and sends the event to all connected clients.
