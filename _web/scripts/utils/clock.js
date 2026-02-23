@@ -2,17 +2,15 @@ import { getOrPanic } from "./dom"
 
 /**
  * @param {string} id
- * @param {number} seconds
+ * @param {number} ms
  */
-export function formatTime(id, seconds) {
-	const minutes = Math.floor(seconds / 60)
-	if (minutes > 0) {
-		seconds -= 60 * minutes
-	}
+export function formatTime(id, ms) {
+	const minutes = Math.trunc(ms / 1000 / 60)
+	const seconds = Math.trunc(ms / 1000) % 60
 
-	getOrPanic(id).textContent = `${minutes > 9 ? minutes : `0${minutes}`}:${
-		seconds > 9 ? seconds : `0${seconds}`
-	}`
+	let mins = `${minutes > 9 ? minutes : "0" + minutes.toString()}`
+	let secs = `${seconds > 9 ? seconds : "0" + seconds.toString()}`
+	getOrPanic(id).textContent = `${mins}:${secs}`
 }
 
 /**
@@ -27,12 +25,12 @@ export const Color = /** @type {const} */ ({
 /** Countdown chess clock. */
 export class Clock {
 	/**
-	 * Displayed time left on white player's clock in seconds.
+	 * Displayed time left on white player's clock in milliseconds.
 	 * @type {number}
 	 */
 	whiteTime
 	/**
-	 * Displayed time left on black player's clock in seconds.
+	 * Displayed time left on black player's clock in milliseconds.
 	 * @type {number}
 	 */
 	blackTime
@@ -42,41 +40,64 @@ export class Clock {
 	 */
 	isActive
 	/**
+	 * Interval of time ticks in milliseconds.
+	 * @type {number}
+	 */
+	interval
+	/**
 	 * Active color.
 	 * @type {Color}
 	 */
 	color
+	/**
+	 * For self-adjustment.
+	 * @type {number}
+	 */
+	expected
 
 	/**
 	 * Initialize the clock state without actually starting it.
 	 * @param {number} time
 	 * @param {boolean} isActive
 	 * @param {Color} color
+	 * @param {number} interval
 	 */
-	constructor(time, isActive, color) {
+	constructor(time, isActive, color, interval) {
 		this.whiteTime = time
 		this.blackTime = time
 		this.isActive = isActive
 		this.color = color
+		this.interval = interval
 	}
 
-	/**
-	 * Starts the clock which will tick with the given interval.
-	 * @param {number} interval Milliseconds.
-	 */
-	async start(interval) {
-		// Sleep for a single interval.
-		while (this.isActive) {
-			await new Promise((res) => setTimeout(res, interval))
-			// Handle time tick.
-			if (this.color == Color.White && this.whiteTime > 1) {
-				this.whiteTime--
-				formatTime("whiteClock", this.whiteTime)
-			} else if (this.blackTime > 1) {
-				this.blackTime--
-				formatTime("blackClock", this.blackTime)
-			}
+	/** Handles time ticks. */
+	tick() {
+		if (
+			!this.isActive ||
+			this.whiteTime < this.interval ||
+			this.blackTime < this.interval
+		)
+			return
+
+		const delta = Date.now() - this.expected
+		this.expected = Date.now() + this.interval
+
+		console.log(this.expected, delta)
+
+		if (this.color == Color.White) {
+			this.whiteTime -= this.interval + delta
+			formatTime("whiteClock", this.whiteTime)
+		} else {
+			this.blackTime -= this.interval + delta
+			formatTime("blackClock", this.blackTime)
 		}
+		setTimeout(() => this.tick(), this.interval)
+	}
+
+	start() {
+		this.isActive = true
+		this.expected = Date.now() + this.interval
+		setTimeout(() => this.tick(), this.interval)
 	}
 
 	/** Stops the clock. */
@@ -85,7 +106,7 @@ export class Clock {
 	}
 
 	/** Switches the active color */
-	switchColor() {
+	flip() {
 		this.color ^= 1
 	}
 

@@ -8,9 +8,8 @@ function eventHandler(action, payload) {
 	switch (action) {
 		case EventAction.ClientsCounter:
 			// Update clients counter.
-			getOrPanic(
-				"clientsCounter"
-			).textContent = `Players in queue: ${payload}`
+			getOrPanic("clientsCounter").textContent =
+				`Players in queue: ${payload}`
 			break
 
 		case EventAction.Redirect:
@@ -32,7 +31,7 @@ function eventHandler(action, payload) {
 	new Socket(eventHandler)
 
 	// Self-adjusting countup timer.
-	const interval = 500 // Milliseconds.
+	const interval = 1000 // Milliseconds.
 	const initial = Date.now()
 	let expected = initial + interval
 	setTimeout(() => countUpHandler(), interval)
@@ -45,7 +44,7 @@ function eventHandler(action, payload) {
 			expected += delta
 		}
 		expected += interval
-		formatTime("countUpTimer", Math.floor((current - initial) / 1000))
+		formatTime("countUpTimer", Math.floor(current - initial))
 
 		setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
 	}

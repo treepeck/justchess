@@ -45,8 +45,8 @@ function appendChatMessage(msg) {
 		highlightCurrentMove(board.currentFen)
 	}
 
-	const clock = new Clock(5 * 60, true, Color.White)
-	clock.start(1000)
+	const clock = new Clock(5 * 60 * 1000, false, Color.White, 1000)
+	clock.start()
 
 	/** @type {import("./ws/socket").EventHandler} */
 	const eventHandler = (action, payload) => {
@@ -73,8 +73,8 @@ function appendChatMessage(msg) {
 					store(move)
 				}
 				// Set player's clock.
-				clock.setTime(Color.White, pGame.wt)
-				clock.setTime(Color.Black, pGame.bt)
+				clock.setTime(Color.White, pGame.wt * 1000)
+				clock.setTime(Color.Black, pGame.bt * 1000)
 				clock.color =
 					board.currentFen % 2 !== 0 ? Color.Black : Color.White
 				break
@@ -102,11 +102,11 @@ function appendChatMessage(msg) {
 				store(pMove.m)
 				// Update player's clock.
 				if (board.currentFen % 2 !== 0) {
-					clock.setTime(Color.White, pMove.t)
+					clock.setTime(Color.White, pMove.t * 1000)
 				} else {
-					clock.setTime(Color.Black, pMove.t)
+					clock.setTime(Color.Black, pMove.t * 1000)
 				}
-				clock.switchColor()
+				clock.flip()
 				break
 		}
 	}

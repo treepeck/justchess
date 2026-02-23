@@ -143,6 +143,12 @@ func (r *room) handleTimeTick() {
 	if _, isConnected := r.clients[r.blackId]; !isConnected {
 		r.blackReconnectTime--
 	}
+
+	// Shortcut: game is already over.
+	if r.game.Result != chego.Unknown {
+		return
+	}
+
 	// Terminate the game if one of the player failed to reconnect.
 	if r.whiteReconnectTime < 1 || r.blackReconnectTime < 1 {
 		if len(r.moves) < 2 {
@@ -153,11 +159,6 @@ func (r *room) handleTimeTick() {
 		} else {
 			r.endGame(chego.TimeForfeit, chego.BlackWon)
 		}
-		return
-	}
-
-	// Shortcut: game is already over.
-	if r.game.Result != chego.Unknown {
 		return
 	}
 
