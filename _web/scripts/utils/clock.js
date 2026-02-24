@@ -82,8 +82,6 @@ export class Clock {
 		const delta = Date.now() - this.expected
 		this.expected = Date.now() + this.interval
 
-		console.log(this.expected, delta)
-
 		if (this.color == Color.White) {
 			this.whiteTime -= this.interval + delta
 			formatTime("whiteClock", this.whiteTime)

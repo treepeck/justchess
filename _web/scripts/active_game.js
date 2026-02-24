@@ -46,7 +46,6 @@ function appendChatMessage(msg) {
 	}
 
 	const clock = new Clock(5 * 60 * 1000, false, Color.White, 1000)
-	clock.start()
 
 	/** @type {import("./ws/socket").EventHandler} */
 	const eventHandler = (action, payload) => {
@@ -77,6 +76,7 @@ function appendChatMessage(msg) {
 				clock.setTime(Color.Black, pGame.bt * 1000)
 				clock.color =
 					board.currentFen % 2 !== 0 ? Color.Black : Color.White
+				clock.start()
 				break
 			case EventAction.End:
 				/**
@@ -88,8 +88,7 @@ function appendChatMessage(msg) {
 				getOrPanic("endgameDialogResult").textContent = pEnd.r
 				getOrPanic("endgameDialogTermination").textContent = pEnd.t
 				showDialog("endgameDialog")
-				// Stop clock after game is over.
-				clock.isActive = false
+				clock.stop()
 				break
 			case EventAction.Move:
 				/**
@@ -107,6 +106,18 @@ function appendChatMessage(msg) {
 					clock.setTime(Color.Black, pMove.t * 1000)
 				}
 				clock.flip()
+				break
+			case EventAction.OfferDraw:
+				// Display draw offer window.
+				showDialog("acceptDrawDialog")
+				getOrPanic("acceptDrawDialogAccept").onclick = () => {
+					getOrPanic("acceptDrawDialog").classList.toggle("show")
+					socket.sendJSON(EventAction.AcceptDraw, null)
+				}
+				getOrPanic("acceptDrawDialogClose").onclick = () => {
+					getOrPanic("acceptDrawDialog").classList.toggle("show")
+					socket.sendJSON(EventAction.DeclineDraw, null)
+				}
 				break
 		}
 	}
@@ -133,5 +144,21 @@ function appendChatMessage(msg) {
 	getOrPanic("chatSend").onclick = () => sendChat()
 	chat.onkeydown = (ev) => {
 		if (ev.key === "Enter") sendChat()
+	}
+
+	getOrPanic("offerDrawBtn").onclick = () => {
+		showDialog("offerDrawDialog")
+		getOrPanic("offerDrawDialogAccept").onclick = () => {
+			getOrPanic("offerDrawDialog").classList.toggle("show")
+			socket.sendJSON(EventAction.OfferDraw, null)
+		}
+	}
+
+	getOrPanic("resignBtn").onclick = () => {
+		showDialog("resignDialog")
+		getOrPanic("resignDialogAccept").onclick = () => {
+			getOrPanic("resignDialog").classList.toggle("show")
+			socket.sendJSON(EventAction.Resign, null)
+		}
 	}
 })()

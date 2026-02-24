@@ -16,14 +16,21 @@ const (
 	// other player if they are online.  If both players are disconnected the
 	// game is marked as abandoned and will not be scored.
 	reconnectDeadline int = 30
+
+	// Minimal number of moves required to correctly complete the game
+	// otherwise, the game will be marked as abandoned.
+	minMoves = 3
 )
 
 type room struct {
-	game               *chego.Game
-	moves              []completedMove
-	id                 string
-	whiteId            string
-	blackId            string
+	game    *chego.Game
+	moves   []completedMove
+	id      string
+	whiteId string
+	blackId string
+	// Id of the player who have issues a draw offer.
+	// Empty string in case no pending draw offers.
+	drawOfferIssuer    string
 	whiteReconnectTime int
 	blackReconnectTime int
 	clients            map[string]*client
@@ -32,6 +39,11 @@ type room struct {
 	unregister chan string
 	handle     chan event
 	clock      *time.Ticker
+	// To avoid draw offer spamming limit the number of  draw offers
+	// to 1 from each player.
+	// TODO: reset after 10 moves.
+	hasWhiteSentDrawOffer bool
+	hasBlackSentDrawOffer bool
 }
 
 func newRoom(id, whiteId, blackId string, control, bonus int) *room {
@@ -71,9 +83,16 @@ func (r *room) listenEvents(remove chan<- string) {
 			switch e.Action {
 			case actionChat:
 				r.handleChat(e)
-
 			case actionMove:
 				r.handleMove(e)
+			case actionResign:
+				r.handleResign(e)
+			case actionOfferDraw:
+				r.handleOfferDraw(e)
+			case actionAcceptDraw:
+				r.handleAcceptDraw(e)
+			case actionDeclineDraw:
+				r.handleDeclineDraw(e)
 			}
 
 		case <-r.clock.C:
@@ -88,7 +107,7 @@ func (r *room) listenEvents(remove chan<- string) {
 }
 
 func (r *room) handleRegister(c *client) {
-	// Deny the connection if the client is already in the queue.
+	// Decline the connection if the client is already in the queue.
 	if _, exist := r.clients[c.player.Id]; exist {
 		// Send error event to the client.
 		if raw, err := newEncodedEvent(actionError, msgConflict); err == nil {
@@ -151,7 +170,7 @@ func (r *room) handleTimeTick() {
 
 	// Terminate the game if one of the player failed to reconnect.
 	if r.whiteReconnectTime < 1 || r.blackReconnectTime < 1 {
-		if len(r.moves) < 2 {
+		if len(r.moves) < minMoves {
 			// Mark game as abandoned if less then 2 moves were made.
 			r.endGame(chego.Abandoned, chego.Unknown)
 		} else if r.blackReconnectTime < 1 {
@@ -175,7 +194,7 @@ func (r *room) handleTimeTick() {
 			// Accord to chess rules, the game is draw if opponent doesn't have
 			// sufficient material to checkmate you.
 			r.endGame(chego.TimeForfeit, chego.Draw)
-		} else if len(r.moves) < 2 {
+		} else if len(r.moves) < minMoves {
 			// Mark game as abandoned if less then 2 moves were made.
 			r.endGame(chego.Abandoned, chego.Unknown)
 		} else {
@@ -190,10 +209,12 @@ func (r *room) handleTimeTick() {
 
 // handleMove validates, performes, stores, and broadcasts the move.
 // Also ends the game if some endgame state is reached.
+// The event will be ignored if the sender does not have the right to move
+// or the game is already over.
 func (r *room) handleMove(e event) {
-	// Deny the move if the player doesn't cannot move in current position.
 	if (len(r.moves)%2 == 0 && e.sender.player.Id != r.whiteId) ||
-		(len(r.moves)%2 != 0 && e.sender.player.Id != r.blackId) {
+		(len(r.moves)%2 != 0 && e.sender.player.Id != r.blackId) ||
+		r.game.Termination != chego.Unterminated {
 		return
 	}
 
@@ -203,7 +224,7 @@ func (r *room) handleMove(e event) {
 		before = r.game.BlackTime
 	}
 
-	// Deny the move if it is not legal.
+	// Decline the move if it is not legal.
 	var index byte
 	err := json.Unmarshal(e.Payload, &index)
 	if err != nil || index >= r.game.LegalMoves.LastMoveIndex {
@@ -248,6 +269,8 @@ func (r *room) handleMove(e event) {
 	}
 }
 
+// handleChat append sender name and broadcasts the message.
+// TODO: sanityze and rate limit messages.
 func (r *room) handleChat(e event) {
 	var b strings.Builder
 	// Append sender's name.
@@ -258,6 +281,83 @@ func (r *room) handleChat(e event) {
 
 	e.Payload = json.RawMessage(b.String())
 	r.broadcast(actionChat, b.String())
+}
+
+// handleResign handles player resignation.  Resignation will be denied if one
+// of the following is true:
+//   - There were not enough moves played to end the game;
+//   - The game is already over;
+//   - Sender is not a white or black player.
+func (r *room) handleResign(e event) {
+	if len(r.moves) < minMoves || r.game.Termination != chego.Unterminated {
+		return
+	}
+	if r.whiteId == e.sender.player.Id {
+		r.endGame(chego.Resignation, chego.BlackWon)
+	} else if r.blackId == e.sender.player.Id {
+		r.endGame(chego.Resignation, chego.WhiteWon)
+	}
+}
+
+// handleOfferDraw handles draw offers. Event will be denied if one
+// of the following is true:
+//   - There were not enough moves played to end the game;
+//   - The game is already over;
+//   - Sender is not a white nor a black player;
+//   - One of the players has already sent a pending draw offer;
+//   - The player has sent a draw offer not so long ago.
+func (r *room) handleOfferDraw(e event) {
+	if len(r.moves) < minMoves || r.game.Termination != chego.Unterminated ||
+		(e.sender.player.Id != r.whiteId && e.sender.player.Id != r.blackId) ||
+		(e.sender.player.Id == r.whiteId && r.hasWhiteSentDrawOffer) ||
+		(e.sender.player.Id == r.blackId && r.hasBlackSentDrawOffer) ||
+		r.drawOfferIssuer != "" {
+		return
+	}
+
+	r.drawOfferIssuer = e.sender.player.Id
+	// Send draw offer confirmation event to opponent.
+	switch r.drawOfferIssuer {
+	case r.whiteId:
+		r.hasWhiteSentDrawOffer = true
+		if c, isConnected := r.clients[r.blackId]; isConnected {
+			raw, err := newEncodedEvent(actionOfferDraw, nil)
+			if err == nil {
+				c.send <- raw
+			}
+		}
+	case r.blackId:
+		r.hasBlackSentDrawOffer = true
+		if c, isConnected := r.clients[r.whiteId]; isConnected {
+			raw, err := newEncodedEvent(actionOfferDraw, nil)
+			if err == nil {
+				c.send <- raw
+			}
+		}
+	}
+
+	// Broadcast draw offer chat message.
+	r.broadcast(actionChat, r.drawOfferIssuer+" offered draw")
+}
+
+// handleAcceptDraw accepts the draw offer.
+func (r *room) handleAcceptDraw(e event) {
+	if r.drawOfferIssuer == "" || e.sender.player.Id == r.drawOfferIssuer ||
+		len(r.moves) < minMoves {
+		return
+	}
+	r.drawOfferIssuer = ""
+	r.endGame(chego.Agreement, chego.Draw)
+}
+
+// handleDeclineDraw declines the draw offer.
+func (r *room) handleDeclineDraw(e event) {
+	if r.drawOfferIssuer == "" || e.sender.player.Id == r.drawOfferIssuer ||
+		len(r.moves) < minMoves {
+		return
+	}
+	r.drawOfferIssuer = ""
+	r.broadcast(actionChat, e.sender.player.Id+" declined draw")
 }
 
 // Sets the game termination and results and broadcasts [actionEnd] event.

@@ -16,7 +16,9 @@
   height: 100%;
   z-index: -1;
   opacity: 0;
-  transition: opacity ease-in-out 0.75s, z-index ease-out 0.75s;
+  transition:
+    opacity ease-in-out 0.75s,
+    z-index ease-out 0.75s;
   backdrop-filter: blur(7px);
 }
 
@@ -43,6 +45,18 @@
 .dialog-header {
   font-weight: bold;
   font-size: x-large;
+}
+
+.dialog-buttons {
+  display: flex;
+  width: 100%;
+}
+
+.dialog-buttons button {
+  line-height: 2;
+  flex: 1;
+  margin: 10px;
+  border-radius: 15px;
 }
 
 .dialog-close {

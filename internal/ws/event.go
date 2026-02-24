@@ -17,6 +17,14 @@ const (
 	actionPong
 	// Chat represents a chat message sent by a client or broadcast by a [room].
 	actionChat
+	// Resign is a client event which ends the game.
+	actionResign
+	// OfferDraw is a client event which offers a draw to opponent.
+	actionOfferDraw
+	// AcceptDraw is a client event which accepts the draw offer.
+	actionAcceptDraw
+	// DeclineDraw is a client even which declines the draw offer.
+	actionDeclineDraw
 	// Move represents a chess move performed by a client or broadcast by a [room].
 	actionMove
 	// Game represents the current game state sent to each client after

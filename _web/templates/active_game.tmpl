@@ -14,6 +14,11 @@
       />
       <div id="chatSend"></div>
     </div>
+
+    <div class="game-controls">
+      <button id="offerDrawBtn">Offer draw</button>
+      <button id="resignBtn">Resign</button>
+	</div>
   </div>
 
   {{ block "board" . }}{{ end }}
@@ -32,6 +37,44 @@
   </div>
 </div>
 
+<div id="offerDrawDialog" class="dialog flex-container">
+  <div class="dialog-layout">
+    <p class="dialog-header">Offer draw</p>
+
+    <p>Do you really want to offer a draw?</p>
+
+    <div class="dialog-buttons">
+      <button id="offerDrawDialogClose">Close</button>
+      <button id="offerDrawDialogAccept">Accept</button>
+    </div>
+  </div>
+</div>
+
+<div id="acceptDrawDialog" class="dialog flex-container">
+  <div class="dialog-layout">
+    <p class="dialog-header">Draw offer from opponent</p>
+
+    <p>Do you accept your opponent's offer of a draw?</p>
+
+    <div class="dialog-buttons">
+      <button id="acceptDrawDialogClose">Decline</button>
+      <button id="acceptDrawDialogAccept">Accept</button>
+    </div>
+  </div>
+</div>
+
+<div id="resignDialog" class="dialog flex-container">
+  <div class="dialog-layout">
+    <p class="dialog-header">Resign</p>
+
+    <p>Do you really want to end the game by resigning?</p>
+
+    <div class="dialog-buttons">
+      <button id="resignDialogClose">Close</button>
+      <button id="resignDialogAccept">Accept</button>
+    </div>
+  </div>
+</div>
 <div id="activeGameGuard"></div>
 
 {{ end }}
