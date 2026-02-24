@@ -46,6 +46,6 @@ export const EventAction = /** @type {const} */ ({
 /**
  * Payload of the event with End action.
  * @typedef {Object} EndPayload
- * @property {string} t - Formatted termination.
- * @property {string} r - Formatted result.
+ * @property {import("../chess/state.js").Termination} t.
+ * @property {import("../chess/state.js").Result} r.
  */

@@ -65,20 +65,26 @@ const (
 	WHERE game.id = ?`
 )
 
+// Move represents the completed decoded move.
+type Move struct {
+	Fen      string `json:"f"`
+	San      string `json:"s"`
+	TimeDiff int    `json:"t"`
+}
+
 // Game represents the state of a single completed chess game.
 type Game struct {
-	White           Player
-	Black           Player
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	Moves           json.RawMessage
-	TimeDifferences []int
-	Id              string
-	MovesLength     int
-	Control         int
-	Bonus           int
-	Result          chego.Result
-	Termination     chego.Termination
+	White       Player
+	Black       Player
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Moves       json.RawMessage
+	Id          string
+	MovesLength int
+	Control     int
+	Bonus       int
+	Result      chego.Result
+	Termination chego.Termination
 }
 
 // GameRepo wraps the database connection pool and provides methods to access
@@ -136,11 +142,22 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 
 	// Decode moves if the game has been terminated.
 	if g.Termination != chego.Unterminated {
-		raw, err := json.Marshal(chego.HuffmanDecoding(encoded, g.MovesLength))
-		if err != nil {
-			g.Moves = raw
+		moves := make([]Move, g.MovesLength)
+
+		decoded := chego.HuffmanDecoding(encoded, g.MovesLength)
+		decompressed := chego.DecompressTimeDiffs(compressed, g.MovesLength)
+
+		for i := range g.MovesLength {
+			moves[i] = Move{
+				Fen:      decoded[i].Fen,
+				San:      decoded[i].San,
+				TimeDiff: decompressed[i],
+			}
 		}
-		g.TimeDifferences = chego.DecompressTimeDiffs(compressed, g.MovesLength)
+
+		raw, err := json.Marshal(moves)
+		g.Moves = raw
+		return g, err
 	}
 	return g, nil
 }

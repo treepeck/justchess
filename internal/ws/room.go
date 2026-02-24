@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"justchess/internal/web"
 	"log"
 	"strings"
 	"time"
@@ -33,7 +32,9 @@ type room struct {
 	drawOfferIssuer    string
 	whiteReconnectTime int
 	blackReconnectTime int
-	clients            map[string]*client
+	// To calculate the amount of time it took to make a move.
+	timeBeforeMove int
+	clients        map[string]*client
 	// When timeToLive is equal to 0, the room will destroy itself.
 	register   chan *client
 	unregister chan string
@@ -60,6 +61,7 @@ func newRoom(id, whiteId, blackId string, control, bonus int) *room {
 		game:               g,
 		whiteReconnectTime: reconnectDeadline,
 		blackReconnectTime: reconnectDeadline,
+		timeBeforeMove:     control * 60,
 		clients:            make(map[string]*client),
 		register:           make(chan *client),
 		unregister:         make(chan string),
@@ -125,10 +127,12 @@ func (r *room) handleRegister(c *client) {
 	r.clients[c.player.Id] = c
 	// Send the game state so that the client can sync.
 	raw, err := newEncodedEvent(actionGame, gamePayload{
-		LegalMoves: r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
-		Moves:      r.moves,
-		WhiteTime:  r.game.WhiteTime,
-		BlackTime:  r.game.BlackTime,
+		LegalMoves:  r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
+		Moves:       r.moves,
+		Termination: r.game.Termination,
+		Result:      r.game.Result,
+		WhiteTime:   r.game.WhiteTime,
+		BlackTime:   r.game.BlackTime,
 	})
 	if err != nil {
 		log.Print(err)
@@ -218,12 +222,6 @@ func (r *room) handleMove(e event) {
 		return
 	}
 
-	// Store time to calculate time difference.
-	before := r.game.WhiteTime
-	if r.game.Position.ActiveColor == chego.ColorBlack {
-		before = r.game.BlackTime
-	}
-
 	// Decline the move if it is not legal.
 	var index byte
 	err := json.Unmarshal(e.Payload, &index)
@@ -234,20 +232,27 @@ func (r *room) handleMove(e event) {
 	// Perform and store the move.
 	m := r.game.LegalMoves.Moves[index]
 	completed := completedMove{
-		San:      r.game.PushMove(m),
-		Fen:      chego.SerializeBitboards(r.game.Position.Bitboards),
-		Move:     m,
-		timeDiff: r.game.WhiteTime - before,
-		index:    index,
+		San:   r.game.PushMove(m),
+		Fen:   chego.SerializeBitboards(r.game.Position.Bitboards),
+		Move:  m,
+		index: index,
 	}
+	// Store time after completing the move to synchronize clock on frontend.
+	var timeLeft int
 	if r.game.Position.ActiveColor == chego.ColorWhite {
-		completed.timeDiff = r.game.BlackTime - before
+		completed.timeDiff = r.timeBeforeMove - r.game.BlackTime
+		r.timeBeforeMove = r.game.WhiteTime
+		timeLeft = r.game.BlackTime
+	} else {
+		completed.timeDiff = r.timeBeforeMove - r.game.WhiteTime
+		r.timeBeforeMove = r.game.BlackTime
+		timeLeft = r.game.WhiteTime
 	}
 	r.moves = append(r.moves, completed)
 
 	r.broadcast(actionMove, movePayload{
 		LegalMoves: r.game.LegalMoves.Moves[:r.game.LegalMoves.LastMoveIndex],
-		TimeLeft:   before + r.game.TimeBonus,
+		TimeLeft:   timeLeft,
 		Move:       r.moves[len(r.moves)-1],
 	})
 
@@ -337,7 +342,7 @@ func (r *room) handleOfferDraw(e event) {
 	}
 
 	// Broadcast draw offer chat message.
-	r.broadcast(actionChat, r.drawOfferIssuer+" offered draw")
+	r.broadcast(actionChat, e.sender.player.Name+" offered draw")
 }
 
 // handleAcceptDraw accepts the draw offer.
@@ -357,17 +362,14 @@ func (r *room) handleDeclineDraw(e event) {
 		return
 	}
 	r.drawOfferIssuer = ""
-	r.broadcast(actionChat, e.sender.player.Id+" declined draw")
+	r.broadcast(actionChat, e.sender.player.Name+" declined draw")
 }
 
 // Sets the game termination and results and broadcasts [actionEnd] event.
 func (r *room) endGame(t chego.Termination, res chego.Result) {
 	r.game.Termination = t
 	r.game.Result = res
-	r.broadcast(actionEnd, endPayload{
-		Termination: web.FormatTermination(t),
-		Result:      web.FormatResult(res),
-	})
+	r.broadcast(actionEnd, endPayload{Termination: t, Result: res})
 }
 
 // broadcast encodes and sends the event to all connected clients.

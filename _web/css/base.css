@@ -86,7 +86,9 @@ button {
   border: none;
   color: var(--container-foreground);
   background-color: var(--container-background);
-  transition: background-color 0.75s ease-in-out, border-color 0.75s ease-in-out,
+  transition:
+    background-color 0.75s ease-in-out,
+    border-color 0.75s ease-in-out,
     color 0.75s ease-in-out;
 }
 

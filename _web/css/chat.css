@@ -30,6 +30,18 @@
   background-repeat: no-repeat;
 }
 
+.game-controls {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.game-controls button {
+  width: 50%;
+  border-radius: 15px;
+  line-height: 2;
+}
+
 /* Reorder elements on larger screens. */
 @media screen and (min-width: 1200px) {
   .chat-layout {

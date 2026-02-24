@@ -89,7 +89,7 @@ export class Clock {
 			this.blackTime -= this.interval + delta
 			formatTime("blackClock", this.blackTime)
 		}
-		setTimeout(() => this.tick(), this.interval)
+		setTimeout(() => this.tick(), this.interval + delta)
 	}
 
 	start() {

@@ -1,3 +1,9 @@
+import {
+	formatTermination,
+	formatResult,
+	Termination,
+	Result,
+} from "./chess/state"
 import { appendMoveToTable, highlightCurrentMove } from "./chess/move"
 import { getOrPanic, create } from "./utils/dom"
 import { Clock, Color } from "./utils/clock"
@@ -76,7 +82,15 @@ function appendChatMessage(msg) {
 				clock.setTime(Color.Black, pGame.bt * 1000)
 				clock.color =
 					board.currentFen % 2 !== 0 ? Color.Black : Color.White
-				clock.start()
+				if (pGame.t == Termination.Unterminated) {
+					clock.start()
+				} else {
+					getOrPanic("endgameDialogResult").textContent =
+						formatResult(pGame.r)
+					getOrPanic("endgameDialogTermination").textContent =
+						formatTermination(pGame.t)
+					showDialog("endgameDialog")
+				}
 				break
 			case EventAction.End:
 				/**
@@ -85,8 +99,11 @@ function appendChatMessage(msg) {
 				 */
 				const pEnd = { ...payload }
 
-				getOrPanic("endgameDialogResult").textContent = pEnd.r
-				getOrPanic("endgameDialogTermination").textContent = pEnd.t
+				getOrPanic("endgameDialogResult").textContent = formatResult(
+					pEnd.r,
+				)
+				getOrPanic("endgameDialogTermination").textContent =
+					formatTermination(pEnd.t)
 				showDialog("endgameDialog")
 				clock.stop()
 				break
@@ -160,5 +177,27 @@ function appendChatMessage(msg) {
 			getOrPanic("resignDialog").classList.toggle("show")
 			socket.sendJSON(EventAction.Resign, null)
 		}
+	}
+
+	// Go through move history using keyboard.
+	document.onkeydown = (e) => {
+		switch (e.key) {
+			case "ArrowUp":
+				board.currentFen = board.fens.length - 1
+				break
+			case "ArrowRight":
+				if (board.currentFen == board.fens.length - 1) return
+				board.currentFen += 1
+				break
+			case "ArrowDown":
+				board.currentFen = 0
+				break
+			case "ArrowLeft":
+				if (board.currentFen == 0) return
+				board.currentFen -= 1
+				break
+		}
+		highlightCurrentMove(board.currentFen)
+		board.parsePiecePlacement(board.fens[board.currentFen])
 	}
 })()

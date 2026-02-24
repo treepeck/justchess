@@ -121,28 +121,6 @@ export default class Board {
 			}
 		})
 		observer.observe(this.#element)
-
-		// Go through move history using keyboard.
-		document.onkeydown = (e) => {
-			switch (e.key) {
-				case "ArrowUp":
-					this.currentFen = this.fens.length - 1
-					break
-				case "ArrowRight":
-					if (this.currentFen == this.fens.length - 1) return
-					this.currentFen += 1
-					break
-				case "ArrowDown":
-					this.currentFen = 0
-					break
-				case "ArrowLeft":
-					if (this.currentFen == 0) return
-					this.currentFen -= 1
-					break
-			}
-			highlightCurrentMove(this.currentFen)
-			this.parsePiecePlacement(this.fens[this.currentFen])
-		}
 	}
 
 	/**
@@ -279,25 +257,25 @@ export default class Board {
 					case PromotionFlag.Knight:
 						this.#appendPiece(
 							new Piece(isWhite ? PieceType.WN : PieceType.BN),
-							move.to
+							move.to,
 						)
 						break
 					case PromotionFlag.Bishop:
 						this.#appendPiece(
 							new Piece(isWhite ? PieceType.WB : PieceType.BB),
-							move.to
+							move.to,
 						)
 						break
 					case PromotionFlag.Rook:
 						this.#appendPiece(
 							new Piece(isWhite ? PieceType.WR : PieceType.BR),
-							move.to
+							move.to,
 						)
 						break
 					case PromotionFlag.Queen:
 						this.#appendPiece(
 							new Piece(isWhite ? PieceType.WQ : PieceType.BQ),
-							move.to
+							move.to,
 						)
 						break
 				}
@@ -494,7 +472,7 @@ export default class Board {
 					this.#size -
 					squareSize -
 					(isWhite ? rank - i : rank + i) * squareSize
-				}px`
+				}px`,
 			)
 		}
 

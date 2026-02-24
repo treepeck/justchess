@@ -78,10 +78,12 @@ type completedMove struct {
 
 // gamePayload is a payload for the event with [Game] action.
 type gamePayload struct {
-	LegalMoves []chego.Move    `json:"lm"`
-	Moves      []completedMove `json:"m"`
-	WhiteTime  int             `json:"wt"`
-	BlackTime  int             `json:"bt"`
+	LegalMoves  []chego.Move      `json:"lm"`
+	Moves       []completedMove   `json:"m"`
+	Termination chego.Termination `json:"t"`
+	Result      chego.Result      `json:"r"`
+	WhiteTime   int               `json:"wt"`
+	BlackTime   int               `json:"bt"`
 }
 
 type movePayload struct {
@@ -92,6 +94,6 @@ type movePayload struct {
 }
 
 type endPayload struct {
-	Termination string `json:"t"`
-	Result      string `json:"r"`
+	Termination chego.Termination `json:"t"`
+	Result      chego.Result      `json:"r"`
 }
