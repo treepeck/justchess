@@ -11,8 +11,8 @@ JustChess.org is a multiplayer chess server.
 
 ## Local installation
 
-See [judo](https://github.com/treepeck/judo) to learn how to set up a local
-development environment.
+Don't clone this repository directly, clone the [umbrella](https://github.com/treepeck/judo) repository
+instead.
 
 ## License
 
