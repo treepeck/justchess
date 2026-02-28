@@ -155,12 +155,17 @@ button:focus {
 
 .site-header-logo {
   font-size: x-large;
-  margin: 0 auto 0 0;
+  margin: 0 10px 0 0;
+}
+
+.site-header-nav {
+  font-weight: normal;
+  margin: auto auto auto 10px;
 }
 
 .site-header-profile {
   font-size: large;
-  margin: 0 0 0 auto;
+  margin: auto 0 auto auto;
 }
 
 .site-layout {

@@ -45,19 +45,29 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 		{"/active", []string{"active_game.tmpl", "board.tmpl"}, baseData{}},
 		{"/archive", []string{"archive_game.tmpl", "board.tmpl"}, baseData{}},
 		{"/player", []string{"player.tmpl"}, baseData{}},
+		{"/leaderboard", []string{"leaderboard.tmpl"}, baseData{Title: "Leaderboard"}},
 		{"/error", []string{"error.tmpl"}, baseData{Title: "Error"}},
 	}
 
 	// Parse and store templates to avoid reparsing them on each HTTP request.
 	pages := make(map[string]page, len(pagesData))
 	for _, data := range pagesData {
+		t := template.New("base.tmpl")
+
+		if data.url == "/leaderboard" {
+			t.Funcs(template.FuncMap{
+				"formatDate": func(date time.Time) string {
+					return date.Format("Jan 02, 2006")
+				}})
+		}
+
 		paths := append([]string{"/base.tmpl"}, data.tmpls...)
 		// Append template prefix to each path.
 		for i, path := range paths {
 			paths[i] = tmplPrefix + path
 		}
 
-		t, err := template.ParseFiles(paths...)
+		t, err := t.ParseFiles(paths...)
 		if err != nil {
 			return Service{}, err
 		}
@@ -151,6 +161,16 @@ func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
 	page, exists := s.pages[r.URL.Path]
 	if !exists {
 		page = s.pages["/error"]
+	}
+
+	if r.URL.Path == "/leaderboard" {
+		leaders, err := s.playerRepo.SelectLeaderboard()
+		if err != nil {
+			log.Print(err)
+			page = s.pages["/error"]
+			return
+		}
+		page.Data = leaders
 	}
 
 	s.renderPage(rw, r, page)

@@ -35,6 +35,21 @@ const (
 	WHERE p.name = ?
 	GROUP BY p.name, p.rating, p.created_at`
 
+	selectLeaderboard = `
+	SELECT
+		p.name,
+	    p.rating,
+	    p.created_at,
+	    count(g.id) as num_of_games
+	FROM player p
+	LEFT JOIN game g
+	ON
+		(g.white_id = p.id OR g.black_id = p.id)
+	    AND g.termination != 1
+	GROUP BY p.name, p.rating, p.created_at
+	ORDER BY p.rating DESC, num_of_games DESC
+	LIMIT 100`
+
 	selectPlayerBySessionId = `
 	SELECT
 		p.*
@@ -142,6 +157,31 @@ func (r PlayerRepo) SelectProfileData(name string) (ProfileData, error) {
 	row := r.pool.QueryRow(selectProfileData, name)
 	var p ProfileData
 	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.NumOfGames)
+}
+
+// SelectLeaderboard selects [ProfileData] of 100 players with the biggest
+// rating sorted in descending order.
+func (r PlayerRepo) SelectLeaderboard() ([]ProfileData, error) {
+	rows, err := r.pool.Query(selectLeaderboard)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	leaders := make([]ProfileData, 0, 20)
+	for rows.Next() {
+		var pd ProfileData
+		if err = rows.Scan(
+			&pd.Name,
+			&pd.Rating,
+			&pd.CreatedAt,
+			&pd.NumOfGames,
+		); err != nil {
+			return nil, err
+		}
+		leaders = append(leaders, pd)
+	}
+	return leaders, err
 }
 
 // SelectBySessionId selects a single player with the specified session_id.
