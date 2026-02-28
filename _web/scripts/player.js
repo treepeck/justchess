@@ -79,7 +79,7 @@ function appendGameToTable(game) {
 	row.appendChild(control)
 
 	const moves = document.createElement("div")
-	moves.textContent = `${Math.floor(game.m / 2)}`
+	moves.textContent = `${Math.ceil(game.m / 2)}`
 	row.appendChild(moves)
 
 	const playedAt = document.createElement("div")
