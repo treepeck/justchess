@@ -1,0 +1,14 @@
+{{ define "layout" }}
+
+<div class="player-info">
+	<div class="player-info-username">{{ .Data.Name }}</div>
+	<div class="player-info-rating">Rating<br/>{{ .Data.Rating }}</div>
+	<div id="playerRegistrationDate">{{ .Data.CreatedAt }}</div>
+	<div class="player-info-total-games">Total games<br/>{{ .Data.NumOfGames }}</div>
+</div>
+
+<div id="profileGames" data-name="{{ .Data.Name }}"></div>
+
+<div id="playerGuard"></div>
+
+{{ end }}

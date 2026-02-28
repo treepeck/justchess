@@ -34,7 +34,7 @@ export default class Notification {
 		const notification = create(
 			"div",
 			"notification",
-			`notification${this.#count}`
+			`notification${this.#count}`,
 		)
 		notification.textContent = message
 

@@ -21,6 +21,20 @@ const (
 
 	selectPlayerByEmail = `SELECT * FROM player WHERE email = ?`
 
+	selectProfileData = `
+	SELECT
+		p.name,
+		p.rating,
+		p.created_at,
+		count(g.id) as num_of_games
+	FROM player p
+	LEFT JOIN game g
+	ON
+		(g.white_id = p.id OR g.black_id = p.id)
+		AND g.termination != 1
+	WHERE p.name = ?
+	GROUP BY p.name, p.rating, p.created_at`
+
 	selectPlayerBySessionId = `
 	SELECT
 		p.*
@@ -67,6 +81,15 @@ type Player struct {
 	RatingVolatility float64
 }
 
+// ProfileData is a data object used to fill up the player.tmpl file while executing
+// a template.
+type ProfileData struct {
+	CreatedAt  time.Time
+	Name       string
+	Rating     float64
+	NumOfGames int
+}
+
 // Session is an authorization token for a player.  Each protected endpoint
 // expects the Auth cookie to contain valid and not expired session.
 type Session struct {
@@ -111,6 +134,14 @@ func (r PlayerRepo) SelectByEmail(email string) (Player, error) {
 	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.RatingDeviation,
 		&p.RatingVolatility, &p.Email, &p.PasswordHash, &p.CreatedAt,
 		&p.UpdatedAt)
+}
+
+// SelectProfileData selects [ProfileData] from player and game tables
+// using player's name.
+func (r PlayerRepo) SelectProfileData(name string) (ProfileData, error) {
+	row := r.pool.QueryRow(selectProfileData, name)
+	var p ProfileData
+	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.NumOfGames)
 }
 
 // SelectBySessionId selects a single player with the specified session_id.

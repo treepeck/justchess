@@ -1,0 +1,96 @@
+.player-info {
+  display: flex;
+  width: 100%;
+  max-width: 650px;
+  margin-bottom: 40px;
+  padding: 20px;
+  gap: 30px;
+  font-size: large;
+  text-align: center;
+  border-radius: 15px;
+  background-color: var(--container-background);
+  color: var(--container-foreground);
+}
+
+.player-info-username {
+  font-size: x-large;
+  font-weight: bold;
+  margin: auto 0 auto auto;
+}
+
+.player-info-rating {
+  margin: auto 0 auto 0;
+}
+
+.player-info-total-games {
+  margin: auto auto auto 0;
+}
+
+#profileGames {
+  width: 100%;
+  max-width: 650px;
+  padding: 15px;
+  border-radius: 15px;
+  font-size: large;
+  text-align: center;
+  background-color: var(--container-background);
+  color: var(--container-foreground);
+}
+
+.profile-games-header {
+  display: flex;
+  width: 100%;
+  line-height: 2;
+  font-weight: bold;
+  padding: 10px;
+}
+
+.profile-games-header div {
+  flex: 1;
+}
+
+.profile-games-row {
+  display: flex;
+  width: 100%;
+  justify-items: center;
+  align-items: center;
+  font-size: large;
+  line-height: 2;
+  border-radius: 10px;
+  border-top: 2px solid var(--container-foreground);
+  border-left: 2px solid var(--container-foreground);
+  border-right: 2px solid var(--container-foreground);
+  padding: 10px;
+}
+
+.profile-games-row div {
+  flex: 1;
+  overflow: hidden;
+}
+
+.profile-games-players {
+  display: flex;
+  flex-direction: column;
+}
+
+.white-player {
+  color: var(--background);
+}
+
+.black-player {
+  color: black;
+  font-weight: bold;
+}
+
+.profile-games-time-control {
+  font-family: ChessClock;
+  font-size: 30px;
+  margin: 0 auto auto auto;
+}
+
+.profile-games-load-more {
+  width: 50%;
+  line-height: 2;
+  margin: 0 auto 0 auto;
+  border-radius: 15px;
+}

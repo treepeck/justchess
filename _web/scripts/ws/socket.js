@@ -46,7 +46,7 @@ export class Socket {
 				// Respond with Pong automatically.
 				case EventAction.Ping:
 					this.#socket.send(
-						JSON.stringify({ a: EventAction.Pong, p: null })
+						JSON.stringify({ a: EventAction.Pong, p: null }),
 					)
 
 					// Update ping.
@@ -75,7 +75,7 @@ export class Socket {
 			JSON.stringify({
 				a: action,
 				p: payload,
-			})
+			}),
 		)
 	}
 }

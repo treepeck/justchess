@@ -1,10 +1,12 @@
 package web
 
 import (
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"justchess/internal/db"
 
@@ -14,6 +16,8 @@ import (
 // Declaration of error messages.
 const (
 	msgNotFound        string = "The requested page doesn't exist"
+	msgCannotEncode    string = "Cannot encode the response"
+	msgBadRequest      string = "The request body is malformed"
 	msgInvalidTemplate string = "The requested page cannot be rendered"
 )
 
@@ -40,6 +44,7 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 		{"/signin", []string{"signin.tmpl"}, baseData{Title: "Sign in"}},
 		{"/active", []string{"active_game.tmpl", "board.tmpl"}, baseData{}},
 		{"/archive", []string{"archive_game.tmpl", "board.tmpl"}, baseData{}},
+		{"/player", []string{"player.tmpl"}, baseData{}},
 		{"/error", []string{"error.tmpl"}, baseData{Title: "Error"}},
 	}
 
@@ -67,6 +72,8 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 }
 
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/api/profile-games", s.getProfileGames)
+
 	// Serve js and css bundles.
 	bundles := http.Dir("./_web/bundles")
 	mux.Handle("/bundles/", http.StripPrefix("/bundles/", http.FileServer(bundles)))
@@ -83,8 +90,9 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("/", http.HandlerFunc(s.serveStaticRoutePage))
 
 	// Serve pages with dynamic routes.
-	mux.Handle("/queue/", http.StripPrefix("/queue/", http.HandlerFunc(s.serveQueue)))
-	mux.Handle("/game/", http.StripPrefix("/game/", http.HandlerFunc(s.serveGame)))
+	mux.HandleFunc("/queue/{id}", s.serveQueue)
+	mux.HandleFunc("/game/{id}", s.serveGame)
+	mux.HandleFunc("/player/{name}", s.servePlayer)
 }
 
 // Possible time controls.
@@ -93,10 +101,9 @@ var Controls = [9]QueueData{
 }
 
 func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Path)
+	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 0 || id > 8 {
-		p := s.pages["/error"]
-		s.renderPage(rw, r, p)
+		s.renderPage(rw, r, s.pages["/error"])
 	}
 
 	p := s.pages["/queue"]
@@ -105,10 +112,9 @@ func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
-	g, err := s.gameRepo.SelectById(r.URL.Path)
+	g, err := s.gameRepo.SelectById(r.PathValue("id"))
 	if err != nil {
-		p := s.pages["/error"]
-		s.renderPage(rw, r, p)
+		s.renderPage(rw, r, s.pages["/error"])
 		return
 	}
 
@@ -122,6 +128,21 @@ func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 	page.Data = g
 
 	page.Base.Title = g.White.Name + " vs " + g.Black.Name
+
+	s.renderPage(rw, r, page)
+}
+
+func (s Service) servePlayer(rw http.ResponseWriter, r *http.Request) {
+	p, err := s.playerRepo.SelectProfileData(r.PathValue("name"))
+	if err != nil {
+		s.renderPage(rw, r, s.pages["/error"])
+		return
+	}
+
+	// Fill up the template with player data.
+	page := s.pages["/player"]
+	page.Data = p
+	page.Base.Title = p.Name
 
 	s.renderPage(rw, r, page)
 }
@@ -149,4 +170,36 @@ func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 		log.Print(err)
 		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
 	}
+}
+
+// getProfileGames fetches up to 100 games from database, encodes them and
+// sends the response.
+func (s Service) getProfileGames(rw http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	cursorId := r.URL.Query().Get("cid")
+	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cat"))
+
+	var games []db.ProfileGame
+	if cursorId != "" && err == nil {
+		// Apply pagination if cursors are defined.
+		games, err = s.gameRepo.SelectOlderProfileGames(
+			name,
+			cursorId,
+			cursorCreatedAt,
+		)
+	} else {
+		games, err = s.gameRepo.SelectNewestProfileGames(name)
+	}
+
+	if err != nil || len(games) == 0 {
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		return
+	}
+
+	if err = json.NewEncoder(rw).Encode(games); err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotEncode, http.StatusInternalServerError)
+		return
+	}
+	rw.Header().Add("Content-Type", "application/json")
 }

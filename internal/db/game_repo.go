@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/treepeck/chego"
@@ -47,9 +48,55 @@ const (
 		g.updated_at,
 		g.time_differences
 	FROM game g
-	JOIN player w ON g.white_id = w.id
-	JOIN player b ON g.black_id = b.id
+	INNER JOIN player w ON g.white_id = w.id
+	INNER JOIN player b ON g.black_id = b.id
 	WHERE g.id = ? AND g.termination != 1`
+
+	selectNewestProfileGames = `
+	SELECT
+		w.name AS w_name,
+		b.name AS b_name,
+	    g.result,
+	    g.termination,
+	    g.time_control,
+   	    g.time_bonus,
+	    g.moves_length,
+	    g.created_at,
+	    g.id
+	FROM game g
+	INNER JOIN player w ON g.white_id = w.id
+	INNER JOIN player b ON g.black_id = b.id
+	WHERE
+		(w.name = ? OR b.name = ?)
+	    AND g.termination != 1
+	ORDER BY g.created_at DESC, g.id DESC
+	LIMIT 100`
+
+	// Same as [selectNewestProfileGames] by with cursor-based pagination.
+	// Select 100 games which are older than provided timestamp.
+	selectOlderProfileGames = `
+	SELECT
+		w.name AS w_name,
+		b.name AS b_name,
+		g.result,
+		g.termination,
+		g.time_control,
+		g.time_bonus,
+		g.moves_length,
+		g.created_at,
+		g.id
+	FROM game g
+	INNER JOIN player w ON g.white_id = w.id
+	INNER JOIN player b ON g.black_id = b.id
+	WHERE
+		(w.name = ? OR b.name = ?)
+		AND g.termination != 1
+		AND (
+			(g.created_at = ? AND g.id < ?)
+	        OR g.created_at < ?
+	    )
+	ORDER BY g.created_at DESC, g.id DESC
+	LIMIT 100`
 
 	// Updates the result, termination, moves, and updated_at columns of a single
 	// game record.
@@ -85,6 +132,20 @@ type Game struct {
 	Bonus       int
 	Result      chego.Result
 	Termination chego.Termination
+}
+
+// ProfileGame represents the short game description to fill up the
+// player profile with game history.
+type ProfileGame struct {
+	CreatedAt   time.Time         `json:"c"`
+	Id          string            `json:"i"`
+	White       string            `json:"w"`
+	Black       string            `json:"b"`
+	Result      chego.Result      `json:"r"`
+	Termination chego.Termination `json:"t"`
+	MovesLength int               `json:"m"`
+	Control     int               `json:"ctl"`
+	Bonus       int               `json:"bns"`
 }
 
 // GameRepo wraps the database connection pool and provides methods to access
@@ -160,6 +221,77 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 		return g, err
 	}
 	return g, nil
+}
+
+// SelectNewestProfileGames selects up to a 100 records of brief data about games
+// in which the player with specified name took part.  The result is ordered by
+// game creation date in descending order, meaning that newer games will go first.
+// Abandoned games are skipped.
+func (r GameRepo) SelectNewestProfileGames(name string) ([]ProfileGame, error) {
+	rows, err := r.pool.Query(selectNewestProfileGames, name, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]ProfileGame, 0, 10)
+	for rows.Next() {
+		var pg ProfileGame
+		if err = rows.Scan(
+			&pg.White,
+			&pg.Black,
+			&pg.Result,
+			&pg.Termination,
+			&pg.Control,
+			&pg.Bonus,
+			&pg.MovesLength,
+			&pg.CreatedAt,
+			&pg.Id,
+		); err != nil {
+			return nil, err
+		}
+		games = append(games, pg)
+	}
+	return games, err
+}
+
+// SelectOlderProfileGames is same as [SelectNewestProfileGames] but uses
+// cursorId and cursorCreatedAt for pagination.
+func (r GameRepo) SelectOlderProfileGames(name, cursorId string,
+	cursorCreatedAt time.Time) ([]ProfileGame, error) {
+	rows, err := r.pool.Query(
+		selectOlderProfileGames,
+		name,
+		name,
+		cursorCreatedAt,
+		cursorId,
+		cursorCreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]ProfileGame, 0, 10)
+	for rows.Next() {
+		var pg ProfileGame
+		if err = rows.Scan(
+			&pg.White,
+			&pg.Black,
+			&pg.Result,
+			&pg.Termination,
+			&pg.Control,
+			&pg.Bonus,
+			&pg.MovesLength,
+			&pg.CreatedAt,
+			&pg.Id,
+		); err != nil {
+			log.Print(err)
+			return nil, err
+		}
+		games = append(games, pg)
+	}
+	return games, err
 }
 
 // Update updates a single record with the specified id in the game table by
