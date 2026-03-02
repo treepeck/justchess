@@ -39,6 +39,8 @@ export const EventAction = /** @type {const} */ ({
  * @typedef {Object} GamePayload
  * @property {import("../chess/move.js").Move[]} lm - Legal moves for current turn.
  * @property {import("../chess/move.js").CompletedMove[]} m - All completed moves.
+ * @property {import("../chess/state.js").Termination} t
+ * @property {import("../chess/state.js").Result} r
  * @property {number} wt - White player's remaining time.
  * @property {number} bt - Black player's remaining time.
  */
@@ -46,6 +48,6 @@ export const EventAction = /** @type {const} */ ({
 /**
  * Payload of the event with End action.
  * @typedef {Object} EndPayload
- * @property {import("../chess/state.js").Termination} t.
- * @property {import("../chess/state.js").Result} r.
+ * @property {import("../chess/state.js").Termination} t
+ * @property {import("../chess/state.js").Result} r
  */

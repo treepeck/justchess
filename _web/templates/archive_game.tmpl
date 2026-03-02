@@ -8,8 +8,8 @@
   <div class="dialog-layout">
     <p class="dialog-header">Game over</p>
 
-    <p id="endgameDialogResult"></p>
-    <p id="endgameDialogTermination"></p>
+    <p id="endgameDialogResult">{{ .Data.Result }}</p>
+    <p id="endgameDialogTermination">{{ .Data.Termination }}</p>
 
     <button id="endgameDialogClose" class="dialog-close">OK</button>
   </div>

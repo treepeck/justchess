@@ -1,8 +1,9 @@
-import { appendMoveToTable, Move, highlightCurrentMove } from "./chess/move"
+import { appendMoveToTable, highlightCurrentMove } from "./chess/move"
 import { formatTermination, formatResult } from "./chess/state"
+import { Clock, Color } from "./utils/clock"
 import { getOrPanic } from "./utils/dom"
+import showDialog from "./utils/dialog"
 import Board from "./chess/board"
-import { formatTime, Clock, Color } from "./utils/clock"
 ;(() => {
 	// Page guard.
 	if (!document.getElementById("archiveGameGuard")) return
@@ -16,6 +17,7 @@ import { formatTime, Clock, Color } from "./utils/clock"
 	const t = getOrPanic("endgameDialogTermination")
 	// @ts-ignore
 	t.textContent = formatTermination(parseInt(t.textContent))
+	showDialog("endgameDialog")
 
 	// @ts-ignore
 	const control = parseInt(getOrPanic("whiteClock").textContent) * 60 * 1000
