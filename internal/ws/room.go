@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"justchess/internal/db"
 	"log"
 	"strings"
 	"time"
@@ -22,11 +23,10 @@ const (
 )
 
 type room struct {
-	game    *chego.Game
-	moves   []completedMove
-	id      string
-	whiteId string
-	blackId string
+	moves []completedMove
+	id    string
+	white db.Player
+	black db.Player
 	// Id of the player who have issues a draw offer.
 	// Empty string in case no pending draw offers.
 	drawOfferIssuer    string
@@ -39,7 +39,9 @@ type room struct {
 	register   chan *client
 	unregister chan string
 	handle     chan event
+	store      chan<- storeGame
 	clock      *time.Ticker
+	game       *chego.Game
 	// To avoid draw offer spamming limit the number of  draw offers
 	// to 1 from each player.
 	// TODO: reset after 10 moves.
@@ -47,7 +49,10 @@ type room struct {
 	hasBlackSentDrawOffer bool
 }
 
-func newRoom(id, whiteId, blackId string, control, bonus int) *room {
+func newRoom(
+	id string, white, black db.Player,
+	control, bonus int, store chan<- storeGame,
+) *room {
 	g := chego.NewGame()
 	g.SetClock(control*60, bonus)
 
@@ -55,8 +60,8 @@ func newRoom(id, whiteId, blackId string, control, bonus int) *room {
 
 	return &room{
 		id:                 id,
-		whiteId:            whiteId,
-		blackId:            blackId,
+		white:              white,
+		black:              black,
 		moves:              make([]completedMove, 0),
 		game:               g,
 		whiteReconnectTime: reconnectDeadline,
@@ -66,6 +71,7 @@ func newRoom(id, whiteId, blackId string, control, bonus int) *room {
 		register:           make(chan *client),
 		unregister:         make(chan string),
 		handle:             make(chan event),
+		store:              store,
 		clock:              time.NewTicker(time.Second),
 	}
 }
@@ -160,10 +166,10 @@ func (r *room) handleUnregister(id string) {
 // handleTimeTick decrements the time on active player's clock.
 func (r *room) handleTimeTick() {
 	// If some player is disconnected, decrement their allowed reconnect time.
-	if _, isConnected := r.clients[r.whiteId]; !isConnected {
+	if _, isConnected := r.clients[r.white.Id]; !isConnected {
 		r.whiteReconnectTime--
 	}
-	if _, isConnected := r.clients[r.blackId]; !isConnected {
+	if _, isConnected := r.clients[r.black.Id]; !isConnected {
 		r.blackReconnectTime--
 	}
 
@@ -216,8 +222,8 @@ func (r *room) handleTimeTick() {
 // The event will be ignored if the sender does not have the right to move
 // or the game is already over.
 func (r *room) handleMove(e event) {
-	if (len(r.moves)%2 == 0 && e.sender.player.Id != r.whiteId) ||
-		(len(r.moves)%2 != 0 && e.sender.player.Id != r.blackId) ||
+	if (len(r.moves)%2 == 0 && e.sender.player.Id != r.white.Id) ||
+		(len(r.moves)%2 != 0 && e.sender.player.Id != r.black.Id) ||
 		r.game.Termination != chego.Unterminated {
 		return
 	}
@@ -297,9 +303,9 @@ func (r *room) handleResign(e event) {
 	if len(r.moves) < minMoves || r.game.Termination != chego.Unterminated {
 		return
 	}
-	if r.whiteId == e.sender.player.Id {
+	if r.white.Id == e.sender.player.Id {
 		r.endGame(chego.Resignation, chego.BlackWon)
-	} else if r.blackId == e.sender.player.Id {
+	} else if r.black.Id == e.sender.player.Id {
 		r.endGame(chego.Resignation, chego.WhiteWon)
 	}
 }
@@ -313,9 +319,9 @@ func (r *room) handleResign(e event) {
 //   - The player has sent a draw offer not so long ago.
 func (r *room) handleOfferDraw(e event) {
 	if len(r.moves) < minMoves || r.game.Termination != chego.Unterminated ||
-		(e.sender.player.Id != r.whiteId && e.sender.player.Id != r.blackId) ||
-		(e.sender.player.Id == r.whiteId && r.hasWhiteSentDrawOffer) ||
-		(e.sender.player.Id == r.blackId && r.hasBlackSentDrawOffer) ||
+		(e.sender.player.Id != r.white.Id && e.sender.player.Id != r.black.Id) ||
+		(e.sender.player.Id == r.white.Id && r.hasWhiteSentDrawOffer) ||
+		(e.sender.player.Id == r.black.Id && r.hasBlackSentDrawOffer) ||
 		r.drawOfferIssuer != "" {
 		return
 	}
@@ -323,17 +329,17 @@ func (r *room) handleOfferDraw(e event) {
 	r.drawOfferIssuer = e.sender.player.Id
 	// Send draw offer confirmation event to opponent.
 	switch r.drawOfferIssuer {
-	case r.whiteId:
+	case r.white.Id:
 		r.hasWhiteSentDrawOffer = true
-		if c, isConnected := r.clients[r.blackId]; isConnected {
+		if c, isConnected := r.clients[r.black.Id]; isConnected {
 			raw, err := newEncodedEvent(actionOfferDraw, nil)
 			if err == nil {
 				c.send <- raw
 			}
 		}
-	case r.blackId:
+	case r.black.Id:
 		r.hasBlackSentDrawOffer = true
-		if c, isConnected := r.clients[r.whiteId]; isConnected {
+		if c, isConnected := r.clients[r.white.Id]; isConnected {
 			raw, err := newEncodedEvent(actionOfferDraw, nil)
 			if err == nil {
 				c.send <- raw
@@ -366,10 +372,16 @@ func (r *room) handleDeclineDraw(e event) {
 }
 
 // Sets the game termination and results and broadcasts [actionEnd] event.
+// Writes the game into a database.
 func (r *room) endGame(t chego.Termination, res chego.Result) {
 	r.game.Termination = t
 	r.game.Result = res
 	r.broadcast(actionEnd, endPayload{Termination: t, Result: res})
+	r.store <- storeGame{
+		white: r.white, black: r.black,
+		moves: r.moves, id: r.id,
+		result: r.game.Result, termination: r.game.Termination,
+	}
 }
 
 // broadcast encodes and sends the event to all connected clients.

@@ -1,11 +1,10 @@
 package ws
 
 import (
+	"justchess/internal/db"
 	"log"
 	"strconv"
 	"time"
-
-	"justchess/internal/db"
 
 	"github.com/gorilla/websocket"
 )

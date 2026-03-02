@@ -13,7 +13,7 @@
   {{ range .Data }}
   <a class="leaderboard-row" href="/player/{{ .Name  }}">
     <div>{{ .Name }}</div>
-    <div>{{ .Rating }}</div>
+    <div>{{ round .Rating }}</div>
     <div>{{ formatDate .CreatedAt }}</div>
     <div>{{ .NumOfGames }}</div>
   </a>

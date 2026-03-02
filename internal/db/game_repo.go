@@ -110,6 +110,8 @@ const (
 		time_differences = ?,
 		updated_at = CURRENT_TIMESTAMP
 	WHERE game.id = ?`
+
+	markGameAsAbandoned = `	UPDATE game SET termination = 1	WHERE game.id = ?`
 )
 
 // Move represents the completed decoded move.
@@ -178,14 +180,14 @@ func (r GameRepo) SelectById(id string) (Game, error) {
 		&g.White.Id,
 		&g.White.Name,
 		&g.White.Rating,
-		&g.White.RatingDeviation,
-		&g.White.RatingVolatility,
+		&g.White.Deviation,
+		&g.White.Volatility,
 		// Scan black player.
 		&g.Black.Id,
 		&g.Black.Name,
 		&g.Black.Rating,
-		&g.Black.RatingDeviation,
-		&g.Black.RatingVolatility,
+		&g.Black.Deviation,
+		&g.Black.Volatility,
 		// Scan game data.
 		&g.Id,
 		&g.Control,
@@ -300,5 +302,12 @@ func (r GameRepo) Update(res chego.Result, t chego.Termination, movesLength int,
 	moves, compressedDiffs []byte, id string) error {
 	_, err := r.pool.Exec(updateGame, res, t, movesLength, moves,
 		compressedDiffs, id)
+	return err
+}
+
+// MarkGameAsAbandoned updates the termination column to abandoned for the game
+// with the specified id.
+func (r GameRepo) MarkGameAsAbandoned(id string) error {
+	_, err := r.pool.Exec(markGameAsAbandoned, id)
 	return err
 }

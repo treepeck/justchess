@@ -16,7 +16,10 @@
       <a class="site-header-logo" href="/">JustChess</a>
       <a class="site-header-nav" href="/leaderboard">Leaderboard</a>
 
-      <a class="site-header-profile" href="/player/{{ .Base.Player.Name }}">
+      <a
+        class="site-header-profile"
+        href="{{ if eq .Base.Player.Name "signup" }}signup{{ else }}/player/{{ .Base.Player.Name }}{{ end }}"
+       >
         {{ .Base.Player.Name }}
       </a>
     </div>

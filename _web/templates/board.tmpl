@@ -3,7 +3,7 @@
 <div class="board-layout">
   <div class="board-miniprofile flex-container">
     <a href="/player/{{ .Data.Black.Name }}">{{ .Data.Black.Name }}</a>
-    <div class="board-miniprofile-rating">({{ .Data.Black.Rating }} mmr)</div>
+    <div class="board-miniprofile-rating">({{ round .Data.Black.Rating }} mmr)</div>
     <div id="blackClock" class="board-miniprofile-clock">{{ .Data.Control }}</div>
   </div>
 
@@ -11,7 +11,7 @@
 
   <div class="board-miniprofile flex-container">
     <a href="/player/{{ .Data.White.Name }}">{{ .Data.White.Name }}</a>
-    <div class="board-miniprofile-rating">({{ .Data.White.Rating }} mmr)</div>
+    <div class="board-miniprofile-rating">({{ round .Data.White.Rating }} mmr)</div>
     <div id="whiteClock" class="board-miniprofile-clock">{{ .Data.Control }}</div>
   </div>
 </div>

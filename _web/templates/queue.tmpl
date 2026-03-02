@@ -9,7 +9,7 @@
     Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s
   </div>
 
-  <div>Rating: {{ .Base.Player.Rating }}</div>
+  <div>Rating: {{ round .Base.Player.Rating }}</div>
 
   <div id="countUpTimer">00:00</div>
 </div>

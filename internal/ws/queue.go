@@ -66,11 +66,20 @@ func (q queue) listenEvents(create chan<- createRoom) {
 					blackId = match[0]
 				}
 
+				// If player's are not registered, cancel.
+				w := q.clients[whiteId]
+				b := q.clients[blackId]
+				if w == nil || b == nil {
+					// Notify clients about error.
+					q.sendEvent(match, actionError, msgRoomCreationFailed)
+					return
+				}
+
 				// Send create room event.
 				e := createRoom{
 					id:      roomId,
-					whiteId: whiteId,
-					blackId: blackId,
+					white:   w.player,
+					black:   b.player,
 					control: q.control,
 					res:     make(chan error, 1),
 				}
@@ -111,14 +120,14 @@ func (q queue) handleRegister(c *client) {
 }
 
 func (q queue) handleUnregister(id string) {
-	c, exists := q.clients[id]
-	if !exists {
-		log.Printf("client is not registered")
+	c, exist := q.clients[id]
+	if !exist {
+		log.Printf("client %s is not registered", id)
 		return
 	}
 
 	delete(q.clients, id)
-	q.pool.Leave(c.player.Id, c.player.Rating)
+	q.pool.Leave(id, c.player.Rating)
 
 	log.Printf("client %s leaved queue", id)
 }
@@ -138,7 +147,7 @@ func (q queue) sendEvent(players [2]string, a eventAction, payload string) {
 	}
 
 	for _, id := range players {
-		if c := q.clients[id]; c != nil {
+		if c, exists := q.clients[id]; exists {
 			c.send <- e
 		}
 	}

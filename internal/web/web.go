@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -53,6 +54,12 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 	pages := make(map[string]page, len(pagesData))
 	for _, data := range pagesData {
 		t := template.New("base.tmpl")
+
+		// Add default functions.
+		t.Funcs(template.FuncMap{
+			"eq":    func(s1, s2 string) bool { return s1 == s2 },
+			"round": func(n float64) float64 { return math.Round(n) },
+		})
 
 		if data.url == "/leaderboard" {
 			t.Funcs(template.FuncMap{

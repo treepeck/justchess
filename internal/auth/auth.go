@@ -110,19 +110,19 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := s.playerRepo.SelectByEmail(email)
+	c, err := s.playerRepo.SelectCredentialsByEmail(email)
 	if err != nil {
 		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword(p.PasswordHash, []byte(password))
+	err = bcrypt.CompareHashAndPassword(c.PasswordHash, []byte(password))
 	if err != nil {
 		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
 	}
 
-	sessions, err := s.playerRepo.SelectSessionByPlayerId(p.Id)
+	sessions, err := s.playerRepo.SelectSessionByPlayerId(c.Id)
 	if err != nil {
 		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
@@ -146,7 +146,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.genSession(rw, p.Id)
+	s.genSession(rw, c.Id)
 }
 
 // genSession inserts a new record in the session table and adds the HTTP-only

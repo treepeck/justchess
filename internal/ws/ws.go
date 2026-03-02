@@ -10,11 +10,18 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/treepeck/chego"
+	"github.com/treepeck/glicko"
 )
 
 const (
 	msgNotFound string = "Connection will be closed: provided id is not valid."
 	msgConflict string = "Please close any previous tabs and reload the page to reconnect"
+
+	minRating    = 10
+	maxRating    = 4000
+	minDeviation = 30
+	minSigma     = 0.04
+	maxSigma     = 0.08
 )
 
 // upgrader is used to establish a WebSocket connection.
@@ -25,9 +32,20 @@ var upgrader = websocket.Upgrader{
 }
 
 type createRoom struct {
-	id, whiteId, blackId string
-	control              web.QueueData
-	res                  chan error
+	id      string
+	white   db.Player
+	black   db.Player
+	control web.QueueData
+	res     chan error
+}
+
+type storeGame struct {
+	white       db.Player
+	black       db.Player
+	moves       []completedMove
+	id          string
+	result      chego.Result
+	termination chego.Termination
 }
 
 type findRegister struct {
@@ -44,6 +62,7 @@ type Service struct {
 	create     chan createRoom
 	remove     chan string
 	find       chan findRegister
+	store      chan storeGame
 	rooms      map[string]*room
 	queues     map[string]queue
 }
@@ -55,6 +74,7 @@ func NewService(pr db.PlayerRepo, gr db.GameRepo) Service {
 		create:     make(chan createRoom),
 		remove:     make(chan string),
 		find:       make(chan findRegister),
+		store:      make(chan storeGame),
 		rooms:      make(map[string]*room),
 		queues:     make(map[string]queue, 9),
 	}
@@ -88,6 +108,8 @@ func (s Service) ListenEvents() {
 			} else {
 				e.res <- nil
 			}
+		case e := <-s.store:
+			s.handleStoreGame(e)
 		}
 	}
 }
@@ -149,7 +171,10 @@ func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) handleCreateRoom(e createRoom) {
-	err := s.gameRepo.Insert(e.id, e.whiteId, e.blackId, e.control.Control, e.control.Bonus)
+	err := s.gameRepo.Insert(
+		e.id, e.white.Id, e.black.Id,
+		e.control.Control, e.control.Bonus,
+	)
 	defer func() { e.res <- err }()
 	if err != nil {
 		return
@@ -157,36 +182,121 @@ func (s Service) handleCreateRoom(e createRoom) {
 
 	log.Printf("room %s created", e.id)
 
-	r := newRoom(e.id, e.whiteId, e.blackId, e.control.Control, e.control.Bonus)
+	r := newRoom(e.id, e.white, e.black, e.control.Control, e.control.Bonus, s.store)
 	go r.listenEvents(s.remove)
 
 	s.rooms[e.id] = r
 }
 
 func (s Service) handleRemoveRoom(id string) {
-	r, exist := s.rooms[id]
-	if !exist {
+	if s.rooms[id] == nil {
+		log.Printf("room %s doesn't exist", id)
 		return
-	}
-
-	// Prepare moves and time differences for encoding.
-	indices := make([]byte, len(r.moves))
-	diffs := make([]int, len(r.moves))
-	for i, m := range r.moves {
-		indices[i] = m.index
-		diffs[i] = m.timeDiff
-	}
-
-	if err := s.gameRepo.Update(
-		r.game.Result, r.game.Termination,
-		len(r.moves),
-		chego.HuffmanEncoding(indices),
-		chego.CompressTimeDiffs(diffs),
-		id,
-	); err != nil {
-		log.Print(err)
 	}
 
 	log.Printf("room %s removed", id)
 	delete(s.rooms, id)
+}
+
+// handleStoreGame stores the game state in database. If the game is over, it
+// also updates and stores players' ratings based on game outcome.
+func (s Service) handleStoreGame(e storeGame) {
+	// Shortcut: don't encode moves or update players' ratings if game was
+	// abandoned.
+	if e.termination == chego.Abandoned {
+		err := s.gameRepo.MarkGameAsAbandoned(e.id)
+		if err != nil {
+			log.Print(err)
+		}
+		return
+	}
+
+	// Prepare moves for encoding and time differences for compression.
+	indices := make([]byte, len(e.moves))
+	diffs := make([]int, len(e.moves))
+	for i, m := range e.moves {
+		indices[i] = m.index
+		diffs[i] = m.timeDiff
+	}
+
+	// Write game state to database.
+	if err := s.gameRepo.Update(
+		e.result, e.termination,
+		len(e.moves),
+		chego.HuffmanEncoding(indices),
+		chego.CompressTimeDiffs(diffs),
+		e.id,
+	); err != nil {
+		log.Print(err)
+		return
+	}
+
+	if e.termination != chego.Unterminated {
+		err := s.updateRatings(e.white, e.black, e.result)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+}
+
+// Updates white and black player ratings based on the single match outcome.
+func (s Service) updateRatings(white, black db.Player, r chego.Result) error {
+	c := glicko.Converter{
+		Rating:    glicko.DefaultRating,
+		Deviation: glicko.DefaultDeviation,
+		Factor:    glicko.DefaultFactor,
+	}
+
+	// Initial players' strength.
+	wStr := glicko.Strength{
+		Mu:    c.Rating2Mu(white.Rating),
+		Phi:   c.Deviation2Phi(white.Deviation),
+		Sigma: white.Volatility,
+	}
+	bStr := glicko.Strength{
+		Mu:    c.Rating2Mu(black.Rating),
+		Phi:   c.Deviation2Phi(black.Deviation),
+		Sigma: black.Volatility,
+	}
+
+	var whiteScore, blackScore float64
+	switch r {
+	case chego.WhiteWon:
+		whiteScore = 1
+		blackScore = 0
+	case chego.BlackWon:
+		whiteScore = 0
+		blackScore = 1
+	case chego.Draw:
+		whiteScore = 0.5
+		blackScore = 0.5
+	}
+
+	wOut := glicko.Outcome{
+		Mu:    bStr.Mu,
+		Phi:   bStr.Phi,
+		Score: whiteScore,
+	}
+	bOut := glicko.Outcome{
+		Mu:    wStr.Mu,
+		Phi:   wStr.Phi,
+		Score: blackScore,
+	}
+
+	e := glicko.Estimator{
+		MinMu:    c.Rating2Mu(minRating),
+		MaxMu:    c.Rating2Mu(maxRating),
+		MinPhi:   c.Deviation2Phi(minDeviation),
+		MaxPhi:   c.Deviation2Phi(glicko.DefaultDeviation),
+		MinSigma: minSigma, MaxSigma: maxSigma,
+		Tau: glicko.DefaultTau, Epsilon: glicko.DefaultEpsilon,
+	}
+
+	e.Estimate(&wStr, wOut, 1)
+	e.Estimate(&bStr, bOut, 1)
+
+	return s.playerRepo.UpdateRatings(white.Id, black.Id,
+		c.Mu2Rating(wStr.Mu), c.Phi2Deviation(wStr.Phi), wStr.Sigma,
+		c.Mu2Rating(bStr.Mu), c.Phi2Deviation(bStr.Phi), bStr.Sigma,
+	)
 }
