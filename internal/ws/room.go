@@ -168,13 +168,19 @@ func (r *room) handleTimeTick() {
 	// If some player is disconnected, decrement their allowed reconnect time.
 	if _, isConnected := r.clients[r.white.Id]; !isConnected {
 		r.whiteReconnectTime--
+		if r.whiteReconnectTime < 10 && r.game.Termination == chego.Unterminated {
+			r.broadcast(actionChat, "Game will be terminated in "+string(byte(r.whiteReconnectTime)+'0'))
+		}
 	}
 	if _, isConnected := r.clients[r.black.Id]; !isConnected {
 		r.blackReconnectTime--
+		if r.blackReconnectTime < 10 && r.game.Termination == chego.Unterminated {
+			r.broadcast(actionChat, "Game will be terminated in "+string(byte(r.blackReconnectTime)+'0'))
+		}
 	}
 
 	// Shortcut: game is already over.
-	if r.game.Result != chego.Unknown {
+	if r.game.Termination != chego.Unterminated {
 		return
 	}
 
