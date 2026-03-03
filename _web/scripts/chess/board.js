@@ -121,6 +121,10 @@ export default class Board {
 			}
 		})
 		observer.observe(this.#element)
+
+		getOrPanic("flipBoardBtn").onclick = () => {
+			getOrPanic("boardContainer").classList.toggle("flipped")
+		}
 	}
 
 	/**

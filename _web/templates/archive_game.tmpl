@@ -1,8 +1,6 @@
 {{ define "layout" }}
 
-<div class="game-layout flex-container">
-  {{ block "board" . }}{{ end }}
-</div>
+<div class="game-layout flex-container">{{ block "board" . }}{{ end }}</div>
 
 <div id="endgameDialog" class="dialog flex-container">
   <div class="dialog-layout">

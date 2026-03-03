@@ -1,6 +1,9 @@
 {{ define "board" }}
 
-<div class="board-layout">
+<div
+  id="boardContainer"
+  class="board-layout {{ if eq .Data.Black.Name .Base.Player.Name }}flipped{{ end }}"
+>
   <div class="board-miniprofile flex-container">
     <a href="/player/{{ .Data.Black.Name }}">{{ .Data.Black.Name }}</a>
     <div class="board-miniprofile-rating">({{ round .Data.Black.Rating }} mmr)</div>
@@ -27,6 +30,7 @@
     <button id="prevMoveBtn"></button>
     <button id="nextMoveBtn"></button>
     <button id="lastMoveBtn"></button>
+    <button id="flipBoardBtn">Flip board</button>
   </div>
 </div>
 

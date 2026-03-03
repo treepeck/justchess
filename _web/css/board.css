@@ -1,10 +1,15 @@
 .board-layout {
+  display: flex;
   flex-direction: column;
   order: 1;
   width: 95%;
   max-width: 500px;
   background-color: var(--container-background);
   border-radius: 15px;
+}
+
+.board-layout.flipped {
+  flex-direction: column-reverse;
 }
 
 .board-miniprofile {
@@ -41,6 +46,15 @@
   background-repeat: no-repeat;
   cursor: pointer;
   position: relative;
+}
+
+.flipped #board {
+  transform: rotate(180deg);
+}
+
+/* Avoid pieces rotation while flipping the board. */
+.flipped #board .piece {
+  transform: translate(var(--x), var(--y)) rotate(-180deg);
 }
 
 #promotionDialog {
