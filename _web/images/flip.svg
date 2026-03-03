@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="256"
+   height="256"
+   viewBox="0 0 256 256"
+   version="1.1"
+   id="svg5"
+   sodipodi:docname="flip.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="px"
+     showgrid="false"
+     inkscape:zoom="2.0000001"
+     inkscape:cx="122"
+     inkscape:cy="124.75"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:#b5936e;stroke:#b5936e;stroke-width:18.8199;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke markers fill"
+       d="m 241.88492,27.376649 -27.26392,-0.149468 -0.1458,166.058429 -131.216713,0.59788 26.534943,-11.35953 0.87478,-21.2244 -41.406163,24.81162 -1.74957,32.58391 35.865903,23.01801 2.91594,-21.82227 -25.660173,-7.7723 156.876883,-0.89681 z"
+       id="path1" />
+    <path
+       style="fill:#b5936e;stroke:#b5936e;stroke-width:18.6455;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke markers fill"
+       d="m 19.594871,231.05032 26.43125,0.15134 0.14134,-168.129031 127.209209,-0.605335 -25.72453,11.501177 -0.84806,21.48904 40.14156,-25.12099 1.69613,-32.990208 -34.77051,-23.305018 -2.82688,22.094369 24.87647,7.869219 -152.085659,0.907987 z"
+       id="path1-8" />
+  </g>
+</svg>

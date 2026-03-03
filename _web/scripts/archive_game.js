@@ -61,6 +61,33 @@ import Board from "./chess/board"
 		highlightCurrentMove(board.currentFen)
 	}
 
+	const setCurrentMove = () => {
+		clock.setTime(Color.White, times[board.currentFen].whiteTime)
+		clock.setTime(Color.Black, times[board.currentFen].blackTime)
+		highlightCurrentMove(board.currentFen)
+		board.parsePiecePlacement(board.fens[board.currentFen])
+	}
+
+	// Go through move history using buttons.
+	getOrPanic("nullMoveBtn").onclick = () => {
+		board.currentFen = 0
+		setCurrentMove()
+	}
+	getOrPanic("prevMoveBtn").onclick = () => {
+		if (board.currentFen == 0) return
+		board.currentFen -= 1
+		setCurrentMove()
+	}
+	getOrPanic("nextMoveBtn").onclick = () => {
+		if (board.currentFen == board.fens.length - 1) return
+		board.currentFen += 1
+		setCurrentMove()
+	}
+	getOrPanic("lastMoveBtn").onclick = () => {
+		board.currentFen = board.fens.length - 1
+		setCurrentMove()
+	}
+
 	// Go through move history using keyboard.
 	document.onkeydown = (e) => {
 		switch (e.key) {
@@ -79,9 +106,6 @@ import Board from "./chess/board"
 				board.currentFen -= 1
 				break
 		}
-		clock.setTime(Color.White, times[board.currentFen].whiteTime)
-		clock.setTime(Color.Black, times[board.currentFen].blackTime)
-		highlightCurrentMove(board.currentFen)
-		board.parsePiecePlacement(board.fens[board.currentFen])
+		setCurrentMove()
 	}
 })()

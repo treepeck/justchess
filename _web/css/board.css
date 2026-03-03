@@ -195,6 +195,43 @@
   background-color: var(--text-hover);
 }
 
+.board-controls {
+  display: flex;
+  margin: auto;
+}
+
+.board-controls button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  margin: 10px;
+  background: none;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+#nullMoveBtn {
+  background-image: url("/images/reset.svg");
+}
+
+#prevMoveBtn {
+  background-image: url("/images/back.svg");
+}
+
+#nextMoveBtn {
+  background-image: url("/images/back.svg");
+  transform: scaleX(-1);
+}
+
+#lastMoveBtn {
+  background-image: url("/images/reset.svg");
+  transform: scaleX(-1);
+}
+
+#flipBoardBtn {
+  background-image: url("/images/flip.svg");
+}
+
 /* Reorder elements on bigger screens. */
 @media screen and (min-width: 1200px) {
   .board-layout {

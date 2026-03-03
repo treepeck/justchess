@@ -182,6 +182,31 @@ function appendChatMessage(msg) {
 		}
 	}
 
+	const setCurrentMove = () => {
+		highlightCurrentMove(board.currentFen)
+		board.parsePiecePlacement(board.fens[board.currentFen])
+	}
+
+	// Go through move history using buttons.
+	getOrPanic("nullMoveBtn").onclick = () => {
+		board.currentFen = 0
+		setCurrentMove()
+	}
+	getOrPanic("prevMoveBtn").onclick = () => {
+		if (board.currentFen == 0) return
+		board.currentFen -= 1
+		setCurrentMove()
+	}
+	getOrPanic("nextMoveBtn").onclick = () => {
+		if (board.currentFen == board.fens.length - 1) return
+		board.currentFen += 1
+		setCurrentMove()
+	}
+	getOrPanic("lastMoveBtn").onclick = () => {
+		board.currentFen = board.fens.length - 1
+		setCurrentMove()
+	}
+
 	// Go through move history using keyboard.
 	document.onkeydown = (e) => {
 		switch (e.key) {
@@ -200,7 +225,6 @@ function appendChatMessage(msg) {
 				board.currentFen -= 1
 				break
 		}
-		highlightCurrentMove(board.currentFen)
-		board.parsePiecePlacement(board.fens[board.currentFen])
+		setCurrentMove()
 	}
 })()
