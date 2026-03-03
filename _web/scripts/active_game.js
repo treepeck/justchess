@@ -147,7 +147,10 @@ function appendChatMessage(msg) {
 	}
 
 	// Render chessboard.
-	const board = new Board(moveHandler)
+	const board = new Board(
+		moveHandler,
+		getOrPanic("boardContainer").classList.contains("flipped"),
+	)
 
 	// Handle chat messages.
 	const chat = /** @type {HTMLInputElement} */ (getOrPanic("chatInput"))

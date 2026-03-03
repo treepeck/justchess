@@ -9,7 +9,10 @@ import Board from "./chess/board"
 	if (!document.getElementById("archiveGameGuard")) return
 
 	// Render chessboard.
-	const board = new Board(() => {})
+	const board = new Board(
+		() => {},
+		getOrPanic("boardContainer").classList.contains("flipped"),
+	)
 
 	const r = getOrPanic("endgameDialogResult")
 	// @ts-ignore

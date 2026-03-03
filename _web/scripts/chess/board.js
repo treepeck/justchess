@@ -88,11 +88,16 @@ export default class Board {
 	 * @type {MoveHandler}
 	 */
 	#moveHandler
+	/**
+	 * @type {boolean}
+	 */
+	#isFlipped
 
 	/**
 	 * @param {MoveHandler} moveHandler
+	 * @param {boolean} isFlipped
 	 */
-	constructor(moveHandler) {
+	constructor(moveHandler, isFlipped) {
 		this.#element = /** @type {HTMLDivElement} */ (getOrPanic("board"))
 		this.#pieces = /** @type {Map<Square, Piece>} */ (new Map())
 
@@ -124,7 +129,10 @@ export default class Board {
 
 		getOrPanic("flipBoardBtn").onclick = () => {
 			getOrPanic("boardContainer").classList.toggle("flipped")
+			this.#isFlipped = !this.#isFlipped
 		}
+
+		this.#isFlipped = isFlipped
 	}
 
 	/**
@@ -525,8 +533,13 @@ export default class Board {
 
 		const rect = this.#element.getBoundingClientRect()
 
-		const x = e.clientX - rect.left
-		const y = e.clientY - rect.top
+		let x = e.clientX - rect.left
+		let y = e.clientY - rect.top
+
+		if (this.#isFlipped) {
+			x = rect.right - e.clientX
+			y = rect.bottom - e.clientY
+		}
 
 		const file = Math.floor(x / squareSize)
 		const rank = Math.floor((this.#size - y) / squareSize)
