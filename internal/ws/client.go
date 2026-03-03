@@ -24,7 +24,7 @@ const (
 // client wraps a single socket and player info.
 type client struct {
 	player db.Player
-	// Timestamp when the last ping event was sent to measure the network delay.
+	// Timestamp when the last ping event was sent.
 	pingTimestamp time.Time
 	// send is a channel which recieves events that the client will write to
 	// the WebSocket connection.  It must recieve raw bytes to avoid expensive
@@ -38,7 +38,10 @@ type client struct {
 	// unregister is a channel to which the client will send to unregister themself
 	// from the room or queue.
 	unregister chan string
-	conn       *websocket.Conn
+	// pong channel is used to prevent race conditions while handling pong events
+	// from client.
+	pong chan struct{}
+	conn *websocket.Conn
 	// Network delay in milliseconds.
 	ping int
 	// New ping event must be sent only when the client responses to the
@@ -48,20 +51,18 @@ type client struct {
 
 // newClient creates a new client and sets the connection properties.
 func newClient(conn *websocket.Conn, p db.Player) *client {
-	now := time.Now()
-
 	c := &client{
-		player:        p,
-		send:          make(chan []byte, 192),
-		conn:          conn,
-		ping:          0,
-		pingTimestamp: now,
+		player: p,
+		send:   make(chan []byte, 192),
+		pong:   make(chan struct{}, 10),
+		conn:   conn,
+		ping:   0,
 		// Must be true to be able to send the first ping message.
 		hasAnsweredPing: true,
 	}
 
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(now.Add(pongWait))
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 
 	return c
 }
@@ -81,7 +82,7 @@ func (c *client) read() {
 		}
 
 		if e.Action == actionPong {
-			c.handlePong()
+			c.pong <- struct{}{}
 		} else {
 			if c.forward != nil {
 				e.sender = c
@@ -112,6 +113,10 @@ func (c *client) write() {
 				return
 			}
 
+		// Handle pong events in write goroutine to avoid data races between read and write routines.
+		case <-c.pong:
+			c.handlePong()
+
 		// Send ping messages periodically.
 		case <-pingTicker.C:
 			// Send a new ping event only if the client has already answered to
@@ -120,10 +125,8 @@ func (c *client) write() {
 				continue
 			}
 
-			now := time.Now()
-			c.conn.SetWriteDeadline(now.Add(writeWait))
-
-			c.pingTimestamp = now
+			c.pingTimestamp = time.Now()
+			c.conn.SetWriteDeadline(c.pingTimestamp.Add(writeWait))
 
 			if err := c.conn.WriteJSON(event{
 				Action:  actionPing,
