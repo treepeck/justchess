@@ -1,0 +1,37 @@
+{{ define "board" }}
+
+<div
+  id="boardContainer"
+  class="board-layout {{ if eq .Data.Black.Name .Base.Player.Name }}flipped{{ end }}"
+>
+  <div class="board-miniprofile flex-container">
+    <a href="/player/{{ .Data.Black.Name }}">{{ .Data.Black.Name }}</a>
+    <div class="board-miniprofile-rating">({{ round .Data.Black.Rating }} mmr)</div>
+    <div id="blackClock" class="board-miniprofile-clock">{{ .Data.Control }}</div>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="board-miniprofile flex-container">
+    <a href="/player/{{ .Data.White.Name }}">{{ .Data.White.Name }}</a>
+    <div class="board-miniprofile-rating">({{ round .Data.White.Rating }} mmr)</div>
+    <div id="whiteClock" class="board-miniprofile-clock">{{ .Data.Control }}</div>
+  </div>
+</div>
+
+<div id="movesContainer" class="moves-layout game-container">
+  <header class="game-container-header">Moves</header>
+  <div id="moves" class="scrollable-container">
+    <script id="movesJson" type="application/json">{{ .Data.Moves }}</script>
+  </div>
+
+  <div class="board-controls">
+    <button id="nullMoveBtn"></button>
+    <button id="prevMoveBtn"></button>
+    <button id="nextMoveBtn"></button>
+    <button id="lastMoveBtn"></button>
+    <button id="flipBoardBtn"></button>
+  </div>
+</div>
+
+{{ end }}

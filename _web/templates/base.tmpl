@@ -11,19 +11,32 @@
 </head>
 
 <body>
-  <header>
-    <nav>
-      <div class="logo"><a href="/">JustChess</a></div>
+  <header class="site-header">
+    <div class="site-header-layout">
+      <a class="site-header-logo" href="/">JustChess</a>
+      <a class="site-header-nav" href="/leaderboard">Leaderboard</a>
 
-      <a href="/{{ .Base.Player.Name }}">{{ .Base.Player.Name }}</a>
-    </nav>
+      <a
+        class="site-header-profile"
+        href="{{ if eq .Base.Player.Name "signup" }}signup{{ else }}/player/{{ .Base.Player.Name }}{{ end }}"
+       >
+        {{ .Base.Player.Name }}
+      </a>
+    </div>
   </header>
 
-  {{ block "content" . }}{{ end }}
+  <main id="main" class="site-layout flex-container">
+    {{ block "layout" . }}{{ end }}
+  </main>
 
-  <footer>
-    <div>
-      &copy; 2026 JustChess
+  <footer class="site-footer">
+    <div class="site-footer-layout flex-container">
+      <div class="site-footer-copyright">
+        &copy; 2026 JustChess
+      </div>
+      <div class="site-footer-nav">
+        <a href="https://github.com/treepeck/justchess">Source code</a>
+      </div>
     </div>
   </footer>
 </body>

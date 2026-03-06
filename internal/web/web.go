@@ -1,18 +1,29 @@
 package web
 
 import (
+	"encoding/json"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 
 	"justchess/internal/db"
+
+	"github.com/treepeck/chego"
 )
 
 // Declaration of error messages.
 const (
 	msgNotFound        string = "The requested page doesn't exist"
+	msgCannotEncode    string = "Cannot encode the response"
+	msgBadRequest      string = "The request body is malformed"
 	msgInvalidTemplate string = "The requested page cannot be rendered"
 )
+
+// Template path prefix.
+const tmplPrefix = "./_web/templates/"
 
 type Service struct {
 	playerRepo db.PlayerRepo
@@ -24,21 +35,46 @@ type Service struct {
 // InitService tries to parse the template files and stores them in the [Service].
 func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 	pagesData := []struct {
-		url      string
-		tmplPath string
-		base     baseData
+		url   string
+		tmpls []string
+		base  baseData
 	}{
-		{"/", "./_web/templates/home.tmpl", baseData{Title: "Home"}},
-		{"/queue", "./_web/templates/queue.tmpl", baseData{Title: "Queue"}},
-		{"/signup", "./_web/templates/signup.tmpl", baseData{Title: "Sign up"}},
-		{"/signin", "./_web/templates/signin.tmpl", baseData{Title: "Sign in"}},
-		{"/game", "./_web/templates/game.tmpl", baseData{Title: "Game"}},
-		{"/404", "./_web/templates/404.tmpl", baseData{Title: "Not found"}},
+		{"/", []string{"home.tmpl"}, baseData{Title: "Home"}},
+		{"/queue", []string{"queue.tmpl"}, baseData{Title: "Queue"}},
+		{"/signup", []string{"signup.tmpl"}, baseData{Title: "Sign up"}},
+		{"/signin", []string{"signin.tmpl"}, baseData{Title: "Sign in"}},
+		{"/active", []string{"active_game.tmpl", "board.tmpl"}, baseData{}},
+		{"/archive", []string{"archive_game.tmpl", "board.tmpl"}, baseData{}},
+		{"/player", []string{"player.tmpl"}, baseData{}},
+		{"/leaderboard", []string{"leaderboard.tmpl"}, baseData{Title: "Leaderboard"}},
+		{"/error", []string{"error.tmpl"}, baseData{Title: "Error"}},
 	}
 
+	// Parse and store templates to avoid reparsing them on each HTTP request.
 	pages := make(map[string]page, len(pagesData))
 	for _, data := range pagesData {
-		t, err := template.ParseFiles(basePath, data.tmplPath)
+		t := template.New("base.tmpl")
+
+		// Add default functions.
+		t.Funcs(template.FuncMap{
+			"eq":    func(s1, s2 string) bool { return s1 == s2 },
+			"round": func(n float64) float64 { return math.Round(n) },
+		})
+
+		if data.url == "/leaderboard" {
+			t.Funcs(template.FuncMap{
+				"formatDate": func(date time.Time) string {
+					return date.Format("Jan 02, 2006")
+				}})
+		}
+
+		paths := append([]string{"/base.tmpl"}, data.tmpls...)
+		// Append template prefix to each path.
+		for i, path := range paths {
+			paths[i] = tmplPrefix + path
+		}
+
+		t, err := t.ParseFiles(paths...)
 		if err != nil {
 			return Service{}, err
 		}
@@ -53,6 +89,8 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 }
 
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/api/profile-games", s.getProfileGames)
+
 	// Serve js and css bundles.
 	bundles := http.Dir("./_web/bundles")
 	mux.Handle("/bundles/", http.StripPrefix("/bundles/", http.FileServer(bundles)))
@@ -69,56 +107,59 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("/", http.HandlerFunc(s.serveStaticRoutePage))
 
 	// Serve pages with dynamic routes.
-	mux.Handle("/queue/", http.StripPrefix("/queue/", http.HandlerFunc(s.serveQueue)))
-	mux.Handle("/game/", http.StripPrefix("/game/", http.HandlerFunc(s.serveGame)))
+	mux.HandleFunc("/queue/{id}", s.serveQueue)
+	mux.HandleFunc("/game/{id}", s.serveGame)
+	mux.HandleFunc("/player/{name}", s.servePlayer)
+}
+
+// Possible time controls.
+var Controls = [9]QueueData{
+	{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10},
 }
 
 func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
-	var data queueData
-
-	// There are 9 queues.
-	switch r.URL.Path {
-	case "1":
-		data = queueData{Control: 1, Bonus: 0}
-	case "2":
-		data = queueData{Control: 2, Bonus: 1}
-	case "3":
-		data = queueData{Control: 3, Bonus: 0}
-	case "4":
-		data = queueData{Control: 3, Bonus: 2}
-	case "5":
-		data = queueData{Control: 5, Bonus: 0}
-	case "6":
-		data = queueData{Control: 5, Bonus: 2}
-	case "7":
-		data = queueData{Control: 10, Bonus: 0}
-	case "8":
-		data = queueData{Control: 10, Bonus: 10}
-	case "9":
-		data = queueData{Control: 15, Bonus: 10}
-
-	default:
-		p := s.pages["/404"]
-		s.renderPage(rw, r, p)
-		return
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id < 0 || id > 8 {
+		s.renderPage(rw, r, s.pages["/error"])
 	}
 
 	p := s.pages["/queue"]
-	p.Data = data
+	p.Data = Controls[id-1]
 	s.renderPage(rw, r, p)
 }
 
 func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
-	g, err := s.gameRepo.SelectById(r.URL.Path)
+	g, err := s.gameRepo.SelectById(r.PathValue("id"))
 	if err != nil {
-		p := s.pages["/404"]
-		s.renderPage(rw, r, p)
+		s.renderPage(rw, r, s.pages["/error"])
 		return
 	}
 
-	page := s.pages["/game"]
+	page := s.pages["/active"]
+	// If the game was been already terminated, serve the corresponding page.
+	if g.Termination != chego.Unterminated {
+		page = s.pages["/archive"]
+	}
+
 	// Fill up the template with more game data.
 	page.Data = g
+
+	page.Base.Title = g.White.Name + " vs " + g.Black.Name
+
+	s.renderPage(rw, r, page)
+}
+
+func (s Service) servePlayer(rw http.ResponseWriter, r *http.Request) {
+	p, err := s.playerRepo.SelectProfileData(r.PathValue("name"))
+	if err != nil {
+		s.renderPage(rw, r, s.pages["/error"])
+		return
+	}
+
+	// Fill up the template with player data.
+	page := s.pages["/player"]
+	page.Data = p
+	page.Base.Title = p.Name
 
 	s.renderPage(rw, r, page)
 }
@@ -126,20 +167,29 @@ func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
 func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
 	page, exists := s.pages[r.URL.Path]
 	if !exists {
-		page = s.pages["/404"]
+		page = s.pages["/error"]
+	}
+
+	if r.URL.Path == "/leaderboard" {
+		leaders, err := s.playerRepo.SelectLeaderboard()
+		if err != nil {
+			log.Print(err)
+			page = s.pages["/error"]
+			return
+		}
+		page.Data = leaders
 	}
 
 	s.renderPage(rw, r, page)
 }
 
 func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
+	p.Base.Player.Name = "signup"
 	c, err := r.Cookie("Auth")
 	if err == nil {
 		player, err := s.playerRepo.SelectBySessionId(c.Value)
 		if err == nil {
 			p.Base.Player = player
-		} else {
-			p.Base.Player.Name = "signup"
 		}
 	}
 
@@ -147,4 +197,36 @@ func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 		log.Print(err)
 		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
 	}
+}
+
+// getProfileGames fetches up to 100 games from database, encodes them and
+// sends the response.
+func (s Service) getProfileGames(rw http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	cursorId := r.URL.Query().Get("cid")
+	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cat"))
+
+	var games []db.ProfileGame
+	if cursorId != "" && err == nil {
+		// Apply pagination if cursors are defined.
+		games, err = s.gameRepo.SelectOlderProfileGames(
+			name,
+			cursorId,
+			cursorCreatedAt,
+		)
+	} else {
+		games, err = s.gameRepo.SelectNewestProfileGames(name)
+	}
+
+	if err != nil || len(games) == 0 {
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		return
+	}
+
+	if err = json.NewEncoder(rw).Encode(games); err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotEncode, http.StatusInternalServerError)
+		return
+	}
+	rw.Header().Add("Content-Type", "application/json")
 }

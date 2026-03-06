@@ -1,11 +1,10 @@
 package ws
 
 import (
+	"justchess/internal/db"
 	"log"
 	"strconv"
 	"time"
-
-	"justchess/internal/db"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,10 +21,10 @@ const (
 	maxMessageSize = 1024
 )
 
-// client wraps a single active connection and player info.
+// client wraps a single socket and player info.
 type client struct {
 	player db.Player
-	// Timestamp when the last ping event was sent to measure the network delay.
+	// Timestamp when the last ping event was sent.
 	pingTimestamp time.Time
 	// send is a channel which recieves events that the client will write to
 	// the WebSocket connection.  It must recieve raw bytes to avoid expensive
@@ -34,6 +33,14 @@ type client struct {
 	// sequentially, since the Gorilla WebSocket library allows only one
 	// concurrent writer to a connection at a time.
 	send chan []byte
+	// forward is a channel to which the client will send events.
+	forward chan event
+	// unregister is a channel to which the client will send to unregister themself
+	// from the room or queue.
+	unregister chan string
+	// pong channel is used to prevent race conditions while handling pong events
+	// from client.
+	pong chan struct{}
 	conn *websocket.Conn
 	// Network delay in milliseconds.
 	ping int
@@ -42,22 +49,20 @@ type client struct {
 	hasAnsweredPing bool
 }
 
-// newClient creates a new client and sets the WebSocket connection properties.
-func newClient(p db.Player, conn *websocket.Conn) *client {
-	now := time.Now()
-
+// newClient creates a new client and sets the connection properties.
+func newClient(conn *websocket.Conn, p db.Player) *client {
 	c := &client{
-		player:        p,
-		send:          make(chan []byte, 192),
-		conn:          conn,
-		ping:          0,
-		pingTimestamp: now,
+		player: p,
+		send:   make(chan []byte, 192),
+		pong:   make(chan struct{}, 10),
+		conn:   conn,
+		ping:   0,
 		// Must be true to be able to send the first ping message.
 		hasAnsweredPing: true,
 	}
 
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(now.Add(pongWait))
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 
 	return c
 }
@@ -67,8 +72,8 @@ func newClient(p db.Player, conn *websocket.Conn) *client {
 // Pong events are handled by the client itself.  In the case of other event,
 // they are forwarded to the forward channel.  If an event cannot be read, the
 // connection will be closed.
-func (c *client) read(unregister chan<- *client, forward chan<- event) {
-	defer c.cleanup(unregister)
+func (c *client) read() {
+	defer c.cleanup()
 
 	var e event
 	for {
@@ -77,11 +82,11 @@ func (c *client) read(unregister chan<- *client, forward chan<- event) {
 		}
 
 		if e.Action == actionPong {
-			c.handlePong()
+			c.pong <- struct{}{}
 		} else {
-			if forward != nil {
+			if c.forward != nil {
 				e.sender = c
-				forward <- e
+				c.forward <- e
 			}
 		}
 	}
@@ -108,6 +113,10 @@ func (c *client) write() {
 				return
 			}
 
+		// Handle pong events in write goroutine to avoid data races between read and write routines.
+		case <-c.pong:
+			c.handlePong()
+
 		// Send ping messages periodically.
 		case <-pingTicker.C:
 			// Send a new ping event only if the client has already answered to
@@ -116,10 +125,8 @@ func (c *client) write() {
 				continue
 			}
 
-			now := time.Now()
-			c.conn.SetWriteDeadline(now.Add(writeWait))
-
-			c.pingTimestamp = now
+			c.pingTimestamp = time.Now()
+			c.conn.SetWriteDeadline(c.pingTimestamp.Add(writeWait))
 
 			if err := c.conn.WriteJSON(event{
 				Action:  actionPing,
@@ -152,8 +159,10 @@ func (c *client) handlePong() error {
 }
 
 // cleanup closes the connection and unregisters the client from the gatekeeper.
-func (c *client) cleanup(unregister chan<- *client) {
-	unregister <- c
+func (c *client) cleanup() {
+	if c.unregister != nil {
+		c.unregister <- c.player.Id
+	}
 	close(c.send)
 	c.conn.Close()
 }

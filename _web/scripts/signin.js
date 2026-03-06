@@ -1,36 +1,37 @@
-;(() => {
-	// Page guard.
-	if (document.getElementsByTagName("form")[0]?.dataset.page !== "signin") {
-		return
-	}
+import { getOrPanic } from "./utils/dom"
 
-	authForm.addEventListener("submit", submitForm)
-	passwordToggle.addEventListener("click", togglePassword)
-})()
-
+/** @param {SubmitEvent} event */
 function submitForm(event) {
 	event.preventDefault()
 	event.stopPropagation()
 
+	if (!(event.target instanceof HTMLFormElement)) return
+
 	// Clear previous error message.
-	serverError.textContent = ""
+	const error = getOrPanic("authFormServerError")
+	error.textContent = ""
 
 	// Disable the button while the request is being processed.
-	submitBtn.disabled = true
-	submitBtn.textContent = "Submitting..."
+	const btn = /** @type {HTMLButtonElement} */ (
+		getOrPanic("authFormSubmitButton")
+	)
+	btn.disabled = true
+	btn.textContent = "Submitting..."
 
-	const data = new FormData(authForm)
+	const data = new FormData(event.target)
+	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
 	const params = new URLSearchParams(data)
 
 	signIn(params).then((err) => {
-		serverError.textContent = "Sign in failed: " + err
+		error.textContent = "Sign in failed: " + err
 
 		// Enable the submit button.
-		submitBtn.disabled = false
-		submitBtn.textContent = "Sign in"
+		btn.disabled = false
+		btn.textContent = "Sign in"
 	})
 }
 
+/** @param {URLSearchParams} data */
 async function signIn(data) {
 	try {
 		const res = await fetch("/auth/signin", {
@@ -50,13 +51,23 @@ async function signIn(data) {
 	}
 }
 
-function togglePassword() {
-	const curr = passwordInput.getAttribute("type")
-	if (curr === "password") {
-		passwordInput.setAttribute("type", "text")
-		passwordToggle.style.backgroundImage = "url('/images/hide.png')"
-	} else {
-		passwordInput.setAttribute("type", "password")
-		passwordToggle.style.backgroundImage = "url('/images/show.png')"
+;(() => {
+	// Page guard.
+	if (!document.getElementById("signinGuard")) return
+
+	getOrPanic("authForm").onsubmit = submitForm
+
+	const toggle = getOrPanic("authFormPasswordToggle")
+	toggle.onclick = () => {
+		const input = getOrPanic("authFormPasswordInput")
+
+		const curr = input.getAttribute("type")
+		if (curr === "password") {
+			input.setAttribute("type", "text")
+			toggle.style.backgroundImage = "url('/images/hide.svg')"
+		} else {
+			input.setAttribute("type", "password")
+			toggle.style.backgroundImage = "url('/images/show.svg')"
+		}
 	}
-}
+})()

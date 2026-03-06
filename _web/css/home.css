@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* Animated background. */
 .column-container::before {
   width: 200%;
@@ -21,49 +22,22 @@
 }
 
 .column-container .grid {
+=======
+.control-grid {
+>>>>>>> main
   width: 95%;
-  max-width: 600px;
+  max-width: 500px;
   display: grid;
-  margin: 0 auto auto auto;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
+  margin-bottom: 20px;
 }
 
-.cell {
-  font-size: larger;
+.control-grid-cell {
   aspect-ratio: 1/1;
   font-weight: bold;
-  border: 2px solid var(--container-foreground);
   border-radius: 15%;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
-}
-
-@keyframes slide-background {
-  0% {
-    background-position-x: 0;
-    background-position-y: 0;
-  }
-
-  25% {
-    background-position-x: 100vw;
-    background-position-y: -100vh;
-  }
-
-  50% {
-    background-position-x: 0;
-    background-position-y: 0;
-  }
-
-  75% {
-    background-position-x: -100vw;
-    background-position-y: 100vh;
-  }
-
-  100% {
-    background-position-x: 0;
-    background-position-y: 0;
-  }
+  font-size: x-large;
 }
 
 @media (width >= 30rem) {
@@ -73,9 +47,8 @@
 }
 
 @media screen and (min-width: 600px) {
-  /* Make background animation slower on larger screens. */
-  .column-container::before {
-    transform: rotate(15deg) scale(1.5);
-    animation: slide-background 340s ease-in-out infinite;
+  /* Make header bigger on larger screens. */
+  .page-header {
+    font-size: xx-large;
   }
 }

@@ -17,17 +17,69 @@ const (
 	)
 	VALUES (?, ?, ?, ?)`
 
-	selectPlayerById = `SELECT * FROM player WHERE id = ?`
+	selectPlayerById = `
+	SELECT
+		id, name, rating, rating_deviation, rating_volatility
+	FROM player WHERE id = ?`
 
-	selectPlayerByEmail = `SELECT * FROM player WHERE email = ?`
+	selectCredentialsByEmail = `SELECT id, password_hash FROM player WHERE email = ?`
+
+	selectProfileData = `
+	SELECT
+		p.name,
+		p.rating,
+		p.created_at,
+		count(g.id) as num_of_games
+	FROM player p
+	LEFT JOIN game g
+	ON
+		(g.white_id = p.id OR g.black_id = p.id)
+		AND g.termination != 1
+	WHERE p.name = ?
+	GROUP BY p.name, p.rating, p.created_at`
+
+	selectLeaderboard = `
+	SELECT
+		p.name,
+	    p.rating,
+	    p.created_at,
+	    count(g.id) as num_of_games
+	FROM player p
+	LEFT JOIN game g
+	ON
+		(g.white_id = p.id OR g.black_id = p.id)
+	    AND g.termination != 1
+	GROUP BY p.name, p.rating, p.created_at
+	ORDER BY p.rating DESC, num_of_games DESC
+	LIMIT 100`
 
 	selectPlayerBySessionId = `
 	SELECT
-		p.*
+		p.id, p.name, p.rating, p.rating_deviation, p.rating_volatility
 	FROM player p
 	INNER JOIN session s
 	ON p.id = s.player_id
 	WHERE s.id = ? AND s.expires_at > NOW()`
+
+	updateRatings = `
+	UPDATE player
+	SET
+		rating = CASE
+			WHEN id = ? THEN ?
+			WHEN id = ? THEN ?
+			ELSE rating
+		END,
+		rating_deviation = CASE
+			WHEN id = ? THEN ?
+			WHEN id = ? THEN ?
+			ELSE rating_deviation
+		END,
+		rating_volatility = CASE
+			WHEN id = ? THEN ?
+			WHEN id = ? THEN ?
+			ELSE rating_volatility
+		END
+	WHERE player.id = ? OR player.id = ?`
 
 	insertSession = `
 	INSERT INTO session (
@@ -53,18 +105,28 @@ const (
 	deleteSessionById = `DELETE FROM session WHERE id = ?`
 )
 
-// Player represents a registered player.  Sensitive data, such as password hash
-// and email will not be encoded into a JSON.
+// Player represents a registered player.
 type Player struct {
-	PasswordHash     []byte
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	Id               string
-	Name             string
-	Email            string
-	Rating           float64
-	RatingDeviation  float64
-	RatingVolatility float64
+	Id         string
+	Name       string
+	Rating     float64
+	Deviation  float64
+	Volatility float64
+}
+
+// Credentials is a password hash and id of a single player.
+type Credentials struct {
+	PasswordHash []byte
+	Id           string
+}
+
+// ProfileData is a data object used to fill up the player.tmpl file while executing
+// a template.
+type ProfileData struct {
+	CreatedAt  time.Time
+	Name       string
+	Rating     float64
+	NumOfGames int
 }
 
 // Session is an authorization token for a player.  Each protected endpoint
@@ -97,20 +159,48 @@ func (r PlayerRepo) SelectById(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerById, id)
 
 	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.RatingDeviation,
-		&p.RatingVolatility, &p.Email, &p.PasswordHash, &p.CreatedAt,
-		&p.UpdatedAt)
+	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
 }
 
-// SelectByEmail selects a single record with the same email as provided
-// from the player table.
-func (r PlayerRepo) SelectByEmail(email string) (Player, error) {
-	row := r.pool.QueryRow(selectPlayerByEmail, email)
+// SelectCredentialsByEmail selects [Credential] from the player table by email.
+func (r PlayerRepo) SelectCredentialsByEmail(email string) (Credentials, error) {
+	row := r.pool.QueryRow(selectCredentialsByEmail, email)
 
-	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.RatingDeviation,
-		&p.RatingVolatility, &p.Email, &p.PasswordHash, &p.CreatedAt,
-		&p.UpdatedAt)
+	var c Credentials
+	return c, row.Scan(&c.Id, &c.PasswordHash)
+}
+
+// SelectProfileData selects [ProfileData] from player and game tables
+// using player's name.
+func (r PlayerRepo) SelectProfileData(name string) (ProfileData, error) {
+	row := r.pool.QueryRow(selectProfileData, name)
+	var p ProfileData
+	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.NumOfGames)
+}
+
+// SelectLeaderboard selects [ProfileData] of 100 players with the biggest
+// rating sorted in descending order.
+func (r PlayerRepo) SelectLeaderboard() ([]ProfileData, error) {
+	rows, err := r.pool.Query(selectLeaderboard)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	leaders := make([]ProfileData, 0, 20)
+	for rows.Next() {
+		var pd ProfileData
+		if err = rows.Scan(
+			&pd.Name,
+			&pd.Rating,
+			&pd.CreatedAt,
+			&pd.NumOfGames,
+		); err != nil {
+			return nil, err
+		}
+		leaders = append(leaders, pd)
+	}
+	return leaders, err
 }
 
 // SelectBySessionId selects a single player with the specified session_id.
@@ -119,9 +209,25 @@ func (r PlayerRepo) SelectBySessionId(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerBySessionId, id)
 
 	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.RatingDeviation,
-		&p.RatingVolatility, &p.Email, &p.PasswordHash, &p.CreatedAt,
-		&p.UpdatedAt)
+	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
+}
+
+// UpdateRatings updates rating, deviation, and volatility columns of two players
+// in a single query.
+func (r PlayerRepo) UpdateRatings(whiteId, blackId string,
+	whiteRating, whiteDeviation, whiteVolatility,
+	blackRating, blackDeviation, blackVolatility float64,
+) error {
+	_, err := r.pool.Exec(updateRatings,
+		whiteId, whiteRating,
+		blackId, blackRating,
+		whiteId, whiteDeviation,
+		blackId, blackDeviation,
+		whiteId, whiteVolatility,
+		blackId, blackVolatility,
+		whiteId, blackId,
+	)
+	return err
 }
 
 // InsertSession inserts a single record into the session table.

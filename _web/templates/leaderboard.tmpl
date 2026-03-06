@@ -1,0 +1,23 @@
+{{ define "layout" }}
+
+<h2 class="page-header">Leaderboard</h2>
+
+<div class="leaderboard">
+  <div class="leaderboard-header">
+    <div>Name</div>
+    <div>Rating</div>
+    <div>Member since</div>
+    <div>Total games</div>
+  </div>
+
+  {{ range .Data }}
+  <a class="leaderboard-row" href="/player/{{ .Name  }}">
+    <div>{{ .Name }}</div>
+    <div>{{ round .Rating }}</div>
+    <div>{{ formatDate .CreatedAt }}</div>
+    <div>{{ .NumOfGames }}</div>
+  </a>
+  {{ end }}
+</div>
+
+{{ end }}

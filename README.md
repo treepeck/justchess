@@ -1,11 +1,20 @@
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
-JustChess.org is a free chess platform.
+JustChess.org is a multiplayer chess server.<br/>
+This repository implements the HTTP+WebSocket backend and JS+CSS frontend.<br/>
+Chess rules implemented in [chego](https://github.com/treepeck/chego).
+
+## Features
+
+- Match history
+- [Glicko-2](https://github.com/treepeck/glicko) rating system
+- Skill-based matchmaking
+- Multiple concurrent games
 
 ## Local installation
 
-See [judo](https://github.com/treepeck/judo) to learn how to set up a local
-development environment.
+Don't clone this repository directly, clone the [umbrella](https://github.com/treepeck/judo) repository
+instead.
 
 ## License
 

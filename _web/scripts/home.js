@@ -1,19 +1,18 @@
-import HelpWindow from "./utils/help"
+import { getOrPanic } from "./utils/dom"
+import showDialog from "./utils/dialog"
 ;(() => {
 	// Page guard.
-	if (document.getElementsByTagName("main")[0]?.dataset.page !== "home") {
-		return
-	}
+	if (!document.getElementById("homeGuard")) return
 
-	helpText.onclick = () => {
-		HelpWindow.show("help")
+	getOrPanic("helpDialogActivator").onclick = () => {
+		showDialog("helpDialog")
 	}
 
 	for (let i = 1; i <= 9; i++) {
-		const cell = document.getElementById(`cell${i}`)
-		cell.addEventListener("click", () => {
+		getOrPanic(`cell${i}`).onclick = () => {
 			// Redirect the user to the queue page.
-			window.location.href = `http://localhost:3502/queue/${i}`
-		})
+			//@ts-expect-error - API_URL comes from webpack.
+			window.location.href = `${API_URL}/queue/${i}`
+		}
 	}
 })()

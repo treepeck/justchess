@@ -1,0 +1,74 @@
+.help-dialog-activator {
+  cursor: help;
+  text-decoration: underline;
+}
+
+.help-dialog-activator:hover {
+  color: var(--text-hover);
+}
+
+.dialog {
+  padding: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0;
+  transition:
+    opacity ease-in-out 0.75s,
+    z-index ease-out 0.75s;
+  backdrop-filter: blur(7px);
+}
+
+.dialog.show {
+  z-index: 1;
+  opacity: 1;
+}
+
+.dialog-layout {
+  min-width: 200px;
+  text-align: center;
+  flex-direction: column;
+  line-height: 2;
+  border-radius: 15px;
+  padding: 20px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.dialog-layout p {
+  width: 100%;
+}
+
+.dialog-header {
+  font-weight: bold;
+  font-size: x-large;
+}
+
+.dialog-buttons {
+  display: flex;
+  width: 100%;
+}
+
+.dialog-buttons button {
+  line-height: 2;
+  flex: 1;
+  margin: 10px;
+  border-radius: 15px;
+}
+
+.dialog-close {
+  width: 95%;
+  height: 50px;
+  border-radius: 15px;
+  font-weight: bold;
+  margin: 10px;
+}
+
+@media screen and (min-width: 600px) {
+  .dialog-layout {
+    font-size: large;
+  }
+}

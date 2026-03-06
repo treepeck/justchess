@@ -1,38 +1,42 @@
-{{ define "content" }}
-<form id="authForm" data-page="signin">
-  <h1>Sign in to your account</h1>
+{{ define "layout" }}
 
-  <section>
-    <label>Email address</label>
+<form id="authForm" class="flex-container">
+
+<h2 class="page-header">Sign in to your account</h2>
+
+<div class="auth-form-input">
+  <p class="auth-form-label">Email address</p>
+  <input
+    type="text"
+    name="email"
+    autocomplete="off"
+    placeholder="magnus@carlsen.com"
+  />
+</div>
+
+<div class="auth-form-input">
+  <p class="auth-form-label">Password</p>
+  <div class="auth-form-password">
     <input
-      type="text"
-      name="email"
+      id="authFormPasswordInput"
+      type="password"
+      name="password"
       autocomplete="off"
-      placeholder="magnus@carlsen.com"
+      placeholder="*************"
     />
-    <p id="emailError"></p>
-  </section>
+    <div id="authFormPasswordToggle"></div>
+  </div>
+</div>
 
-  <section>
-    <label>Password</label>
-    <div class="password-container">
-      <input
-        id="passwordInput"
-        type="password"
-        name="password"
-        autocomplete="off"
-        placeholder="*************"
-      />
-      <div id="passwordToggle"></div>
-    </div>
-    <p id="passwordError"></p>
-  </section>
+<div id="authFormServerError" class="auth-form-error"></div>
+<button id="authFormSubmitButton">Sign in</button>
 
-  <p id="serverError"></p>
-  <button type="submit" id="submitBtn">Sign in</button>
+<footer class="auth-form-footer">
+  Doesn't have an account? <a href="/signup">Sign up</a>
+</footer>
 
-  <p class="form-footer">
-    Doesn't have an account? <a href="/signup">Sign up</a>
-  </p>
+<div id="signinGuard"></div>
+
 </form>
+
 {{ end }}

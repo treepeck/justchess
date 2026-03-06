@@ -1,10 +1,10 @@
-package matchmaking
+package mm
 
 type nodeKey struct {
 	playerId string
 	rating   float64
 	// Max allowed rating gap between players.
-	threshold float64
+	maxGap float64
 }
 
 // redBlackNode represents the Red-Black Tree node.
@@ -18,12 +18,12 @@ type redBlackNode struct {
 
 // Red-Black Tree satisfies the following properties:
 //
-//	(*) Every node is either red or black;
-//	(*) The root is black;
-//	(*) The leaf node is black;
-//	(*) If a node is red, both its children are black;
-//	(*) For each node, all simple paths from the node to descendant leaves
-//	contain the same number of black nodes.
+//   - Every node is either red or black;
+//   - The root is black;
+//   - The leaf node is black;
+//   - If a node is red, both its children are black;
+//   - For each node, all simple paths from the node to descendant leaves
+//     contain the same number of black nodes.
 type redBlackTree struct {
 	root *redBlackNode
 	leaf *redBlackNode
@@ -381,7 +381,7 @@ func (t *redBlackTree) transplant(u, v *redBlackNode) {
 // creates a new node with specified value and default fields.
 func (t *redBlackTree) spawn(rating float64, playerId string) *redBlackNode {
 	return &redBlackNode{
-		key:    nodeKey{rating: rating, playerId: playerId, threshold: defaultThreshold},
+		key:    nodeKey{rating: rating, playerId: playerId, maxGap: defaultMaxGap},
 		isRed:  true,
 		parent: t.leaf,
 		left:   t.leaf,

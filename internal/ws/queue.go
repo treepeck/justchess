@@ -6,60 +6,57 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"justchess/internal/matchmaking"
+	"justchess/internal/mm"
 	"justchess/internal/randgen"
+	"justchess/internal/web"
 )
 
-const matchmakingTick = 3 * time.Second
+const (
+	// Declaration of error messages.
+	msgRoomCreationFailed = "Please reload the page to restore the connection"
+
+	// Interval at which the matchmaking process will occur.
+	matchmakingTick = 3 * time.Second
+)
 
 type queue struct {
 	ticker     *time.Ticker
-	pool       matchmaking.Pool
-	register   chan handshake
-	unregister chan *client
+	pool       mm.Pool
+	register   chan *client
+	unregister chan string
 	clients    map[string]*client
 	// Matchmaking parameters.
-	control int
-	bonus   int
+	control web.QueueData
 }
 
-func newQueue(control int, bonus int) queue {
+func newQueue(id byte) queue {
 	return queue{
 		ticker:     time.NewTicker(matchmakingTick),
-		pool:       matchmaking.NewPool(),
-		register:   make(chan handshake),
-		unregister: make(chan *client),
+		pool:       mm.NewPool(),
+		register:   make(chan *client),
+		unregister: make(chan string),
 		clients:    make(map[string]*client),
-		control:    control,
-		bonus:      bonus,
+		control:    web.Controls[id-1],
 	}
 }
 
-func (q queue) listenEvents(create chan<- createRoomEvent) {
+// listenEvent handles concurrent client registration, unregistration and
+// matchmaking ticks. create chan is used to notify the [Service] about new
+// game room.
+func (q queue) listenEvents(create chan<- createRoom) {
 	for {
 		select {
 		case c := <-q.register:
 			q.handleRegister(c)
 			q.broadcastClientsCounter()
 
-		case c := <-q.unregister:
-			q.handleUnregister(c)
+		case id := <-q.unregister:
+			q.handleUnregister(id)
 			q.broadcastClientsCounter()
 
 		case <-q.ticker.C:
-			// Shortcut: not enough players to make a match.
-			if q.pool.Size() < 2 {
-				continue
-			}
-
-			matches := make(chan [2]string)
-			go q.pool.MakeMatches(matches)
-
-			for {
-				match, ok := <-matches
-				if !ok {
-					break
-				}
+			for match := range q.pool.MakeMatches() {
+				// Handle matches.
 				roomId := randgen.GenId(randgen.IdLen)
 
 				// Randomly select players' sides.
@@ -69,82 +66,88 @@ func (q queue) listenEvents(create chan<- createRoomEvent) {
 					blackId = match[0]
 				}
 
+				// If player's are not registered, cancel.
+				w := q.clients[whiteId]
+				b := q.clients[blackId]
+				if w == nil || b == nil {
+					// Notify clients about error.
+					q.sendEvent(match, actionError, msgRoomCreationFailed)
+					return
+				}
+
 				// Send create room event.
-				e := createRoomEvent{
-					id: roomId, whiteId: whiteId, blackId: blackId,
-					control: q.control, bonus: q.bonus, res: make(chan error, 1),
+				e := createRoom{
+					id:      roomId,
+					white:   w.player,
+					black:   b.player,
+					control: q.control,
+					res:     make(chan error, 1),
 				}
 				create <- e
 
-				// Wait for the response.
-				err := <-e.res
-				if err != nil {
-					// Don't redirect clients since the room wasn't created.
-					continue
+				// Handle response.
+				if <-e.res != nil {
+					// Notify clients about error.
+					q.sendEvent(match, actionError, msgRoomCreationFailed)
+				} else {
+					// Redirect clients to game room.
+					q.sendEvent(match, actionRedirect, roomId)
 				}
-
-				// Notify clients.
-				q.sendRedirect(match, roomId)
 			}
-
-			q.pool.ExpandThresholds()
+			q.pool.ExpandRatingGaps()
 		}
 	}
 }
 
-func (q queue) handleRegister(h handshake) {
-	// Write to the response channel so that request cannot be closed.
-	defer func() { h.ch <- struct{}{} }()
-
-	// Deny the request if the client is already in the queue.
-	if _, exists := q.clients[h.player.Id]; exists {
+func (q queue) handleRegister(c *client) {
+	// Deny the connection if the client is already in the queue.
+	if _, exist := q.clients[c.player.Id]; exist {
+		// Send error event to the client.
+		if raw, err := newEncodedEvent(actionError, msgConflict); err == nil {
+			c.send <- raw
+		} else {
+			log.Print(err)
+		}
 		return
 	}
-
-	conn, err := upgrader.Upgrade(h.rw, h.r, nil)
-	if err != nil {
-		// upgrader writes the response, so simply return here.
-		return
-	}
-
-	c := newClient(h.player, conn)
-	go c.read(q.unregister, nil)
-	go c.write()
-
-	q.clients[h.player.Id] = c
-	q.pool.Join(c.player.Id, c.player.Rating)
 
 	log.Printf("client %s joined queue", c.player.Id)
+
+	c.unregister = q.unregister
+	q.clients[c.player.Id] = c
+	// Join the matchmaking pool.
+	q.pool.Join(c.player.Id, c.player.Rating)
 }
 
-func (q queue) handleUnregister(c *client) {
-	if _, exists := q.clients[c.player.Id]; !exists {
-		log.Printf("client %s is not registered", c.player.Id)
+func (q queue) handleUnregister(id string) {
+	c, exist := q.clients[id]
+	if !exist {
+		log.Printf("client %s is not registered", id)
 		return
 	}
 
-	delete(q.clients, c.player.Id)
-	q.pool.Leave(c.player.Id, c.player.Rating)
+	delete(q.clients, id)
+	q.pool.Leave(id, c.player.Rating)
 
-	log.Printf("client %s leaved queue", c.player.Id)
+	log.Printf("client %s leaved queue", id)
 }
 
-func (q queue) sendRedirect(players [2]string, roomId string) {
+func (q queue) sendEvent(players [2]string, a eventAction, payload string) {
 	// Encode event payload.
-	raw, err := json.Marshal(roomId)
+	raw, err := json.Marshal(payload)
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
-	e, err := json.Marshal(event{Action: actionRedirect, Payload: raw})
+	e, err := json.Marshal(event{Action: a, Payload: raw})
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
-	for _, c := range q.clients {
-		if c.player.Id == players[0] || c.player.Id == players[1] {
+	for _, id := range players {
+		if c, exists := q.clients[id]; exists {
 			c.send <- e
 		}
 	}

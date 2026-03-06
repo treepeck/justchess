@@ -1,15 +1,21 @@
-{{ define "content" }}
-<main class="column-container" data-page="queue">
-  <h2>Finding an opponent...</h2>
+{{ define "layout" }}
 
-  <div class="queue-content">
-    <div>Control: {{ .Data.Control }} min.</div>
-    <div>Bonus: {{ .Data.Bonus }} sec.</div>
-    <div>Rating: {{ .Base.Player.Rating }}</div>
-    <div id="countUp">00:00</div>
-    <div id="clientsCounter">Players in queue: ?</div>
+<h2 class="page-header">Finding an opponent...</h2>
+
+<div class="queue-info flex-container">
+  <div id="clientsCounter">Players in queue: ?</div>
+
+  <div class="queue-info-control">
+    Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s
   </div>
 
-  <div id="ping">Ping: ? ms</div>
-</main>
+  <div>Rating: {{ round .Base.Player.Rating }}</div>
+
+  <div id="countUpTimer">00:00</div>
+</div>
+
+<div id="ping">Ping: ? ms</div>
+
+<div id="queueGuard"></div>
+
 {{ end }}

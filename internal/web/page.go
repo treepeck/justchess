@@ -5,9 +5,6 @@ import (
 	"justchess/internal/db"
 )
 
-// Relative path to a base.tmpl file.
-const basePath string = "./_web/templates/base.tmpl"
-
 // baseData is a data object used to fill up the base.tmpl file while executing
 // a template.
 type baseData struct {
@@ -15,9 +12,9 @@ type baseData struct {
 	Player db.Player
 }
 
-// queueData is a data object used to fill up the queue.tmpl file while executing
+// QueueData is a data object used to fill up the queue.tmpl file while executing
 // a template.
-type queueData struct {
+type QueueData struct {
 	Control int
 	Bonus   int
 }
