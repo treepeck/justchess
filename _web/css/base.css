@@ -86,9 +86,7 @@ button {
   border: none;
   color: var(--container-foreground);
   background-color: var(--container-background);
-  transition:
-    background-color 0.75s ease-in-out,
-    border-color 0.75s ease-in-out,
+  transition: background-color 0.75s ease-in-out, border-color 0.75s ease-in-out,
     color 0.75s ease-in-out;
 }
 
@@ -166,6 +164,8 @@ button:focus {
 
 .site-header-profile {
   font-size: large;
+  max-width: 200px;
+  overflow: hidden;
   margin: auto 0 auto auto;
 }
 
@@ -190,12 +190,14 @@ button:focus {
 .site-footer {
   width: 100%;
   padding: 10px;
+  margin-top: 50px;
   color: var(--container-background);
 }
 
 .site-footer-layout {
   max-width: var(--max-width);
   margin: 0 auto 0 auto;
+  gap: 10px;
 }
 
 .site-footer-copyright {

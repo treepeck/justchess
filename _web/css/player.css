@@ -15,6 +15,7 @@
 .player-info-username {
   font-size: x-large;
   font-weight: bold;
+  overflow: hidden;
   margin: auto 0 auto auto;
 }
 
