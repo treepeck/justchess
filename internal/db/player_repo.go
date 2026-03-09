@@ -17,12 +17,20 @@ const (
 	)
 	VALUES (?, ?, ?, ?)`
 
+	areNameAndEmailUnique = `SELECT COUNT(*) FROM player WHERE name = ? OR email = ?`
+
 	selectPlayerById = `
 	SELECT
 		id, name, rating, rating_deviation, rating_volatility
 	FROM player WHERE id = ?`
 
-	selectCredentialsByEmail = `SELECT id, password_hash FROM player WHERE email = ?`
+	selectCredentialsByEmail = `
+	SELECT id, password_hash
+	FROM player WHERE email = ?`
+
+	selectIdAndNameByEmail = `
+	SELECT id, name
+	FROM player WHERE email = ?`
 
 	selectProfileData = `
 	SELECT
@@ -81,6 +89,8 @@ const (
 		END
 	WHERE player.id = ? OR player.id = ?`
 
+	updatePasswordHash = `UPDATE player SET password_hash = ? WHERE id = ?`
+
 	insertSession = `
 	INSERT INTO session (
 		id,
@@ -90,19 +100,41 @@ const (
 
 	selectSessionById = `
 	SELECT * FROM session
-	WHERE
-		id = ?
-	AND
-		expires_at > NOW()`
+	WHERE id = ?
+	AND	expires_at > NOW()`
 
 	selectSessionsByPlayerId = `
 	SELECT * FROM session
-	WHERE
-		player_id = ?
-	AND
-	expires_at > NOW()`
+	WHERE player_id = ?
+	AND	expires_at > NOW()`
 
 	deleteSessionById = `DELETE FROM session WHERE id = ?`
+
+	insertSignupToken = `
+	INSERT INTO signup_token (
+		id, name, email, password_hash
+	)
+	VALUES (?, ?, ?, ?)`
+
+	selectSignupToken = `
+	SELECT name, email, password_hash
+	FROM signup_token
+	WHERE id = ? AND created_at >= NOW() - INTERVAL 15 MINUTE`
+
+	deleteSignupToken = `DELETE FROM signup_token WHERE id = ?`
+
+	insertPasswordResetToken = `
+	INSERT INTO password_reset_token (
+		id, player_id, new_password_hash
+	)
+	VALUES (?, ?, ?)`
+
+	selectPasswordResetToken = `
+	SELECT player_id, new_password_hash
+	FROM password_reset_token
+	WHERE id = ? AND created_at >= NOW() - INTERVAL 15 MINUTE`
+
+	deletePasswordResetToken = `DELETE FROM password_reset_token WHERE id = ?`
 )
 
 // Player represents a registered player.
@@ -138,6 +170,13 @@ type Session struct {
 	PlayerId  string
 }
 
+// SignupData represents the registration credentials.
+type SignupData struct {
+	PasswordHash []byte
+	Name         string
+	Email        string
+}
+
 // PlayerRepo wraps the database connection pool and provides methods to access
 // and modify the player table.
 type PlayerRepo struct {
@@ -148,18 +187,25 @@ func NewPlayerRepo(p *sql.DB) PlayerRepo { return PlayerRepo{pool: p} }
 
 // Insert inserts a single record into the player table, using the provided
 // credentials.
-func (r PlayerRepo) Insert(id, name, email string, passwordHash []byte) error {
-	_, err := r.pool.Exec(insertPlayer, id, name, email, passwordHash)
+func (r PlayerRepo) Insert(id string, d SignupData) error {
+	_, err := r.pool.Exec(insertPlayer, id, d.Name, d.Email, d.PasswordHash)
 	return err
 }
 
-// SelectById selects a single record with the same id as provided from the
-// player table.
+// SelectById selects all info of a single player by id.
 func (r PlayerRepo) SelectById(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerById, id)
 
 	var p Player
 	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
+}
+
+// AreNameAndEmailUnique checks whether the provided name and email unique in
+// the player table.
+func (r PlayerRepo) AreNameAndEmailUnique(name, email string) (bool, error) {
+	row := r.pool.QueryRow(areNameAndEmailUnique, name, email)
+	var count int
+	return count == 0, row.Scan(&count)
 }
 
 // SelectCredentialsByEmail selects [Credential] from the player table by email.
@@ -168,6 +214,13 @@ func (r PlayerRepo) SelectCredentialsByEmail(email string) (Credentials, error) 
 
 	var c Credentials
 	return c, row.Scan(&c.Id, &c.PasswordHash)
+}
+
+// SelectIdAndNameByEmaild selects ONLY id and name from the player table.
+func (r PlayerRepo) SelectIdAndNameByEmail(email string) (Player, error) {
+	row := r.pool.QueryRow(selectIdAndNameByEmail, email)
+	var p Player
+	return p, row.Scan(&p.Id, &p.Name)
 }
 
 // SelectProfileData selects [ProfileData] from player and game tables
@@ -230,6 +283,13 @@ func (r PlayerRepo) UpdateRatings(whiteId, blackId string,
 	return err
 }
 
+// UpdatePasswordHash updates the password_hash column for the record with the
+// given id.
+func (r PlayerRepo) UpdatePasswordHash(id string, pwdHash []byte) error {
+	_, err := r.pool.Exec(updatePasswordHash, pwdHash, id)
+	return err
+}
+
 // InsertSession inserts a single record into the session table.
 func (r PlayerRepo) InsertSession(id, playerId string) error {
 	_, err := r.pool.Exec(insertSession, id, playerId)
@@ -270,5 +330,40 @@ func (r PlayerRepo) SelectSessionByPlayerId(playerId string) ([]Session, error) 
 // session table.
 func (r PlayerRepo) DeleteSessionById(id string) error {
 	_, err := r.pool.Exec(deleteSessionById, id)
+	return err
+}
+
+// InsertSignupToken inserts a single record into the signup_token table.
+func (r PlayerRepo) InsertSignupToken(id string, s SignupData) error {
+	_, err := r.pool.Exec(insertSignupToken, id, s.Name, s.Email, s.PasswordHash)
+	return err
+}
+
+// SelectSignupToken returns [SignupData] by the token id.
+func (r PlayerRepo) SelectSignupToken(id string) (SignupData, error) {
+	row := r.pool.QueryRow(selectSignupToken, id)
+	var s SignupData
+	return s, row.Scan(&s.Name, &s.Email, &s.PasswordHash)
+}
+
+// DeleteSignupToken deletes record with the specified id from the signup_token table.
+func (r PlayerRepo) DeleteSignupToken(id string) error {
+	_, err := r.pool.Exec(deleteSignupToken, id)
+	return err
+}
+
+func (r PlayerRepo) InsertPasswordResetToken(id, playerId string, pwdHash []byte) error {
+	_, err := r.pool.Exec(insertPasswordResetToken, id, playerId, pwdHash)
+	return err
+}
+
+func (r PlayerRepo) SelectPasswordResetToken(id string) (Credentials, error) {
+	row := r.pool.QueryRow(selectPasswordResetToken, id)
+	var c Credentials
+	return c, row.Scan(&c.Id, &c.PasswordHash)
+}
+
+func (r PlayerRepo) DeletePasswordResetToken(id string) error {
+	_, err := r.pool.Exec(deletePasswordResetToken, id)
 	return err
 }

@@ -1,10 +1,11 @@
 import { getOrPanic } from "./utils/dom"
 import showDialog from "./utils/dialog"
-
-// Regular expressions to validate the user input.
-const nameEx = /^[a-zA-Z0-9]{2,60}$/i
-const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/i
-const pwdEx = /^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$/i
+import { request } from "./utils/http"
+import {
+	validateName,
+	validatePassword,
+	validateEmail,
+} from "./utils/validator"
 
 /** @param {SubmitEvent} event */
 function submitForm(event) {
@@ -14,7 +15,7 @@ function submitForm(event) {
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	getOrPanic("authFormServerError").textContent = ""
+	getOrPanic("formServerError").textContent = ""
 
 	const data = new FormData(event.target)
 
@@ -37,7 +38,7 @@ function confirmHandler(data) {
 
 	// Disable the button while the request is being processed.
 	const btn = /** @type {HTMLButtonElement} */ (
-		getOrPanic("authFormSubmitButton")
+		getOrPanic("formSubmitButton")
 	)
 	btn.disabled = true
 	btn.textContent = "Submitting..."
@@ -45,12 +46,17 @@ function confirmHandler(data) {
 	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
 	const params = new URLSearchParams(data)
 
-	signUp(params).then((err) => {
-		getOrPanic("authFormServerError").textContent = "Sign up failed: " + err
-
-		// Enable the submit button.
-		btn.disabled = false
-		btn.textContent = "Sign up"
+	request("/auth/signup", params).then((err) => {
+		if (err) {
+			getOrPanic("formServerError").textContent = "Sign up failed: " + err
+			// Enable the submit button.
+			btn.disabled = false
+			btn.textContent = "Sign up"
+		} else {
+			getOrPanic("formServerError").textContent =
+				"Please, check your email to confirm the registration. It may take several minutes for the email to be delivered and it may end up in spam."
+			btn.textContent = "Done"
+		}
 	})
 }
 
@@ -64,74 +70,37 @@ function confirmHandler(data) {
 function validateInput(name, email, password) {
 	let isValid = true
 
-	let error = getOrPanic("authFormNameError")
-	if (name.length < 2) {
-		error.textContent = "Must be at least 2 characters long"
-		isValid = false
-	} else if (name.length > 60) {
-		error.textContent = "Must not exceed 60 characters"
-		isValid = false
-	} else if (!nameEx.test(name)) {
-		error.textContent = "Can only contain letters and numbers"
-		isValid = false
-	} else {
-		// Clear error message.
+	let error = getOrPanic("formNameError")
+	try {
+		validateName(name)
+		// Clear error message if name is valid.
 		error.textContent = ""
+	} catch (msg) {
+		isValid = false
+		error.textContent = msg
 	}
 
-	error = getOrPanic("authFormEmailError")
-	if (email.length < 3) {
-		error.textContent = "Must be at least 3 characters long"
-		isValid = false
-	} else if (!emailEx.test(email)) {
-		error.textContent = "Please, enter a valid email address"
-		isValid = false
-	} else {
-		// Clear error message.
+	error = getOrPanic("formEmailError")
+	try {
+		validateEmail(email)
+		// Clear error message if email is valid.
 		error.textContent = ""
+	} catch (msg) {
+		isValid = false
+		error.textContent = msg
 	}
 
-	error = getOrPanic("authFormPasswordError")
-	if (password.length < 5) {
-		error.textContent = "Must be at least 5 characters long"
-		isValid = false
-	} else if (password.length > 71) {
-		error.textContent = "Must not exceed 71 characters"
-		isValid = false
-	} else if (!pwdEx.test(password)) {
-		error.textContent =
-			"Can only contain letters, numbers, and !@#$%^&*()_+-/.<>"
-		isValid = false
-	} else {
-		// Clear error message.
+	error = getOrPanic("formPasswordError")
+	try {
+		validatePassword(password)
+		// Clear error message if password is valid.
 		error.textContent = ""
+	} catch (msg) {
+		isValid = false
+		error.textContent = msg
 	}
 
 	return isValid
-}
-
-/**
- * It's the caller's responsibility to validate the provided data and display errors.
- * @param {URLSearchParams} data
- */
-async function signUp(data) {
-	try {
-		const res = await fetch("/auth/signup", {
-			method: "POST",
-			credentials: "include",
-			body: data,
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		})
-
-		if (!res.ok) {
-			return await res.text()
-		}
-
-		// Redirect user to home page after successful authentication.
-		window.location.href = "/"
-	} catch (err) {
-		return err.message
-	}
 }
 
 ;(() => {
@@ -153,9 +122,9 @@ async function signUp(data) {
 		confirmHandler(data)
 	}
 
-	const toggle = getOrPanic("authFormPasswordToggle")
+	const toggle = getOrPanic("formPasswordToggle")
 	toggle.onclick = () => {
-		const input = getOrPanic("authFormPasswordInput")
+		const input = getOrPanic("formPasswordInput")
 
 		const curr = input.getAttribute("type")
 		if (curr === "password") {

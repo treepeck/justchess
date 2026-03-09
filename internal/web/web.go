@@ -32,7 +32,7 @@ type Service struct {
 	pages map[string]page
 }
 
-// InitService tries to parse the template files and stores them in the [Service].
+// InitService parses the template files and stores them in the [Service].
 func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 	pagesData := []struct {
 		url   string
@@ -47,6 +47,7 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 		{"/archive", []string{"archive_game.tmpl", "board.tmpl"}, baseData{}},
 		{"/player", []string{"player.tmpl"}, baseData{}},
 		{"/leaderboard", []string{"leaderboard.tmpl"}, baseData{Title: "Leaderboard"}},
+		{"/reset-password", []string{"reset_password.tmpl"}, baseData{Title: "Reset Password"}},
 		{"/error", []string{"error.tmpl"}, baseData{Title: "Error"}},
 	}
 

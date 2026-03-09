@@ -1,9 +1,14 @@
 // Package auth implements authorization and authentication.
-// TODO: send email validation in signup.
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"html/template"
+	"log"
 	"net/http"
+	"os"
 	"regexp"
 
 	"justchess/internal/db"
@@ -21,27 +26,82 @@ var (
 
 const (
 	// Declaration of error messages.
-	msgUnauthorized  string = "Invalid credentials"
-	msgBadRequest    string = "Malformed request body"
-	msgConflict      string = "Not unique username or email"
-	msgCannotHash    string = "Cannot generate password hash"
-	msgDatabaseError string = "Database cannot be accessed. Please, try again later"
+	msgUnauthorized    string = "Invalid credentials"
+	msgBadRequest      string = "Malformed request body"
+	msgConflict        string = "Not unique username or email"
+	msgTokenConflict   string = "You already have a pending token"
+	msgCannotHash      string = "Cannot generate password hash"
+	msgCannotSendEmail string = "Cannot send email. Please, ensure that email is valid"
+	msgDatabaseError   string = "Database cannot be accessed. Please, try again later"
 
 	sessionsThreshold int = 5
 )
+
+// tmplData is a data object used to fill up the verification email while
+// executing a template file.
+type tmplData struct {
+	Name string
+	Url  string
+}
+
+type emailSender struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
+
+type emailReciever struct {
+	Email string `json:"email"`
+}
+
+// deliveryServicePayload is needed to send email through a service such as Mailtrap.
+type deliveryServicePayload struct {
+	From     emailSender      `json:"from"`
+	To       [1]emailReciever `json:"to"`
+	Subject  string           `json:"subject"`
+	Html     string           `json:"html"`
+	Category string           `json:"category"`
+}
 
 // Service wraps the database repositories and provides methods for handling
 // authorization and authentication of HTTP requests.
 type Service struct {
 	playerRepo db.PlayerRepo
+	// Store parsed emails to avoid expensive template parsing on each signup
+	// or password reset.
+	// First template is signup_verification_email.tmpl.
+	// Seconds template is password_reset_email.tmpl.
+	emails [2]*template.Template
 }
 
-func NewService(repo db.PlayerRepo) Service { return Service{playerRepo: repo} }
+// InitService parses email templates and stores them in the [Service].
+func InitService(repo db.PlayerRepo) (Service, error) {
+	var emails [2]*template.Template
+
+	signupTmpl, err := template.ParseFiles("./_web/templates/email_verify_signup.tmpl")
+	if err != nil {
+		return Service{}, err
+	}
+	emails[0] = signupTmpl
+
+	resetTmpl, err := template.ParseFiles("./_web/templates/email_reset_password.tmpl")
+	if err != nil {
+		return Service{}, err
+	}
+	emails[1] = resetTmpl
+
+	return Service{
+		playerRepo: repo,
+		emails:     emails,
+	}, err
+}
 
 // RegisterRoutes registers enpoints to the specified ServeMux.
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/signup", s.signup)
 	mux.HandleFunc("POST /auth/signin", s.signin)
+	mux.HandleFunc("POST /auth/reset-password", s.resetPassword)
+	mux.HandleFunc("/auth/verify-signup/{token}", s.verifySignup)
+	mux.HandleFunc("/auth/verify-reset-password/{token}", s.verifyResetPassword)
 }
 
 // signup registers a new player.
@@ -49,9 +109,12 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 // The registration process includes the following steps:
 //  1. Decode the request body with the registration data.
 //  2. Validate the registration data using regular expressions.
-//  3. Hash the password to securely store it in the database.
-//  4. Insert a new player record.
-//  5. Creates a new session for the user.
+//  3. Ensure that provided name and email are unique.
+//  4. Store signup token in the database.
+//  5. Send the verification email.
+//
+// If the verification email fails to send, the token insertion is rolled back,
+// letting the player try again.
 func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(rw, msgBadRequest, http.StatusBadRequest)
@@ -68,19 +131,58 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	unique, err := s.playerRepo.AreNameAndEmailUnique(name, email)
+	if err != nil || !unique {
+		http.Error(rw, msgConflict, http.StatusConflict)
+		return
+	}
+
 	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(rw, msgCannotHash, http.StatusInternalServerError)
 		return
 	}
 
-	playerId := randgen.GenId(randgen.IdLen)
-	if s.playerRepo.Insert(playerId, name, email, pwdHash) != nil {
+	token := randgen.GenId(randgen.SecureIdLen)
+	if err = s.playerRepo.InsertSignupToken(
+		token,
+		db.SignupData{
+			Name: name, Email: email, PasswordHash: pwdHash,
+		},
+	); err != nil {
 		http.Error(rw, msgConflict, http.StatusConflict)
 		return
 	}
 
-	s.genSession(rw, playerId)
+	url := os.Getenv("SIGNUP_VERIFY_ENDPOINT") + token
+	var buff bytes.Buffer
+	if err = s.emails[0].Execute(&buff, tmplData{Name: name, Url: url}); err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		return
+	}
+
+	body, err := json.Marshal(deliveryServicePayload{
+		From:     emailSender{Email: os.Getenv("EMAIL_FROM")},
+		To:       [1]emailReciever{{email}},
+		Subject:  "Signup Verification",
+		Category: "Transactional",
+		Html:     buff.String(),
+	})
+	if err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		return
+	}
+
+	if err = s.sendEmail(body); err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		// Remove inserted token.
+		if err = s.playerRepo.DeleteSignupToken(token); err != nil {
+			log.Print(err)
+		}
+	}
 }
 
 // signin authenticates a player by the provided credentials.
@@ -149,13 +251,145 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	s.genSession(rw, c.Id)
 }
 
+// resetPassword issues the password reset process by inserting token into
+// password_reset_token table and sending the verification email.
+//
+// If the verification email fails to send, the token insertion is rolled back,
+// letting the player try again.
+func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		return
+	}
+
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		return
+	}
+
+	p, err := s.playerRepo.SelectIdAndNameByEmail(email)
+	if err != nil {
+		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotHash, http.StatusInternalServerError)
+		return
+	}
+
+	token := randgen.GenId(randgen.SecureIdLen)
+	if err = s.playerRepo.InsertPasswordResetToken(token, p.Id, pwdHash); err != nil {
+		log.Print(err)
+		http.Error(rw, msgTokenConflict, http.StatusConflict)
+		return
+	}
+
+	url := os.Getenv("PASSWORD_RESET_ENDPOINT") + token
+	var buff bytes.Buffer
+	if err = s.emails[1].Execute(&buff, tmplData{Name: p.Name, Url: url}); err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		return
+	}
+
+	body, err := json.Marshal(deliveryServicePayload{
+		From:     emailSender{Email: os.Getenv("EMAIL_FROM")},
+		To:       [1]emailReciever{{email}},
+		Subject:  "Password Reset",
+		Category: "Transactional",
+		Html:     buff.String(),
+	})
+	if err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		return
+	}
+
+	if err = s.sendEmail(body); err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		// Remove inserted token.
+		if err = s.playerRepo.DeletePasswordResetToken(token); err != nil {
+			log.Print(err)
+		}
+	}
+}
+
+// verifySignup completes the registration process for players who click the
+// verification email link.
+//
+// The verification process includes the following steps:
+//  1. Fetch signup credentials from database using provided token.
+//  2. Insert new player record using provided credentials.
+//  3. Delete used token.
+//  4. Generate session for the player.
+func (s Service) verifySignup(rw http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+
+	data, err := s.playerRepo.SelectSignupToken(token)
+	if err != nil {
+		log.Print(err)
+		http.Redirect(rw, r, "/error", http.StatusFound)
+		return
+	}
+
+	id := randgen.GenId(randgen.IdLen)
+	if err = s.playerRepo.Insert(id, data); err != nil {
+		log.Print(err)
+		http.Redirect(rw, r, "/error", http.StatusFound)
+		return
+	}
+
+	if err = s.playerRepo.DeleteSignupToken(token); err != nil {
+		log.Print(err)
+	}
+
+	s.genSession(rw, id)
+
+	// Redirect to home page after successfull signup.
+	http.Redirect(rw, r, "/", http.StatusFound)
+}
+
+// verifyResetPassword completes the password reset process by updating the player
+// password and deleting the used password_reset_token.
+func (s Service) verifyResetPassword(rw http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+
+	c, err := s.playerRepo.SelectPasswordResetToken(token)
+	if err != nil {
+		log.Print(err)
+		http.Redirect(rw, r, "/error", http.StatusFound)
+		return
+	}
+
+	if err = s.playerRepo.UpdatePasswordHash(c.Id, c.PasswordHash); err != nil {
+		log.Print(err)
+		http.Redirect(rw, r, "/error", http.StatusFound)
+		return
+	}
+
+	if err = s.playerRepo.DeletePasswordResetToken(token); err != nil {
+		log.Print(err)
+	}
+
+	// Redirect to signin page after successfull password reset.
+	http.Redirect(rw, r, "/signin", http.StatusFound)
+}
+
 // genSession inserts a new record in the session table and adds the HTTP-only
 // secure cookie to the response.
 func (s Service) genSession(rw http.ResponseWriter, playerId string) {
 	// Use generated unique string as session value.
-	sessionId := randgen.GenId(randgen.SessionIdLen)
+	sessionId := randgen.GenId(randgen.SecureIdLen)
 
 	if err := s.playerRepo.InsertSession(sessionId, playerId); err != nil {
+		log.Print(err)
 		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
 	}
@@ -166,7 +400,23 @@ func (s Service) genSession(rw http.ResponseWriter, playerId string) {
 		Path:     "/",
 		MaxAge:   60 * 60 * 24 * 30, // Session will last for 30 days.
 		HttpOnly: true,
-		Secure:   true,
+		// Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+// sendEmail sends the email using the Email Delivery Platform.
+func (s Service) sendEmail(body []byte) error {
+	req, err := http.NewRequest("POST", os.Getenv("EMAIL_SERVICE_URL"), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Authorization", os.Getenv("EMAIL_SERVICE_TOKEN"))
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil || (res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent) {
+		return errors.New("mailtrap error " + err.Error())
+	}
+	return res.Body.Close()
 }

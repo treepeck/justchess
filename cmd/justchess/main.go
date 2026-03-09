@@ -27,7 +27,10 @@ func main() {
 	gr := db.NewGameRepo(pool)
 
 	log.Print("Initializing services...")
-	authService := auth.NewService(pr)
+	authService, err := auth.InitService(pr)
+	if err != nil {
+		log.Panic(err)
+	}
 	// Parse and store page templates.
 	webService, err := web.InitService(pr, gr)
 	if err != nil {

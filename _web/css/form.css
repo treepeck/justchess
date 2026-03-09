@@ -1,32 +1,32 @@
-#authForm {
+.form {
   width: 95%;
   max-width: 400px;
   flex-direction: column;
   gap: 10px;
 }
 
-.auth-form-input {
+.form-input {
   width: 100%;
   display: grid;
   font-size: large;
   grid-template-rows: 1fr 1fr;
 }
 
-.auth-form-label {
+.form-label {
   padding-top: 5px;
 }
 
-.auth-form-password {
+.form-password {
   display: flex;
   border-radius: 10px;
   background: var(--input-background);
 }
 
-#authFormPasswordInput {
+#formPasswordInput {
   background-color: transparent;
 }
 
-#authFormPasswordToggle {
+#formPasswordToggle {
   height: 80%;
   aspect-ratio: 1/1;
   margin: auto 5px auto 5px;
@@ -40,12 +40,12 @@
   background-repeat: no-repeat;
 }
 
-.auth-form-error {
+.form-error {
   font-size: large;
   color: red;
 }
 
-#authFormSubmitButton {
+#formSubmitButton {
   width: 70%;
   margin: auto;
   padding: 10px;
@@ -53,23 +53,19 @@
   border-radius: 15px;
 }
 
-.auth-form-footer {
+.form-footer {
   margin: auto;
   padding-top: 10px;
   font-size: large;
   color: var(--foreground);
 }
 
-.auth-form-footer a {
+.form-footer a {
   color: var(--text-hover);
 }
 
 @media screen and (min-width: 600px) {
-  .auth-form-header {
-    font-size: xx-large;
-  }
-
-  .auth-form-input {
+  .form-input {
     font-size: larger;
   }
 }

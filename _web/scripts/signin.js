@@ -1,3 +1,4 @@
+import { request } from "./utils/http"
 import { getOrPanic } from "./utils/dom"
 
 /** @param {SubmitEvent} event */
@@ -8,12 +9,12 @@ function submitForm(event) {
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	const error = getOrPanic("authFormServerError")
+	const error = getOrPanic("formServerError")
 	error.textContent = ""
 
 	// Disable the button while the request is being processed.
 	const btn = /** @type {HTMLButtonElement} */ (
-		getOrPanic("authFormSubmitButton")
+		getOrPanic("formSubmitButton")
 	)
 	btn.disabled = true
 	btn.textContent = "Submitting..."
@@ -22,7 +23,11 @@ function submitForm(event) {
 	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
 	const params = new URLSearchParams(data)
 
-	signIn(params).then((err) => {
+	request("/auth/signin", params).then((err) => {
+		if (!err) {
+			// Redirect user to home page after successful authentication.
+			window.location.href = "/"
+		}
 		error.textContent = "Sign in failed: " + err
 
 		// Enable the submit button.
@@ -31,35 +36,15 @@ function submitForm(event) {
 	})
 }
 
-/** @param {URLSearchParams} data */
-async function signIn(data) {
-	try {
-		const res = await fetch("/auth/signin", {
-			method: "POST",
-			credentials: "include",
-			body: data,
-		})
-
-		if (!res.ok) {
-			return await res.text()
-		}
-
-		// Redirect user to home page after successful authentication.
-		window.location.href = "/"
-	} catch (err) {
-		return err.message
-	}
-}
-
 ;(() => {
 	// Page guard.
 	if (!document.getElementById("signinGuard")) return
 
 	getOrPanic("authForm").onsubmit = submitForm
 
-	const toggle = getOrPanic("authFormPasswordToggle")
+	const toggle = getOrPanic("formPasswordToggle")
 	toggle.onclick = () => {
-		const input = getOrPanic("authFormPasswordInput")
+		const input = getOrPanic("formPasswordInput")
 
 		const curr = input.getAttribute("type")
 		if (curr === "password") {

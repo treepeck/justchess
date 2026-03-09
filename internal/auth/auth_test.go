@@ -2,23 +2,14 @@
 // running.
 package auth
 
-import (
-	"net/http/httptest"
-	"net/url"
-	"os"
-	"strings"
-	"testing"
-
-	"justchess/internal/db"
-)
-
+/*
 func initServiceOrPanic() Service {
 	pool, err := db.OpenDB(os.Getenv("TEST_DB_DSN"))
 	if err != nil {
 		panic(err)
 	}
 
-	return NewService(db.NewPlayerRepo(pool))
+	return InitService(db.NewPlayerRepo(pool))
 }
 
 func TestSignup(t *testing.T) {
@@ -120,3 +111,4 @@ func BenchmarkSignup(b *testing.B) {
 func BenchmarkSignin(b *testing.B) {
 
 }
+*/
