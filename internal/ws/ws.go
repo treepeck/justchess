@@ -171,7 +171,7 @@ func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) handleCreateRoom(e createRoom) {
-	err := s.gameRepo.Insert(
+	err := s.gameRepo.InsertGame(
 		e.id, e.white.Id, e.black.Id,
 		e.control.Control, e.control.Bonus,
 	)
@@ -220,13 +220,12 @@ func (s Service) handleStoreGame(e storeGame) {
 	}
 
 	// Write game state to database.
-	if err := s.gameRepo.Update(
-		e.result, e.termination,
-		len(e.moves),
-		chego.HuffmanEncoding(indices),
-		chego.CompressTimeDiffs(diffs),
-		e.id,
-	); err != nil {
+	if err := s.gameRepo.UpdateGame(db.GameUpdate{
+		Id: e.id, Result: e.result, Termination: e.termination,
+		EncodedMoves:    chego.HuffmanEncoding(indices),
+		CompressedDiffs: chego.CompressTimeDiffs(diffs),
+		MovesLength:     len(e.moves),
+	}); err != nil {
 		log.Print(err)
 		return
 	}
@@ -295,8 +294,18 @@ func (s Service) updateRatings(white, black db.Player, r chego.Result) error {
 	e.Estimate(&wStr, wOut, 1)
 	e.Estimate(&bStr, bOut, 1)
 
-	return s.playerRepo.UpdateRatings(white.Id, black.Id,
-		c.Mu2Rating(wStr.Mu), c.Phi2Deviation(wStr.Phi), wStr.Sigma,
-		c.Mu2Rating(bStr.Mu), c.Phi2Deviation(bStr.Phi), bStr.Sigma,
+	return s.playerRepo.UpdateRatings(
+		db.RatingUpdate{
+			Id:         white.Id,
+			Rating:     c.Mu2Rating(wStr.Mu),
+			Deviation:  c.Phi2Deviation(wStr.Phi),
+			Volatility: wStr.Sigma,
+		},
+		db.RatingUpdate{
+			Id:         black.Id,
+			Rating:     c.Mu2Rating(bStr.Mu),
+			Deviation:  c.Phi2Deviation(bStr.Phi),
+			Volatility: bStr.Sigma,
+		},
 	)
 }

@@ -8,7 +8,7 @@ import (
 // Validated with https://www.cs.usfca.edu/~galles/visualization/RedBlack.html
 
 func TestInsertNode(t *testing.T) {
-	testcases := []struct {
+	cases := []struct {
 		values      []float64
 		expectedBFS []float64
 	}{
@@ -30,7 +30,7 @@ func TestInsertNode(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testcases {
+	for i, tc := range cases {
 		tree := newRedBlackTree()
 
 		for _, val := range tc.values {
@@ -52,7 +52,7 @@ func TestInsertNode(t *testing.T) {
 }
 
 func TestRemoveNode(t *testing.T) {
-	testcases := []struct {
+	cases := []struct {
 		values      []float64
 		value       float64
 		expectedBFS []float64
@@ -104,7 +104,7 @@ func TestRemoveNode(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testcases {
+	for i, tc := range cases {
 		tree := newRedBlackTree()
 
 		for _, val := range tc.values {
@@ -130,7 +130,7 @@ func TestRemoveNode(t *testing.T) {
 }
 
 func TestMakeMatches(t *testing.T) {
-	testcases := []struct {
+	cases := []struct {
 		ratings  []float64
 		expected [][2]string
 	}{
@@ -146,7 +146,7 @@ func TestMakeMatches(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testcases {
+	for i, tc := range cases {
 		pool := NewPool()
 
 		for i, rating := range tc.ratings {
@@ -171,7 +171,7 @@ func TestMakeMatches(t *testing.T) {
 }
 
 func TestExpandRatingGaps(t *testing.T) {
-	testcases := []struct {
+	cases := []struct {
 		thresholds []float64
 		expected   []float64
 	}{
@@ -181,7 +181,7 @@ func TestExpandRatingGaps(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testcases {
+	for i, tc := range cases {
 		pool := NewPool()
 
 		for j := range len(tc.thresholds) {

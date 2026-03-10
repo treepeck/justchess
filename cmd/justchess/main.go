@@ -23,11 +23,12 @@ func main() {
 	log.Print("Successfully connected to db.")
 
 	// Initialize database repositories.
-	pr := db.NewPlayerRepo(pool)
-	gr := db.NewGameRepo(pool)
+	ar := db.NewSQLAuthRepo(pool)
+	pr := db.NewSQLPlayerRepo(pool)
+	gr := db.NewSQLGameRepo(pool)
 
 	log.Print("Initializing services...")
-	authService, err := auth.InitService(pr)
+	authService, err := auth.InitService(ar, "./_web/templates/")
 	if err != nil {
 		log.Panic(err)
 	}

@@ -9,8 +9,223 @@ import (
 	"github.com/treepeck/chego"
 )
 
-// The following block of constants declares SQL queries used to access and
-// modify the game table.
+// Move represents the completed decoded move.
+type Move struct {
+	Fen      string `json:"f"`
+	San      string `json:"s"`
+	TimeDiff int    `json:"t"`
+}
+
+// Game represents the state of a single completed chess game.
+type Game struct {
+	White       Player
+	Black       Player
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Moves       json.RawMessage
+	Id          string
+	MovesLength int
+	Control     int
+	Bonus       int
+	Result      chego.Result
+	Termination chego.Termination
+}
+
+// ProfileGame represents the short game description to fill up the
+// player profile with game history.
+type ProfileGame struct {
+	CreatedAt   time.Time         `json:"c"`
+	Id          string            `json:"i"`
+	White       string            `json:"w"`
+	Black       string            `json:"b"`
+	Result      chego.Result      `json:"r"`
+	Termination chego.Termination `json:"t"`
+	MovesLength int               `json:"m"`
+	Control     int               `json:"ctl"`
+	Bonus       int               `json:"bns"`
+}
+
+// Pagination is used to skip certain amount of game records without use of slow
+// OFFSET SQL statement.
+type Pagination struct {
+	CursorCreatedAt time.Time `json:"cca"`
+	CursorId        string    `json:"cid"`
+}
+
+// GameUpdate is used to update the game entity in database.
+type GameUpdate struct {
+	EncodedMoves    []byte
+	CompressedDiffs []byte
+	Id              string
+	Result          chego.Result
+	Termination     chego.Termination
+	MovesLength     int
+}
+
+// GameRepo provides access to game data.
+type GameRepo interface {
+	InsertGame(id, whiteId, blackId string, control, bonus int) error
+	// SelectById skips abandoned games.
+	SelectById(id string) (Game, error)
+	// SelectNewestProfileGames selects up to a 100 records of brief data about games
+	// in which the player with specified name took part.  The result is ordered by
+	// game creation date in descending order, meaning that newer games will go first.
+	// Abandoned games are skipped.
+	SelectNewestProfileGames(name string) ([]ProfileGame, error)
+	// SelectOlderProfileGames is same as [SelectNewestProfileGames] but applies
+	// pagination.
+	SelectOlderProfileGames(name string, p Pagination) ([]ProfileGame, error)
+	UpdateGame(gu GameUpdate) error
+	MarkGameAsAbandoned(id string) error
+}
+
+// SQLGameRepo wraps the SQL database handle and implements [GameRepo].
+type SQLGameRepo struct {
+	pool *sql.DB
+}
+
+func NewSQLGameRepo(p *sql.DB) SQLGameRepo { return SQLGameRepo{pool: p} }
+
+func (r SQLGameRepo) InsertGame(id, whiteId, blackId string, control, bonus int) error {
+	_, err := r.pool.Exec(insertGame, id, whiteId, blackId, control, bonus)
+	return err
+}
+
+func (r SQLGameRepo) SelectById(id string) (Game, error) {
+	row := r.pool.QueryRow(selectGameById, id)
+
+	var g Game
+	var encoded []byte
+	var compressed []byte
+	if err := row.Scan(
+		// Scan white player.
+		&g.White.Id,
+		&g.White.Name,
+		&g.White.Rating,
+		&g.White.Deviation,
+		&g.White.Volatility,
+		// Scan black player.
+		&g.Black.Id,
+		&g.Black.Name,
+		&g.Black.Rating,
+		&g.Black.Deviation,
+		&g.Black.Volatility,
+		// Scan game data.
+		&g.Id,
+		&g.Control,
+		&g.Bonus,
+		&g.Result,
+		&g.MovesLength,
+		&encoded,
+		&g.Termination,
+		&g.CreatedAt,
+		&g.UpdatedAt,
+		&compressed,
+	); err != nil {
+		return g, err
+	}
+
+	// Decode moves if the game has been terminated.
+	if g.Termination != chego.Unterminated {
+		moves := make([]Move, g.MovesLength)
+
+		decoded := chego.HuffmanDecoding(encoded, g.MovesLength)
+		decompressed := chego.DecompressTimeDiffs(compressed, g.MovesLength)
+
+		for i := range g.MovesLength {
+			moves[i] = Move{
+				Fen:      decoded[i].Fen,
+				San:      decoded[i].San,
+				TimeDiff: decompressed[i],
+			}
+		}
+
+		raw, err := json.Marshal(moves)
+		g.Moves = raw
+		return g, err
+	}
+	return g, nil
+}
+
+func (r SQLGameRepo) SelectNewestProfileGames(name string) ([]ProfileGame, error) {
+	rows, err := r.pool.Query(selectNewestProfileGames, name, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]ProfileGame, 0, 10)
+	for rows.Next() {
+		var pg ProfileGame
+		if err = rows.Scan(
+			&pg.White,
+			&pg.Black,
+			&pg.Result,
+			&pg.Termination,
+			&pg.Control,
+			&pg.Bonus,
+			&pg.MovesLength,
+			&pg.CreatedAt,
+			&pg.Id,
+		); err != nil {
+			return nil, err
+		}
+		games = append(games, pg)
+	}
+	return games, err
+}
+
+func (r SQLGameRepo) SelectOlderProfileGames(name string, p Pagination) ([]ProfileGame, error) {
+	rows, err := r.pool.Query(
+		selectOlderProfileGames,
+		name,
+		name,
+		p.CursorCreatedAt,
+		p.CursorId,
+		p.CursorCreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]ProfileGame, 0, 10)
+	for rows.Next() {
+		var pg ProfileGame
+		if err = rows.Scan(
+			&pg.White,
+			&pg.Black,
+			&pg.Result,
+			&pg.Termination,
+			&pg.Control,
+			&pg.Bonus,
+			&pg.MovesLength,
+			&pg.CreatedAt,
+			&pg.Id,
+		); err != nil {
+			log.Print(err)
+			return nil, err
+		}
+		games = append(games, pg)
+	}
+	return games, err
+}
+
+func (r SQLGameRepo) UpdateGame(gu GameUpdate) error {
+	_, err := r.pool.Exec(
+		updateGame,
+		gu.Result, gu.Termination,
+		gu.MovesLength, gu.EncodedMoves,
+		gu.CompressedDiffs, gu.Id,
+	)
+	return err
+}
+
+func (r SQLGameRepo) MarkGameAsAbandoned(id string) error {
+	_, err := r.pool.Exec(markGameAsAbandoned, id)
+	return err
+}
+
 const (
 	insertGame = `
 	INSERT INTO game (
@@ -113,201 +328,3 @@ const (
 
 	markGameAsAbandoned = `	UPDATE game SET termination = 1	WHERE game.id = ?`
 )
-
-// Move represents the completed decoded move.
-type Move struct {
-	Fen      string `json:"f"`
-	San      string `json:"s"`
-	TimeDiff int    `json:"t"`
-}
-
-// Game represents the state of a single completed chess game.
-type Game struct {
-	White       Player
-	Black       Player
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Moves       json.RawMessage
-	Id          string
-	MovesLength int
-	Control     int
-	Bonus       int
-	Result      chego.Result
-	Termination chego.Termination
-}
-
-// ProfileGame represents the short game description to fill up the
-// player profile with game history.
-type ProfileGame struct {
-	CreatedAt   time.Time         `json:"c"`
-	Id          string            `json:"i"`
-	White       string            `json:"w"`
-	Black       string            `json:"b"`
-	Result      chego.Result      `json:"r"`
-	Termination chego.Termination `json:"t"`
-	MovesLength int               `json:"m"`
-	Control     int               `json:"ctl"`
-	Bonus       int               `json:"bns"`
-}
-
-// GameRepo wraps the database connection pool and provides methods to access
-// and modify the game table.
-type GameRepo struct {
-	pool *sql.DB
-}
-
-func NewGameRepo(p *sql.DB) GameRepo { return GameRepo{pool: p} }
-
-// Insert inserts a single record into the game table.
-func (r GameRepo) Insert(id, whiteId, blackId string, control, bonus int) error {
-	_, err := r.pool.Exec(insertGame, id, whiteId, blackId, control, bonus)
-	return err
-}
-
-// SelectById selects a single record with the specified id from the game
-// table.  Error is returned when the game doesn't exist or was abandoned.
-//
-// If the game has been terminated, the moves will be decoded.
-// Otherwise, an empty array will be returned.
-func (r GameRepo) SelectById(id string) (Game, error) {
-	row := r.pool.QueryRow(selectGameById, id)
-
-	var g Game
-	var encoded []byte
-	var compressed []byte
-	if err := row.Scan(
-		// Scan white player.
-		&g.White.Id,
-		&g.White.Name,
-		&g.White.Rating,
-		&g.White.Deviation,
-		&g.White.Volatility,
-		// Scan black player.
-		&g.Black.Id,
-		&g.Black.Name,
-		&g.Black.Rating,
-		&g.Black.Deviation,
-		&g.Black.Volatility,
-		// Scan game data.
-		&g.Id,
-		&g.Control,
-		&g.Bonus,
-		&g.Result,
-		&g.MovesLength,
-		&encoded,
-		&g.Termination,
-		&g.CreatedAt,
-		&g.UpdatedAt,
-		&compressed,
-	); err != nil {
-		return g, err
-	}
-
-	// Decode moves if the game has been terminated.
-	if g.Termination != chego.Unterminated {
-		moves := make([]Move, g.MovesLength)
-
-		decoded := chego.HuffmanDecoding(encoded, g.MovesLength)
-		decompressed := chego.DecompressTimeDiffs(compressed, g.MovesLength)
-
-		for i := range g.MovesLength {
-			moves[i] = Move{
-				Fen:      decoded[i].Fen,
-				San:      decoded[i].San,
-				TimeDiff: decompressed[i],
-			}
-		}
-
-		raw, err := json.Marshal(moves)
-		g.Moves = raw
-		return g, err
-	}
-	return g, nil
-}
-
-// SelectNewestProfileGames selects up to a 100 records of brief data about games
-// in which the player with specified name took part.  The result is ordered by
-// game creation date in descending order, meaning that newer games will go first.
-// Abandoned games are skipped.
-func (r GameRepo) SelectNewestProfileGames(name string) ([]ProfileGame, error) {
-	rows, err := r.pool.Query(selectNewestProfileGames, name, name)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	games := make([]ProfileGame, 0, 10)
-	for rows.Next() {
-		var pg ProfileGame
-		if err = rows.Scan(
-			&pg.White,
-			&pg.Black,
-			&pg.Result,
-			&pg.Termination,
-			&pg.Control,
-			&pg.Bonus,
-			&pg.MovesLength,
-			&pg.CreatedAt,
-			&pg.Id,
-		); err != nil {
-			return nil, err
-		}
-		games = append(games, pg)
-	}
-	return games, err
-}
-
-// SelectOlderProfileGames is same as [SelectNewestProfileGames] but uses
-// cursorId and cursorCreatedAt for pagination.
-func (r GameRepo) SelectOlderProfileGames(name, cursorId string,
-	cursorCreatedAt time.Time) ([]ProfileGame, error) {
-	rows, err := r.pool.Query(
-		selectOlderProfileGames,
-		name,
-		name,
-		cursorCreatedAt,
-		cursorId,
-		cursorCreatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	games := make([]ProfileGame, 0, 10)
-	for rows.Next() {
-		var pg ProfileGame
-		if err = rows.Scan(
-			&pg.White,
-			&pg.Black,
-			&pg.Result,
-			&pg.Termination,
-			&pg.Control,
-			&pg.Bonus,
-			&pg.MovesLength,
-			&pg.CreatedAt,
-			&pg.Id,
-		); err != nil {
-			log.Print(err)
-			return nil, err
-		}
-		games = append(games, pg)
-	}
-	return games, err
-}
-
-// Update updates a single record with the specified id in the game table by
-// setting the table columns to the provided values.
-func (r GameRepo) Update(res chego.Result, t chego.Termination, movesLength int,
-	moves, compressedDiffs []byte, id string) error {
-	_, err := r.pool.Exec(updateGame, res, t, movesLength, moves,
-		compressedDiffs, id)
-	return err
-}
-
-// MarkGameAsAbandoned updates the termination column to abandoned for the game
-// with the specified id.
-func (r GameRepo) MarkGameAsAbandoned(id string) error {
-	_, err := r.pool.Exec(markGameAsAbandoned, id)
-	return err
-}

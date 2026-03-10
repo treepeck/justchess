@@ -212,8 +212,10 @@ func (s Service) getProfileGames(rw http.ResponseWriter, r *http.Request) {
 		// Apply pagination if cursors are defined.
 		games, err = s.gameRepo.SelectOlderProfileGames(
 			name,
-			cursorId,
-			cursorCreatedAt,
+			db.Pagination{
+				CursorId:        cursorId,
+				CursorCreatedAt: cursorCreatedAt,
+			},
 		)
 	} else {
 		games, err = s.gameRepo.SelectNewestProfileGames(name)

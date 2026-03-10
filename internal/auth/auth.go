@@ -65,7 +65,7 @@ type deliveryServicePayload struct {
 // Service wraps the database repositories and provides methods for handling
 // authorization and authentication of HTTP requests.
 type Service struct {
-	playerRepo db.PlayerRepo
+	repo db.AuthRepo
 	// Store parsed emails to avoid expensive template parsing on each signup
 	// or password reset.
 	// First template is signup_verification_email.tmpl.
@@ -74,25 +74,22 @@ type Service struct {
 }
 
 // InitService parses email templates and stores them in the [Service].
-func InitService(repo db.PlayerRepo) (Service, error) {
+func InitService(repo db.AuthRepo, tmplPath string) (Service, error) {
 	var emails [2]*template.Template
 
-	signupTmpl, err := template.ParseFiles("./_web/templates/email_verify_signup.tmpl")
+	signupTmpl, err := template.ParseFiles(tmplPath + "email_verify_signup.tmpl")
 	if err != nil {
 		return Service{}, err
 	}
 	emails[0] = signupTmpl
 
-	resetTmpl, err := template.ParseFiles("./_web/templates/email_reset_password.tmpl")
+	resetTmpl, err := template.ParseFiles(tmplPath + "email_reset_password.tmpl")
 	if err != nil {
 		return Service{}, err
 	}
 	emails[1] = resetTmpl
 
-	return Service{
-		playerRepo: repo,
-		emails:     emails,
-	}, err
+	return Service{repo: repo, emails: emails}, err
 }
 
 // RegisterRoutes registers enpoints to the specified ServeMux.
@@ -131,7 +128,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unique, err := s.playerRepo.AreNameAndEmailUnique(name, email)
+	unique, err := s.repo.AreNameAndEmailUnique(name, email)
 	if err != nil || !unique {
 		http.Error(rw, msgConflict, http.StatusConflict)
 		return
@@ -144,7 +141,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	token := randgen.GenId(randgen.SecureIdLen)
-	if err = s.playerRepo.InsertSignupToken(
+	if err = s.repo.InsertSignupToken(
 		token,
 		db.SignupData{
 			Name: name, Email: email, PasswordHash: pwdHash,
@@ -179,7 +176,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
 		// Remove inserted token.
-		if err = s.playerRepo.DeleteSignupToken(token); err != nil {
+		if err = s.repo.DeleteSignupToken(token); err != nil {
 			log.Print(err)
 		}
 	}
@@ -212,7 +209,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := s.playerRepo.SelectCredentialsByEmail(email)
+	c, err := s.repo.SelectCredentialsByEmail(email)
 	if err != nil {
 		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
@@ -224,7 +221,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessions, err := s.playerRepo.SelectSessionByPlayerId(c.Id)
+	sessions, err := s.repo.SelectSessionsByPlayerId(c.Id)
 	if err != nil {
 		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
@@ -242,7 +239,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		// Delete the oldest session to replace it with the new one.
-		if err = s.playerRepo.DeleteSessionById(sessions[ind].Id); err != nil {
+		if err = s.repo.DeleteSession(sessions[ind].Id); err != nil {
 			http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 			return
 		}
@@ -251,9 +248,6 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	s.genSession(rw, c.Id)
 }
 
-// resetPassword issues the password reset process by inserting token into
-// password_reset_token table and sending the verification email.
-//
 // If the verification email fails to send, the token insertion is rolled back,
 // letting the player try again.
 func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
@@ -270,7 +264,7 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := s.playerRepo.SelectIdAndNameByEmail(email)
+	p, err := s.repo.SelectIdentityByEmail(email)
 	if err != nil {
 		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
 		return
@@ -284,7 +278,7 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	token := randgen.GenId(randgen.SecureIdLen)
-	if err = s.playerRepo.InsertPasswordResetToken(token, p.Id, pwdHash); err != nil {
+	if err = s.repo.InsertPasswordResetToken(token, p.Id, pwdHash); err != nil {
 		log.Print(err)
 		http.Error(rw, msgTokenConflict, http.StatusConflict)
 		return
@@ -315,7 +309,7 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
 		// Remove inserted token.
-		if err = s.playerRepo.DeletePasswordResetToken(token); err != nil {
+		if err = s.repo.DeletePasswordResetToken(token); err != nil {
 			log.Print(err)
 		}
 	}
@@ -332,7 +326,7 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 func (s Service) verifySignup(rw http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 
-	data, err := s.playerRepo.SelectSignupToken(token)
+	data, err := s.repo.SelectSignupDataByToken(token)
 	if err != nil {
 		log.Print(err)
 		http.Redirect(rw, r, "/error", http.StatusFound)
@@ -340,13 +334,13 @@ func (s Service) verifySignup(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	id := randgen.GenId(randgen.IdLen)
-	if err = s.playerRepo.Insert(id, data); err != nil {
+	if err = s.repo.InsertPlayer(id, data); err != nil {
 		log.Print(err)
 		http.Redirect(rw, r, "/error", http.StatusFound)
 		return
 	}
 
-	if err = s.playerRepo.DeleteSignupToken(token); err != nil {
+	if err = s.repo.DeleteSignupToken(token); err != nil {
 		log.Print(err)
 	}
 
@@ -361,20 +355,20 @@ func (s Service) verifySignup(rw http.ResponseWriter, r *http.Request) {
 func (s Service) verifyResetPassword(rw http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 
-	c, err := s.playerRepo.SelectPasswordResetToken(token)
+	c, err := s.repo.SelectCredentialsByResetToken(token)
 	if err != nil {
 		log.Print(err)
 		http.Redirect(rw, r, "/error", http.StatusFound)
 		return
 	}
 
-	if err = s.playerRepo.UpdatePasswordHash(c.Id, c.PasswordHash); err != nil {
+	if err = s.repo.UpdatePasswordHash(c.Id, c.PasswordHash); err != nil {
 		log.Print(err)
 		http.Redirect(rw, r, "/error", http.StatusFound)
 		return
 	}
 
-	if err = s.playerRepo.DeletePasswordResetToken(token); err != nil {
+	if err = s.repo.DeletePasswordResetToken(token); err != nil {
 		log.Print(err)
 	}
 
@@ -388,7 +382,7 @@ func (s Service) genSession(rw http.ResponseWriter, playerId string) {
 	// Use generated unique string as session value.
 	sessionId := randgen.GenId(randgen.SecureIdLen)
 
-	if err := s.playerRepo.InsertSession(sessionId, playerId); err != nil {
+	if err := s.repo.InsertSession(sessionId, playerId); err != nil {
 		log.Print(err)
 		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
 		return
