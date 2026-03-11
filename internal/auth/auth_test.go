@@ -1,5 +1,3 @@
-// Tests from this package must be executed only when the testdb service is up and
-// running.
 package auth
 
 import (
