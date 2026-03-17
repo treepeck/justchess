@@ -1,10 +1,12 @@
 package ws
 
 import (
-	"justchess/internal/db"
 	"log"
 	"strconv"
 	"time"
+
+	"justchess/internal/db"
+	"justchess/internal/event"
 
 	"github.com/gorilla/websocket"
 )
@@ -34,7 +36,7 @@ type client struct {
 	// concurrent writer to a connection at a time.
 	send chan []byte
 	// forward is a channel to which the client will send events.
-	forward chan event
+	forward chan event.Event
 	// unregister is a channel to which the client will send to unregister themself
 	// from the room or queue.
 	unregister chan string
@@ -75,17 +77,17 @@ func newClient(conn *websocket.Conn, p db.Player) *client {
 func (c *client) read() {
 	defer c.cleanup()
 
-	var e event
+	var e event.Event
 	for {
 		if err := c.conn.ReadJSON(&e); err != nil {
 			return
 		}
 
-		if e.Action == actionPong {
+		if e.Kind == event.Pong {
 			c.pong <- struct{}{}
 		} else {
 			if c.forward != nil {
-				e.sender = c
+				e.SenderId = c.player.Id
 				c.forward <- e
 			}
 		}
@@ -128,8 +130,8 @@ func (c *client) write() {
 			c.pingTimestamp = time.Now()
 			c.conn.SetWriteDeadline(c.pingTimestamp.Add(writeWait))
 
-			if err := c.conn.WriteJSON(event{
-				Action:  actionPing,
+			if err := c.conn.WriteJSON(event.Event{
+				Kind:    event.Ping,
 				Payload: []byte(strconv.Itoa(c.ping)),
 			}); err != nil {
 				log.Println(err)

@@ -1,6 +1,6 @@
 import { getOrPanic } from "./utils/dom"
 import showDialog from "./utils/dialog"
-import { request } from "./utils/http"
+import { formRequest } from "./utils/http"
 import {
 	validateName,
 	validatePassword,
@@ -46,7 +46,7 @@ function confirmHandler(data) {
 	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
 	const params = new URLSearchParams(data)
 
-	request("/auth/signup", params).then((err) => {
+	formRequest("/auth/signup", params).then((err) => {
 		if (err) {
 			getOrPanic("formServerError").textContent = "Sign up failed: " + err
 			// Enable the submit button.

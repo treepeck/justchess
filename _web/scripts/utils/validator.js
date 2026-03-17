@@ -4,7 +4,7 @@ const pwdEx = /^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$/i
 
 /**
  * @param {string} name
- * @throws Will throw an error if the name is not valid.
+ * @throws {string} Will throw an error if the name is not valid.
  */
 export function validateName(name) {
 	if (name.length < 2) {
@@ -39,7 +39,7 @@ export function validatePassword(password) {
 		throw new Error("Must not exceed 71 characters")
 	} else if (!pwdEx.test(password)) {
 		throw new Error(
-			"Can only contain letters, numbers, and !@#$%^&*()_+-/.<>"
+			"Can only contain letters, numbers, and !@#$%^&*()_+-/.<>",
 		)
 	}
 }

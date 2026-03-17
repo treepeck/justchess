@@ -1,4 +1,4 @@
-import { request } from "./utils/http"
+import { formRequest } from "./utils/http"
 import { getOrPanic } from "./utils/dom"
 
 /** @param {SubmitEvent} event */
@@ -23,7 +23,7 @@ function submitForm(event) {
 	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
 	const params = new URLSearchParams(data)
 
-	request("/auth/signin", params).then((err) => {
+	formRequest("/auth/signin", params).then((err) => {
 		if (!err) {
 			// Redirect user to home page after successful authentication.
 			window.location.href = "/"

@@ -1,6 +1,7 @@
 {{ define "layout" }}
 
 <div class="game-layout flex-container">
+  {{ if not .Data.IsVsEngine }}
   <div class="chat-layout game-container">
     <header class="game-container-header">Chat</header>
     <div id="chat" class="scrollable-container"></div>
@@ -18,8 +19,9 @@
     <div class="game-controls">
       <button id="offerDrawBtn">Offer draw</button>
       <button id="resignBtn">Resign</button>
-	</div>
+	  </div>
   </div>
+  {{ end }}
 
   {{ block "board" . }}{{ end }}
 </div>
@@ -37,6 +39,7 @@
   </div>
 </div>
 
+{{ if not .Data.IsVsEngine }}
 <div id="offerDrawDialog" class="dialog flex-container">
   <div class="dialog-layout">
     <p class="dialog-header">Offer draw</p>
@@ -62,6 +65,7 @@
     </div>
   </div>
 </div>
+{{ end }}
 
 <div id="resignDialog" class="dialog flex-container">
   <div class="dialog-layout">

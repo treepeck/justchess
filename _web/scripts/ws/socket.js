@@ -1,11 +1,11 @@
 import { getOrPanic } from "../utils/dom"
 import Notification from "../utils/notification"
-import { EventAction } from "./event"
+import { EventKind } from "./event"
 
 /**
  * Function that handles player's events.
  * @callback EventHandler
- * @param {EventAction} action
+ * @param {EventKind} Kind
  * @param {any} payload
  * @returns {void}
  */
@@ -39,14 +39,14 @@ export class Socket {
 		this.#socket.onmessage = (raw) => {
 			/** @type {import("./event").Event} */
 			const e = JSON.parse(raw.data)
-			const action = e.a
+			const Kind = e.k
 			const payload = e.p
 
-			switch (action) {
+			switch (Kind) {
 				// Respond with Pong automatically.
-				case EventAction.Ping:
+				case EventKind.Ping:
 					this.#socket.send(
-						JSON.stringify({ a: EventAction.Pong, p: null }),
+						JSON.stringify({ k: EventKind.Pong, p: null }),
 					)
 
 					// Update ping.
@@ -55,25 +55,25 @@ export class Socket {
 
 				// Something went wrong.  Display the notification and close
 				// the connection.
-				case EventAction.Error:
+				case EventKind.Error:
 					notification.create(payload)
 					this.#socket.close()
 					break
 
 				default:
-					eventHandler(action, payload)
+					eventHandler(Kind, payload)
 			}
 		}
 	}
 
 	/**
-	 * @param {EventAction} action
+	 * @param {EventKind} kind
 	 * @param {any} payload
 	 */
-	sendJSON(action, payload) {
+	sendJSON(kind, payload) {
 		this.#socket.send(
 			JSON.stringify({
-				a: action,
+				k: kind,
 				p: payload,
 			}),
 		)

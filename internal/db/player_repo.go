@@ -17,10 +17,11 @@ type Player struct {
 // ProfileData is a data object used to fill up the player.tmpl file while executing
 // a template.
 type ProfileData struct {
-	CreatedAt  time.Time
-	Name       string
-	Rating     float64
-	NumOfGames int
+	CreatedAt time.Time
+	Name      string
+	Rating    float64
+	// Number of played rated games.
+	RatedGames int
 }
 
 // RatingUpdate is used to update the player's rating after completed game.
@@ -33,7 +34,7 @@ type RatingUpdate struct {
 
 type PlayerRepo interface {
 	SelectById(id string) (Player, error)
-	SelectProfileData(name string) (ProfileData, error)
+	SelectProfileData(id string) (ProfileData, error)
 	// SelectLeaderboard selects [ProfileData] of 100 players with the biggest
 	// rating sorted in descending order.
 	SelectLeaderboard() ([]ProfileData, error)
@@ -51,15 +52,14 @@ func NewSQLPlayerRepo(p *sql.DB) SQLPlayerRepo { return SQLPlayerRepo{pool: p} }
 
 func (r SQLPlayerRepo) SelectById(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerById, id)
-
 	var p Player
 	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
 }
 
-func (r SQLPlayerRepo) SelectProfileData(name string) (ProfileData, error) {
-	row := r.pool.QueryRow(selectProfileData, name)
+func (r SQLPlayerRepo) SelectProfileData(id string) (ProfileData, error) {
+	row := r.pool.QueryRow(selectProfileData, id)
 	var p ProfileData
-	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.NumOfGames)
+	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.RatedGames)
 }
 
 func (r SQLPlayerRepo) SelectLeaderboard() ([]ProfileData, error) {
@@ -72,12 +72,8 @@ func (r SQLPlayerRepo) SelectLeaderboard() ([]ProfileData, error) {
 	leaders := make([]ProfileData, 0, 20)
 	for rows.Next() {
 		var pd ProfileData
-		if err = rows.Scan(
-			&pd.Name,
-			&pd.Rating,
-			&pd.CreatedAt,
-			&pd.NumOfGames,
-		); err != nil {
+		err = rows.Scan(&pd.Name, &pd.Rating, &pd.CreatedAt, &pd.RatedGames)
+		if err != nil {
 			return nil, err
 		}
 		leaders = append(leaders, pd)
@@ -87,19 +83,15 @@ func (r SQLPlayerRepo) SelectLeaderboard() ([]ProfileData, error) {
 
 func (r SQLPlayerRepo) SelectBySessionId(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerBySessionId, id)
-
 	var p Player
 	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
 }
 
 func (r SQLPlayerRepo) UpdateRatings(white, black RatingUpdate) error {
 	_, err := r.pool.Exec(updateRatings,
-		white.Id, white.Rating,
-		black.Id, black.Rating,
-		white.Id, white.Deviation,
-		black.Id, black.Deviation,
-		white.Id, white.Volatility,
-		black.Id, black.Volatility,
+		white.Id, white.Rating, black.Id, black.Rating,
+		white.Id, white.Deviation, black.Id, black.Deviation,
+		white.Id, white.Volatility, black.Id, black.Volatility,
 		white.Id, black.Id,
 	)
 	return err
@@ -107,8 +99,7 @@ func (r SQLPlayerRepo) UpdateRatings(white, black RatingUpdate) error {
 
 const (
 	selectPlayerById = `
-	SELECT
-		id, name, rating, rating_deviation, rating_volatility
+	SELECT id, name, rating, rating_deviation, rating_volatility
 	FROM player WHERE id = ?`
 
 	selectProfileData = `
@@ -118,11 +109,11 @@ const (
 		p.created_at,
 		count(g.id) as num_of_games
 	FROM player p
-	LEFT JOIN game g
+	LEFT JOIN rated_game g
 	ON
 		(g.white_id = p.id OR g.black_id = p.id)
 		AND g.termination != 1
-	WHERE p.name = ?
+	WHERE p.id = ?
 	GROUP BY p.name, p.rating, p.created_at`
 
 	selectLeaderboard = `
@@ -132,7 +123,7 @@ const (
 	    p.created_at,
 	    count(g.id) as num_of_games
 	FROM player p
-	LEFT JOIN game g
+	LEFT JOIN rated_game g
 	ON
 		(g.white_id = p.id OR g.black_id = p.id)
 	    AND g.termination != 1

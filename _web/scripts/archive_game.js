@@ -23,7 +23,7 @@ import Board from "./chess/board"
 	showDialog("endgameDialog")
 
 	// @ts-ignore
-	const control = parseInt(getOrPanic("whiteClock").textContent) * 60 * 1000
+	const control = parseInt(getOrPanic("whiteClock").textContent) * 1000
 	const clock = new Clock(control, false, Color.White, 0)
 
 	/** @type {{whiteTime: number, blackTime: number}[]} */
@@ -42,10 +42,10 @@ import Board from "./chess/board"
 			let wt = clock.whiteTime
 			let bt = clock.blackTime
 			if (i % 2 === 0) {
-				wt = clock.whiteTime - moves[i].t * 1000
+				wt = clock.whiteTime + moves[i].t * 1000
 				clock.setTime(Color.White, wt)
 			} else {
-				bt = clock.blackTime - moves[i].t * 1000
+				bt = clock.blackTime + moves[i].t * 1000
 				clock.setTime(Color.Black, bt)
 			}
 			times.push({ whiteTime: wt, blackTime: bt })

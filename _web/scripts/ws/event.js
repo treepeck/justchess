@@ -1,8 +1,8 @@
 /**
- * Must match the event actions defined in [justchess/internal/ws/event.go].
+ * Must match the event Kinds defined in [justchess/internal/ws/event.go].
  * @enum {number}
  */
-export const EventAction = /** @type {const} */ ({
+export const EventKind = /** @type {const} */ ({
 	Ping: 0,
 	Pong: 1,
 	Chat: 2,
@@ -23,30 +23,29 @@ export const EventAction = /** @type {const} */ ({
 /**
  * Arbitrary event recieved from the server.
  * @typedef {Object} Event
- * @property {EventAction} a
- * @property {any} p - Specific type depents on the action.
+ * @property {EventKind} k
+ * @property {any} p - Specific type depents on the Kind.
  */
 
 /**
  * @typedef {Object} MovePayload
  * @property {import("../chess/move.js").Move[]} lm - Legal moves for the next player.
- * @property {number} t - Remaining time on the player's clock.
- * @property {import("../chess/move.js").CompletedMove} m
+ * @property {string} s - San.
+ * @property {string} f - Fen.
+ * @property {number} t - Time left.
  */
 
 /**
- * Payload of the event with Game action.
+ * Payload of the event with Game Kind.
  * @typedef {Object} GamePayload
  * @property {import("../chess/move.js").Move[]} lm - Legal moves for current turn.
- * @property {import("../chess/move.js").CompletedMove[]} m - All completed moves.
- * @property {import("../chess/state.js").Termination} t
- * @property {import("../chess/state.js").Result} r
- * @property {number} wt - White player's remaining time.
- * @property {number} bt - Black player's remaining time.
+ * @property {import("../chess/move.js").PlayedMove[]} m - All played moves.
+ * @property {number} wt - White time in seconds.
+ * @property {number} bt - Black time in seconds.
  */
 
 /**
- * Payload of the event with End action.
+ * Payload of the event with End Kind.
  * @typedef {Object} EndPayload
  * @property {import("../chess/state.js").Termination} t
  * @property {import("../chess/state.js").Result} r

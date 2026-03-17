@@ -4,10 +4,38 @@
   <div class="player-info-username">{{ .Data.Name }}</div>
   <div class="player-info-rating">Rating<br/>{{ round .Data.Rating }}</div>
   <div id="playerRegistrationDate">{{ .Data.CreatedAt }}</div>
-  <div class="player-info-total-games">Total games<br/>{{ .Data.NumOfGames }}</div>
+  <div class="player-info-total-games">Rated games<br/>{{ .Data.RatedGames }}</div>
   </div>
 
-<div id="profileGames" data-name="{{ .Data.Name }}"></div>
+<div class="profile-games">
+  <div class="profile-games-tabs">
+    <div id="tab1" class="profile-games-tablink">Rated</div>
+    <div id="tab2" class="profile-games-tablink">Normal</div>
+    <div id="tab3" class="profile-games-tablink">Engine</div>
+  </div>
+
+  <div id="tab1Content" class="profile-games-tab-content">
+    <div class="">
+      <div>Result</div>
+      <div>Players</div>
+      <div>Time control</div>
+      <div>Moves</div>
+      <div>Date</div>
+    </div>
+  </div>
+  <div id="tab2Content" class="profile-games-tab-content">
+      <div>Result</div>
+      <div>Players</div>
+      <div>Time control</div>
+      <div>Moves</div>
+      <div>Date</div>
+  </div>
+  <div id="tab3Content" class="profile-games-tab-content">
+      <div>Result</div>
+      <div>Moves</div>
+      <div>Date</div>
+  </div>
+</div>
 
 <div id="playerGuard"></div>
 

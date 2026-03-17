@@ -14,6 +14,14 @@
   font-size: x-large;
 }
 
+#playVsEngine {
+  width: 95%;
+  max-width: 500px;
+  line-height: 3;
+  font-size: larger;
+  border-radius: 15px;
+}
+
 @media screen and (min-width: 600px) {
   /* Make header bigger on larger screens. */
   .page-header {

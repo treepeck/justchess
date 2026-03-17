@@ -123,8 +123,7 @@ export function appendMoveToTable(san, moveIndex, sanClickHandler) {
 }
 
 /**
- * @typedef {Object} CompletedMove
- * @property {Move} m - Encoded move.
- * @property {string} f - Serialized piece placement.
+ * @typedef {Object} PlayedMove
+ * @property {string} f - Serialized piece placement (Forsyth-Edwards Notation).
  * @property {string} s - Standard Algebraic Notation of the move.
  */

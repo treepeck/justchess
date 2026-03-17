@@ -18,7 +18,7 @@
 
       <a
         class="site-header-profile"
-        href="{{ if eq .Base.Player.Name "signup" }}signup{{ else }}/player/{{ .Base.Player.Name }}{{ end }}"
+        href="{{ if eq .Base.Player.Name "signup" }}/signup{{ else }}/player/{{ .Base.Player.Name }}{{ end }}"
        >
         {{ .Base.Player.Name }}
       </a>

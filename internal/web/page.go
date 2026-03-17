@@ -19,6 +19,11 @@ type QueueData struct {
 	Bonus   int
 }
 
+type GameData struct {
+	Game       any
+	IsVsEngine bool
+}
+
 // page combines the data objects and a parsed template.
 type page struct {
 	Base     baseData

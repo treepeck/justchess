@@ -3,25 +3,25 @@ package ws
 
 import (
 	"log"
+	"math/rand/v2"
 	"net/http"
 
 	"justchess/internal/db"
-	"justchess/internal/web"
+	"justchess/internal/event"
+	"justchess/internal/game"
+	"justchess/internal/randgen"
 
 	"github.com/gorilla/websocket"
 	"github.com/treepeck/chego"
-	"github.com/treepeck/glicko"
 )
 
 const (
-	msgNotFound string = "Connection will be closed: provided id is not valid."
-	msgConflict string = "Please close any previous tabs and reload the page to reconnect"
+	msgNotFound = "Connection will be closed: provided id is not valid"
+	msgTooMany  = "There are too many active players. Please, try again later"
+	msgConflict = "Please close any previous tabs and reload the page to reconnect"
 
-	minRating    = 10
-	maxRating    = 4000
-	minDeviation = 30
-	minSigma     = 0.04
-	maxSigma     = 0.08
+	// Max number of clients per room or queue.
+	clientsThreshold = 100
 )
 
 // upgrader is used to establish a WebSocket connection.
@@ -31,73 +31,60 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-type createRoom struct {
-	id      string
-	white   db.Player
-	black   db.Player
-	control web.QueueData
-	res     chan error
-}
-
-type storeGame struct {
-	white       db.Player
-	black       db.Player
-	moves       []completedMove
-	id          string
-	result      chego.Result
-	termination chego.Termination
-}
-
-type findRegister struct {
+type findRoom struct {
 	id  string
 	res chan chan *client
 }
 
-// Service manages the [room] lifecycle (creation and deletion), handles
-// incomming handshake requests, and modifies the database (stores completed
-// games and updated player's ratings).
-type Service struct {
-	playerRepo db.PlayerRepo
-	gameRepo   db.GameRepo
-	create     chan createRoom
-	remove     chan string
-	find       chan findRegister
-	store      chan storeGame
-	rooms      map[string]*room
-	queues     map[string]queue
+type createRoom struct {
+	id   string
+	game game.Game
+	res  chan struct{}
 }
 
-func NewService(pr db.PlayerRepo, gr db.GameRepo) Service {
+// Service manages the [room] lifecycle (creation and deletion) and handles
+// incomming handshake requests.
+type Service struct {
+	gameRepo   db.GameRepo
+	playerRepo db.PlayerRepo
+	rooms      map[string]room
+	queues     map[string]queue
+	find       chan findRoom
+	create     chan createRoom
+	remove     chan string
+}
+
+func NewService(gr db.GameRepo, pr db.PlayerRepo) Service {
 	s := Service{
-		playerRepo: pr,
 		gameRepo:   gr,
-		create:     make(chan createRoom),
-		remove:     make(chan string),
-		find:       make(chan findRegister),
-		store:      make(chan storeGame),
-		rooms:      make(map[string]*room),
-		queues:     make(map[string]queue, 9),
+		playerRepo: pr,
+		rooms:      make(map[string]room),
+		queues:     make(map[string]queue),
+		find:       make(chan findRoom),
+		create:     make(chan createRoom, 10),
+		remove:     make(chan string, 10),
 	}
 
-	for i := byte(1); i < 10; i++ {
-		q := newQueue(i)
-		go q.listenEvents(s.create)
+	controls := [9]struct{ control, bonus int }{{60, 0}, {120, 1}, {180, 0}, {180, 2}, {300, 0}, {300, 2}, {600, 0}, {600, 10}, {900, 10}}
+	var i byte
+	for i = range 9 {
+		q := newQueue(s.create, controls[i].control, controls[i].bonus, gr, pr)
+		go q.listenEvents()
 		s.queues[string(i+'0')] = q
 	}
-
 	return s
 }
 
-// RegisterRoute registers the handshake enpoint to the specified ServeMux.
-func (s Service) RegisterRoute(mux *http.ServeMux) {
-	mux.HandleFunc("/ws", s.handshake)
+func (s Service) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /ws", s.handshake)
+	mux.HandleFunc("POST /play-vs-engine", s.createEngineRoom)
 }
 
 func (s Service) ListenEvents() {
 	for {
 		select {
 		case e := <-s.create:
-			s.handleCreateRoom(e)
+			s.createRoom(e)
 		case id := <-s.remove:
 			s.handleRemoveRoom(id)
 		case e := <-s.find:
@@ -108,8 +95,6 @@ func (s Service) ListenEvents() {
 			} else {
 				e.res <- nil
 			}
-		case e := <-s.store:
-			s.handleStoreGame(e)
 		}
 	}
 }
@@ -151,7 +136,7 @@ func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
 	go c.write()
 
 	// Search for a room or queue with the given id.
-	e := findRegister{
+	e := findRoom{
 		id:  id,
 		res: make(chan chan *client, 1),
 	}
@@ -164,148 +149,60 @@ func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send error event to the client.
-	if raw, err := newEncodedEvent(actionError, msgNotFound); err == nil {
-		c.send <- raw
-	}
+	c.send <- event.JSON(event.Error, msgNotFound)
 	c.conn.Close()
 }
 
-func (s Service) handleCreateRoom(e createRoom) {
-	err := s.gameRepo.InsertGame(
-		e.id, e.white.Id, e.black.Id,
-		e.control.Control, e.control.Bonus,
-	)
-	defer func() { e.res <- err }()
+func (s Service) createEngineRoom(rw http.ResponseWriter, r *http.Request) {
+	session, err := r.Cookie("Auth")
 	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
+	p, err := s.playerRepo.SelectBySessionId(session.Value)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	id := randgen.GenId(randgen.IdLen)
+	var c chego.Color
+	if rand.IntN(2) == 1 {
+		c = chego.ColorBlack
+	}
+
+	g, err := game.SpawnEngineGame(id, p.Id, c, s.gameRepo)
+	if err != nil {
+		http.Error(rw, msgRoomCreationFailed, http.StatusInternalServerError)
+		return
+	}
+	e := createRoom{
+		id:   id,
+		game: g,
+		res:  make(chan struct{}, 1),
+	}
+	s.create <- e
+	// Wait for response to redirect clients only after room is ready.
+	<-e.res
+
+	http.Redirect(rw, r, "/game/engine/"+id, http.StatusFound)
+}
+
+func (s Service) createRoom(e createRoom) {
 	log.Printf("room %s created", e.id)
-
-	r := newRoom(e.id, e.white, e.black, e.control.Control, e.control.Bonus, s.store)
-	go r.listenEvents(s.remove)
-
+	r := newRoom(e.game)
+	go r.listenEvents(e.id, s.remove)
 	s.rooms[e.id] = r
+	e.res <- struct{}{}
 }
 
 func (s Service) handleRemoveRoom(id string) {
-	if s.rooms[id] == nil {
+	if _, exists := s.rooms[id]; exists {
 		log.Printf("room %s doesn't exist", id)
 		return
 	}
 
 	log.Printf("room %s removed", id)
 	delete(s.rooms, id)
-}
-
-// handleStoreGame stores the game state in database. If the game is over, it
-// also updates and stores players' ratings based on game outcome.
-func (s Service) handleStoreGame(e storeGame) {
-	// Shortcut: don't encode moves or update players' ratings if game was
-	// abandoned.
-	if e.termination == chego.Abandoned {
-		err := s.gameRepo.MarkGameAsAbandoned(e.id)
-		if err != nil {
-			log.Print(err)
-		}
-		return
-	}
-
-	// Prepare moves for encoding and time differences for compression.
-	indices := make([]byte, len(e.moves))
-	diffs := make([]int, len(e.moves))
-	for i, m := range e.moves {
-		indices[i] = m.index
-		diffs[i] = m.timeDiff
-	}
-
-	// Write game state to database.
-	if err := s.gameRepo.UpdateGame(db.GameUpdate{
-		Id: e.id, Result: e.result, Termination: e.termination,
-		EncodedMoves:    chego.HuffmanEncoding(indices),
-		CompressedDiffs: chego.CompressTimeDiffs(diffs),
-		MovesLength:     len(e.moves),
-	}); err != nil {
-		log.Print(err)
-		return
-	}
-
-	if e.termination != chego.Unterminated {
-		err := s.updateRatings(e.white, e.black, e.result)
-		if err != nil {
-			log.Print(err)
-		}
-	}
-}
-
-// Updates white and black player ratings based on the single match outcome.
-func (s Service) updateRatings(white, black db.Player, r chego.Result) error {
-	c := glicko.Converter{
-		Rating:    glicko.DefaultRating,
-		Deviation: glicko.DefaultDeviation,
-		Factor:    glicko.DefaultFactor,
-	}
-
-	// Initial players' strength.
-	wStr := glicko.Strength{
-		Mu:    c.Rating2Mu(white.Rating),
-		Phi:   c.Deviation2Phi(white.Deviation),
-		Sigma: white.Volatility,
-	}
-	bStr := glicko.Strength{
-		Mu:    c.Rating2Mu(black.Rating),
-		Phi:   c.Deviation2Phi(black.Deviation),
-		Sigma: black.Volatility,
-	}
-
-	var whiteScore, blackScore float64
-	switch r {
-	case chego.WhiteWon:
-		whiteScore = 1
-		blackScore = 0
-	case chego.BlackWon:
-		whiteScore = 0
-		blackScore = 1
-	case chego.Draw:
-		whiteScore = 0.5
-		blackScore = 0.5
-	}
-
-	wOut := glicko.Outcome{
-		Mu:    bStr.Mu,
-		Phi:   bStr.Phi,
-		Score: whiteScore,
-	}
-	bOut := glicko.Outcome{
-		Mu:    wStr.Mu,
-		Phi:   wStr.Phi,
-		Score: blackScore,
-	}
-
-	e := glicko.Estimator{
-		MinMu:    c.Rating2Mu(minRating),
-		MaxMu:    c.Rating2Mu(maxRating),
-		MinPhi:   c.Deviation2Phi(minDeviation),
-		MaxPhi:   c.Deviation2Phi(glicko.DefaultDeviation),
-		MinSigma: minSigma, MaxSigma: maxSigma,
-		Tau: glicko.DefaultTau, Epsilon: glicko.DefaultEpsilon,
-	}
-
-	e.Estimate(&wStr, wOut, 1)
-	e.Estimate(&bStr, bOut, 1)
-
-	return s.playerRepo.UpdateRatings(
-		db.RatingUpdate{
-			Id:         white.Id,
-			Rating:     c.Mu2Rating(wStr.Mu),
-			Deviation:  c.Phi2Deviation(wStr.Phi),
-			Volatility: wStr.Sigma,
-		},
-		db.RatingUpdate{
-			Id:         black.Id,
-			Rating:     c.Mu2Rating(bStr.Mu),
-			Deviation:  c.Phi2Deviation(bStr.Phi),
-			Volatility: bStr.Sigma,
-		},
-	)
 }

@@ -75,7 +75,7 @@ function appendGameToTable(game) {
 
 	const control = document.createElement("div")
 	control.classList.add("profile-games-time-control")
-	control.textContent = `${game.ctl} + ${game.bns}`
+	control.textContent = `${game.ctl / 60} + ${game.bns}`
 	row.appendChild(control)
 
 	const moves = document.createElement("div")
@@ -127,6 +127,7 @@ await (async () => {
 	h.classList.add("profile-games-header")
 
 	const c1 = document.createElement("div")
+	c1.textContent = "Result"
 	h.appendChild(c1)
 
 	const c2 = document.createElement("div")

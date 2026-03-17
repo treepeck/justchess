@@ -1,7 +1,6 @@
 package web
 
 import (
-	"encoding/json"
 	"html/template"
 	"log"
 	"math"
@@ -59,6 +58,7 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 		// Add default functions.
 		t.Funcs(template.FuncMap{
 			"eq":    func(s1, s2 string) bool { return s1 == s2 },
+			"eqC":   func(c1, c2 chego.Color) bool { return c1 == c2 },
 			"round": func(n float64) float64 { return math.Round(n) },
 		})
 
@@ -90,31 +90,29 @@ func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
 }
 
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/profile-games", s.getProfileGames)
-
 	// Serve js and css bundles.
 	bundles := http.Dir("./_web/bundles")
-	mux.Handle("/bundles/", http.StripPrefix("/bundles/", http.FileServer(bundles)))
+	mux.Handle("GET /bundles/", http.StripPrefix("/bundles/", http.FileServer(bundles)))
 
 	// Serve files from the _web/fonts folder.
 	fonts := http.Dir("./_web/fonts")
-	mux.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(fonts)))
+	mux.Handle("GET /fonts/", http.StripPrefix("/fonts/", http.FileServer(fonts)))
 
 	// Serve files from the _web/images folder.
 	images := http.Dir("./_web/images")
-	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(images)))
+	mux.Handle("GET /images/", http.StripPrefix("/images/", http.FileServer(images)))
 
 	// Serve pages with static routes.
-	mux.Handle("/", http.HandlerFunc(s.serveStaticRoutePage))
+	mux.Handle("GET /", http.HandlerFunc(s.serveStaticRoutePage))
 
 	// Serve pages with dynamic routes.
-	mux.HandleFunc("/queue/{id}", s.serveQueue)
-	mux.HandleFunc("/game/{id}", s.serveGame)
-	mux.HandleFunc("/player/{name}", s.servePlayer)
+	mux.HandleFunc("GET /queue/{id}", s.serveQueue)
+	mux.HandleFunc("GET /game/{kind}/{id}", s.serveGame)
+	mux.HandleFunc("GET /player/{id}", s.servePlayer)
 }
 
-// Possible time controls.
-var Controls = [9]QueueData{
+// Time controls. First number is in minutes. Second number is in seconds.
+var controls = [9]QueueData{
 	{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10},
 }
 
@@ -122,36 +120,60 @@ func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 0 || id > 8 {
 		s.renderPage(rw, r, s.pages["/error"])
+		return
 	}
 
 	p := s.pages["/queue"]
-	p.Data = Controls[id-1]
+	p.Data = controls[id]
 	s.renderPage(rw, r, p)
 }
 
 func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
-	g, err := s.gameRepo.SelectById(r.PathValue("id"))
-	if err != nil {
+	switch r.PathValue("kind") {
+	case "rated":
+		g, err := s.gameRepo.SelectRated(r.PathValue("id"))
+		if err != nil {
+			s.renderPage(rw, r, s.pages["/error"])
+			return
+		}
+		page := s.pages["/active"]
+		// If the game was been already terminated, serve the corresponding page.
+		if g.Termination != chego.Unterminated {
+			page = s.pages["/archive"]
+		}
+		// Fill up the template with game
+		page.Data = GameData{
+			Game:       g,
+			IsVsEngine: false,
+		}
+		page.Base.Title = g.White.Name + " vs " + g.Black.Name
+		s.renderPage(rw, r, page)
+	case "engine":
+		g, err := s.gameRepo.SelectEngine(r.PathValue("id"))
+		if err != nil {
+			s.renderPage(rw, r, s.pages["/error"])
+			return
+		}
+		page := s.pages["/active"]
+		// If the game was been already terminated, serve the corresponding page.
+		if g.Termination != chego.Unterminated {
+			page = s.pages["/archive"]
+		}
+		// Fill up the template with game
+		page.Data = GameData{
+			Game:       g,
+			IsVsEngine: true,
+		}
+		page.Base.Title = g.Player.Name + " vs Engine"
+		s.renderPage(rw, r, page)
+
+	default:
 		s.renderPage(rw, r, s.pages["/error"])
-		return
 	}
-
-	page := s.pages["/active"]
-	// If the game was been already terminated, serve the corresponding page.
-	if g.Termination != chego.Unterminated {
-		page = s.pages["/archive"]
-	}
-
-	// Fill up the template with more game data.
-	page.Data = g
-
-	page.Base.Title = g.White.Name + " vs " + g.Black.Name
-
-	s.renderPage(rw, r, page)
 }
 
 func (s Service) servePlayer(rw http.ResponseWriter, r *http.Request) {
-	p, err := s.playerRepo.SelectProfileData(r.PathValue("name"))
+	p, err := s.playerRepo.SelectProfileData(r.PathValue("id"))
 	if err != nil {
 		s.renderPage(rw, r, s.pages["/error"])
 		return
@@ -169,6 +191,7 @@ func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
 	page, exists := s.pages[r.URL.Path]
 	if !exists {
 		page = s.pages["/error"]
+		return
 	}
 
 	if r.URL.Path == "/leaderboard" {
@@ -198,38 +221,4 @@ func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
 		log.Print(err)
 		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
 	}
-}
-
-// getProfileGames fetches up to 100 games from database, encodes them and
-// sends the response.
-func (s Service) getProfileGames(rw http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
-	cursorId := r.URL.Query().Get("cid")
-	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cat"))
-
-	var games []db.ProfileGame
-	if cursorId != "" && err == nil {
-		// Apply pagination if cursors are defined.
-		games, err = s.gameRepo.SelectOlderProfileGames(
-			name,
-			db.Pagination{
-				CursorId:        cursorId,
-				CursorCreatedAt: cursorCreatedAt,
-			},
-		)
-	} else {
-		games, err = s.gameRepo.SelectNewestProfileGames(name)
-	}
-
-	if err != nil || len(games) == 0 {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
-		return
-	}
-
-	if err = json.NewEncoder(rw).Encode(games); err != nil {
-		log.Print(err)
-		http.Error(rw, msgCannotEncode, http.StatusInternalServerError)
-		return
-	}
-	rw.Header().Add("Content-Type", "application/json")
 }

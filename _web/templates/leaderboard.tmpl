@@ -4,18 +4,18 @@
 
 <div class="leaderboard">
   <div class="leaderboard-header">
-    <div>Name</div>
+    <div>Player</div>
     <div>Rating</div>
     <div>Member since</div>
-    <div>Total games</div>
+    <div>Rated games</div>
   </div>
 
   {{ range .Data }}
   <a class="leaderboard-row" href="/player/{{ .Name  }}">
-    <div>{{ .Name }}</div>
+    <div>{{ .Id }}</div>
     <div>{{ round .Rating }}</div>
     <div>{{ formatDate .CreatedAt }}</div>
-    <div>{{ .NumOfGames }}</div>
+    <div>{{ .RatedGames }}</div>
   </a>
   {{ end }}
 </div>

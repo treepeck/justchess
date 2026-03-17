@@ -97,8 +97,8 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/signup", s.signup)
 	mux.HandleFunc("POST /auth/signin", s.signin)
 	mux.HandleFunc("POST /auth/reset-password", s.resetPassword)
-	mux.HandleFunc("/auth/verify-signup/{token}", s.verifySignup)
-	mux.HandleFunc("/auth/verify-reset-password/{token}", s.verifyResetPassword)
+	mux.HandleFunc("GET /auth/verify-signup/{token}", s.verifySignup)
+	mux.HandleFunc("GET /auth/verify-reset-password/{token}", s.verifyResetPassword)
 }
 
 // signup registers a new player.

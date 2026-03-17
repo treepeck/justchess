@@ -38,13 +38,12 @@ func main() {
 		log.Panic(err)
 	}
 
-	wsService := ws.NewService(pr, gr)
+	wsService := ws.NewService(gr, pr)
 	go wsService.ListenEvents()
-	log.Print("Successfully initialized services.")
 
 	// Register routes.
 	mux := http.NewServeMux()
-	wsService.RegisterRoute(mux)
+	wsService.RegisterRoutes(mux)
 	webService.RegisterRoutes(mux)
 	authService.RegisterRoutes(mux)
 

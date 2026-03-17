@@ -1,21 +1,30 @@
 import { formatTime } from "./utils/clock"
 import { getOrPanic } from "./utils/dom"
-import { EventAction } from "./ws/event"
+import { EventKind } from "./ws/event"
 import { Socket } from "./ws/socket"
+import { request } from "./utils/http"
+import showDialog from "./utils/dialog"
 
 /** @type {import("./ws/socket").EventHandler} */
-function eventHandler(action, payload) {
-	switch (action) {
-		case EventAction.ClientsCounter:
+function eventHandler(Kind, payload) {
+	switch (Kind) {
+		case EventKind.ClientsCounter:
 			// Update clients counter.
 			getOrPanic("clientsCounter").textContent =
 				`Players in queue: ${payload}`
+
+			if (payload < 2) {
+				getOrPanic("playVsEngine").onclick = () => {
+					request("/play-vs-engine", "POST", null)
+				}
+				showDialog("emptyQueueDialog")
+			}
 			break
 
-		case EventAction.Redirect:
+		case EventKind.Redirect:
 			// Redirect to game room.
 			// @ts-expect-error - API_URL comes from webpack.
-			window.location.href = `${API_URL}/game/${payload}`
+			window.location.href = `${API_URL}/${payload}`
 			break
 
 		default:

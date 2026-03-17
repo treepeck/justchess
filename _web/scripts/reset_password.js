@@ -1,4 +1,4 @@
-import { request } from "./utils/http"
+import { formRequest } from "./utils/http"
 import { getOrPanic } from "./utils/dom"
 import { validateEmail, validatePassword } from "./utils/validator"
 
@@ -60,7 +60,7 @@ function submitForm(event) {
 		)
 		btn.disabled = true
 		btn.textContent = "Submitting..."
-		request("/auth/reset-password", params).then((err) => {
+		formRequest("/auth/reset-password", params).then((err) => {
 			if (err) {
 				getOrPanic("formServerError").textContent =
 					"Password reset failed: " + err

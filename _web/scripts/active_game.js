@@ -7,7 +7,7 @@ import {
 import { appendMoveToTable, highlightCurrentMove } from "./chess/move"
 import { getOrPanic, create } from "./utils/dom"
 import { Clock, Color } from "./utils/clock"
-import { EventAction } from "./ws/event"
+import { EventKind } from "./ws/event"
 import showDialog from "./utils/dialog"
 import { Socket } from "./ws/socket"
 import Board from "./chess/board"
@@ -35,11 +35,12 @@ function appendChatMessage(msg) {
 	// Page guard.
 	if (!document.getElementById("activeGameGuard")) return
 
-	/** @param {import("./chess/move").CompletedMove} move */
+	/** @param {import("./chess/move").PlayedMove} move */
 	const store = (move) => {
+		const piecePlacement = move.f.split(" ")[0]
 		// Update position.
-		board.parsePiecePlacement(move.f)
-		board.fens.push(move.f)
+		board.parsePiecePlacement(piecePlacement)
+		board.fens.push(piecePlacement)
 		board.currentFen = board.fens.length - 1
 
 		appendMoveToTable(move.s, board.currentFen, (index) => {
@@ -54,19 +55,19 @@ function appendChatMessage(msg) {
 	const clock = new Clock(5 * 60 * 1000, false, Color.White, 1000)
 
 	/** @type {import("./ws/socket").EventHandler} */
-	const eventHandler = (action, payload) => {
-		switch (action) {
-			case EventAction.Chat:
+	const eventHandler = (Kind, payload) => {
+		switch (Kind) {
+			case EventKind.Chat:
 				appendChatMessage(payload)
 				break
-			case EventAction.Conn:
-				appendChatMessage(`Player ${payload} joined`)
+			case EventKind.Conn:
+				appendChatMessage(`Player ${payload} joins`)
 				break
-			case EventAction.Disc:
-				appendChatMessage(`Player ${payload} leaved`)
+			case EventKind.Disc:
+				appendChatMessage(`Player ${payload} leaves`)
 				break
 			// Synchronize game state.
-			case EventAction.Game:
+			case EventKind.Game:
 				/**
 				 * Decode payload.
 				 * @type {import("./ws/event").GamePayload}
@@ -77,37 +78,30 @@ function appendChatMessage(msg) {
 				for (const move of pGame.m) {
 					store(move)
 				}
-				// Set player's clock.
-				clock.setTime(Color.White, pGame.wt * 1000)
-				clock.setTime(Color.Black, pGame.bt * 1000)
-				clock.color =
-					board.currentFen % 2 !== 0 ? Color.Black : Color.White
-				if (pGame.t == Termination.Unterminated) {
+				if (pGame.wt && pGame.bt) {
+					clock.setTime(Color.White, pGame.wt * 1000)
+					clock.setTime(Color.Black, pGame.bt * 1000)
 					clock.start()
-				} else {
-					getOrPanic("endgameDialogResult").textContent =
-						formatResult(pGame.r)
-					getOrPanic("endgameDialogTermination").textContent =
-						formatTermination(pGame.t)
-					showDialog("endgameDialog")
+					clock.color =
+						board.currentFen % 2 !== 0 ? Color.Black : Color.White
 				}
 				break
-			case EventAction.End:
+			case EventKind.End:
+				clock.stop()
+
 				/**
 				 * Decode payload.
 				 * @type {import("./ws/event").EndPayload}
 				 */
 				const pEnd = { ...payload }
-
 				getOrPanic("endgameDialogResult").textContent = formatResult(
 					pEnd.r,
 				)
 				getOrPanic("endgameDialogTermination").textContent =
 					formatTermination(pEnd.t)
 				showDialog("endgameDialog")
-				clock.stop()
 				break
-			case EventAction.Move:
+			case EventKind.Move:
 				/**
 				 * Decode payload.
 				 * @type {import("./ws/event").MovePayload}
@@ -115,25 +109,19 @@ function appendChatMessage(msg) {
 				const pMove = { ...payload }
 				// Update legal moves.
 				board.setLegalMoves(pMove.lm)
-				store(pMove.m)
-				// Update player's clock.
-				if (board.currentFen % 2 !== 0) {
-					clock.setTime(Color.White, pMove.t * 1000)
-				} else {
-					clock.setTime(Color.Black, pMove.t * 1000)
-				}
+				store({ s: pMove.s, f: pMove.f })
 				clock.flip()
 				break
-			case EventAction.OfferDraw:
+			case EventKind.OfferDraw:
 				// Display draw offer window.
 				showDialog("acceptDrawDialog")
 				getOrPanic("acceptDrawDialogAccept").onclick = () => {
 					getOrPanic("acceptDrawDialog").classList.toggle("show")
-					socket.sendJSON(EventAction.AcceptDraw, null)
+					socket.sendJSON(EventKind.AcceptDraw, null)
 				}
 				getOrPanic("acceptDrawDialogClose").onclick = () => {
 					getOrPanic("acceptDrawDialog").classList.toggle("show")
-					socket.sendJSON(EventAction.DeclineDraw, null)
+					socket.sendJSON(EventKind.DeclineDraw, null)
 				}
 				break
 		}
@@ -143,7 +131,7 @@ function appendChatMessage(msg) {
 
 	/** @type {import("./chess/board").MoveHandler} */
 	const moveHandler = (moveIndex) => {
-		socket.sendJSON(EventAction.Move, moveIndex)
+		socket.sendJSON(EventKind.Move, moveIndex)
 	}
 
 	// Render chessboard.
@@ -156,7 +144,7 @@ function appendChatMessage(msg) {
 	const chat = /** @type {HTMLInputElement} */ (getOrPanic("chatInput"))
 	const sendChat = () => {
 		if (chat.value.length < 1) return
-		socket.sendJSON(EventAction.Chat, chat.value)
+		socket.sendJSON(EventKind.Chat, chat.value)
 		// Reset the input value after submitting the message.
 		chat.value = ""
 	}
@@ -170,7 +158,7 @@ function appendChatMessage(msg) {
 		showDialog("offerDrawDialog")
 		getOrPanic("offerDrawDialogAccept").onclick = () => {
 			getOrPanic("offerDrawDialog").classList.toggle("show")
-			socket.sendJSON(EventAction.OfferDraw, null)
+			socket.sendJSON(EventKind.OfferDraw, null)
 		}
 	}
 
@@ -178,7 +166,7 @@ function appendChatMessage(msg) {
 		showDialog("resignDialog")
 		getOrPanic("resignDialogAccept").onclick = () => {
 			getOrPanic("resignDialog").classList.toggle("show")
-			socket.sendJSON(EventAction.Resign, null)
+			socket.sendJSON(EventKind.Resign, null)
 		}
 	}
 
