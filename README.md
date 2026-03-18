@@ -1,7 +1,7 @@
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
-JustChess.org is a multiplayer chess server.<br/>
-This repository implements the HTTP+WebSocket backend and JS+CSS frontend.<br/>
+JustChess.org is a multiplayer chess server.
+
 Chess rules implemented in [chego](https://github.com/treepeck/chego).
 
 ## Features
