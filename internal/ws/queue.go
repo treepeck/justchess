@@ -25,7 +25,7 @@ type queue struct {
 	playerRepo db.PlayerRepo
 	clients    map[string]*client
 	pool       mm.Pool
-	create     chan createRoom
+	create     chan createRoomPayload
 	register   chan *client
 	unregister chan string
 	ticker     *time.Ticker
@@ -34,7 +34,7 @@ type queue struct {
 	bonus   int // In seconds.
 }
 
-func newQueue(create chan createRoom,
+func newQueue(create chan createRoomPayload,
 	control, bonus int,
 	gr db.GameRepo, pr db.PlayerRepo,
 ) queue {
@@ -86,6 +86,12 @@ func (q queue) add(c *client) {
 		return
 	}
 
+	if c.player.IsGuest {
+		// Redirect guest players to signup page.
+		c.send <- event.JSON(event.Redirect, "/signup")
+		return
+	}
+
 	c.unregister = q.unregister
 	q.clients[c.player.Id] = c
 	// Join the matchmaking pool.
@@ -129,17 +135,17 @@ func (q queue) match(ids [2]string) {
 		// Notify clients about error.
 		q.sendEvent(ids, event.JSON(event.Error, msgRoomCreationFailed))
 	} else {
-		e := createRoom{
+		p := createRoomPayload{
 			id:   roomId,
 			game: g,
 			res:  make(chan struct{}, 1),
 		}
-		q.create <- e
+		q.create <- p
 		// Wait for response to redirect clients only after room is ready.
-		<-e.res
+		<-p.res
 
 		// Redirect clients to room.
-		q.sendEvent(ids, event.JSON(event.Redirect, "/game/rated/"+roomId))
+		q.sendEvent(ids, event.JSON(event.Redirect, "/rated/"+roomId))
 	}
 }
 

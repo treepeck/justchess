@@ -1,38 +1,109 @@
+.game-layout {
+  gap: 30px;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+}
+
+.chat-layout {
+  width: 95%;
+  max-width: 500px;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+#chat .message {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+.chat-input {
+  width: 100%;
+  display: flex;
+  border-radius: 10px;
+  background: var(--container-foreground);
+}
+
+.chat-input input {
+  width: 100%;
+  font-size: large;
+  padding: 5px;
+  border: none;
+  border-radius: 15px;
+  background: transparent;
+}
+
+.chat-input input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.chat-input input:hover,
+.chat-input input:focus {
+  outline: 2px solid var(--text-hover);
+}
+
+#chatSend {
+  width: 40px;
+  height: 40px;
+  margin: auto 5px auto 5px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background-image: url("/images/send.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .board-layout {
   display: flex;
   flex-direction: column;
-  order: 1;
   width: 95%;
   max-width: 500px;
-  background-color: var(--container-background);
   border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
 }
 
 .board-layout.flipped {
   flex-direction: column-reverse;
 }
 
-.board-miniprofile {
+.board-black-miniprofile {
   width: 100%;
   display: flex;
   gap: 10px;
+  padding: 3px;
   align-items: center;
-  color: var(--container-foreground);
 }
 
-.board-miniprofile a {
-  margin: 10px;
+.board-white-miniprofile {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  padding: 3px;
+  align-items: center;
+}
+
+.board-miniprofile {
+  margin: 10px 50px 10px 10px;
   overflow: hidden;
   font-weight: bold;
-  width: 25%;
+  font-size: large;
 }
 
 .board-miniprofile-rating {
   font-size: medium;
+  margin-right: auto;
 }
 
 .board-miniprofile-clock {
-  margin: auto 10px 10px auto;
+  margin: -5px 10px 5px auto;
   font-family: "ChessClock";
   user-select: none;
   font-size: 35px;
@@ -160,56 +231,54 @@
   transform: translate(var(--x), var(--y));
 }
 
-#movesContainer {
-  order: 2;
+.move-table-layout {
+  width: 95%;
+  max-width: 500px;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
 }
 
-.moves-header {
-  font-size: x-large;
-  font-weight: bold;
-  text-align: center;
-}
-
-.moves-row {
+.move-table-row {
   width: 100%;
   display: flex;
   line-height: 2;
   gap: 10px;
 }
 
-.moves-ply {
+.move-table-ply {
   width: 15%;
   overflow: hidden;
 }
 
-.moves-san {
+.move-table-row-san {
   width: 45%;
   font-weight: bold;
   text-align: start;
   cursor: pointer;
 }
 
+.move-table-row-san:hover {
+  background-color: var(--text-hover);
+}
+
 .current {
   color: white;
 }
 
-.moves-san:hover {
-  background-color: var(--text-hover);
-}
-
-.board-controls {
-  display: flex;
-  margin: auto;
-}
-
-.board-controls button {
+.move-table-board-controls button {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
   margin: 10px;
+  border: none;
+  border-radius: 50%;
   background: none;
   background-size: contain;
   background-repeat: no-repeat;
+  cursor: pointer;
 }
 
 #nullMoveBtn {
@@ -234,17 +303,23 @@
   background-image: url("/images/flip.svg");
 }
 
-/* Reorder elements on bigger screens. */
+/* Reorder elements on larger screens. */
 @media screen and (min-width: 1200px) {
+  .game-layout {
+    flex-direction: row;
+  }
+
+  .chat-layout {
+    max-width: 350px;
+    order: 1;
+  }
+
   .board-layout {
     order: 2;
   }
 
-  .moves {
+  .move-table-layout {
+    max-width: 350px;
     order: 3;
-  }
-
-  .board-miniprofile {
-    font-size: x-large;
   }
 }

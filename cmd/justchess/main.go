@@ -28,13 +28,13 @@ func main() {
 	gr := db.NewSQLGameRepo(pool)
 
 	log.Print("Initializing services...")
-	authService, err := auth.InitService(ar, "./_web/templates/")
-	if err != nil {
+	authService := auth.NewService(ar)
+	if err = authService.ParseEmails("./_web/templates/"); err != nil {
 		log.Panic(err)
 	}
-	// Parse and store page templates.
-	webService, err := web.InitService(pr, gr)
-	if err != nil {
+
+	webService := web.NewService(pr, gr)
+	if err = webService.ParsePages("./_web/templates/"); err != nil {
 		log.Panic(err)
 	}
 
@@ -43,8 +43,8 @@ func main() {
 
 	// Register routes.
 	mux := http.NewServeMux()
-	wsService.RegisterRoutes(mux)
-	webService.RegisterRoutes(mux)
+	wsService.RegisterRoutes(authService, mux)
+	webService.RegisterRoutes(authService, mux)
 	authService.RegisterRoutes(mux)
 
 	log.Print("Starting server.")

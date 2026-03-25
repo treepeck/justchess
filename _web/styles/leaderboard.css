@@ -17,7 +17,7 @@
 .leaderboard-header div,
 .leaderboard-row div {
   flex: 1;
-  margin: auto;
+  /* margin: auto; */
   text-align: center;
   overflow: hidden;
   font-size: large;
@@ -30,4 +30,10 @@
   border-top: 2px solid var(--container-foreground);
   border-left: 2px solid var(--container-foreground);
   border-right: 2px solid var(--container-foreground);
+  color: var(--container-foreground);
+  text-decoration: none;
+}
+
+.leaderboard-row.owner {
+  background-color: var(--text-hover);
 }

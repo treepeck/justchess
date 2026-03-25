@@ -171,7 +171,7 @@ func (r room) chat(e event.Event) {
 	r.broadcast(event.JSON(event.Chat, b.String()))
 }
 
-func (r room) timeTick() {
+func (r *room) timeTick() {
 	r.game.TimeTick()
 
 	if len(r.clients) == 0 {

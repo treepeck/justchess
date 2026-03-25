@@ -1,0 +1,70 @@
+{{ define "layout" }}
+<div class="game-layout flex" data-terminated="{{ if ne .Data.Termination 0 }}true{{ else }}false{{ end }}">
+  <div class="board-layout {{ if eq .Data.PlayerColor 1 }}flipped{{ end }}">
+    <div class="board-black-miniprofile">
+      {{ if eq .Data.PlayerColor 1 }}
+        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
+        <div class="board-miniprofile-rating">({{ round .Data.Player.Rating }} mmr)</div>
+      {{ else }}
+        <a class="board-miniprofile a">Engine</a>
+      {{ end }}
+    </div>
+
+    <div id="board"></div>
+
+    <div class="board-white-miniprofile">
+      {{ if eq .Data.PlayerColor 1 }}
+        <a class="board-miniprofile a">Engine</a>
+      {{ else }}
+        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
+        <div class="board-miniprofile-rating">({{ round .Data.Player.Rating }} mmr)</div>
+      {{ end }}
+    </div>
+  </div>
+
+  <div class="move-table-layout flex">
+    <h2>Moves</h2>
+
+    <div id="moves" class="scrollable">
+      {{ range $i, $v := .Data.Moves }}
+          {{ if mod $i 2 | eq 0 }}
+            <div id="row{{ div $i 2 }}" class="move-table-row">
+              <div class="move-table-ply">{{ div $i 2 | add 1 }}.</div>
+              <div id="{{ $i }}" class="move-table-row-san" data-fen="{{ $v.Fen }}">
+                {{ $v.San }}
+              </div>
+            {{ if len $.Data.Moves | sub 1 | eq $i }}</div>{{ end }}
+          {{ else }}
+              <div id="{{ $i }}" class="move-table-row-san" data-fen="{{ $v.Fen }}">
+                {{ $v.San }}
+              </div>
+            </div>
+          {{ end }}
+        {{ end }}
+    </div>
+
+    <div class="move-table-board-controls">
+      <button id="nullMoveBtn"></button>
+      <button id="prevMoveBtn"></button>
+      <button id="nextMoveBtn"></button>
+      <button id="lastMoveBtn"></button>
+      <button id="flipBoardBtn"></button>
+    </div>
+  </div>
+</div>
+
+{{ if eq .Data.Termination 0 }}
+  <div id="ping">Latency: ? ms</div>
+{{ end }}
+
+<div id="endgameDialog" class="dialog flex">
+  <div class="dialog-layout flex">
+    <div class="dialog-header">Game over</div>
+
+    <p id="endgameDialogResult">{{ .Data.Result }}</p>
+    <p id="endgameDialogTermination">{{ .Data.Termination }}</p>
+
+    <button id="endgameDialogClose" class="dialog-close button">OK</button>
+  </div>
+</div>
+{{ end }}

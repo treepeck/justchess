@@ -35,10 +35,13 @@ type Session struct {
 
 // AuthRepo provides access to authorization and authentication data.
 type AuthRepo interface {
+	InsertGuest(id string) error
 	InsertPlayer(id string, d SignupData) error
-	AreNameAndEmailUnique(name, email string) (bool, error)
+	IsEmailUnique(email string) (bool, error)
 	SelectCredentialsByEmail(email string) (Credentials, error)
 	SelectIdentityByEmail(email string) (Identity, error)
+	// SelectPlayerBySessionId skips expired sessions.
+	SelectPlayerBySessionId(id string) (Player, error)
 	UpdatePasswordHash(id string, pwdHash []byte) error
 
 	InsertSession(id, playerId string) error
@@ -62,13 +65,18 @@ type SQLAuthRepo struct {
 
 func NewSQLAuthRepo(p *sql.DB) SQLAuthRepo { return SQLAuthRepo{pool: p} }
 
+func (r SQLAuthRepo) InsertGuest(id string) error {
+	_, err := r.pool.Exec(insertGuest, id)
+	return err
+}
+
 func (r SQLAuthRepo) InsertPlayer(id string, d SignupData) error {
 	_, err := r.pool.Exec(insertPlayer, id, d.Name, d.Email, d.PasswordHash)
 	return err
 }
 
-func (r SQLAuthRepo) AreNameAndEmailUnique(name, email string) (bool, error) {
-	row := r.pool.QueryRow(areNameAndEmailUnique, name, email)
+func (r SQLAuthRepo) IsEmailUnique(email string) (bool, error) {
+	row := r.pool.QueryRow(isEmailUnique, email)
 	var count int
 	return count == 0, row.Scan(&count)
 }
@@ -83,6 +91,14 @@ func (r SQLAuthRepo) SelectIdentityByEmail(email string) (Identity, error) {
 	row := r.pool.QueryRow(selectIdentityByEmail, email)
 	var i Identity
 	return i, row.Scan(&i.Id, &i.Name)
+}
+
+func (r SQLAuthRepo) SelectPlayerBySessionId(id string) (Player, error) {
+	row := r.pool.QueryRow(selectPlayerBySessionId, id)
+	var p Player
+	return p, row.Scan(
+		&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility, &p.IsGuest,
+	)
 }
 
 func (r SQLAuthRepo) UpdatePasswordHash(id string, pwdHash []byte) error {
@@ -158,26 +174,30 @@ func (r SQLAuthRepo) DeletePasswordResetToken(id string) error {
 }
 
 const (
-	insertPlayer = `
-	INSERT INTO player (
-		id,
-		name,
-		email,
-		password_hash
-	)
-	VALUES (?, ?, ?, ?)`
+	insertGuest = `
+	INSERT INTO player (id, name, is_guest)
+	VALUES (?, 'Guest', TRUE)`
 
-	areNameAndEmailUnique = `
-	SELECT COUNT(*)	FROM player
-	WHERE name = ? OR email = ?`
+	insertPlayer = `
+	INSERT INTO player (id, name, email, password_hash, is_guest)
+	VALUES (?, ?, ?, ?, FALSE)`
+
+	isEmailUnique = `SELECT COUNT(*) FROM player WHERE email = ?`
 
 	selectCredentialsByEmail = `
-	SELECT id, password_hash
-	FROM player WHERE email = ?`
+	SELECT id, password_hash FROM player WHERE email = ?`
 
 	selectIdentityByEmail = `
-	SELECT id, name
-	FROM player WHERE email = ?`
+	SELECT id, name	FROM player WHERE email = ?`
+
+	selectPlayerBySessionId = `
+	SELECT
+		p.id, p.name, p.rating, p.rating_deviation,
+		p.rating_volatility, p.is_guest
+	FROM player p
+	INNER JOIN session s
+	ON p.id = s.player_id
+	WHERE s.id = ? AND s.expires_at > NOW()`
 
 	updatePasswordHash = `UPDATE player SET password_hash = ? WHERE id = ?`
 

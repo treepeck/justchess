@@ -6,8 +6,8 @@ import (
 	"math/rand/v2"
 	"net/http"
 
+	"justchess/internal/auth"
 	"justchess/internal/db"
-	"justchess/internal/event"
 	"justchess/internal/game"
 	"justchess/internal/randgen"
 
@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	msgNotFound = "Connection will be closed: provided id is not valid"
+	msgNotFound = "There are no active rooms or queues with the specified id"
 	msgTooMany  = "There are too many active players. Please, try again later"
 	msgConflict = "Please close any previous tabs and reload the page to reconnect"
 
@@ -31,12 +31,17 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-type findRoom struct {
+type searchRoomPayload struct {
 	id  string
-	res chan chan *client
+	res chan *room
 }
 
-type createRoom struct {
+type searchQueuePayload struct {
+	id  string
+	res chan *queue
+}
+
+type createRoomPayload struct {
 	id   string
 	game game.Game
 	res  chan struct{}
@@ -45,24 +50,26 @@ type createRoom struct {
 // Service manages the [room] lifecycle (creation and deletion) and handles
 // incomming handshake requests.
 type Service struct {
-	gameRepo   db.GameRepo
-	playerRepo db.PlayerRepo
-	rooms      map[string]room
-	queues     map[string]queue
-	find       chan findRoom
-	create     chan createRoom
-	remove     chan string
+	gameRepo    db.GameRepo
+	playerRepo  db.PlayerRepo
+	rooms       map[string]room
+	queues      map[string]queue
+	searchRoom  chan searchRoomPayload
+	searchQueue chan searchQueuePayload
+	create      chan createRoomPayload
+	remove      chan string
 }
 
 func NewService(gr db.GameRepo, pr db.PlayerRepo) Service {
 	s := Service{
-		gameRepo:   gr,
-		playerRepo: pr,
-		rooms:      make(map[string]room),
-		queues:     make(map[string]queue),
-		find:       make(chan findRoom),
-		create:     make(chan createRoom, 10),
-		remove:     make(chan string, 10),
+		gameRepo:    gr,
+		playerRepo:  pr,
+		rooms:       make(map[string]room),
+		queues:      make(map[string]queue),
+		searchRoom:  make(chan searchRoomPayload, 10),
+		searchQueue: make(chan searchQueuePayload, 10),
+		create:      make(chan createRoomPayload, 10),
+		remove:      make(chan string, 10),
 	}
 
 	controls := [9]struct{ control, bonus int }{{60, 0}, {120, 1}, {180, 0}, {180, 2}, {300, 0}, {300, 2}, {600, 0}, {600, 10}, {900, 10}}
@@ -75,9 +82,9 @@ func NewService(gr db.GameRepo, pr db.PlayerRepo) Service {
 	return s
 }
 
-func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /ws", s.handshake)
-	mux.HandleFunc("POST /play-vs-engine", s.createEngineRoom)
+func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
+	mux.HandleFunc("GET /ws/{id}", authService.MustAuthorize(s.handshake))
+	mux.HandleFunc("POST /play-vs-engine", authService.MustAuthorize(s.createEngineRoom))
 }
 
 func (s Service) ListenEvents() {
@@ -85,16 +92,23 @@ func (s Service) ListenEvents() {
 		select {
 		case e := <-s.create:
 			s.createRoom(e)
+
 		case id := <-s.remove:
 			s.handleRemoveRoom(id)
-		case e := <-s.find:
-			if q, exist := s.queues[e.id]; exist {
-				e.res <- q.register
-			} else if r, exist := s.rooms[e.id]; exist {
-				e.res <- r.register
-			} else {
-				e.res <- nil
+
+		case p := <-s.searchRoom:
+			if r, exist := s.rooms[p.id]; exist {
+				p.res <- &r
+				continue
 			}
+			p.res <- nil
+
+		case p := <-s.searchQueue:
+			if q, exist := s.queues[p.id]; exist {
+				p.res <- &q
+				continue
+			}
+			p.res <- nil
 		}
 	}
 }
@@ -111,58 +125,62 @@ func (s Service) ListenEvents() {
 //
 // The connection will be closed after the error event is sent.
 func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
-	session, err := r.Cookie("Auth")
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
+	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		log.Print("request context is broken")
 		return
 	}
 
-	p, err := s.playerRepo.SelectBySessionId(session.Value)
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	id := r.URL.Query().Get("id")
-
-	// Create WebSocket connection.
-	conn, err := upgrader.Upgrade(rw, r, nil)
-	if err != nil {
-		// Simply return here since the upgrader writes the response.
-		return
-	}
-	c := newClient(conn, p)
-	go c.read()
-	go c.write()
-
-	// Search for a room or queue with the given id.
-	e := findRoom{
+	id := r.PathValue("id")
+	// Search for a room with the given id.
+	pr := searchRoomPayload{
 		id:  id,
-		res: make(chan chan *client, 1),
+		res: make(chan *room),
 	}
-	s.find <- e
-
+	s.searchRoom <- pr
 	// Handle response.
-	if register := <-e.res; register != nil {
-		register <- c
+	if room := <-pr.res; room != nil {
+		// Create WebSocket connection.
+		conn, err := upgrader.Upgrade(rw, r, nil)
+		if err != nil {
+			// Simply return here since the upgrader writes the response.
+			return
+		}
+		c := newClient(conn, p)
+		go c.read()
+		go c.write()
+		room.register <- c
 		return
 	}
 
-	// Send error event to the client.
-	c.send <- event.JSON(event.Error, msgNotFound)
-	c.conn.Close()
+	// Search for a queue with the given id.
+	pq := searchQueuePayload{
+		id:  id,
+		res: make(chan *queue),
+	}
+	s.searchQueue <- pq
+	// Handle response.
+	if q := <-pq.res; q != nil {
+		// Create WebSocket connection.
+		conn, err := upgrader.Upgrade(rw, r, nil)
+		if err != nil {
+			// Simply return here since the upgrader writes the response.
+			return
+		}
+		c := newClient(conn, p)
+		go c.read()
+		go c.write()
+		q.register <- c
+		return
+	}
+
+	http.Error(rw, msgNotFound, http.StatusNotFound)
 }
 
 func (s Service) createEngineRoom(rw http.ResponseWriter, r *http.Request) {
-	session, err := r.Cookie("Auth")
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	p, err := s.playerRepo.SelectBySessionId(session.Value)
-	if err != nil {
-		rw.WriteHeader(http.StatusUnauthorized)
+	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		log.Print("request context is broken")
 		return
 	}
 
@@ -177,7 +195,7 @@ func (s Service) createEngineRoom(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, msgRoomCreationFailed, http.StatusInternalServerError)
 		return
 	}
-	e := createRoom{
+	e := createRoomPayload{
 		id:   id,
 		game: g,
 		res:  make(chan struct{}, 1),
@@ -186,19 +204,19 @@ func (s Service) createEngineRoom(rw http.ResponseWriter, r *http.Request) {
 	// Wait for response to redirect clients only after room is ready.
 	<-e.res
 
-	http.Redirect(rw, r, "/game/engine/"+id, http.StatusFound)
+	http.Redirect(rw, r, "/engine/"+id, http.StatusFound)
 }
 
-func (s Service) createRoom(e createRoom) {
-	log.Printf("room %s created", e.id)
-	r := newRoom(e.game)
-	go r.listenEvents(e.id, s.remove)
-	s.rooms[e.id] = r
-	e.res <- struct{}{}
+func (s Service) createRoom(p createRoomPayload) {
+	log.Printf("room %s created", p.id)
+	r := newRoom(p.game)
+	go r.listenEvents(p.id, s.remove)
+	s.rooms[p.id] = r
+	p.res <- struct{}{}
 }
 
 func (s Service) handleRemoveRoom(id string) {
-	if _, exists := s.rooms[id]; exists {
+	if _, exists := s.rooms[id]; !exists {
 		log.Printf("room %s doesn't exist", id)
 		return
 	}

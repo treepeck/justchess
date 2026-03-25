@@ -33,7 +33,7 @@ type RatedGame struct {
 	didWhiteOfferDraw bool
 	bidBlackOfferDraw bool
 	isWhiteOnline     bool
-	bsBlackOnline     bool
+	isBlackOnline     bool
 }
 
 // SpawnRatedGame inserts a new rated game record into repository and initializes
@@ -100,7 +100,7 @@ func (g *RatedGame) Join(id string) {
 	case g.white.Id:
 		g.isWhiteOnline = true
 	case g.black.Id:
-		g.bsBlackOnline = true
+		g.isBlackOnline = true
 	}
 	log.Printf("player %s joins game %s", id, g.id)
 }
@@ -110,7 +110,7 @@ func (g *RatedGame) Leave(id string) {
 	case g.white.Id:
 		g.isWhiteOnline = false
 	case g.black.Id:
-		g.bsBlackOnline = false
+		g.isBlackOnline = false
 	}
 	log.Printf("player %s leaves game %s", id, g.id)
 }
@@ -126,7 +126,7 @@ func (g *RatedGame) TimeTick() {
 	if !g.isWhiteOnline {
 		g.clock.whiteReconnect--
 	}
-	if !g.bsBlackOnline {
+	if !g.isBlackOnline {
 		g.clock.blackReconnect--
 	}
 

@@ -29,17 +29,23 @@ export const EventKind = /** @type {const} */ ({
 
 /**
  * @typedef {Object} MovePayload
- * @property {import("../chess/move.js").Move[]} lm - Legal moves for the next player.
+ * @property {import("../components/board.js").Move[]} lm - Legal moves for the next player.
  * @property {string} s - San.
  * @property {string} f - Fen.
  * @property {number} t - Time left.
  */
 
 /**
+ * @typedef {Object} PlayedMove
+ * @property {string} s - Standard Algebraic Notation of the move.
+ * @property {string} f -  Serialized piece placement (Forsyth-Edwards Notation).
+ */
+
+/**
  * Payload of the event with Game Kind.
  * @typedef {Object} GamePayload
- * @property {import("../chess/move.js").Move[]} lm - Legal moves for current turn.
- * @property {import("../chess/move.js").PlayedMove[]} m - All played moves.
+ * @property {import("../components/board.js").Move[]} lm - Legal moves for current turn.
+ * @property {PlayedMove[]} m - All played moves.
  * @property {number} wt - White time in seconds.
  * @property {number} bt - Black time in seconds.
  */
@@ -47,6 +53,6 @@ export const EventKind = /** @type {const} */ ({
 /**
  * Payload of the event with End Kind.
  * @typedef {Object} EndPayload
- * @property {import("../chess/state.js").Termination} t
- * @property {import("../chess/state.js").Result} r
+ * @property {import("../utils/state.js").Termination} t
+ * @property {import("../utils/state.js").Result} r
  */

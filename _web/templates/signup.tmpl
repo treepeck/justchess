@@ -1,83 +1,74 @@
 {{ define "layout" }}
+<h1 class="page-header">Create your account</h1>
 
-<form id="authForm" class="form flex-container">
-
-<h2 class="page-header">Create a new account</h2>
-
-<div class="form-input">
-  <p class="form-label">Username</p>
-  <input
-    type="text"
-    name="name"
-    autocomplete="off"
-    placeholder="MagnusCarlsen"
-  />
-  <div class="form-error" id="formNameError"></div>
-</div>
-
-<div class="form-input">
-  <p class="help-dialog-activator form-label" id="emailHelpDialogActivator">
-    Email address
-  </p>
-  <input
-    type="text"
-    name="email"
-    autocomplete="off"
-    placeholder="magnus@carlsen.com"
-  />
-  <div class="form-error" id="formEmailError"></div>
-</div>
-
-<div class="form-input">
-  <p class="form-label">Password</p>
-  <div class="form-password">
+<form id="authForm" class="form flex">
+  <div class="form-section">
+    <p class="form-input-label">Username</p>
     <input
-      id="formPasswordInput"
-      type="password"
-      name="password"
+      type="text"
+      name="name"
       autocomplete="off"
-      placeholder="*************"
+      placeholder="MagnusCarlsen"
     />
-    <div id="formPasswordToggle"></div>
+    <div class="form-error" id="formNameError"></div>
   </div>
 
-  <div class="form-error" id="formPasswordError"></div>
-</div>
+  <div class="form-section">
+    <p class="help-text form-input-label" id="helpDialogActivator">
+      Email address
+    </p>
+    <input
+      type="text"
+      name="email"
+      autocomplete="off"
+      placeholder="magnus@carlsen.com"
+    />
+    <div class="form-error" id="formEmailError"></div>
+  </div>
 
-<div id="formServerError" class="form-error"></div>
-<button id="formSubmitButton">Sign up</button>
+  <div class="form-section">
+    <p class="form-input-label">Password</p>
+    <div class="form-password">
+      <input
+        id="formPasswordInput"
+        type="password"
+        name="password"
+        autocomplete="off"
+        placeholder="*************"
+      />
+      <div id="formPasswordToggle"></div>
+    </div>
 
-<footer class="form-footer">
-  Already have an account? <a href="/signin">Sign in</a>
-</footer>
+    <div class="form-error" id="formPasswordError"></div>
+  </div>
+
+  <div id="serverResponse"></div>
+  <button id="formSubmitButton" class="button">Sign up</button>
+
+  <small>Already have an account? <a href="/signin">Sign in</a></small>
 </form>
 
-<div id="emailHelpDialog" class="dialog flex-container">
-<div class="dialog-layout flex-container">
+<div id="helpDialog" class="dialog flex">
+<div class="dialog-layout flex">
   <div class="dialog-header">Why do I need to enter my email address?</div>
 
   <p>To securely reset your password if you forget it.</p>
   <p>Your email will never be shared or used for any other purpose.</p>
 
-  <button id="emailHelpDialogClose" class="dialog-close">OK</button>
+  <button id="helpDialogClose" class="dialog-close button">OK</button>
 </div>
 </div>
 
-<div id="confirmDialog" class="dialog flex-container">
-  <div class="dialog-layout flex-container">
+<div id="confirmDialog" class="dialog flex">
+  <div class="dialog-layout flex">
     <div class="dialog-header">Please note</div>
 
     <p>Accounts with offensive or inappropriate names will be <b>blocked</b>.</p>
 
     <div class="dialog-buttons">
-      <button id="confirmDialogCancelButton">Cancel</button>
-      <button id="confirmDialogConfirmButton">Confirm</button>
+      <button id="confirmDialogClose" class="button">Cancel</button>
+      <button id="confirmDialogConfirm" class="button">Confirm</button>
     </div>
   </div>
 </div>
-
-<div id="signupGuard"></div>
-
-</div>
-
 {{ end }}

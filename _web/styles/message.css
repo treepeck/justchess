@@ -1,15 +1,12 @@
-.notification-container {
+.message-container {
   position: fixed;
   bottom: 40px;
   right: 20px;
 }
 
-.notification {
-  display: flex;
+.message {
   gap: 10px;
   user-select: none;
-  text-align: center;
-  align-items: center;
   padding: 10px;
   margin: 10px 0 10px 0;
   animation: popup 1s ease-in-out 1;
@@ -19,7 +16,7 @@
   background-color: var(--container-background);
 }
 
-.notification-close-button {
+.message-close-button {
   margin-left: auto;
   width: 40px;
   height: 40px;

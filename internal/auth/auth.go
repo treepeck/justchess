@@ -3,6 +3,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"html/template"
@@ -35,6 +36,9 @@ const (
 	msgDatabaseError   string = "Database cannot be accessed. Please, try again later"
 
 	sessionsThreshold int = 5
+
+	playerSessionMaxAge = 60 * 60 * 24 * 30 // 30 days.
+	guestSessionMaxAge  = 60 * 60 * 24      // 1 day.
 )
 
 // tmplData is a data object used to fill up the verification email while
@@ -73,23 +77,21 @@ type Service struct {
 	emails [2]*template.Template
 }
 
-// InitService parses email templates and stores them in the [Service].
-func InitService(repo db.AuthRepo, tmplPath string) (Service, error) {
-	var emails [2]*template.Template
+func NewService(ar db.AuthRepo) Service { return Service{repo: ar} }
 
-	signupTmpl, err := template.ParseFiles(tmplPath + "email_verify_signup.tmpl")
+func (s *Service) ParseEmails(folder string) error {
+	signup, err := template.ParseFiles(folder + "email_verify_signup.tmpl")
 	if err != nil {
-		return Service{}, err
+		return err
 	}
-	emails[0] = signupTmpl
+	s.emails[0] = signup
 
-	resetTmpl, err := template.ParseFiles(tmplPath + "email_reset_password.tmpl")
+	reset, err := template.ParseFiles(folder + "email_reset_password.tmpl")
 	if err != nil {
-		return Service{}, err
+		return err
 	}
-	emails[1] = resetTmpl
-
-	return Service{repo: repo, emails: emails}, err
+	s.emails[1] = reset
+	return nil
 }
 
 // RegisterRoutes registers enpoints to the specified ServeMux.
@@ -128,7 +130,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unique, err := s.repo.AreNameAndEmailUnique(name, email)
+	unique, err := s.repo.IsEmailUnique(email)
 	if err != nil || !unique {
 		http.Error(rw, msgConflict, http.StatusConflict)
 		return
@@ -376,6 +378,60 @@ func (s Service) verifyResetPassword(rw http.ResponseWriter, r *http.Request) {
 	http.Redirect(rw, r, "/signin", http.StatusFound)
 }
 
+type contextKey int
+
+const PlayerKey contextKey = 0
+
+// MustAuthorize is a middleware that fetches player data from database by
+// session id. If session is expired or missing, http.StatusUnauthorized is
+// written to response.
+func (s Service) MustAuthorize(next http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, err := r.Cookie("Auth")
+		if err == nil {
+			p, err := s.repo.SelectPlayerBySessionId(session.Value)
+			if err == nil {
+				ctx := context.WithValue(r.Context(), PlayerKey, p)
+				next.ServeHTTP(rw, r.WithContext(ctx))
+				return
+			}
+		}
+		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+	}
+}
+
+// Authorize is a middleware that fetches player data from database by session
+// id. If session is expired or missing, guest player will be inserted to db.
+//
+// Player data is passed to the next handler via request context.
+func (s Service) Authorize(next http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		session, err := r.Cookie("Auth")
+		if err == nil {
+			p, err := s.repo.SelectPlayerBySessionId(session.Value)
+			if err == nil {
+				ctx := context.WithValue(r.Context(), PlayerKey, p)
+				next.ServeHTTP(rw, r.WithContext(ctx))
+				return
+			}
+		}
+
+		// Create guest player.
+		id := randgen.GenId(randgen.IdLen)
+		if err = s.repo.InsertGuest(id); err != nil {
+			log.Print(err)
+			http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
+			return
+		}
+		// Generate session for guest.
+		s.genSession(rw, id)
+		// Pass guest data to next handler.
+		p := db.Player{Id: id, Name: "Guest", IsGuest: true}
+		ctx := context.WithValue(r.Context(), PlayerKey, p)
+		next.ServeHTTP(rw, r.WithContext(ctx))
+	}
+}
+
 // genSession inserts a new record in the session table and adds the HTTP-only
 // secure cookie to the response.
 func (s Service) genSession(rw http.ResponseWriter, playerId string) {
@@ -392,7 +448,7 @@ func (s Service) genSession(rw http.ResponseWriter, playerId string) {
 		Name:     "Auth",
 		Value:    sessionId,
 		Path:     "/",
-		MaxAge:   60 * 60 * 24 * 30, // Session will last for 30 days.
+		MaxAge:   playerSessionMaxAge,
 		HttpOnly: true,
 		// Secure:   true,
 		SameSite: http.SameSiteStrictMode,

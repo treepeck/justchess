@@ -1,0 +1,84 @@
+/* Styles for /signup and /signin pages. */
+
+.form {
+  width: 350px;
+  flex-direction: column;
+  gap: 20px;
+  margin: auto;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: large;
+  width: 100%;
+}
+
+.form-section input {
+  width: 100%;
+  font-size: large;
+  padding: 5px;
+  border: none;
+  border-radius: 15px;
+  background: var(--input-background);
+}
+
+.form-section input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.form-section input:hover,
+.form-section input:focus {
+  outline: 2px solid var(--text-hover);
+}
+
+.form-password {
+  display: flex;
+  border-radius: 10px;
+  background: var(--input-background);
+}
+
+#formPasswordInput {
+  background-color: transparent;
+}
+
+#formPasswordToggle {
+  width: 30px;
+  height: 30px;
+  margin: auto 10px auto 10px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+  background-image: url("/images/show.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.form-error {
+  color: red;
+}
+
+#serverResponse {
+  width: 350px;
+  font-size: large;
+}
+
+.form-button {
+  width: 100%;
+  flex-direction: column;
+  text-align: center;
+}
+
+#formSubmitButton {
+  width: 290px;
+  height: 40px;
+  font-size: large;
+  font-weight: bold;
+}
+
+.form small a {
+  color: var(--text-hover);
+}

@@ -28,7 +28,9 @@ type RatedGameBrief struct {
 	CreatedAt   time.Time         `json:"c"`
 	Id          string            `json:"i"`
 	WhiteName   string            `json:"w"`
+	WhiteId     string            `json:"wi"`
 	BlackName   string            `json:"b"`
+	BlackId     string            `json:"bi"`
 	Result      chego.Result      `json:"r"`
 	Termination chego.Termination `json:"t"`
 	MovesLength int               `json:"m"`
@@ -64,6 +66,7 @@ type EngineGameBrief struct {
 	Id          string            `json:"i"`
 	Result      chego.Result      `json:"r"`
 	Termination chego.Termination `json:"t"`
+	PlayerColor chego.Color       `json:"pc"`
 	MovesLength int               `json:"m"`
 }
 
@@ -132,7 +135,7 @@ func (r SQLGameRepo) SelectRated(id string) (RatedGame, error) {
 		return g, err
 	}
 
-	// Decode moves if the game has been terminated.
+	// Decode moves and time diffs if the game has been terminated.
 	if g.Termination != chego.Unterminated {
 		g.Moves = chego.HuffmanDecoding(encoded, g.MovesLength)
 		g.TimeDiffs = chego.DecompressTimeDiffs(compressed, g.MovesLength)
@@ -149,14 +152,15 @@ func (r SQLGameRepo) SelectNewestRated(id string) ([]RatedGameBrief, error) {
 
 	games := make([]RatedGameBrief, 0, 10)
 	for rows.Next() {
-		var pg RatedGameBrief
+		var g RatedGameBrief
 		if err = rows.Scan(
-			&pg.WhiteName, &pg.BlackName, &pg.Result, &pg.Termination,
-			&pg.Control, &pg.Bonus, &pg.MovesLength, &pg.CreatedAt, &pg.Id,
+			&g.WhiteName, &g.BlackName, &g.Result, &g.Termination,
+			&g.Control, &g.Bonus, &g.MovesLength, &g.CreatedAt, &g.Id,
+			&g.WhiteId, &g.BlackId,
 		); err != nil {
 			return nil, err
 		}
-		games = append(games, pg)
+		games = append(games, g)
 	}
 	return games, err
 }
@@ -173,15 +177,16 @@ func (r SQLGameRepo) SelectOlderRated(id string, p Pagination) ([]RatedGameBrief
 
 	games := make([]RatedGameBrief, 0, 10)
 	for rows.Next() {
-		var pg RatedGameBrief
+		var g RatedGameBrief
 		if err = rows.Scan(
-			&pg.WhiteName, &pg.BlackName, &pg.Result, &pg.Termination,
-			&pg.Control, &pg.Bonus, &pg.MovesLength, &pg.CreatedAt, &pg.Id,
+			&g.WhiteName, &g.BlackName, &g.Result, &g.Termination,
+			&g.Control, &g.Bonus, &g.MovesLength, &g.CreatedAt, &g.Id,
+			&g.WhiteId, &g.BlackId,
 		); err != nil {
 			log.Print(err)
 			return nil, err
 		}
-		games = append(games, pg)
+		games = append(games, g)
 	}
 	return games, err
 }
@@ -235,17 +240,37 @@ func (r SQLGameRepo) SelectNewestEngine(id string) ([]EngineGameBrief, error) {
 
 	games := make([]EngineGameBrief, 0, 10)
 	for rows.Next() {
-		var pg EngineGameBrief
-		if err = rows.Scan(); err != nil {
+		var g EngineGameBrief
+		if err = rows.Scan(
+			&g.Id, &g.Result, &g.Termination, &g.MovesLength,
+			&g.CreatedAt, &g.PlayerColor,
+		); err != nil {
 			return nil, err
 		}
-		games = append(games, pg)
+		games = append(games, g)
 	}
 	return games, err
 }
 
 func (r SQLGameRepo) SelectOlderEngine(id string, p Pagination) ([]EngineGameBrief, error) {
-	panic("not implemented")
+	rows, err := r.pool.Query(selectOlderEngine, id, p.CursorCreatedAt, p.CursorId, p.CursorCreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	games := make([]EngineGameBrief, 0, 10)
+	for rows.Next() {
+		var g EngineGameBrief
+		if err = rows.Scan(
+			&g.Id, &g.Result, &g.Termination, &g.MovesLength,
+			&g.CreatedAt, &g.PlayerColor,
+		); err != nil {
+			return nil, err
+		}
+		games = append(games, g)
+	}
+	return games, err
 }
 
 func (r SQLGameRepo) UpdateEngine(gu EngineGameUpdate) error {
@@ -309,7 +334,9 @@ const (
    	    g.time_bonus,
 	    g.moves_length,
 	    g.created_at,
-	    g.id
+	    g.id,
+		g.white_id,
+		g.black_id
 	FROM rated_game g
 	INNER JOIN player w ON g.white_id = w.id
 	INNER JOIN player b ON g.black_id = b.id
@@ -329,7 +356,9 @@ const (
 		g.time_bonus,
 		g.moves_length,
 		g.created_at,
-		g.id
+		g.id,
+		g.white_id,
+		g.black_id
 	FROM rated_game g
 	INNER JOIN player w ON g.white_id = w.id
 	INNER JOIN player b ON g.black_id = b.id
@@ -384,29 +413,20 @@ const (
 
 	selectNewestEngine = `
 	SELECT
-	    result,
-	    termination,
-	    moves_length,
-	    created_at,
-	    id
+		id, result, termination, moves_length, created_at, player_color
 	FROM engine_game
-	WHERE
-		player_id = ? AND termination != 1
+	WHERE player_id = ? AND termination != 1
 	ORDER BY created_at DESC, id DESC
 	LIMIT 100`
 
 	selectOlderEngine = `
 	SELECT
-		result,
-	    termination,
-	    moves_length,
-	    created_at,
-	    id
+		id, result, termination, moves_length, created_at, player_color
 	FROM engine_game
 	WHERE
 		(player_id = ? AND termination != 1)
 		AND (
-			(created_at = ? AND g.id < ?)
+			(created_at = ? AND id < ?)
 	        OR created_at < ?
 	    )
 	ORDER BY created_at DESC, id DESC

@@ -1,35 +1,30 @@
 {{ define "layout" }}
+<h1 class="page-header">Finding an opponent...</h1>
 
-<h2 class="page-header">Finding an opponent...</h2>
+<div class="queue flex">
+  <div class="queue-info">Rating: {{ round .Player.Rating }}</div>
+  <div class="queue-info">Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s</div>
+  <div id="playersNumber" class="queue-info">Players in queue: ?</div>
 
-<div class="queue-info flex-container">
-  <div id="clientsCounter">Players in queue: ?</div>
-
-  <div class="queue-info-control">
-    Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s
-  </div>
-
-  <div>Rating: {{ round .Base.Player.Rating }}</div>
-
+  <div id="hint" class="flex"></div>
   <div id="countUpTimer">00:00</div>
+
+  <div id="ping">Latency: ? ms</div>
 </div>
 
-<div id="emptyQueueDialog" class="dialog flex-container">
-  <div class="dialog-layout flex-container">
+<div id="emptyDialog" class="dialog flex">
+  <div class="dialog-layout flex">
     <div class="dialog-header">Empty queue</div>
 
     <p>There are not enough player to find a match.</p>
     <p>Try selecting other time controls to find a match faster.</p>
 
     <div class="dialog-buttons">
-      <button id="playVsEngine">Play vs computer</button>
-      <button id="emptyQueueDialogClose" class="dialog-close">Stay</button>
+      <button id="emptyDialogPlayVsEngine" class="button">Play vs computer</button>
+      <button id="emptyDialogClose" class="dialog-close button">Stay</button>
     </div>
   </div>
 </div>
 
-<div id="ping">Ping: ? ms</div>
-
-<div id="queueGuard"></div>
-
+<div class="floating-chessboard"></div>
 {{ end }}

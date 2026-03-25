@@ -12,11 +12,13 @@ type Player struct {
 	Rating     float64
 	Deviation  float64
 	Volatility float64
+	IsGuest    bool
 }
 
 // ProfileData is a data object used to fill up the player.tmpl file while executing
 // a template.
 type ProfileData struct {
+	Id        string
 	CreatedAt time.Time
 	Name      string
 	Rating    float64
@@ -32,14 +34,13 @@ type RatingUpdate struct {
 	Volatility float64
 }
 
+// PlayerRepo ignores guest players.
 type PlayerRepo interface {
 	SelectById(id string) (Player, error)
 	SelectProfileData(id string) (ProfileData, error)
 	// SelectLeaderboard selects [ProfileData] of 100 players with the biggest
 	// rating sorted in descending order.
 	SelectLeaderboard() ([]ProfileData, error)
-	// SelectBySessionId skips expired sessions.
-	SelectBySessionId(id string) (Player, error)
 	UpdateRatings(white, black RatingUpdate) error
 }
 
@@ -72,19 +73,13 @@ func (r SQLPlayerRepo) SelectLeaderboard() ([]ProfileData, error) {
 	leaders := make([]ProfileData, 0, 20)
 	for rows.Next() {
 		var pd ProfileData
-		err = rows.Scan(&pd.Name, &pd.Rating, &pd.CreatedAt, &pd.RatedGames)
+		err = rows.Scan(&pd.Id, &pd.Name, &pd.Rating, &pd.CreatedAt, &pd.RatedGames)
 		if err != nil {
 			return nil, err
 		}
 		leaders = append(leaders, pd)
 	}
 	return leaders, err
-}
-
-func (r SQLPlayerRepo) SelectBySessionId(id string) (Player, error) {
-	row := r.pool.QueryRow(selectPlayerBySessionId, id)
-	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
 }
 
 func (r SQLPlayerRepo) UpdateRatings(white, black RatingUpdate) error {
@@ -100,7 +95,7 @@ func (r SQLPlayerRepo) UpdateRatings(white, black RatingUpdate) error {
 const (
 	selectPlayerById = `
 	SELECT id, name, rating, rating_deviation, rating_volatility
-	FROM player WHERE id = ?`
+	FROM player WHERE id = ? AND is_guest = FALSE`
 
 	selectProfileData = `
 	SELECT
@@ -113,11 +108,12 @@ const (
 	ON
 		(g.white_id = p.id OR g.black_id = p.id)
 		AND g.termination != 1
-	WHERE p.id = ?
+	WHERE p.id = ? AND p.is_guest = FALSE
 	GROUP BY p.name, p.rating, p.created_at`
 
 	selectLeaderboard = `
 	SELECT
+		p.id,
 		p.name,
 	    p.rating,
 	    p.created_at,
@@ -127,17 +123,10 @@ const (
 	ON
 		(g.white_id = p.id OR g.black_id = p.id)
 	    AND g.termination != 1
-	GROUP BY p.name, p.rating, p.created_at
+	WHERE p.is_guest = FALSE
+	GROUP BY p.id, p.name, p.rating, p.created_at
 	ORDER BY p.rating DESC, num_of_games DESC
 	LIMIT 100`
-
-	selectPlayerBySessionId = `
-	SELECT
-		p.id, p.name, p.rating, p.rating_deviation, p.rating_volatility
-	FROM player p
-	INNER JOIN session s
-	ON p.id = s.player_id
-	WHERE s.id = ? AND s.expires_at > NOW()`
 
 	updateRatings = `
 	UPDATE player
@@ -157,5 +146,5 @@ const (
 			WHEN id = ? THEN ?
 			ELSE rating_volatility
 		END
-	WHERE player.id = ? OR player.id = ?`
+	WHERE (player.id = ? OR player.id = ?) AND player.is_guest = FALSE`
 )

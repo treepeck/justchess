@@ -16,12 +16,14 @@ import (
 type mockAuthRepo struct {
 }
 
+func (r mockAuthRepo) InsertGuest(id string) error { return nil }
+
 func (r mockAuthRepo) InsertPlayer(id string, d db.SignupData) error {
 	return nil
 }
 
-func (r mockAuthRepo) AreNameAndEmailUnique(name, email string) (bool, error) {
-	if name == "notUnique" {
+func (r mockAuthRepo) IsEmailUnique(email string) (bool, error) {
+	if email == "notUnique" {
 		return false, nil
 	}
 	return true, nil
@@ -48,6 +50,13 @@ func (r mockAuthRepo) SelectIdentityByEmail(email string) (db.Identity, error) {
 		return db.Identity{}, errors.New("unauthorized")
 	}
 	return db.Identity{}, nil
+}
+
+func (r mockAuthRepo) SelectPlayerBySessionId(id string) (db.Player, error) {
+	if id == "valid" {
+		return db.Player{}, nil
+	}
+	return db.Player{}, errors.New("session is missing")
 }
 
 func (r mockAuthRepo) UpdatePasswordHash(id string, pwdHash []byte) error {
@@ -113,8 +122,8 @@ func (r mockAuthRepo) DeletePasswordResetToken(id string) error {
 }
 
 func initServiceOrPanic() Service {
-	s, err := InitService(mockAuthRepo{}, "../../_web/templates/")
-	if err != nil {
+	s := NewService(mockAuthRepo{})
+	if err := s.ParseEmails("../../_web/templates/"); err != nil {
 		panic(err)
 	}
 	return s
@@ -134,7 +143,7 @@ func TestSignup(t *testing.T) {
 		{"x", "small@name.com", "valid", http.StatusNotAcceptable},
 		{"TOOOOOLONGNAMESFIDFNDSIFNODSNFSODNFDONFSDIONasdASDASDASDdDdDD", "valid@valid.com", "valid", http.StatusNotAcceptable},
 		{"missingPassword", "valid@valid.com", "", http.StatusNotAcceptable},
-		{"notUnique", "valid@valid.com", "valid", http.StatusConflict},
+		{"valid", "notUnique", "valid", http.StatusConflict},
 	}
 
 	for i, tc := range cases {

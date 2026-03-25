@@ -1,44 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .Title  }} &ndash; JustChess.org</title>
   <link rel="stylesheet" href="/bundles/bundle.css">
   <link rel="icon" href="/images/favicon.png" type="image/png">
-  <title>{{ .Base.Title }} &ndash; JustChess.org</title>
-  <script src="/bundles/bundle.js" defer></script>
 </head>
-
 <body>
   <header class="site-header">
-    <div class="site-header-layout">
-      <a class="site-header-logo" href="/">JustChess</a>
-      <a class="site-header-nav" href="/leaderboard">Leaderboard</a>
+    <div class="site-header-layout flex">
+        <a class="site-header-logo a" href="/">JustChess</a>
+        <a class="site-header-nav a" href="/leaderboard">Leaderboard</a>
+        <a class="site-header-nav a" href="/about">About</a>
 
-      <a
-        class="site-header-profile"
-        href="{{ if eq .Base.Player.Name "signup" }}/signup{{ else }}/player/{{ .Base.Player.Name }}{{ end }}"
-       >
-        {{ .Base.Player.Name }}
+        <div class="site-header-profile flex">
+          {{ if .Player.IsGuest }}
+            <a href="/signup" class="a"><b><u>Sign up</u></b></a>
+            <a href="/signin" class="a">Sign in</a>
+          {{ else }}
+            <a href="/player/{{ .Player.Id }}" class="a">{{ .Player.Name }}</a>
+          {{ end }}
+        </div>
       </a>
     </div>
   </header>
 
-  <main id="main" class="site-layout flex-container">
-    {{ block "layout" . }}{{ end }}
+  <main id="main" class="site-layout flex" data-isguest="{{ .Player.IsGuest }}">
+    {{ template "layout" . }}
   </main>
 
-  <footer class="site-footer">
-    <div class="site-footer-layout flex-container">
-      <div class="site-footer-copyright">
-        &copy; 2026 JustChess
-      </div>
-      <div class="site-footer-nav">
-        <a href="https://github.com/treepeck/justchess">Source code</a>
-      </div>
-    </div>
-  </footer>
+  <script src="/bundles/bundle.js"></script>
 </body>
-
 </html>

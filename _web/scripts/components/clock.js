@@ -1,4 +1,4 @@
-import { getOrPanic } from "./dom"
+import { g } from "../utils/dom"
 
 /**
  * @param {string} id
@@ -10,7 +10,7 @@ export function formatTime(id, ms) {
 
 	let mins = `${minutes > 9 ? minutes : "0" + minutes.toString()}`
 	let secs = `${seconds > 9 ? seconds : "0" + seconds.toString()}`
-	getOrPanic(id).textContent = `${mins}:${secs}`
+	g(id).textContent = `${mins}:${secs}`
 }
 
 /**
@@ -56,7 +56,7 @@ export class Clock {
 	expected
 
 	/**
-	 * Initialize the clock state without actually starting it.
+	 * Initializes the clock state without actually starting it.
 	 * @param {number} time
 	 * @param {boolean} isActive
 	 * @param {Color} color
@@ -68,6 +68,7 @@ export class Clock {
 		this.isActive = isActive
 		this.color = color
 		this.interval = interval
+		this.expected = 0
 	}
 
 	/** Handles time ticks. */

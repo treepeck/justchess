@@ -1,38 +1,23 @@
 {{ define "layout" }}
+<h1 class="page-header">Choose a <span id="helpText" class="help-text">time control</span></h1>
 
-<h2 class="page-header">
-Choose a
-<span id="helpDialogActivator" class="help-dialog-activator">
-  time control
-</span>
-</h2>
-
-<div class="control-grid">
-  <button id="cell0" class="control-grid-cell">1+0</button>
-  <button id="cell1" class="control-grid-cell">2+1</button>
-  <button id="cell2" class="control-grid-cell">3+0</button>
-  <button id="cell3" class="control-grid-cell">3+2</button>
-  <button id="cell4" class="control-grid-cell">5+0</button>
-  <button id="cell5" class="control-grid-cell">5+2</button>
-  <button id="cell6" class="control-grid-cell">10+0</button>
-  <button id="cell7" class="control-grid-cell">10+10</button>
-  <button id="cell8" class="control-grid-cell">15+10</button>
+<div class="controls-grid">
+  {{ range $i, $v := .Data }}
+    <button id="cell{{ $i }}" class="grid-cell button">{{ $v }}</button>
+  {{ end }}
 </div>
+<button id="playVsEngine" class="button">Play vs Engine</button>
 
-<button id="playVsEngine">Play vs computer</button>
-
-<div id="helpDialog" class="dialog flex-container">
-  <div class="dialog-layout flex-container">
+<div id="helpDialog" class="dialog flex">
+  <div class="dialog-layout flex">
     <div class="dialog-header">What is time control?</div>
 
-    <p>Each chess game has a time limit.</p>
-    <p>The first number indicates the amount of minutes given to each player.</p>
-    <p>The second number indicates the amount of seconds added after each move.</p>
+    <p>The first number is the initial amount of minutes.</p>
+    <p>The second number is the amount of seconds added after each move.</p>
 
-    <button id="helpDialogClose" class="dialog-close">OK</button>
+    <button id="helpDialogClose" class="dialog-close button">OK</button>
   </div>
 </div>
 
-<div id="homeGuard"></div>
-
+<div class="floating-chessboard"></div>
 {{ end }}

@@ -1,93 +1,61 @@
-import { formRequest } from "./utils/http"
-import { getOrPanic } from "./utils/dom"
-import { validateEmail, validatePassword } from "./utils/validator"
-
-/**
- * Validates the user input and displays error messages.
- * @param {string} email
- * @param {string} password
- * @returns {boolean}
- */
-function validateInput(email, password) {
-	let isValid = true
-
-	let error = getOrPanic("formEmailError")
-	try {
-		validateEmail(email)
-		// Clear error message if email is valid.
-		error.textContent = ""
-	} catch (msg) {
-		isValid = false
-		error.textContent = msg
-	}
-
-	error = getOrPanic("formPasswordError")
-	try {
-		validatePassword(password)
-		// Clear error message if password is valid.
-		error.textContent = ""
-	} catch (msg) {
-		isValid = false
-		error.textContent = msg
-	}
-
-	return isValid
-}
+import { g } from "./utils/dom"
+import { validateInput } from "./signin"
 
 /** @param {SubmitEvent} event */
-function submitForm(event) {
+async function submitForm(event) {
 	event.preventDefault()
 	event.stopPropagation()
 
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	getOrPanic("formServerError").textContent = ""
+	const resMessage = g("serverResponse")
+	resMessage.textContent = ""
 
 	const data = new FormData(event.target)
+	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
+	const params = new URLSearchParams(data)
 
 	const email = data.get("email")
 	const password = data.get("password")
 	if (email == null || password == null) return
 
-	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
-	const params = new URLSearchParams(data)
+	if (!validateInput(email.toString(), password.toString())) return
 
-	if (validateInput(email.toString(), password.toString())) {
-		// Disable the button while the request is being processed.
-		const btn = /** @type {HTMLButtonElement} */ (
-			getOrPanic("formSubmitButton")
-		)
-		btn.disabled = true
-		btn.textContent = "Submitting..."
-		formRequest("/auth/reset-password", params).then((err) => {
-			if (err) {
-				getOrPanic("formServerError").textContent =
-					"Password reset failed: " + err
-			} else {
-				getOrPanic("formServerError").textContent =
-					"Please, check your email to confirm the registration. It may take several minutes for the email to be delivered and it may end up in spam."
-				btn.textContent = "Done"
-			}
-		})
+	// Disable the button while the request is being processed.
+	const btn = /** @type {HTMLButtonElement} */ (g("formSubmitButton"))
+	btn.disabled = true
+	btn.textContent = "Submitting..."
+
+	const res = await fetch("/auth/reset-password", {
+		method: "POST",
+		body: params,
+		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+	})
+
+	if (!res.ok) {
+		resMessage.textContent = "Sign in failed: " + (await res.text())
+		resMessage.style.color = "red"
 		// Reenable the submit button.
 		btn.disabled = false
-		btn.textContent = "Submit"
+		btn.textContent = "Confirm"
+		return
 	}
+
+	resMessage.textContent =
+		"Please, check your email to confirm the reset. It may take several minutes for the email to be delivered and it may end up in spam."
+	resMessage.style.color = "green"
+	btn.style.display = "none"
 }
 
 ;(() => {
-	// Page guard.
-	if (!document.getElementById("resetPasswordGuard")) return
+	if (window.location.pathname != "/reset") return
 
-	const form = /** @type {HTMLFormElement} */ (
-		getOrPanic("resetPasswordForm")
-	)
-	form.onsubmit = submitForm
+	g("resetPasswordForm").onsubmit = submitForm
 
-	const toggle = getOrPanic("formPasswordToggle")
+	const toggle = g("formPasswordToggle")
 	toggle.onclick = () => {
-		const input = getOrPanic("formPasswordInput")
+		const input = g("formPasswordInput")
 
 		const curr = input.getAttribute("type")
 		if (curr === "password") {

@@ -1,20 +1,20 @@
-import { getOrPanic } from "./dom"
+import { g } from "./dom"
 
 /**
  * Shows dialog with the specified id.
  * @param {string} id
  */
 export default function showDialog(id) {
-	const dialog = getOrPanic(id)
-	dialog.classList.toggle("show")
+	const dialog = g(id)
+	dialog.classList.add("show")
 
-	const btn = getOrPanic(`${id}Close`)
-
+	const btn = g(`${id}Close`)
 	btn.onclick = () => {
-		dialog.classList.toggle("show")
+		dialog.classList.remove("show")
 		// Remove event handler.
 		btn.onclick = null
 	}
 
+	// Focus close btn for accessibility.
 	btn.focus()
 }
