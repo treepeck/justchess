@@ -147,6 +147,7 @@ func (g *RatedGame) TimeTick() {
 		} else if len(g.Played) < minMoves {
 			// Mark game as abandoned if there was not enough moves played.
 			g.Abandon()
+			return
 		} else {
 			if g.clock.blackTime == 0 || g.clock.blackReconnect == 0 {
 				g.Terminate(chego.TimeForfeit, chego.WhiteWon)
@@ -229,7 +230,7 @@ func (g *RatedGame) DeclineDraw(id string) bool {
 }
 
 func (g *RatedGame) Abandon() {
-	if g.Termination != chego.Unterminated {
+	if g.Termination == chego.Unterminated {
 		g.Termination = chego.Abandoned
 		g.gameRepo.MarkRatedAsAbandoned(g.id)
 	}

@@ -172,10 +172,15 @@ func (r room) chat(e event.Event) {
 }
 
 func (r *room) timeTick() {
-	r.game.TimeTick()
-
 	if len(r.clients) == 0 {
 		r.timeToLive--
+	}
+
+	if p := r.game.EndPayload(); p.Termination == chego.Unterminated {
+		r.game.TimeTick()
+		if p = r.game.EndPayload(); p.Termination != chego.Unterminated {
+			r.broadcast(event.JSON(event.End, p))
+		}
 	}
 }
 
