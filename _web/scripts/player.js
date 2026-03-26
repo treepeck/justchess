@@ -133,7 +133,7 @@ function appendRatedGameBrief(brief) {
 function appendEngineGameBrief(brief) {
 	const row = /** @type {HTMLAnchorElement} */ (c("a", "profile-games-row"))
 	row.classList.add("a")
-	row.href = `/rated/${brief.i}`
+	row.href = `/engine/${brief.i}`
 
 	const res = c("div")
 	res.innerHTML = `${formatResult(brief.r)}<br/>${formatTermination(brief.t)}`
