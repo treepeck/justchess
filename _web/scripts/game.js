@@ -1,5 +1,6 @@
 import Socket from "./ws/socket"
 import { g, c } from "./utils/dom"
+import Engine from "./utils/engine"
 import { EventKind } from "./ws/event"
 import showDialog from "./utils/dialog"
 import { Board } from "./components/board"
@@ -91,6 +92,18 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 		)
 	)
 
+	/** @type {import("./components/board").MoveHandler} */
+	const moveHandler = (moveIndex) => {
+		socket?.sendJSON(EventKind.Move, moveIndex)
+	}
+
+	let engine = /** @type {Engine | null} */ (null)
+	if (parts[1] == "engine" && !isTerminated) {
+		// @ts-expect-error
+		const playerColor = parseInt(g("board").dataset.color)
+		engine = new Engine(moveHandler, [], 1 ^ playerColor)
+	}
+
 	const store = (/** @type {import("./ws/event").PlayedMove} */ move) => {
 		const piecePlacement = move.f.split(" ")[0]
 		// Update position.
@@ -128,6 +141,7 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 				const pGame = { ...payload }
 				// Update legal moves.
 				board.setLegalMoves(pGame.lm)
+				if (engine) engine.setLegalMoves(pGame.lm)
 				for (const move of pGame.m) {
 					store(move)
 				}
@@ -137,6 +151,18 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 					clock.start()
 					clock.color =
 						board.currentFen % 2 !== 0 ? Color.Black : Color.White
+				}
+
+				console.log(engine, engine?.color, board.currentFen % 2)
+				if (engine && engine.color == board.currentFen % 2) {
+					if (pGame.m.length > 0) {
+						// @ts-expect-error
+						engine.play(pGame.m.at(-1).f)
+					} else {
+						engine.play(
+							"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+						)
+					}
 				}
 				break
 			case EventKind.End:
@@ -161,8 +187,13 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 				const pMove = { ...payload }
 				// Update legal moves.
 				board.setLegalMoves(pMove.lm)
+				if (engine) engine.setLegalMoves(pMove.lm)
 				store({ s: pMove.s, f: pMove.f })
 				clock?.flip()
+
+				if (engine && engine.color == board.currentFen % 2) {
+					engine.play(pMove.f)
+				}
 				break
 			case EventKind.OfferDraw:
 				// Display draw offer window.
@@ -182,11 +213,6 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 	let socket = /** @type {Socket | null} */ (null)
 	if (!isTerminated) {
 		socket = new Socket(eventHandler)
-	}
-
-	/** @type {import("./components/board").MoveHandler} */
-	const moveHandler = (moveIndex) => {
-		socket?.sendJSON(EventKind.Move, moveIndex)
 	}
 
 	const layout = document.getElementsByClassName("board-layout")[0]

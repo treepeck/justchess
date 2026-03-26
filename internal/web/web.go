@@ -137,6 +137,9 @@ func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
 
 	imagesHandler := http.FileServer(http.Dir("./_web/images"))
 	mux.Handle("GET /images/", http.StripPrefix("/images/", imagesHandler))
+
+	stockfishHandler := http.FileServer(http.Dir("./_web/stockfish"))
+	mux.Handle("GET /stockfish/", http.StripPrefix("/stockfish/", stockfishHandler))
 }
 
 func (s Service) staticRoutePage(rw http.ResponseWriter, r *http.Request) {

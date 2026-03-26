@@ -10,7 +10,7 @@
       {{ end }}
     </div>
 
-    <div id="board"></div>
+    <div id="board" data-color="{{ .Data.PlayerColor }}"></div>
 
     <div class="board-white-miniprofile">
       {{ if eq .Data.PlayerColor 1 }}
