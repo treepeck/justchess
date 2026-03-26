@@ -239,6 +239,12 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 
 			const index = parseInt(san.id)
 			highlightMove(index)
+			// @ts-expect-error
+			san.onclick = () => {
+				board.currentFen = index
+				highlightMove(index)
+				board.parsePiecePlacement(board.fens[index])
+			}
 
 			// @ts-expect-error
 			const timeDiff = san.dataset.timediff
