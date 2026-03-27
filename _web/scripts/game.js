@@ -153,7 +153,6 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 						board.currentFen % 2 !== 0 ? Color.Black : Color.White
 				}
 
-				console.log(engine, engine?.color, board.currentFen % 2)
 				if (engine && engine.color == board.currentFen % 2) {
 					if (pGame.m.length > 0) {
 						// @ts-expect-error

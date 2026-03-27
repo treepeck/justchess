@@ -54,6 +54,7 @@ func (s Service) ParsePages(folder string) error {
 	signup := folder + "signup.tmpl"
 	leaderboard := folder + "leaderboard.tmpl"
 	reset := folder + "reset_password.tmpl"
+	about := folder + "about.tmpl"
 	notFound := folder + "404.tmpl"
 	queue := folder + "queue.tmpl"
 	ratedGame := folder + "rated_game.tmpl"
@@ -67,6 +68,7 @@ func (s Service) ParsePages(folder string) error {
 		{key: "/signin", title: "Sign in", files: []string{signin}, isStatic: true},
 		{key: "/leaderboard", title: "Leaderboard", files: []string{leaderboard}, isStatic: true},
 		{key: "/reset", title: "Reset", files: []string{reset}, isStatic: true},
+		{key: "/about", title: "About", files: []string{about}, isStatic: true},
 		{key: "/404", title: "Not found", files: []string{notFound}, isStatic: true},
 		{key: "/queue", title: "Queue", files: []string{queue}, isStatic: false},
 		{key: "/rated", files: []string{ratedGame}, isStatic: false},

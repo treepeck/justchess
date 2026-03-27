@@ -42,9 +42,6 @@ function UCI2MoveIndex(uci, legalMoves) {
 	const from = square2Number(uci.substring(0, 2))
 	const to = square2Number(uci.substring(2, 4))
 
-	console.log(legalMoves)
-	console.log(uci)
-
 	for (let i = 0; i < legalMoves.length; i++) {
 		const move = legalMoves[i]
 		if (from == move.from && to == move.to) {
