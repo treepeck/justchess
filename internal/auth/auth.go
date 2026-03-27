@@ -450,7 +450,7 @@ func (s Service) genSession(rw http.ResponseWriter, playerId string) {
 		Path:     "/",
 		MaxAge:   playerSessionMaxAge,
 		HttpOnly: true,
-		// Secure:   true,
+		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	})
 }
