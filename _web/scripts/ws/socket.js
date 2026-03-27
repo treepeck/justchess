@@ -1,17 +1,17 @@
-import { getOrPanic } from "../utils/dom"
-import Notification from "../utils/notification"
-import { EventAction } from "./event"
+import { g } from "../utils/dom"
+import { EventKind } from "./event"
+import MessageSystem from "../components/message"
 
 /**
  * Function that handles player's events.
  * @callback EventHandler
- * @param {EventAction} action
+ * @param {EventKind} Kind
  * @param {any} payload
  * @returns {void}
  */
 
 /** Wrapper around the WebSocket object that encapsulates the repetitive code. */
-export class Socket {
+export default class Socket {
 	/**
 	 * @type {WebSocket}
 	 */
@@ -19,61 +19,61 @@ export class Socket {
 
 	/** @param {EventHandler} eventHandler */
 	constructor(eventHandler) {
+		this.isConnected = false
+
 		// Get id.
 		const path = window.location.pathname.split("/")
-		if (path.length < 2) {
-			console.error("Invalid pathname.")
-			return
-		}
+		if (path.length < 2) throw new Error("Invalid pathname.")
+
 		// Connect to the server.
 		const id = path[path.length - 1]
 		// @ts-expect-error - WS_URL comes from webpack.
-		this.#socket = new WebSocket(`${WS_URL}/ws?id=${id}`)
+		this.#socket = new WebSocket(`${WS_URL}/ws/${id}`)
 
-		// Add event listeners.
-		const notification = new Notification()
+		const system = new MessageSystem()
 		this.#socket.onerror = () => {
-			notification.create("Please, reload the page to reconnect.")
+			system.create("Please, reload the page to reconnect")
 		}
 
 		this.#socket.onmessage = (raw) => {
 			/** @type {import("./event").Event} */
 			const e = JSON.parse(raw.data)
-			const action = e.a
+			const Kind = e.k
 			const payload = e.p
 
-			switch (action) {
+			switch (Kind) {
 				// Respond with Pong automatically.
-				case EventAction.Ping:
+				case EventKind.Ping:
 					this.#socket.send(
-						JSON.stringify({ a: EventAction.Pong, p: null }),
+						JSON.stringify({ k: EventKind.Pong, p: null }),
 					)
 
 					// Update ping.
-					getOrPanic("ping").textContent = `Ping: ${payload} ms`
+					g("ping").textContent = `Latency: ${payload} ms`
 					break
 
 				// Something went wrong.  Display the notification and close
 				// the connection.
-				case EventAction.Error:
-					notification.create(payload)
+				case EventKind.Error:
+					system.create(payload)
 					this.#socket.close()
+					this.isConnected = false
 					break
 
 				default:
-					eventHandler(action, payload)
+					eventHandler(Kind, payload)
 			}
 		}
 	}
 
 	/**
-	 * @param {EventAction} action
+	 * @param {EventKind} kind
 	 * @param {any} payload
 	 */
-	sendJSON(action, payload) {
+	sendJSON(kind, payload) {
 		this.#socket.send(
 			JSON.stringify({
-				a: action,
+				k: kind,
 				p: payload,
 			}),
 		)

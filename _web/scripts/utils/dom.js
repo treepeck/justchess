@@ -1,28 +1,31 @@
 /**
+ * Gets DOM element by ID.
  * @param {string} id
- * @throws {Error}
  * @returns {HTMLElement}
+ * @throws {Error} When element with specified ID is missing.
  */
-export function getOrPanic(id) {
+export function g(id) {
 	const el = document.getElementById(id)
-	if (!el) throw new Error(`Missing element ${id}.`)
+	if (!el) {
+		throw new Error(`Element with ID ${id} is missing.`)
+	}
 	return el
 }
 
 /**
+ * Created new DOM element.
  * @param {string} tagName
- * @param {string} className
+ * @param {string} [className] - Optional.
  * @param {string} [id] - Optional.
  * @returns {HTMLElement}
  */
-export function create(tagName, className, id) {
+export function c(tagName, className, id) {
 	const el = document.createElement(tagName)
+	if (className) {
+		el.classList.add(className)
+	}
 	if (id) {
 		el.id = id
 	}
-	if (className.length > 0) {
-		el.classList.add(className)
-	}
-
 	return el
 }

@@ -3,223 +3,345 @@ package web
 import (
 	"encoding/json"
 	"html/template"
+	"justchess/internal/auth"
+	"justchess/internal/db"
 	"log"
 	"math"
 	"net/http"
-	"strconv"
 	"time"
-
-	"justchess/internal/db"
-
-	"github.com/treepeck/chego"
 )
 
-// Declaration of error messages.
 const (
-	msgNotFound        string = "The requested page doesn't exist"
-	msgCannotEncode    string = "Cannot encode the response"
-	msgBadRequest      string = "The request body is malformed"
-	msgInvalidTemplate string = "The requested page cannot be rendered"
+	msgRenderingError = "An error occurred while rendering the page"
+	msgGamesNotFound  = "Start playing and games will be displayed here"
+	msgBadRequest     = "Malformed request body"
+	msgCannotEncode   = "Please, try again later"
 )
-
-// Template path prefix.
-const tmplPrefix = "./_web/templates/"
 
 type Service struct {
 	playerRepo db.PlayerRepo
 	gameRepo   db.GameRepo
-	// maps URL path to a [Page].
-	pages map[string]page
+	// Maps URL to the parsed template of the page.
+	static map[string]page
+	// Maps static part of URL to the parsed template of the page.
+	// Templates are stored separately so that user cannot visit page with
+	// dynamic route via static part of the route.
+	dynamic map[string]page
 }
 
-// InitService tries to parse the template files and stores them in the [Service].
-func InitService(pr db.PlayerRepo, gr db.GameRepo) (Service, error) {
-	pagesData := []struct {
-		url   string
-		tmpls []string
-		base  baseData
-	}{
-		{"/", []string{"home.tmpl"}, baseData{Title: "Home"}},
-		{"/queue", []string{"queue.tmpl"}, baseData{Title: "Queue"}},
-		{"/signup", []string{"signup.tmpl"}, baseData{Title: "Sign up"}},
-		{"/signin", []string{"signin.tmpl"}, baseData{Title: "Sign in"}},
-		{"/active", []string{"active_game.tmpl", "board.tmpl"}, baseData{}},
-		{"/archive", []string{"archive_game.tmpl", "board.tmpl"}, baseData{}},
-		{"/player", []string{"player.tmpl"}, baseData{}},
-		{"/leaderboard", []string{"leaderboard.tmpl"}, baseData{Title: "Leaderboard"}},
-		{"/error", []string{"error.tmpl"}, baseData{Title: "Error"}},
-	}
-
-	// Parse and store templates to avoid reparsing them on each HTTP request.
-	pages := make(map[string]page, len(pagesData))
-	for _, data := range pagesData {
-		t := template.New("base.tmpl")
-
-		// Add default functions.
-		t.Funcs(template.FuncMap{
-			"eq":    func(s1, s2 string) bool { return s1 == s2 },
-			"round": func(n float64) float64 { return math.Round(n) },
-		})
-
-		if data.url == "/leaderboard" {
-			t.Funcs(template.FuncMap{
-				"formatDate": func(date time.Time) string {
-					return date.Format("Jan 02, 2006")
-				}})
-		}
-
-		paths := append([]string{"/base.tmpl"}, data.tmpls...)
-		// Append template prefix to each path.
-		for i, path := range paths {
-			paths[i] = tmplPrefix + path
-		}
-
-		t, err := t.ParseFiles(paths...)
-		if err != nil {
-			return Service{}, err
-		}
-		pages[data.url] = page{Base: data.base, template: t}
-	}
-
+func NewService(pr db.PlayerRepo, gr db.GameRepo) Service {
 	return Service{
-		pages:      pages,
 		playerRepo: pr,
 		gameRepo:   gr,
-	}, nil
+		static:     make(map[string]page),
+		dynamic:    make(map[string]page),
+	}
 }
 
-func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/profile-games", s.getProfileGames)
+// templateFile defines the template to be parsed and stored in a map.
+type templateFile struct {
+	key      string
+	title    string
+	files    []string
+	isStatic bool
+}
 
-	// Serve js and css bundles.
-	bundles := http.Dir("./_web/bundles")
-	mux.Handle("/bundles/", http.StripPrefix("/bundles/", http.FileServer(bundles)))
+func (s Service) ParsePages(folder string) error {
+	// Define paths to template files.
+	base := folder + "base.tmpl"
+	home := folder + "home.tmpl"
+	signin := folder + "signin.tmpl"
+	signup := folder + "signup.tmpl"
+	leaderboard := folder + "leaderboard.tmpl"
+	reset := folder + "reset_password.tmpl"
+	about := folder + "about.tmpl"
+	notFound := folder + "404.tmpl"
+	queue := folder + "queue.tmpl"
+	ratedGame := folder + "rated_game.tmpl"
+	engineGame := folder + "engine_game.tmpl"
+	player := folder + "player.tmpl"
 
-	// Serve files from the _web/fonts folder.
-	fonts := http.Dir("./_web/fonts")
-	mux.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(fonts)))
+	// Templates of each page.
+	templates := []templateFile{
+		{key: "/", title: "Home", files: []string{home}, isStatic: true},
+		{key: "/signup", title: "Sign up", files: []string{signup}, isStatic: true},
+		{key: "/signin", title: "Sign in", files: []string{signin}, isStatic: true},
+		{key: "/leaderboard", title: "Leaderboard", files: []string{leaderboard}, isStatic: true},
+		{key: "/reset", title: "Reset", files: []string{reset}, isStatic: true},
+		{key: "/about", title: "About", files: []string{about}, isStatic: true},
+		{key: "/404", title: "Not found", files: []string{notFound}, isStatic: true},
+		{key: "/queue", title: "Queue", files: []string{queue}, isStatic: false},
+		{key: "/rated", files: []string{ratedGame}, isStatic: false},
+		{key: "/engine", files: []string{engineGame}, isStatic: false},
+		{key: "/player", files: []string{player}, isStatic: false},
+	}
+	for _, t := range templates {
+		tmpl := template.New("base.tmpl")
 
-	// Serve files from the _web/images folder.
-	images := http.Dir("./_web/images")
-	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(images)))
+		tmpl.Funcs(template.FuncMap{
+			"round": func(x float64) float64 { return math.Round(x) },
+		})
 
+		if t.key == "/engine" || t.key == "/rated" {
+			tmpl.Funcs(template.FuncMap{
+				"div": func(x, y int) int { return x / y },
+				"mod": func(x, y int) int { return x % y },
+				"add": func(x, y int) int { return x + y },
+				"sub": func(x, y int) int { return y - x },
+			})
+		}
+
+		// Prepend base template before each page.
+		t.files = append([]string{base}, t.files...)
+		// Parse template.
+		var err error
+		tmpl, err = tmpl.ParseFiles(t.files...)
+		if err != nil {
+			return err
+		}
+
+		if t.isStatic {
+			p := page{tmpl: tmpl, Title: t.title}
+
+			switch t.key {
+			case "/":
+				p.Data = [9]string{"1+0", "2+1", "3+0", "3+2", "5+0", "5+2", "10+0", "10+10", "15+10"}
+			}
+
+			s.static[t.key] = p
+		} else {
+			p := page{tmpl: tmpl, Title: t.title}
+			s.dynamic[t.key] = p
+		}
+	}
+	return nil
+}
+
+func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
 	// Serve pages with static routes.
-	mux.Handle("/", http.HandlerFunc(s.serveStaticRoutePage))
+	mux.HandleFunc("GET /", authService.Authorize(s.staticRoutePage))
+	// Serve pages with path values.
+	mux.HandleFunc("GET /queue/{id}", authService.Authorize(s.queuePage))
+	mux.HandleFunc("GET /rated/{id}", authService.Authorize(s.ratedGamePage))
+	mux.HandleFunc("GET /engine/{id}", authService.Authorize(s.engineGamePage))
+	mux.HandleFunc("GET /player/{id}", authService.Authorize(s.playerPage))
+	// API endpoints.
+	mux.HandleFunc("GET /api/rated", s.ratedGamesBrief)
+	mux.HandleFunc("GET /api/engine", s.engineGamesBrief)
 
-	// Serve pages with dynamic routes.
-	mux.HandleFunc("/queue/{id}", s.serveQueue)
-	mux.HandleFunc("/game/{id}", s.serveGame)
-	mux.HandleFunc("/player/{name}", s.servePlayer)
+	// Serve static bundles.
+	bundlesHandler := http.FileServer(http.Dir("./_web/bundles"))
+	mux.Handle("GET /bundles/", http.StripPrefix("/bundles/", bundlesHandler))
+
+	// Serve fonts.
+	fontsHandler := http.FileServer(http.Dir("./_web/fonts"))
+	mux.Handle("GET /fonts/", http.StripPrefix("/fonts/", fontsHandler))
+
+	imagesHandler := http.FileServer(http.Dir("./_web/images"))
+	mux.Handle("GET /images/", http.StripPrefix("/images/", imagesHandler))
+
+	stockfishHandler := http.FileServer(http.Dir("./_web/stockfish"))
+	mux.Handle("GET /stockfish/", http.StripPrefix("/stockfish/", stockfishHandler))
 }
 
-// Possible time controls.
-var Controls = [9]QueueData{
-	{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10},
-}
-
-func (s Service) serveQueue(rw http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil || id < 0 || id > 8 {
-		s.renderPage(rw, r, s.pages["/error"])
-	}
-
-	p := s.pages["/queue"]
-	p.Data = Controls[id-1]
-	s.renderPage(rw, r, p)
-}
-
-func (s Service) serveGame(rw http.ResponseWriter, r *http.Request) {
-	g, err := s.gameRepo.SelectById(r.PathValue("id"))
-	if err != nil {
-		s.renderPage(rw, r, s.pages["/error"])
+func (s Service) staticRoutePage(rw http.ResponseWriter, r *http.Request) {
+	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
 		return
 	}
 
-	page := s.pages["/active"]
-	// If the game was been already terminated, serve the corresponding page.
-	if g.Termination != chego.Unterminated {
-		page = s.pages["/archive"]
-	}
-
-	// Fill up the template with more game data.
-	page.Data = g
-
-	page.Base.Title = g.White.Name + " vs " + g.Black.Name
-
-	s.renderPage(rw, r, page)
-}
-
-func (s Service) servePlayer(rw http.ResponseWriter, r *http.Request) {
-	p, err := s.playerRepo.SelectProfileData(r.PathValue("name"))
-	if err != nil {
-		s.renderPage(rw, r, s.pages["/error"])
-		return
-	}
-
-	// Fill up the template with player data.
-	page := s.pages["/player"]
-	page.Data = p
-	page.Base.Title = p.Name
-
-	s.renderPage(rw, r, page)
-}
-
-func (s Service) serveStaticRoutePage(rw http.ResponseWriter, r *http.Request) {
-	page, exists := s.pages[r.URL.Path]
+	page, exists := s.static[r.URL.Path]
 	if !exists {
-		page = s.pages["/error"]
+		http.Redirect(rw, r, "/404", http.StatusFound)
+		return
 	}
 
-	if r.URL.Path == "/leaderboard" {
-		leaders, err := s.playerRepo.SelectLeaderboard()
+	switch r.URL.Path {
+	case "/leaderboard":
+		var err error
+		page.Data, err = s.playerRepo.SelectLeaderboard()
 		if err != nil {
 			log.Print(err)
-			page = s.pages["/error"]
+			http.Error(rw, msgRenderingError, http.StatusInternalServerError)
 			return
 		}
-		page.Data = leaders
 	}
 
-	s.renderPage(rw, r, page)
-}
-
-func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page) {
-	p.Base.Player.Name = "signup"
-	c, err := r.Cookie("Auth")
-	if err == nil {
-		player, err := s.playerRepo.SelectBySessionId(c.Value)
-		if err == nil {
-			p.Base.Player = player
-		}
-	}
-
-	if err := p.template.Execute(rw, p); err != nil {
+	page.Player = p
+	if err := page.tmpl.Execute(rw, page); err != nil {
 		log.Print(err)
-		http.Error(rw, msgInvalidTemplate, http.StatusInternalServerError)
+		http.Error(rw, msgRenderingError, http.StatusInternalServerError)
 	}
 }
 
-// getProfileGames fetches up to 100 games from database, encodes them and
-// sends the response.
-func (s Service) getProfileGames(rw http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
-	cursorId := r.URL.Query().Get("cid")
-	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cat"))
-
-	var games []db.ProfileGame
-	if cursorId != "" && err == nil {
-		// Apply pagination if cursors are defined.
-		games, err = s.gameRepo.SelectOlderProfileGames(
-			name,
-			cursorId,
-			cursorCreatedAt,
-		)
-	} else {
-		games, err = s.gameRepo.SelectNewestProfileGames(name)
+func (s Service) queuePage(rw http.ResponseWriter, r *http.Request) {
+	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
+		return
 	}
 
-	if err != nil || len(games) == 0 {
+	var d QueueData
+	switch r.PathValue("id") {
+	case "0":
+		d = QueueData{Control: 1, Bonus: 0}
+	case "1":
+		d = QueueData{Control: 2, Bonus: 1}
+	case "2":
+		d = QueueData{Control: 3, Bonus: 0}
+	case "3":
+		d = QueueData{Control: 3, Bonus: 2}
+	case "4":
+		d = QueueData{Control: 5, Bonus: 0}
+	case "5":
+		d = QueueData{Control: 5, Bonus: 2}
+	case "6":
+		d = QueueData{Control: 10, Bonus: 0}
+	case "7":
+		d = QueueData{Control: 10, Bonus: 10}
+	case "8":
+		d = QueueData{Control: 15, Bonus: 10}
+	default:
+		http.Redirect(rw, r, "/404", http.StatusFound)
+		return
+	}
+
+	page := s.dynamic["/queue"]
+	page.Player = p
+	page.Data = d
+	if err := page.tmpl.Execute(rw, page); err != nil {
+		log.Print(err)
+		http.Error(rw, msgRenderingError, http.StatusInternalServerError)
+	}
+}
+
+func (s Service) ratedGamePage(rw http.ResponseWriter, r *http.Request) {
+	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
+		return
+	}
+
+	g, err := s.gameRepo.SelectRated(r.PathValue("id"))
+	if err != nil {
+		http.Redirect(rw, r, "/404", http.StatusFound)
+		return
+	}
+
+	page := s.dynamic["/rated"]
+	page.Title = g.White.Name + " vs " + g.Black.Name
+	page.Player = p
+	page.Data = g
+	if err = page.tmpl.Execute(rw, page); err != nil {
+		log.Print(err)
+		http.Error(rw, msgRenderingError, http.StatusInternalServerError)
+	}
+}
+
+func (s Service) engineGamePage(rw http.ResponseWriter, r *http.Request) {
+	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
+		return
+	}
+
+	g, err := s.gameRepo.SelectEngine(r.PathValue("id"))
+	if err != nil {
+		http.Redirect(rw, r, "/404", http.StatusFound)
+		return
+	}
+
+	page := s.dynamic["/engine"]
+	page.Title = p.Name + " vs Engine"
+	page.Player = p
+	page.Data = g
+	if err = page.tmpl.Execute(rw, page); err != nil {
+		log.Print(err)
+		http.Error(rw, msgRenderingError, http.StatusInternalServerError)
+	}
+}
+
+func (s Service) playerPage(rw http.ResponseWriter, r *http.Request) {
+	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
+		return
+	}
+
+	profile, err := s.playerRepo.SelectProfileData(r.PathValue("id"))
+	if err != nil {
+		http.Redirect(rw, r, "/404", http.StatusFound)
+		return
+	}
+
+	page := s.dynamic["/player"]
+	page.Title = profile.Name
+	page.Player = p
+	page.Data = profile
+	if err = page.tmpl.Execute(rw, page); err != nil {
+		log.Print(err)
+		http.Error(rw, msgRenderingError, http.StatusInternalServerError)
+	}
+}
+
+func (s Service) ratedGamesBrief(rw http.ResponseWriter, r *http.Request) {
+	playerId := r.URL.Query().Get("pid")
+	if len(playerId) != 12 {
 		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		return
+	}
+	// Optional parameters.
+	cursorId := r.URL.Query().Get("cid")
+	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cca"))
+
+	var games []db.RatedGameBrief
+	if err == nil && len(cursorId) == 12 {
+		// If optional pagination parameters are defined.
+		games, err = s.gameRepo.SelectOlderRated(playerId, db.Pagination{
+			CursorId:        cursorId,
+			CursorCreatedAt: cursorCreatedAt,
+		})
+	} else {
+		games, err = s.gameRepo.SelectNewestRated(playerId)
+	}
+
+	if err != nil {
+		http.Error(rw, msgGamesNotFound, http.StatusNotFound)
+		return
+	}
+
+	if err = json.NewEncoder(rw).Encode(games); err != nil {
+		log.Print(err)
+		http.Error(rw, msgCannotEncode, http.StatusInternalServerError)
+		return
+	}
+	rw.Header().Add("Content-Type", "application/json")
+}
+
+func (s Service) engineGamesBrief(rw http.ResponseWriter, r *http.Request) {
+	playerId := r.URL.Query().Get("pid")
+	if len(playerId) != 12 {
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		return
+	}
+	// Optional parameters.
+	cursorId := r.URL.Query().Get("cid")
+	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cca"))
+
+	var games []db.EngineGameBrief
+	if err == nil && len(cursorId) == 12 {
+		// If optional pagination parameters are defined.
+		games, err = s.gameRepo.SelectOlderEngine(playerId, db.Pagination{
+			CursorId:        cursorId,
+			CursorCreatedAt: cursorCreatedAt,
+		})
+	} else {
+		games, err = s.gameRepo.SelectNewestEngine(playerId)
+	}
+
+	if err != nil {
+		http.Error(rw, msgGamesNotFound, http.StatusNotFound)
 		return
 	}
 

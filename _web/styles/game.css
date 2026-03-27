@@ -1,0 +1,337 @@
+.game-layout {
+  gap: 30px;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+}
+
+.chat-layout {
+  width: 95%;
+  max-width: 500px;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+#chat .message {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+.chat-input {
+  width: 100%;
+  display: flex;
+  border-radius: 10px;
+  background: var(--container-foreground);
+}
+
+.chat-input input {
+  width: 100%;
+  font-size: large;
+  padding: 5px;
+  border: none;
+  border-radius: 15px;
+  background: transparent;
+}
+
+.chat-input input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.chat-input input:hover,
+.chat-input input:focus {
+  outline: 2px solid var(--text-hover);
+}
+
+#chatSend {
+  width: 40px;
+  height: 40px;
+  margin: auto 5px auto 5px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background-image: url("/images/send.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.board-layout {
+  display: flex;
+  flex-direction: column;
+  width: 95%;
+  max-width: 500px;
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.board-layout.flipped {
+  flex-direction: column-reverse;
+}
+
+.board-black-miniprofile {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  padding: 3px;
+  align-items: center;
+}
+
+.board-white-miniprofile {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  padding: 3px;
+  align-items: center;
+}
+
+.board-miniprofile {
+  margin: 10px 50px 10px 10px;
+  overflow: hidden;
+  font-weight: bold;
+  font-size: large;
+}
+
+.board-miniprofile-rating {
+  font-size: medium;
+  margin-right: auto;
+}
+
+.board-miniprofile-clock {
+  margin: -5px 10px 5px auto;
+  font-family: "ChessClock";
+  user-select: none;
+  font-size: 35px;
+}
+
+#board {
+  width: 100%;
+  aspect-ratio: 1/1;
+  border: 2px solid var(--container-background);
+  background-image: url("/images/board.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  position: relative;
+}
+
+.flipped #board {
+  transform: rotate(180deg);
+}
+
+/* Avoid pieces rotation while flipping the board. */
+.flipped #board .piece {
+  transform: translate(var(--x), var(--y)) rotate(-180deg);
+}
+
+#promotionDialog {
+  z-index: 10000;
+  user-select: none;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(5px);
+}
+
+.promotion-choice {
+  border: 2px solid var(--container-background);
+  transition: background-color 0.25s ease-in-out;
+}
+
+.promotion-choice:hover {
+  background-color: var(--container-background);
+}
+
+.piece {
+  background-image: url("/images/sheet.svg");
+  background-repeat: no-repeat;
+  background-size: 600% 200%;
+  background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
+  user-select: none;
+  z-index: 1;
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  transform: translate(var(--x), var(--y));
+}
+
+/* White pawn. */
+.piece.P {
+  --col: 0;
+  --row: 0;
+}
+/* White knight. */
+.piece.N {
+  --col: 1;
+  --row: 0;
+}
+/* White bishop. */
+.piece.B {
+  --col: 2;
+  --row: 0;
+}
+/* White rook. */
+.piece.R {
+  --col: 3;
+  --row: 0;
+}
+/* White queen. */
+.piece.Q {
+  --col: 4;
+  --row: 0;
+}
+/* White king. */
+.piece.K {
+  --col: 5;
+  --row: 0;
+}
+/* Black pawn. */
+.piece.p {
+  --col: 0;
+  --row: 1;
+}
+/* Black knight. */
+.piece.n {
+  --col: 1;
+  --row: 1;
+}
+/* Black bishop. */
+.piece.b {
+  --col: 2;
+  --row: 1;
+}
+/* Black rook. */
+.piece.r {
+  --col: 3;
+  --row: 1;
+}
+/* Black queen. */
+.piece.q {
+  --col: 4;
+  --row: 1;
+}
+/* Black king. */
+.piece.k {
+  --col: 5;
+  --row: 1;
+}
+
+#selectedSquare {
+  border: 5px solid green;
+  border-radius: 50%;
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  transform: translate(var(--x), var(--y));
+}
+
+.move-table-layout {
+  width: 95%;
+  max-width: 500px;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.move-table-row {
+  width: 100%;
+  display: flex;
+  line-height: 2;
+  gap: 10px;
+}
+
+.move-table-ply {
+  width: 15%;
+  overflow: hidden;
+}
+
+.move-table-row-san {
+  width: 45%;
+  font-weight: bold;
+  text-align: start;
+  cursor: pointer;
+}
+
+.move-table-row-san:hover {
+  background-color: var(--text-hover);
+}
+
+.current {
+  color: white;
+}
+
+.move-table-board-controls button {
+  width: 30px;
+  height: 30px;
+  margin: 10px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  background-size: contain;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+#nullMoveBtn {
+  background-image: url("/images/reset.svg");
+}
+
+#prevMoveBtn {
+  background-image: url("/images/back.svg");
+}
+
+#nextMoveBtn {
+  background-image: url("/images/back.svg");
+  transform: scaleX(-1);
+}
+
+#lastMoveBtn {
+  background-image: url("/images/reset.svg");
+  transform: scaleX(-1);
+}
+
+#flipBoardBtn {
+  background-image: url("/images/flip.svg");
+}
+
+.game-controls {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.game-controls button {
+  width: 50%;
+  border-radius: 15px;
+  line-height: 2;
+}
+
+/* Reorder elements on larger screens. */
+@media screen and (min-width: 1200px) {
+  .game-layout {
+    flex-direction: row;
+  }
+
+  .chat-layout {
+    max-width: 350px;
+    order: 1;
+  }
+
+  .board-layout {
+    order: 2;
+  }
+
+  .move-table-layout {
+    max-width: 350px;
+    order: 3;
+  }
+}

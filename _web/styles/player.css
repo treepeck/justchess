@@ -1,0 +1,97 @@
+.player-info {
+  display: flex;
+  width: 95%;
+  max-width: 650px;
+  padding: 20px;
+  gap: 30px;
+  font-size: large;
+  text-align: center;
+  border-radius: 15px;
+  background-color: var(--container-background);
+  color: var(--container-foreground);
+}
+
+.player-info-name {
+  font-size: x-large;
+  font-weight: bold;
+  overflow: hidden;
+  margin: auto 0 auto auto;
+}
+
+.player-info-rating {
+  margin: auto 0 auto 0;
+}
+
+.player-info-total-games {
+  margin: auto auto auto 0;
+}
+
+#profileGames {
+  width: 95%;
+  max-width: 650px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+}
+
+.tab-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  flex: 1;
+  font-size: x-large;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 15px 15px 0 0;
+}
+
+.tab-link:hover {
+  background-color: var(--text-hover);
+}
+
+.tab-link.active {
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+#profileGames .scrollable {
+  height: 450px;
+  border: none;
+  overflow-x: scroll;
+}
+
+.profile-games-row {
+  width: 100%;
+  min-width: 600px;
+  display: flex;
+  text-align: center;
+  align-items: center;
+  line-height: 2;
+  padding: 10px;
+  border-radius: 10px;
+  border-top: 2px solid var(--container-foreground);
+  border-left: 2px solid var(--container-foreground);
+  border-right: 2px solid var(--container-foreground);
+}
+
+.profile-games-row:hover {
+  color: var(--container-foreground);
+}
+
+.profile-games-row div {
+  flex: 1;
+  font-size: medium;
+}
+
+.profile-games-players {
+  overflow: hidden;
+}

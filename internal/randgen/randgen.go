@@ -5,11 +5,11 @@ import (
 	"encoding/base64"
 )
 
-// Final encoded player/game id will have length 12, session id - 32.
+// Final encoded player/game id will have length 12, secure id - 32.
 // See https://en.wikipedia.org/wiki/Base64
 const (
-	IdLen        int = 9 // Player or game id.
-	SessionIdLen int = 24
+	IdLen       int = 9 // Player or game id.
+	SecureIdLen int = 24
 )
 
 // GenId generates a secure random array of n bytes and applies a base64 encoding

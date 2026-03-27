@@ -2,7 +2,6 @@ package mm
 
 import (
 	"iter"
-	"log"
 	"math"
 )
 
@@ -32,7 +31,6 @@ func (p Pool) Leave(id string, rating float64) {
 		return
 	}
 	p.tree.removeNode(n)
-	log.Printf("Player %s leaves matchmaking", id)
 }
 
 // MakeMatches finds and sequentially yields best matches between all players

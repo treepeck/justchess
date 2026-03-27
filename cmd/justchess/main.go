@@ -23,25 +23,28 @@ func main() {
 	log.Print("Successfully connected to db.")
 
 	// Initialize database repositories.
-	pr := db.NewPlayerRepo(pool)
-	gr := db.NewGameRepo(pool)
+	ar := db.NewSQLAuthRepo(pool)
+	pr := db.NewSQLPlayerRepo(pool)
+	gr := db.NewSQLGameRepo(pool)
 
 	log.Print("Initializing services...")
-	authService := auth.NewService(pr)
-	// Parse and store page templates.
-	webService, err := web.InitService(pr, gr)
-	if err != nil {
+	authService := auth.NewService(ar)
+	if err = authService.ParseEmails("./_web/templates/"); err != nil {
 		log.Panic(err)
 	}
 
-	wsService := ws.NewService(pr, gr)
+	webService := web.NewService(pr, gr)
+	if err = webService.ParsePages("./_web/templates/"); err != nil {
+		log.Panic(err)
+	}
+
+	wsService := ws.NewService(gr, pr)
 	go wsService.ListenEvents()
-	log.Print("Successfully initialized services.")
 
 	// Register routes.
 	mux := http.NewServeMux()
-	wsService.RegisterRoute(mux)
-	webService.RegisterRoutes(mux)
+	wsService.RegisterRoutes(authService, mux)
+	webService.RegisterRoutes(authService, mux)
 	authService.RegisterRoutes(mux)
 
 	log.Print("Starting server.")

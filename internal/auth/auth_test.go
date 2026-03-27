@@ -1,69 +1,166 @@
-// Tests from this package must be executed only when the testdb service is up and
-// running.
 package auth
 
 import (
+	"errors"
+	"justchess/internal/db"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
+	"time"
 
-	"justchess/internal/db"
+	"golang.org/x/crypto/bcrypt"
 )
 
+type mockAuthRepo struct {
+}
+
+func (r mockAuthRepo) InsertGuest(id string) error { return nil }
+
+func (r mockAuthRepo) InsertPlayer(id string, d db.SignupData) error {
+	return nil
+}
+
+func (r mockAuthRepo) IsEmailUnique(email string) (bool, error) {
+	if email == "notUnique" {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r mockAuthRepo) SelectCredentialsByEmail(email string) (db.Credentials, error) {
+	if email == "invalid@invalid.com" {
+		return db.Credentials{}, errors.New("missing")
+	}
+	hash, _ := bcrypt.GenerateFromPassword([]byte("valid"), bcrypt.DefaultCost)
+	if email == "many@sessions.com" {
+		return db.Credentials{
+			Id:           "manySessions",
+			PasswordHash: hash,
+		}, nil
+	}
+	return db.Credentials{
+		PasswordHash: hash,
+	}, nil
+}
+
+func (r mockAuthRepo) SelectIdentityByEmail(email string) (db.Identity, error) {
+	if email == "invalid@invalid.com" {
+		return db.Identity{}, errors.New("unauthorized")
+	}
+	return db.Identity{}, nil
+}
+
+func (r mockAuthRepo) SelectPlayerBySessionId(id string) (db.Player, error) {
+	if id == "valid" {
+		return db.Player{}, nil
+	}
+	return db.Player{}, errors.New("session is missing")
+}
+
+func (r mockAuthRepo) UpdatePasswordHash(id string, pwdHash []byte) error {
+	return nil
+}
+
+func (r mockAuthRepo) InsertSession(id, playerId string) error {
+	return nil
+}
+
+func (r mockAuthRepo) SelectSessionById(id string) (db.Session, error) {
+	return db.Session{}, nil
+}
+
+func (r mockAuthRepo) SelectSessionsByPlayerId(id string) ([]db.Session, error) {
+	if id == "manySessions" {
+		var sessions [5]db.Session
+		for i := range 5 {
+			sessions[i] = db.Session{
+				CreatedAt: time.Now().Add(time.Duration(i) * time.Minute),
+			}
+		}
+		return sessions[:], nil
+	}
+	return []db.Session{}, nil
+}
+
+func (r mockAuthRepo) DeleteSession(id string) error {
+	return nil
+}
+
+func (r mockAuthRepo) InsertSignupToken(id string, d db.SignupData) error {
+	return nil
+}
+
+func (r mockAuthRepo) SelectSignupDataByToken(id string) (db.SignupData, error) {
+	if id == "valid" {
+		return db.SignupData{}, nil
+	}
+	return db.SignupData{}, errors.New(id)
+}
+
+func (r mockAuthRepo) DeleteSignupToken(id string) error {
+	return nil
+}
+
+func (r mockAuthRepo) InsertPasswordResetToken(id, playerId string, pwdHash []byte) error {
+	if err := bcrypt.CompareHashAndPassword(pwdHash, []byte("duplicate")); err == nil {
+		return errors.New("duplicate password")
+	}
+	return nil
+}
+
+func (r mockAuthRepo) SelectCredentialsByResetToken(id string) (db.Credentials, error) {
+	if id == "valid" {
+		return db.Credentials{}, nil
+	}
+	return db.Credentials{}, errors.New(id)
+}
+
+func (r mockAuthRepo) DeletePasswordResetToken(id string) error {
+	return nil
+}
+
 func initServiceOrPanic() Service {
-	pool, err := db.OpenDB(os.Getenv("TEST_DB_DSN"))
-	if err != nil {
+	s := NewService(mockAuthRepo{})
+	if err := s.ParseEmails("../../_web/templates/"); err != nil {
 		panic(err)
 	}
-
-	return NewService(db.NewPlayerRepo(pool))
+	return s
 }
 
 func TestSignup(t *testing.T) {
 	s := initServiceOrPanic()
 
-	testcases := []struct {
-		name         string
+	cases := []struct {
 		formName     string
 		formEmail    string
 		formPassword string
 		expectedCode int
 	}{
-		{"signup valid player", "test", "test@test.com", "testtest", 200},
-		{"signup duplicate name", "test", "test2@test.com", "testtest", 409},
-		{"signup duplicate email", "test2", "test@test.com", "testtest", 409},
-		{"signup invalid name", "1", "test3@test.com", "testtest", 406},
-		{"signup invalid email", "test3", "2@.com", "testtest", 406},
-		{"signup invalid password", "test3", "2@.com", "sd", 406},
+		{"valid", "valid@valid.com", "valid", http.StatusOK},
+		{"missingEmail", "", "valid", http.StatusNotAcceptable},
+		{"x", "small@name.com", "valid", http.StatusNotAcceptable},
+		{"TOOOOOLONGNAMESFIDFNDSIFNODSNFSODNFDONFSDIONasdASDASDASDdDdDD", "valid@valid.com", "valid", http.StatusNotAcceptable},
+		{"missingPassword", "valid@valid.com", "", http.StatusNotAcceptable},
+		{"valid", "notUnique", "valid", http.StatusConflict},
 	}
 
-	for _, tc := range testcases {
+	for i, tc := range cases {
 		body := url.Values{}
 		body.Set("name", tc.formName)
 		body.Set("email", tc.formEmail)
 		body.Set("password", tc.formPassword)
 
-		req := httptest.NewRequest(
-			"POST",
-			"/auth/signup",
-			strings.NewReader(body.Encode()),
-		)
-
+		req := httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
-
 		s.signup(rec, req)
 
 		res := rec.Result()
 		res.Body.Close()
-
 		if res.StatusCode != tc.expectedCode {
-			t.Fatalf(
-				"%s failed: expected %d got %d",
-				tc.name, tc.expectedCode, res.StatusCode,
-			)
+			t.Fatalf("case %d failed: expected %d got %d", i, tc.expectedCode, res.StatusCode)
 		}
 	}
 }
@@ -71,52 +168,121 @@ func TestSignup(t *testing.T) {
 func TestSignin(t *testing.T) {
 	s := initServiceOrPanic()
 
-	testcases := []struct {
-		name         string
+	cases := []struct {
 		formEmail    string
 		formPassword string
 		expectedCode int
 	}{
-		{"signin valid player", "magnus@carlsen.com", "carlsen", 200},
-		{"signin valid player second session", "magnus@carlsen.com", "carlsen", 200},
-		{"signin invalid email", "", "carlsen", 400},
-		{"signin invalid password", "magnus@carlsen.com", "", 400},
-		{"signin incorrect email", "m@carlsen.com", "carlsen", 401},
-		{"signin incorrect password", "magnus@carlsen.com", "incorrect", 401},
+		{"valid@valid.com", "valid", http.StatusOK},
+		{"", "valid", http.StatusBadRequest},
+		{"valid@valid.com", "", http.StatusBadRequest},
+		{"invalid@invalid.com", "valid", http.StatusUnauthorized},
+		{"valid@valid.com", "invalid", http.StatusUnauthorized},
+		{"many@sessions.com", "valid", http.StatusOK},
 	}
 
-	for _, tc := range testcases {
+	for i, tc := range cases {
 		body := url.Values{}
 		body.Set("email", tc.formEmail)
 		body.Set("password", tc.formPassword)
 
-		req := httptest.NewRequest(
-			"POST",
-			"/auth/signin",
-			strings.NewReader(body.Encode()),
-		)
-
+		req := httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
-
 		s.signin(rec, req)
 
 		res := rec.Result()
 		res.Body.Close()
-
 		if res.StatusCode != tc.expectedCode {
-			t.Fatalf(
-				"%s failed: expected %d got %d",
-				tc.name, tc.expectedCode, res.StatusCode,
-			)
+			t.Fatalf("case %d failed: expected %d got %d", i, tc.expectedCode, res.StatusCode)
 		}
 	}
 }
 
-func BenchmarkSignup(b *testing.B) {
+func TestResetPassword(t *testing.T) {
+	s := initServiceOrPanic()
 
+	cases := []struct {
+		formEmail    string
+		formPassword string
+		expectedCode int
+	}{
+		{"valid@valid.com", "valid", http.StatusOK},
+		{"valid@valid.com", "", http.StatusBadRequest},
+		{"invalid@invalid.com", "valid", http.StatusUnauthorized},
+		{"valid@valid.com", "duplicate", http.StatusConflict},
+	}
+
+	for i, tc := range cases {
+		body := url.Values{}
+		body.Set("email", tc.formEmail)
+		body.Set("password", tc.formPassword)
+
+		req := httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		s.resetPassword(rec, req)
+
+		res := rec.Result()
+		res.Body.Close()
+		if res.StatusCode != tc.expectedCode {
+			t.Fatalf("case %d failed: expected %d got %d", i, tc.expectedCode, res.StatusCode)
+		}
+	}
 }
 
-func BenchmarkSignin(b *testing.B) {
+func TestVerifySignup(t *testing.T) {
+	s := initServiceOrPanic()
 
+	cases := []struct {
+		token            string
+		expectedLocation string
+	}{
+		{"valid", "/"},
+		{"", "/error"},
+		{"invalid", "/error"},
+	}
+
+	for i, tc := range cases {
+		req := httptest.NewRequest("POST", "/", nil)
+		req.SetPathValue("token", tc.token)
+
+		rec := httptest.NewRecorder()
+		s.verifySignup(rec, req)
+
+		res := rec.Result()
+		url, _ := res.Location()
+		res.Body.Close()
+		if url.Path != tc.expectedLocation {
+			t.Fatalf("case %d failed: expected %s got %s", i, tc.expectedLocation, url.Path)
+		}
+	}
+}
+
+func TestVerifyResetPassword(t *testing.T) {
+	s := initServiceOrPanic()
+
+	cases := []struct {
+		token            string
+		expectedLocation string
+	}{
+		{"valid", "/signin"},
+		{"", "/error"},
+		{"invalid", "/error"},
+	}
+
+	for i, tc := range cases {
+		req := httptest.NewRequest("POST", "/", nil)
+		req.SetPathValue("token", tc.token)
+
+		rec := httptest.NewRecorder()
+		s.verifyResetPassword(rec, req)
+
+		res := rec.Result()
+		url, _ := res.Location()
+		res.Body.Close()
+		if url.Path != tc.expectedLocation {
+			t.Fatalf("case %d failed: expected %s got %s", i, tc.expectedLocation, url.Path)
+		}
+	}
 }

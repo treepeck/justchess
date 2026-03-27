@@ -1,20 +1,20 @@
-import { getOrPanic } from "./utils/dom"
+import { g } from "./utils/dom"
 import showDialog from "./utils/dialog"
-
-// Regular expressions to validate the user input.
-const nameEx = /^[a-zA-Z0-9]{2,60}$/i
-const emailEx = /^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$/i
-const pwdEx = /^[a-zA-Z0-9!@#$%^&*()_+-/.<>]{5,71}$/i
+import {
+	validateName,
+	validateEmail,
+	validatePassword,
+} from "./utils/validator"
 
 /** @param {SubmitEvent} event */
-function submitForm(event) {
+async function submitForm(event) {
 	event.preventDefault()
 	event.stopPropagation()
 
 	if (!(event.target instanceof HTMLFormElement)) return
 
 	// Clear previous error message.
-	getOrPanic("authFormServerError").textContent = ""
+	g("serverResponse").textContent = ""
 
 	const data = new FormData(event.target)
 
@@ -24,38 +24,13 @@ function submitForm(event) {
 	if (name == null || email == null || password == null) return
 
 	if (validateInput(name.toString(), email.toString(), password.toString())) {
-		// Show confirmation window.
-		getOrPanic("confirmDialog").classList.add("show")
-		getOrPanic("confirmDialogCancelButton").focus()
+		showDialog("confirmDialog")
+		g("confirmDialogConfirm").onclick = () => confirmSignup(data)
 	}
 }
 
-/** @param {FormData} data */
-function confirmHandler(data) {
-	// Hide confirmation window
-	getOrPanic("confirmDialog").classList.remove("show")
-
-	// Disable the button while the request is being processed.
-	const btn = /** @type {HTMLButtonElement} */ (
-		getOrPanic("authFormSubmitButton")
-	)
-	btn.disabled = true
-	btn.textContent = "Submitting..."
-
-	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
-	const params = new URLSearchParams(data)
-
-	signUp(params).then((err) => {
-		getOrPanic("authFormServerError").textContent = "Sign up failed: " + err
-
-		// Enable the submit button.
-		btn.disabled = false
-		btn.textContent = "Sign up"
-	})
-}
-
 /**
- * Validates the user input and displays error messages.
+ * Validates the user input. Displays error messages if it's invalid.
  * @param {string} name
  * @param {string} email
  * @param {string} password
@@ -64,98 +39,83 @@ function confirmHandler(data) {
 function validateInput(name, email, password) {
 	let isValid = true
 
-	let error = getOrPanic("authFormNameError")
-	if (name.length < 2) {
-		error.textContent = "Must be at least 2 characters long"
-		isValid = false
-	} else if (name.length > 60) {
-		error.textContent = "Must not exceed 60 characters"
-		isValid = false
-	} else if (!nameEx.test(name)) {
-		error.textContent = "Can only contain letters and numbers"
-		isValid = false
-	} else {
-		// Clear error message.
+	let error = g("formNameError")
+	try {
+		validateName(name)
+		// Clear error message if name is valid.
 		error.textContent = ""
+	} catch (msg) {
+		isValid = false
+		error.textContent = msg
 	}
 
-	error = getOrPanic("authFormEmailError")
-	if (email.length < 3) {
-		error.textContent = "Must be at least 3 characters long"
-		isValid = false
-	} else if (!emailEx.test(email)) {
-		error.textContent = "Please, enter a valid email address"
-		isValid = false
-	} else {
-		// Clear error message.
+	error = g("formEmailError")
+	try {
+		validateEmail(email)
+		// Clear error message if email is valid.
 		error.textContent = ""
+	} catch (msg) {
+		isValid = false
+		error.textContent = msg
 	}
 
-	error = getOrPanic("authFormPasswordError")
-	if (password.length < 5) {
-		error.textContent = "Must be at least 5 characters long"
-		isValid = false
-	} else if (password.length > 71) {
-		error.textContent = "Must not exceed 71 characters"
-		isValid = false
-	} else if (!pwdEx.test(password)) {
-		error.textContent =
-			"Can only contain letters, numbers, and !@#$%^&*()_+-/.<>"
-		isValid = false
-	} else {
-		// Clear error message.
+	error = g("formPasswordError")
+	try {
+		validatePassword(password)
+		// Clear error message if password is valid.
 		error.textContent = ""
+	} catch (msg) {
+		isValid = false
+		error.textContent = msg
 	}
 
 	return isValid
 }
 
-/**
- * It's the caller's responsibility to validate the provided data and display errors.
- * @param {URLSearchParams} data
- */
-async function signUp(data) {
-	try {
-		const res = await fetch("/auth/signup", {
-			method: "POST",
-			credentials: "include",
-			body: data,
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		})
+/** @param {FormData} data */
+async function confirmSignup(data) {
+	// Hide confirmation window
+	g("confirmDialog").classList.remove("show")
 
-		if (!res.ok) {
-			return await res.text()
-		}
+	// Disable the button while the request is being processed.
+	const btn = /** @type {HTMLButtonElement} */ (g("formSubmitButton"))
+	btn.disabled = true
+	btn.textContent = "Submitting..."
 
-		// Redirect user to home page after successful authentication.
-		window.location.href = "/"
-	} catch (err) {
-		return err.message
+	const resMessage = g("serverResponse")
+
+	// @ts-expect-error - Works as expected, TypeScipt sometimes complains too much.
+	const params = new URLSearchParams(data)
+
+	const res = await fetch("/auth/signup", {
+		method: "POST",
+		body: params,
+		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+	})
+
+	if (!res.ok) {
+		resMessage.textContent = "Sign up failed: " + (await res.text())
+		resMessage.style.color = "red"
+		// Reenable the submit button.
+		btn.disabled = false
+		btn.textContent = "Sign up"
+		return
 	}
+
+	resMessage.textContent =
+		"Please, check your email to confirm the registration. It may take several minutes for the email to be delivered and it may end up in spam."
+	resMessage.style.color = "green"
+	btn.style.display = "none"
 }
 
 ;(() => {
-	// Page guard.
-	if (!document.getElementById("signupGuard")) return
+	if (window.location.pathname != "/signup") return
 
-	const form = /** @type {HTMLFormElement} */ (getOrPanic("authForm"))
-	form.onsubmit = submitForm
+	g("authForm").onsubmit = submitForm
 
-	getOrPanic("emailHelpDialogActivator").onclick = () =>
-		showDialog("emailHelpDialog")
-
-	getOrPanic("confirmDialogCancelButton").onclick = () => {
-		getOrPanic("confirmDialog").classList.remove("show")
-	}
-
-	getOrPanic("confirmDialogConfirmButton").onclick = () => {
-		const data = new FormData(form)
-		confirmHandler(data)
-	}
-
-	const toggle = getOrPanic("authFormPasswordToggle")
+	const toggle = g("formPasswordToggle")
 	toggle.onclick = () => {
-		const input = getOrPanic("authFormPasswordInput")
+		const input = g("formPasswordInput")
 
 		const curr = input.getAttribute("type")
 		if (curr === "password") {
@@ -166,4 +126,6 @@ async function signUp(data) {
 			toggle.style.backgroundImage = "url('/images/show.svg')"
 		}
 	}
+
+	g("helpDialogActivator").onclick = () => showDialog("helpDialog")
 })()

@@ -1,23 +1,21 @@
 {{ define "layout" }}
-
-<h2 class="page-header">Leaderboard</h2>
+<h1 class="page-header">Leaderboard</h1>
 
 <div class="leaderboard">
   <div class="leaderboard-header">
     <div>Name</div>
     <div>Rating</div>
+    <div>Rated games</div>
     <div>Member since</div>
-    <div>Total games</div>
   </div>
 
-  {{ range .Data }}
-  <a class="leaderboard-row" href="/player/{{ .Name  }}">
-    <div>{{ .Name }}</div>
-    <div>{{ round .Rating }}</div>
-    <div>{{ formatDate .CreatedAt }}</div>
-    <div>{{ .NumOfGames }}</div>
-  </a>
+  {{ range $v := .Data }}
+    <a class="leaderboard-row {{ if eq $v.Id $.Player.Id }}owner{{ end }}" href="/player/{{ $v.Id }}">
+      <div>{{ $v.Name }}</div>
+      <div>{{ round $v.Rating }}</div>
+      <div>{{ $v.RatedGames }}</div>
+      <div class="leaderboard-row-time">{{ $v.CreatedAt }}</div>
+    </a>
   {{ end }}
 </div>
-
 {{ end }}

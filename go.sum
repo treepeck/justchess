@@ -4,9 +4,9 @@ github.com/go-sql-driver/mysql v1.9.3 h1:U/N249h2WzJ3Ukj8SowVFjdtZKfu9vlLZxjPXV1
 github.com/go-sql-driver/mysql v1.9.3/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
-github.com/treepeck/chego v0.0.0-20260224102035-2ebef12b77cd h1:ilKtRrCpj9+UxswwDfkG5uFCjjFCwxnJTxVCtyUVgWs=
-github.com/treepeck/chego v0.0.0-20260224102035-2ebef12b77cd/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
+github.com/treepeck/chego v0.0.0-20260318105927-d60f870b6749 h1:wXFPmEtLiGeCYeRcBVPKrf/Yx7CzlVW2QbMw2Vnz+r0=
+github.com/treepeck/chego v0.0.0-20260318105927-d60f870b6749/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
 github.com/treepeck/glicko v0.0.4 h1:2fGHVWXFswTBYHTMi/7gwd7Barp10TQ4yGHMjIe1Bb0=
 github.com/treepeck/glicko v0.0.4/go.mod h1:Omcr6WSRD0wZA3xcpNGLE00oRrz2BqiuZRnzvV3W/FU=
-golang.org/x/crypto v0.48.0 h1:/VRzVqiRSggnhY7gNRxPauEQ5Drw9haKdM0jqfcCFts=
-golang.org/x/crypto v0.48.0/go.mod h1:r0kV5h3qnFPlQnBSrULhlsRfryS2pmewsg+XfMgkVos=
+golang.org/x/crypto v0.49.0 h1:+Ng2ULVvLHnJ/ZFEq4KdcDd/cfjrrjjNSXNzxg0Y4U4=
+golang.org/x/crypto v0.49.0/go.mod h1:ErX4dUh2UM+CFYiXZRTcMpEcN8b/1gxEuv3nODoYtCA=

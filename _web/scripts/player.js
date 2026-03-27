@@ -1,57 +1,89 @@
-import { getOrPanic } from "./utils/dom"
-import Notification from "./utils/notification"
-import { formatTermination, formatResult, Result } from "./chess/state"
+import { g, c } from "./utils/dom"
+import { Color } from "./components/clock"
+import MessageSystem from "./components/message"
+import {
+	formatResult,
+	formatTermination,
+	Result,
+	Termination,
+} from "./utils/state"
 
 /**
- * @typedef {Object} ProfileGame
- * @property {string} c - Created at timestamp.
+ * @typedef {Object} RatedGameBrief
+ * @property {string} c - Creation date.
  * @property {string} i - Game id.
- * @property {string} w - White player id.
- * @property {string} b - Black player id.
- * @property {import("./chess/state").Result} r - Game result.
- * @property {import("./chess/state").Termination} t - Game termination.
- * @property {number} m - How many moves were played.
+ * @property {string} w - White name.
+ * @property {string} wi - White id.
+ * @property {string} b - Black name.
+ * @property {string} bi - Black id.
+ * @property {Result} r
+ * @property {Termination} t
+ * @property {number} m - Number of played moves.
  * @property {number} ctl - Time control.
  * @property {number} bns - Time bonus.
  */
 
 /**
- * @param {string} name
+ * @param {string} playerId
  * @param {string} [cursorId]
  * @param {string} [cursorCreatedAt]
- * @returns {Promise<ProfileGame[] | string>}
+ * @returns {Promise<RatedGameBrief[]>}
  */
-async function getProfileGames(name, cursorId, cursorCreatedAt) {
-	try {
-		let url = `/api/profile-games?name=${name}`
-		if (cursorId && cursorCreatedAt) {
-			url += `&cid=${cursorId}&cat=${cursorCreatedAt}`
-		}
-		const res = await fetch(url, {
-			method: "GET",
-			credentials: "include",
-		})
-		return await res.json()
-	} catch (err) {
-		return err.message
+async function getRatedGamesBrief(playerId, cursorId, cursorCreatedAt) {
+	let url = `/api/rated?pid=${playerId}`
+	if (cursorId && cursorCreatedAt) {
+		url += `&cid=${cursorId}&cca=${cursorCreatedAt}`
 	}
+
+	const res = await fetch(url, { method: "GET" })
+	if (!res.ok) return []
+	return await res.json()
 }
 
-/** @param {ProfileGame} game */
-function appendGameToTable(game) {
-	const row = document.createElement("a")
-	row.classList.add("profile-games-row")
-	row.href = `/game/${game.i}`
+/**
+ * @typedef {Object} EngineGameBrief
+ * @property {string} c - Creation date.
+ * @property {string} i - Game id.
+ * @property {Color} pc - Player color.
+ * @property {Result} r
+ * @property {Termination} t
+ * @property {number} m - Number of played moves.
+ */
 
-	const res = document.createElement("div")
-	res.innerHTML = `${formatResult(game.r)}<br/>${formatTermination(game.t)}`
+/**
+ * @param {string} playerId
+ * @param {string} [cursorId]
+ * @param {string} [cursorCreatedAt]
+ * @returns {Promise<EngineGameBrief[]>}
+ */
+async function getEngineGamesBrief(playerId, cursorId, cursorCreatedAt) {
+	let url = `/api/engine?pid=${playerId}`
+	if (cursorId && cursorCreatedAt) {
+		url += `&cid=${cursorId}&cca=${cursorCreatedAt}`
+	}
+
+	const res = await fetch(url, { method: "GET" })
+	if (!res.ok) return []
+	return await res.json()
+}
+
+/**
+ * @param {RatedGameBrief} brief
+ */
+function appendRatedGameBrief(brief) {
+	const row = /** @type {HTMLAnchorElement} */ (c("a", "profile-games-row"))
+	row.classList.add("a")
+	row.href = `/rated/${brief.i}`
+
+	const res = c("div")
+	res.innerHTML = `${formatResult(brief.r)}<br/>${formatTermination(brief.t)}`
 
 	// If player won the match set result color to green.
 	// If player lost the match set color to red.
-	const name = getOrPanic("profileGames").dataset.name
+	const name = g("profileGames").dataset.name
 	if (
-		(game.r == Result.WhiteWon && game.w == name) ||
-		(game.r == Result.BlackWon && game.b == name)
+		(brief.r == Result.WhiteWon && brief.w == name) ||
+		(brief.r == Result.BlackWon && brief.b == name)
 	) {
 		res.style.color = "#66FF00"
 	} else {
@@ -59,130 +91,204 @@ function appendGameToTable(game) {
 	}
 	row.appendChild(res)
 
-	const players = document.createElement("div")
-	players.classList.add("profile-games-players")
-	const white = document.createElement("a")
-	white.href = game.w
-	white.classList.add("white-player")
-	white.textContent = game.w
-	const black = document.createElement("a")
-	black.href = game.b
-	black.classList.add("black-player")
-	black.textContent = game.b
-	players.appendChild(white)
-	players.appendChild(black)
+	const players = c("div", "profile-games-players")
 	row.appendChild(players)
 
-	const control = document.createElement("div")
-	control.classList.add("profile-games-time-control")
-	control.textContent = `${game.ctl} + ${game.bns}`
+	const white = /** @type {HTMLAnchorElement} */ (c("a", "white-player"))
+	white.classList.add("a")
+	white.href = `/player/${brief.wi}`
+	white.textContent = brief.w
+
+	const black = /** @type {HTMLAnchorElement} */ (c("a", "black-player"))
+	black.classList.add("a")
+	black.href = `/player/${brief.bi}`
+	black.textContent = brief.b
+
+	players.appendChild(white)
+	players.appendChild(c("br"))
+	players.appendChild(black)
+
+	const control = c("div", "profile-games-time-control")
+	control.textContent = `${brief.ctl / 60} + ${brief.bns}`
 	row.appendChild(control)
 
-	const moves = document.createElement("div")
-	moves.textContent = `${Math.ceil(game.m / 2)}`
+	const moves = c("div")
+	moves.textContent = `${Math.ceil(brief.m / 2)}`
 	row.appendChild(moves)
 
 	const playedAt = document.createElement("div")
-	playedAt.textContent = new Date(game.c).toLocaleDateString("en-US", {
+	playedAt.textContent = new Date(brief.c).toLocaleDateString("en-US", {
 		month: "short",
 		day: "2-digit",
 		year: "numeric",
 	})
 	row.appendChild(playedAt)
 
-	getOrPanic("profileGames").appendChild(row)
+	g("tabPane1").appendChild(row)
 }
 
-await (async () => {
-	// Page guard.
-	if (!document.getElementById("playerGuard")) return
+/**
+ * @param {EngineGameBrief} brief
+ */
+function appendEngineGameBrief(brief) {
+	const row = /** @type {HTMLAnchorElement} */ (c("a", "profile-games-row"))
+	row.classList.add("a")
+	row.href = `/engine/${brief.i}`
 
-	// Format regiration date.
-	const registeredAt = getOrPanic("playerRegistrationDate")
-	if (!registeredAt.textContent) return
-	const d = new Date(registeredAt.textContent)
-	registeredAt.innerHTML = `Member since<br/>${d.toLocaleDateString("en-US", {
+	const res = c("div")
+	res.innerHTML = `${formatResult(brief.r)}<br/>${formatTermination(brief.t)}`
+
+	// If player won the match set result color to green.
+	// If player lost the match set color to red.
+	if (
+		(brief.r == Result.WhiteWon && brief.pc == Color.White) ||
+		(brief.r == Result.BlackWon && brief.pc == Color.Black)
+	) {
+		res.style.color = "#66FF00"
+	} else {
+		res.style.color = "red"
+	}
+	row.appendChild(res)
+
+	const moves = c("div")
+	moves.textContent = `${Math.ceil(brief.m / 2)}`
+	row.appendChild(moves)
+
+	const playedAt = document.createElement("div")
+	playedAt.textContent = new Date(brief.c).toLocaleDateString("en-US", {
+		month: "short",
+		day: "2-digit",
+		year: "numeric",
+	})
+	row.appendChild(playedAt)
+
+	g("tabPane2").appendChild(row)
+}
+
+/** @param {number} num */
+function activateTab(num) {
+	for (const link of document.getElementsByClassName("tab-link")) {
+		link.classList.remove("active")
+	}
+	for (const pane of document.getElementsByClassName("tab-pane")) {
+		pane.classList.remove("active")
+	}
+	g(`tabLink${num}`).classList.add("active")
+	g(`tabPane${num}`).classList.add("active")
+}
+
+;(() => {
+	const parts = window.location.pathname.split("/")
+	if (parts.length < 3 || parts[1] != "player") return
+
+	const playerId = parts[2]
+
+	let fetchedRatedGames = 0
+	let ratedCursorId = /** @type {string | undefined} */ (undefined)
+	let ratedCursorCreatedAt = /** @type {string | undefined } */ (undefined)
+
+	let fetchedEngineGames = 0
+	let engineCursorId = /** @type {string | undefined} */ (undefined)
+	let engineCursorCreatedAt = /** @type {string | undefined } */ (undefined)
+
+	// Format registration date.
+	const registeredAt = g("playerRegistrationDate")
+	registeredAt.innerHTML = `Member since<br/>${new Date(
+		registeredAt.textContent,
+	).toLocaleDateString("en-US", {
 		month: "short",
 		day: "2-digit",
 		year: "numeric",
 	})}`
 
-	let cursorId = ""
-	let cursorCreatedAt = ""
-
-	// Render game history.
-	const table = getOrPanic("profileGames")
-
-	const games = await getProfileGames(table.dataset.name)
-	if (typeof games == "string" || games.length == 0) {
-		table.textContent =
-			"Start playing and the game history will be displayed here"
-		return
+	g("tabLink1").onclick = () => activateTab(1)
+	g("tabLink2").onclick = () => {
+		activateTab(2)
+		if (fetchedEngineGames == 0) {
+			appendEngine()
+		}
 	}
 
-	const notification = new Notification()
+	const appendRated = () => {
+		getRatedGamesBrief(playerId, ratedCursorId, ratedCursorCreatedAt).then(
+			(games) => {
+				if (fetchedRatedGames == 100) {
+					g("tabPane1").removeChild(g("loadMoreRated"))
+				}
 
-	// Render table header.
-	const h = document.createElement("div")
-	h.classList.add("profile-games-header")
+				if (games.length < 1) {
+					system.create("Couldn't load more games")
+					return
+				}
 
-	const c1 = document.createElement("div")
-	h.appendChild(c1)
+				fetchedRatedGames = 0
+				for (const brief of games) {
+					appendRatedGameBrief(brief)
+					fetchedRatedGames++
+				}
 
-	const c2 = document.createElement("div")
-	c2.textContent = "Players"
-	h.appendChild(c2)
+				// @ts-expect-error
+				ratedCursorId = games.at(-1).i
+				// @ts-expect-error
+				ratedCursorCreatedAt = games.at(-1).c
 
-	const c3 = document.createElement("div")
-	c3.textContent = "Time control"
-	h.appendChild(c3)
+				if (fetchedRatedGames == 100) {
+					const loadMoreRated = c(
+						"button",
+						"profile-games-row",
+						"loadMoreRated",
+					)
+					loadMoreRated.classList.add("button")
+					loadMoreRated.textContent = "Load more"
+					g("tabPane1").appendChild(loadMoreRated)
 
-	const c4 = document.createElement("div")
-	c4.textContent = "Moves"
-	h.appendChild(c4)
-
-	const c5 = document.createElement("div")
-	c5.textContent = "Date"
-	h.appendChild(c5)
-
-	table.appendChild(h)
-
-	// Render games.
-	for (const game of games) {
-		appendGameToTable(game)
-	}
-	// Update pagination cursors.
-	const last = games[games.length - 1]
-	cursorId = last.i
-	cursorCreatedAt = last.c
-
-	// Render "Load more" button.
-	const btn = document.createElement("button")
-	btn.classList.add("profile-games-load-more")
-	btn.textContent = "Load more"
-
-	btn.onclick = async () => {
-		const older = await getProfileGames(
-			table.dataset.name,
-			cursorId,
-			cursorCreatedAt,
+					loadMoreRated.onclick = appendRated
+				}
+			},
 		)
-		if (typeof older == "string" || older.length == 0) {
-			notification.create("Couldn't load more games")
-			return
-		}
-		for (const game of older) {
-			appendGameToTable(game)
-		}
-		// Update pagination cursors.
-		const last = older[older.length - 1]
-		cursorId = last.i
-		cursorCreatedAt = last.c
+	}
+	appendRated()
 
-		// Rerender "Load more" button.
-		table.removeChild(btn)
-		table.appendChild(btn)
+	const appendEngine = () => {
+		getEngineGamesBrief(
+			playerId,
+			engineCursorId,
+			engineCursorCreatedAt,
+		).then((games) => {
+			if (fetchedEngineGames == 100) {
+				g("tabPane2").removeChild(g("loadMoreEngine"))
+			}
+
+			if (games.length < 1) {
+				system.create("Couldn't load more games")
+				return
+			}
+
+			fetchedEngineGames = 0
+			for (const brief of games) {
+				appendEngineGameBrief(brief)
+				fetchedEngineGames++
+			}
+
+			// @ts-expect-error
+			engineCursorId = games.at(-1).i
+			// @ts-expect-error
+			engineCursorCreatedAt = games.at(-1).c
+
+			if (fetchedEngineGames == 100) {
+				const loadMoreEngine = c(
+					"button",
+					"profile-games-row",
+					"loadMoreEngine",
+				)
+				loadMoreEngine.classList.add("button")
+				loadMoreEngine.textContent = "Load more"
+				g("tabPane2").appendChild(loadMoreEngine)
+
+				loadMoreEngine.onclick = appendEngine
+			}
+		})
 	}
 
-	table.appendChild(btn)
+	const system = new MessageSystem()
 })()

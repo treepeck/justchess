@@ -1,0 +1,283 @@
+/* Common styles. */
+
+:root {
+  --background: #e2d3c4;
+  --foreground: #34211d;
+  --text-hover: #1c6741;
+  --input-background: #b5936e69;
+  --input-placeholder: rgba(73, 72, 72, 0.564);
+  --container-background: rgb(37, 22, 22, 85%);
+  --container-foreground: #b5936e;
+  --max-width: 1600px;
+}
+
+/* Remove default margin and padding. */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+*,
+*::before,
+*::after {
+  /* Take margin and padding into account while calculating an element's size. */
+  box-sizing: border-box;
+  /* Style all scrollbars on the page. */
+  scrollbar-color: var(--container-foreground) var(--container-background);
+}
+
+body {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: "Ubuntu";
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.site-header {
+  height: 50px;
+  padding: 10px;
+  color: var(--container-foreground);
+  background: var(--container-background);
+}
+
+.site-header-layout {
+  height: 100%;
+  gap: 20px;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: auto;
+}
+
+.site-header-logo {
+  font-size: x-large;
+  font-weight: bold;
+}
+
+.site-header-profile {
+  margin-left: auto;
+  font-size: large;
+  font-weight: bold;
+  overflow: hidden;
+  height: 100%;
+  gap: 10px;
+}
+
+.site-layout {
+  width: 95%;
+  max-width: var(--max-width);
+  gap: 20px;
+  flex-direction: column;
+  margin: 20px auto auto auto;
+}
+
+.site-footer {
+  gap: 20px;
+  text-align: center;
+  height: 50px;
+  width: 100%;
+  color: var(--container-foreground);
+  background: var(--container-background);
+}
+
+.page-header {
+  margin: 0 auto 0 auto;
+  font-weight: bold;
+}
+
+/* Default flex container with centralized items. */
+.flex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Default style for links. */
+.a {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.a:hover {
+  color: var(--text-hover);
+}
+
+/* Default style for buttons. */
+.button {
+  border: none;
+  cursor: pointer;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+  font-weight: bold;
+  transition:
+    background-color 0.75s ease-in-out,
+    color 0.75s ease-in-out;
+}
+
+.button:hover,
+.button:focus {
+  outline: none;
+  color: var(--container-background);
+  background-color: var(--container-foreground);
+}
+
+/* Tooltip text. */
+.help-text {
+  text-decoration: underline;
+  cursor: help;
+}
+
+.help-text:hover {
+  color: var(--text-hover);
+}
+
+/* Modal dialog window. */
+
+.dialog {
+  padding: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0;
+  transition:
+    opacity ease-in-out 0.75s,
+    z-index ease-out 0.75s;
+  backdrop-filter: blur(7px);
+}
+
+.dialog.show {
+  z-index: 1;
+  opacity: 1;
+}
+
+.dialog-header {
+  text-align: center;
+}
+
+.dialog-layout {
+  width: 95%;
+  max-width: 450px;
+  text-align: left;
+  flex-direction: column;
+  line-height: 2;
+  border-radius: 15px;
+  padding: 20px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+
+.dialog-layout p {
+  width: 100%;
+  text-align: center;
+}
+
+.dialog-header {
+  font-weight: bold;
+  font-size: x-large;
+}
+
+.dialog-buttons {
+  display: flex;
+  width: 100%;
+}
+
+.dialog-buttons button {
+  height: 40px;
+  line-height: 2;
+  flex: 1;
+  margin: 10px;
+  border-radius: 15px;
+}
+
+.dialog-close {
+  width: 95%;
+  height: 40px;
+  border-radius: 15px;
+  font-weight: bold;
+  margin: 10px;
+}
+
+@media screen and (min-width: 600px) {
+  .dialog-layout {
+    font-size: large;
+  }
+}
+
+/* Scrollable container. */
+.scrollable {
+  width: 100%;
+  height: 300px;
+  overflow-y: scroll;
+  border: 2px solid var(--container-foreground);
+  border-radius: 15px;
+  padding: 10px;
+  font-size: large;
+}
+
+/* Animated background applied on home and queue pages. */
+.floating-chessboard {
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  position: fixed;
+  background-image: url("/images/board.svg");
+  transform: rotate(15deg) scale(1.5);
+  filter: blur(2px);
+  z-index: -1;
+  animation: float 200s infinite;
+}
+
+#ping {
+  font-size: large;
+  font-weight: bold;
+  margin: 0 auto 0 20px;
+}
+
+@keyframes float {
+  0% {
+    background-position-x: 0;
+    background-position-y: 0;
+  }
+
+  50% {
+    background-position-x: 50vw;
+    background-position-y: 50vh;
+  }
+
+  100% {
+    background-position-x: 100vw;
+    background-position-y: -100vh;
+  }
+}
+
+@media screen and (max-width: 1200px) {
+  /* Make background animation slower on larger screens. */
+  .floating-chessboard {
+    transform: rotate(15deg);
+    animation: float 200s infinite;
+  }
+}
+
+@font-face {
+  font-family: "Ubuntu";
+  src: url("/fonts/UbuntuSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Ubuntu";
+  src: url("/fonts/UbuntuSans-Bold.woff2") format("woff2");
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: "ChessClock";
+  src: url("/fonts/JustChessClock-Regular.woff2") format("woff2");
+}

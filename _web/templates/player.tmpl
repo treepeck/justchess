@@ -1,14 +1,32 @@
 {{ define "layout" }}
-
 <div class="player-info">
-  <div class="player-info-username">{{ .Data.Name }}</div>
+  <div class="player-info-name">{{ .Data.Name }}</div>
   <div class="player-info-rating">Rating<br/>{{ round .Data.Rating }}</div>
   <div id="playerRegistrationDate">{{ .Data.CreatedAt }}</div>
-  <div class="player-info-total-games">Total games<br/>{{ .Data.NumOfGames }}</div>
+  <div class="player-info-total-games">Rated games<br/>{{ .Data.RatedGames }}</div>
+</div>
+
+<div id="profileGames" data-name="{{ .Data.Name }}">
+  <div class="flex">
+    <div id="tabLink1" class="tab-link active">Rated</div>
+    <div id="tabLink2" class="tab-link">Engine</div>
   </div>
 
-<div id="profileGames" data-name="{{ .Data.Name }}"></div>
-
-<div id="playerGuard"></div>
-
+  <div id="tabPane1" class="tab-pane scrollable active">
+    <div class="profile-games-row">
+      <div><b>Result</b></div>
+      <div><b>Players</b></div>
+      <div><b>Time control</b></div>
+      <div><b>Total moves</b></div>
+      <div><b>Date</b></div>
+    </div>
+  </div>
+  <div id="tabPane2" class="tab-pane scrollable">
+      <div class="profile-games-row">
+        <div><b>Result</b></div>
+        <div><b>Total moves</b></div>
+        <div><b>Date</b></div>
+      </div>
+  </div>
+</div>
 {{ end }}
