@@ -77,19 +77,17 @@ func newClient(conn *websocket.Conn, p db.Player) *client {
 func (c *client) read() {
 	defer c.cleanup()
 
-	var e event.Event
 	for {
+		var e event.Event
 		if err := c.conn.ReadJSON(&e); err != nil {
 			return
 		}
 
 		if e.Kind == event.Pong {
 			c.pong <- struct{}{}
-		} else {
-			if c.forward != nil {
-				e.SenderId = c.player.Id
-				c.forward <- e
-			}
+		} else if c.forward != nil {
+			e.SenderId = c.player.Id
+			c.forward <- e
 		}
 	}
 }
