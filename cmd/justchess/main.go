@@ -12,13 +12,7 @@ import (
 )
 
 func main() {
-	logFile, err := os.Open(os.Getenv("LOG_FILE"))
-	if err != nil {
-		panic(err)
-	}
-
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
-	log.SetOutput(logFile)
 
 	log.Print("Connecting to db...")
 	pool, err := db.OpenDB(os.Getenv("DB_DSN"))
