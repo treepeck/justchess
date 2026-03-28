@@ -54,5 +54,5 @@ func main() {
 	authService.RegisterRoutes(mux)
 
 	log.Print("Starting server.")
-	log.Panic(http.ListenAndServeTLS(":3502", "cert.pem", "key.pem", mux))
+	log.Panic(http.ListenAndServeTLS(":443", "cert.pem", "key.pem", mux))
 }
