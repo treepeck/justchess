@@ -57,11 +57,14 @@ body {
 }
 
 .site-header-nav {
+  font-size: small;
   overflow-x: hidden;
 }
 
 .site-header-profile {
   gap: 10px;
+  margin-left: auto;
+  font-size: small;
   font-weight: bold;
   overflow: hidden;
   height: 100%;
@@ -268,7 +271,11 @@ body {
   }
 
   .site-header-profile {
-    margin-left: auto;
+    font-size: medium;
+  }
+
+  .site-header-nav {
+    font-size: medium;
   }
 
   .site-header-logo {
@@ -276,7 +283,7 @@ body {
   }
 }
 
-@media screen and (max-width: 1200px) {
+@media screen and (min-width: 1200px) {
   /* Make background animation slower on larger screens. */
   .floating-chessboard {
     transform: rotate(15deg);
