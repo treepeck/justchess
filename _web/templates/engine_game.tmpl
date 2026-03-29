@@ -50,6 +50,25 @@
       <button id="lastMoveBtn"></button>
       <button id="flipBoardBtn"></button>
     </div>
+
+    {{ if eq .Data.Termination 0 }}
+      <div class="game-controls flex">
+        <button id="resignBtn" class="button">Resign</button>
+      </div>
+
+      <div id="resignDialog" class="dialog flex">
+        <div class="dialog-layout flex">
+          <div class="dialog-header">Resign</div>
+
+          <p>Do you really want to resign?</p>
+
+          <div class="dialog-buttons">
+            <button id="resignDialogClose" class="button">Close</button>
+            <button id="resignDialogAccept" class="button">Accept</button>
+          </div>
+      </div>
+  </div>
+    {{ end }}
   </div>
 </div>
 
