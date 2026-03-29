@@ -45,24 +45,26 @@ body {
 
 .site-header-layout {
   height: 100%;
-  gap: 20px;
+  gap: 10px;
   width: 100%;
   max-width: var(--max-width);
   margin: auto;
 }
 
 .site-header-logo {
-  font-size: x-large;
+  font-size: large;
   font-weight: bold;
 }
 
+.site-header-nav {
+  overflow-x: hidden;
+}
+
 .site-header-profile {
-  margin-left: auto;
-  font-size: large;
+  gap: 10px;
   font-weight: bold;
   overflow: hidden;
   height: 100%;
-  gap: 10px;
 }
 
 .site-layout {
@@ -74,12 +76,14 @@ body {
 }
 
 .site-footer {
+  margin-top: 1rem;
   gap: 20px;
   text-align: center;
   height: 50px;
   width: 100%;
   color: var(--container-foreground);
   background: var(--container-background);
+  font-size: var(--text-small);
 }
 
 .page-header {
@@ -255,6 +259,20 @@ body {
   100% {
     background-position-x: 100vw;
     background-position-y: -100vh;
+  }
+}
+
+@media screen and (min-width: 500px) {
+  .site-header-layout {
+    gap: 20px;
+  }
+
+  .site-header-profile {
+    margin-left: auto;
+  }
+
+  .site-header-logo {
+    font-size: x-large;
   }
 }
 
