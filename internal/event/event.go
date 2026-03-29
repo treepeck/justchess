@@ -34,7 +34,7 @@ type Event struct {
 	SenderId string          `json:"-"`
 }
 
-// JSON returns encoded event.  Errors are ignored because
+// JSON returns encoded event.  Errors are ignored.
 func JSON(k Kind, p any) json.RawMessage {
 	rawPayload, err := json.Marshal(p)
 	if err != nil {
