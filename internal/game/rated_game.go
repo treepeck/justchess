@@ -72,10 +72,12 @@ func (g *RatedGame) Play(id string, index byte) (MovePayload, bool) {
 	// Store time after completing the move to synchronize clock on frontend.
 	var timeDiff, timeLeft int
 	if g.Position.ActiveColor == chego.ColorWhite {
+		g.clock.blackTime += g.clock.bonus
 		timeDiff = g.clock.blackTime - g.clock.timeBeforeMove
 		g.clock.timeBeforeMove = g.clock.whiteTime
 		timeLeft = g.clock.blackTime
 	} else {
+		g.clock.whiteTime += g.clock.bonus
 		timeDiff = g.clock.whiteTime - g.clock.timeBeforeMove
 		g.clock.timeBeforeMove = g.clock.blackTime
 		timeLeft = g.clock.whiteTime

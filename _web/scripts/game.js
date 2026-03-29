@@ -188,7 +188,11 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 				board.setLegalMoves(pMove.lm)
 				if (engine) engine.setLegalMoves(pMove.lm)
 				store({ s: pMove.s, f: pMove.f })
-				clock?.flip()
+
+				if (clock) {
+					clock.setTime((board.currentFen - 1) % 2, pMove.tl * 1000)
+					clock.flip()
+				}
 
 				if (engine && engine.color == board.currentFen % 2) {
 					engine.play(pMove.f)
