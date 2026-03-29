@@ -258,9 +258,9 @@ export class Board {
 		this.#size = this.#element.offsetWidth
 
 		// Add board event listeners.
-		this.#element.onmousedown = (e) => this.#onMouseDown(e)
-		this.#element.onmousemove = (e) => this.#onMouseMove(e)
-		this.#element.onmouseup = (e) => this.#onMouseUp(e)
+		this.#element.onpointerdown = (e) => this.#onPointerDown(e)
+		this.#element.onpointermove = (e) => this.#onPointerMove(e)
+		this.#element.onpointerup = (e) => this.#onPointerUp(e)
 
 		// Make board responsive.
 		const observer = new ResizeObserver((entries) => {
@@ -458,7 +458,7 @@ export class Board {
 	 * Handles player's click on the board element.
 	 * @param {MouseEvent} e
 	 */
-	#onMouseDown(e) {
+	#onPointerDown(e) {
 		const { x, y, square } = this.#getPositionOfEvent(e)
 
 		const prev = document.getElementById("selectedSquare")
@@ -513,7 +513,7 @@ export class Board {
 	 * Handles player's mouse movements above the board element.
 	 * @param {MouseEvent} e
 	 */
-	#onMouseMove(e) {
+	#onPointerMove(e) {
 		if (this.#draggedPiece !== PieceType.NP) {
 			const { x, y } = this.#getPositionOfEvent(e)
 
@@ -529,7 +529,7 @@ export class Board {
 	 * Handles player's mouse release on the board element.
 	 * @param {MouseEvent} e
 	 */
-	#onMouseUp(e) {
+	#onPointerUp(e) {
 		const dp = this.#draggedPiece
 
 		if (dp !== PieceType.NP) {

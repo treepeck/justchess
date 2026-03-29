@@ -118,6 +118,7 @@
   background-position: center;
   background-repeat: no-repeat;
   cursor: pointer;
+  touch-action: none;
   position: relative;
 }
 
