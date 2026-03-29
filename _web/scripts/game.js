@@ -287,12 +287,14 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 		}
 	}
 
-	if (!isTerminated && chat) {
-		g("offerDrawBtn").onclick = () => {
-			showDialog("offerDrawDialog")
-			g("offerDrawDialogAccept").onclick = () => {
-				g("offerDrawDialog").classList.toggle("show")
-				socket?.sendJSON(EventKind.OfferDraw, null)
+	if (!isTerminated) {
+		if (chat) {
+			g("offerDrawBtn").onclick = () => {
+				showDialog("offerDrawDialog")
+				g("offerDrawDialogAccept").onclick = () => {
+					g("offerDrawDialog").classList.toggle("show")
+					socket?.sendJSON(EventKind.OfferDraw, null)
+				}
 			}
 		}
 
