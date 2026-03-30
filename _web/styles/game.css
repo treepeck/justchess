@@ -119,6 +119,8 @@
   background-repeat: no-repeat;
   cursor: pointer;
   touch-action: none;
+  /* Disable image highlighting on mobile devices. */
+  -webkit-tap-highlight-color: transparent;
   position: relative;
 }
 
