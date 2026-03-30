@@ -76,7 +76,7 @@ func (g *EngineGame) TimeTick() {
 		return
 	}
 
-	if g.isPlayerOnline {
+	if !g.isPlayerOnline {
 		g.playerReconnect--
 	}
 
