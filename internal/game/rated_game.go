@@ -234,7 +234,9 @@ func (g *RatedGame) DeclineDraw(id string) bool {
 func (g *RatedGame) Abandon() {
 	if g.Termination == chego.Unterminated {
 		g.Termination = chego.Abandoned
-		g.gameRepo.MarkRatedAsAbandoned(g.id)
+		if err := g.gameRepo.MarkRatedAsAbandoned(g.id); err != nil {
+			log.Print(err)
+		}
 	}
 }
 

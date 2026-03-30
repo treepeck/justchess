@@ -100,9 +100,11 @@ func (g *EngineGame) Resign(id string) bool {
 }
 
 func (g *EngineGame) Abandon() {
-	if g.Termination != chego.Unterminated {
+	if g.Termination == chego.Unterminated {
 		g.Termination = chego.Abandoned
-		g.gameRepo.MarkRatedAsAbandoned(g.id)
+		if err := g.gameRepo.MarkEngineAsAbandoned(g.id); err != nil {
+			log.Print(err)
+		}
 	}
 }
 
