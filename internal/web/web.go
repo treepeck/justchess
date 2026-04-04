@@ -140,6 +140,9 @@ func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
 	imagesHandler := http.FileServer(http.Dir("./_web/images"))
 	mux.Handle("GET /images/", http.StripPrefix("/images/", imagesHandler))
 
+	soundsHandler := http.FileServer(http.Dir("./_web/sounds"))
+	mux.Handle("GET /sounds/", http.StripPrefix("/sounds/", soundsHandler))
+
 	stockfishHandler := http.FileServer(http.Dir("./_web/stockfish"))
 	mux.Handle("GET /stockfish/", http.StripPrefix("/stockfish/", stockfishHandler))
 }

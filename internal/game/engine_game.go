@@ -44,7 +44,8 @@ func (g *EngineGame) Play(id string, index byte) (MovePayload, bool) {
 		return MovePayload{}, false
 	}
 
-	g.Push(g.Legal.Moves[index])
+	m := g.Legal.Moves[index]
+	g.Push(m)
 	g.playedIndices = append(g.playedIndices, index)
 
 	if g.Termination != chego.Unterminated {
@@ -54,6 +55,7 @@ func (g *EngineGame) Play(id string, index byte) (MovePayload, bool) {
 	return MovePayload{
 		Legal:      g.Legal.Moves[:g.Legal.LastMoveIndex],
 		PlayedMove: g.Played[len(g.Played)-1],
+		Move:       m,
 	}, true
 }
 

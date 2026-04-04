@@ -1,11 +1,12 @@
+// TODO: Should propably wrap everything in a class with clean methods.
 import Socket from "./ws/socket"
 import { g, c } from "./utils/dom"
 import Engine from "./utils/engine"
 import { EventKind } from "./ws/event"
 import showDialog from "./utils/dialog"
-import { Board } from "./components/board"
 import { Clock, Color } from "./components/clock"
-import { formatTermination, formatResult } from "./utils/state"
+import { Board, Move, MoveType } from "./components/board"
+import { Result, formatTermination, formatResult } from "./utils/state"
 
 /**
  * Appends chat message to the DOM.
@@ -83,6 +84,38 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 	const parts = window.location.pathname.split("/")
 	if (parts.length < 3 || (parts[1] != "rated" && parts[1] != "engine"))
 		return
+
+	// Create audio objects.
+	const moveSound = new Audio("/sounds/move.mp3")
+	const epSound = new Audio("/sounds/enpassant.mp3")
+	const promoSound = new Audio("/sounds/promotion.mp3")
+	const looserSound = new Audio("/sounds/looser.mp3")
+	const winnerSound = new Audio("/sounds/winner.mp3")
+	const resignSound = new Audio("/sounds/resign.mp3")
+	const drawSound = new Audio("/sounds/draw.mp3")
+
+	const playSound = (/** @type {import("./components/board").Move} */ m) => {
+		// To allow single sound to be played multiple times.
+		let soundClone = moveSound.cloneNode(true)
+
+		switch (m.moveType) {
+			case MoveType.EnPassant:
+				soundClone = epSound.cloneNode(true)
+				break
+
+			case MoveType.Promotion:
+				soundClone = promoSound.cloneNode(true)
+				break
+		}
+
+		// @ts-expect-error
+		soundClone.play()
+		// @ts-expect-error
+		soundClone.onended = () => {
+			// @ts-expect-error
+			soundClone.remove()
+		}
+	}
 
 	const isTerminated = /** @type {boolean} */ (
 		JSON.parse(
@@ -176,6 +209,30 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 				g("endgameDialogTermination").textContent = formatTermination(
 					pEnd.t,
 				)
+
+				const playerName = g("playerName").textContent
+				switch (pEnd.r) {
+					case Result.WhiteWon:
+						if (playerName == g("blackName").textContent) {
+							looserSound.play()
+						} else {
+							winnerSound.play()
+						}
+						break
+
+					case Result.BlackWon:
+						if (playerName == g("whiteName").textContent) {
+							looserSound.play()
+						} else {
+							winnerSound.play()
+						}
+						break
+
+					case Result.Draw:
+						drawSound.play()
+						break
+				}
+
 				showDialog("endgameDialog")
 				break
 			case EventKind.Move:
@@ -184,6 +241,9 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 				 * @type {import("./ws/event").MovePayload}
 				 */
 				const pMove = { ...payload }
+
+				// @ts-expect-error
+				playSound(new Move(pMove.m))
 				// Update legal moves.
 				board.setLegalMoves(pMove.lm)
 				if (engine) engine.setLegalMoves(pMove.lm)
@@ -307,6 +367,7 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 			g("resignDialogAccept").onclick = () => {
 				g("resignDialog").classList.toggle("show")
 				socket?.sendJSON(EventKind.Resign, null)
+				resignSound.play()
 			}
 		}
 	}

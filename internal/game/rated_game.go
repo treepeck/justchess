@@ -67,7 +67,8 @@ func (g *RatedGame) Play(id string, index byte) (MovePayload, bool) {
 		return MovePayload{}, false
 	}
 
-	g.Push(g.Legal.Moves[index])
+	m := g.Legal.Moves[index]
+	g.Push(m)
 
 	// Store time after completing the move to synchronize clock on frontend.
 	var timeDiff, timeLeft int
@@ -94,6 +95,7 @@ func (g *RatedGame) Play(id string, index byte) (MovePayload, bool) {
 		Legal:      g.Legal.Moves[:g.Legal.LastMoveIndex],
 		PlayedMove: g.Played[len(g.Played)-1],
 		TimeLeft:   timeLeft,
+		Move:       m,
 	}, true
 }
 

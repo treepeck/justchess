@@ -19,7 +19,7 @@
             <a href="/signup" class="a"><b><u>Sign up</u></b></a>
             <a href="/signin" class="a">Sign in</a>
           {{ else }}
-            <a href="/player/{{ .Player.Id }}" class="a">{{ .Player.Name }}</a>
+            <a id="playerName" href="/player/{{ .Player.Id }}" class="a">{{ .Player.Name }}</a>
           {{ end }}
         </div>
       </a>
