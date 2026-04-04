@@ -32,6 +32,7 @@ export const EventKind = /** @type {const} */ ({
  * @property {import("../components/board.js").Move[]} lm - Legal moves for the next player.
  * @property {string} s - San.
  * @property {string} f - Fen.
+ * @property {import("../components/board.js").Move} m - Move.
  * @property {number} tl - Time left.
  */
 

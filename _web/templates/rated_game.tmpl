@@ -23,7 +23,7 @@
 
   <div class="board-layout {{ if eq .Data.Black.Name .Player.Name}}flipped{{ end }}">
     <div class="board-black-miniprofile">
-      <a href="/player/{{ .Data.Black.Id }}" class="board-miniprofile a">{{ .Data.Black.Name }}</a>
+      <a id="blackName" href="/player/{{ .Data.Black.Id }}" class="board-miniprofile a">{{ .Data.Black.Name }}</a>
       <div class="board-miniprofile-rating">({{ round .Data.Black.Rating }} mmr)</div>
       <div id="blackClock" class="board-miniprofile-clock">{{ .Data.Control }}</div>
     </div>
@@ -31,7 +31,7 @@
     <div id="board"></div>
 
     <div class="board-white-miniprofile">
-      <a href="/player/{{ .Data.White.Id }}" class="board-miniprofile a">{{ .Data.White.Name }}</a>
+      <a id="whiteName" href="/player/{{ .Data.White.Id }}" class="board-miniprofile a">{{ .Data.White.Name }}</a>
       <div class="board-miniprofile-rating">({{ round .Data.White.Rating }} mmr)</div>
       <div id="whiteClock" class="board-miniprofile-clock">{{ .Data.Control }}</div>
     </div>

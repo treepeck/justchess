@@ -47,5 +47,6 @@ type EndPayload struct {
 type MovePayload struct {
 	chego.PlayedMove
 	Legal    []chego.Move `json:"lm"`
+	Move     chego.Move   `json:"m"`
 	TimeLeft int          `json:"tl,omitempty"`
 }
