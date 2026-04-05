@@ -89,7 +89,7 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 	const moveSound = new Audio("/sounds/move.mp3")
 	const epSound = new Audio("/sounds/enpassant.mp3")
 	const promoSound = new Audio("/sounds/promotion.mp3")
-	const looserSound = new Audio("/sounds/looser.mp3")
+	const loserSound = new Audio("/sounds/loser.mp3")
 	const winnerSound = new Audio("/sounds/winner.mp3")
 	const resignSound = new Audio("/sounds/resign.mp3")
 	const drawSound = new Audio("/sounds/draw.mp3")
@@ -131,9 +131,10 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 	}
 
 	let engine = /** @type {Engine | null} */ (null)
+	let playerColor = /** @type {Color | null} */ (null)
 	if (parts[1] == "engine" && !isTerminated) {
 		// @ts-expect-error
-		const playerColor = parseInt(g("board").dataset.color)
+		playerColor = parseInt(g("board").dataset.color)
 		engine = new Engine(moveHandler, [], 1 ^ playerColor)
 	}
 
@@ -210,27 +211,55 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 					pEnd.t,
 				)
 
-				const playerName = g("playerName").textContent
-				switch (pEnd.r) {
-					case Result.WhiteWon:
-						if (playerName == g("blackName").textContent) {
-							looserSound.play()
-						} else {
-							winnerSound.play()
-						}
-						break
+				const playerId = g("main").dataset.id
 
-					case Result.BlackWon:
-						if (playerName == g("whiteName").textContent) {
-							looserSound.play()
-						} else {
-							winnerSound.play()
-						}
-						break
+				if (!engine) {
+					const whiteId = g("board").dataset.whiteid
+					const blackId = g("board").dataset.blackid
 
-					case Result.Draw:
-						drawSound.play()
-						break
+					switch (pEnd.r) {
+						case Result.WhiteWon:
+							if (playerId == blackId) {
+								loserSound.play()
+							} else {
+								winnerSound.play()
+							}
+							break
+
+						case Result.BlackWon:
+							if (playerId == whiteId) {
+								loserSound.play()
+							} else {
+								winnerSound.play()
+							}
+							break
+
+						case Result.Draw:
+							drawSound.play()
+							break
+					}
+				} else {
+					switch (pEnd.r) {
+						case Result.WhiteWon:
+							if (playerColor == Color.White) {
+								winnerSound.play()
+							} else {
+								loserSound.play()
+							}
+							break
+
+						case Result.BlackWon:
+							if (playerColor == Color.Black) {
+								winnerSound.play()
+							} else {
+								loserSound.play()
+							}
+							break
+
+						case Result.Draw:
+							drawSound.play()
+							break
+					}
 				}
 
 				showDialog("endgameDialog")
