@@ -3,10 +3,10 @@
   <div class="board-layout {{ if eq .Data.PlayerColor 1 }}flipped{{ end }}">
     <div class="board-black-miniprofile">
       {{ if eq .Data.PlayerColor 1 }}
-        <a id="blackName" href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
+        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
         <div class="board-miniprofile-rating">({{ round .Data.Player.Rating }} mmr)</div>
       {{ else }}
-        <a id="blackName" class="board-miniprofile a">Engine</a>
+        <a class="board-miniprofile a">Engine</a>
       {{ end }}
     </div>
 
@@ -14,9 +14,9 @@
 
     <div class="board-white-miniprofile">
       {{ if eq .Data.PlayerColor 1 }}
-        <a id="whiteName" class="board-miniprofile a">Engine</a>
+        <a class="board-miniprofile a">Engine</a>
       {{ else }}
-        <a id="whiteName" href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
+        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
         <div class="board-miniprofile-rating">({{ round .Data.Player.Rating }} mmr)</div>
       {{ end }}
     </div>

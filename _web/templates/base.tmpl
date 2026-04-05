@@ -19,14 +19,14 @@
             <a href="/signup" class="a"><b><u>Sign up</u></b></a>
             <a href="/signin" class="a">Sign in</a>
           {{ else }}
-            <a id="playerName" href="/player/{{ .Player.Id }}" class="a">{{ .Player.Name }}</a>
+            <a href="/player/{{ .Player.Id }}" class="a">{{ .Player.Name }}</a>
           {{ end }}
         </div>
       </a>
     </div>
   </header>
 
-  <main id="main" class="site-layout flex" data-isguest="{{ .Player.IsGuest }}">
+  <main id="main" class="site-layout flex" data-id="{{ .Player.Id }}" data-isguest="{{ .Player.IsGuest }}">
     {{ template "layout" . }}
   </main>
 
