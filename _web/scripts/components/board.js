@@ -235,6 +235,10 @@ export class Board {
 	 * @type {boolean}
 	 */
 	#isFlipped
+	/**
+	 * @type {Color}
+	 */
+	#playerColor
 
 	/**
 	 * @param {MoveHandler} moveHandler
@@ -277,6 +281,7 @@ export class Board {
 		}
 
 		this.#isFlipped = isFlipped
+		this.#playerColor = parseInt(g("board").dataset.color)
 	}
 
 	/**
@@ -487,7 +492,7 @@ export class Board {
 		}
 
 		const piece = this.#pieces.get(square)
-		if (piece !== undefined) {
+		if (piece !== undefined && piece.pieceType % 2 == this.#playerColor) {
 			// Remove piece from board while it's being dragged.
 			this.#pieces.delete(square)
 			this.#element.removeChild(piece.element)
@@ -503,10 +508,9 @@ export class Board {
 			dp.element.style.setProperty("--y", `${y - squareSize / 2}px`)
 
 			this.#draggedPiece = piece.pieceType
+			// Append new selected square to the board.
+			this.#appendSelectedSquare(square)
 		}
-
-		// Append new selected square to the board.
-		this.#appendSelectedSquare(square)
 	}
 
 	/**

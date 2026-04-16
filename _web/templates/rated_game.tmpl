@@ -28,7 +28,7 @@
       <div id="blackClock" class="board-miniprofile-clock">{{ .Data.Control }}</div>
     </div>
 
-    <div id="board" data-whiteid="{{ .Data.Black.Id }}" data-blackid="{{ .Data.Black.Id }}"></div>
+    <div id="board" data-whiteid="{{ .Data.Black.Id }}" data-blackid="{{ .Data.Black.Id }}" data-color="{{ if eq .Data.White.Id .Player.Id }}0{{ else if eq .Data.Black.Id .Player.Id }}1{{ else }}-1{{ end }}"></div>
 
     <div class="board-white-miniprofile">
       <a href="/player/{{ .Data.White.Id }}" class="board-miniprofile a">{{ .Data.White.Name }}</a>
