@@ -1,5 +1,5 @@
-import { Move } from "../components/board"
 import { Color } from "../components/clock"
+import { Move, PromotionFlag } from "../components/board"
 
 // @ts-expect-error
 const stockfishUrl = `${API_URL}/stockfish/stockfish-18-lite-single.js`
@@ -41,10 +41,19 @@ function square2Number(square) {
 function UCI2MoveIndex(uci, legalMoves) {
 	const from = square2Number(uci.substring(0, 2))
 	const to = square2Number(uci.substring(2, 4))
+	const promo = PromotionFlag.Queen
+
+	if (uci.includes("N")) {
+		promo = PromotionFlag.Knight
+	} else if (uci.includes("B")) {
+		promo = PromotionFlag.Bishop
+	} else if (uci.includes("R")) {
+		promo = PromotionFlag.Rook
+	}
 
 	for (let i = 0; i < legalMoves.length; i++) {
 		const move = legalMoves[i]
-		if (from == move.from && to == move.to) {
+		if (from == move.from && to == move.to && promo == move.promoPiece) {
 			return i
 		}
 	}
