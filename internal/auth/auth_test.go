@@ -23,7 +23,7 @@ func (r mockAuthRepo) InsertPlayer(id string, d db.SignupData) error {
 }
 
 func (r mockAuthRepo) IsEmailUnique(email string) (bool, error) {
-	if email == "notUnique" {
+	if email == "not@unique.com" {
 		return false, nil
 	}
 	return true, nil
@@ -143,7 +143,7 @@ func TestSignup(t *testing.T) {
 		{"x", "small@name.com", "valid", http.StatusNotAcceptable},
 		{"TOOOOOLONGNAMESFIDFNDSIFNODSNFSODNFDONFSDIONasdASDASDASDdDdDD", "valid@valid.com", "valid", http.StatusNotAcceptable},
 		{"missingPassword", "valid@valid.com", "", http.StatusNotAcceptable},
-		{"valid", "notUnique", "valid", http.StatusConflict},
+		{"valid", "not@unique.com", "valid", http.StatusConflict},
 	}
 
 	for i, tc := range cases {
