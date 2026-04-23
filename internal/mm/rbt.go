@@ -103,23 +103,27 @@ func (t *redBlackTree) removeNode(z *redBlackNode) {
 	t.size--
 }
 
-func (t *redBlackTree) search(rating float64, playerId string) *redBlackNode {
-	x := t.root
-
-	for x != t.leaf {
-		if x.key.rating > rating {
-			x = x.left
-		} else if x.key.rating < rating {
-			x = x.right
+func search(n *redBlackNode, rating float64, playerId string) *redBlackNode {
+	// While n is not leaf.
+	for n.left != nil && n.right != nil {
+		if n.key.rating > rating {
+			n = n.left
+		} else if n.key.rating < rating {
+			n = n.right
+		} else if n.key.playerId == playerId {
+			return n
 		} else {
-			if x.key.playerId == playerId {
-				return x
-			} else {
-				x = x.right
+			right := search(n.right, rating, playerId)
+			if right != nil {
+				return right
 			}
+			left := search(n.left, rating, playerId)
+			if left != nil {
+				return left
+			}
+			break
 		}
 	}
-
 	return nil
 }
 
