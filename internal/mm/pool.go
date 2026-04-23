@@ -26,7 +26,7 @@ func (p Pool) Join(id string, rating float64) {
 }
 
 func (p Pool) Leave(id string, rating float64) {
-	n := p.tree.search(rating, id)
+	n := search(p.tree.root, rating, id)
 	if n == nil {
 		return
 	}
@@ -83,8 +83,8 @@ func (p Pool) makeMatches(n *redBlackNode, yield func([2]string) bool) {
 		}
 
 		// Remove matched nodes from tree.
-		p.tree.removeNode(p.tree.search(n.key.rating, n.key.playerId))
-		p.tree.removeNode(p.tree.search(best.key.rating, best.key.playerId))
+		p.tree.removeNode(n)
+		p.tree.removeNode(best)
 
 		// Call function recursively.
 		p.makeMatches(p.tree.root, yield)

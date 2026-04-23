@@ -111,7 +111,7 @@ func TestRemoveNode(t *testing.T) {
 			tree.insertNode(tree.spawn(val, ""))
 		}
 
-		tree.removeNode(tree.search(tc.value, ""))
+		tree.removeNode(search(tree.root, tc.value, ""))
 
 		got := bfs(tree)
 
@@ -248,7 +248,7 @@ func BenchmarkRemoveNode(b *testing.B) {
 
 	for b.Loop() {
 		i -= 1
-		n := tree.search(i, "")
+		n := search(tree.root, i, "")
 		if n != nil {
 			tree.removeNode(n)
 		}
