@@ -1,12 +1,13 @@
+{{ define "title" }}{{ .Data.Player.Name }} vs Engine{{ end }}
 {{ define "layout" }}
 <div class="game-layout flex" data-terminated="{{ if ne .Data.Termination 0 }}true{{ else }}false{{ end }}">
   <div class="board-layout {{ if eq .Data.PlayerColor 1 }}flipped{{ end }}">
     <div class="board-black-miniprofile">
       {{ if eq .Data.PlayerColor 1 }}
-        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
+        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile">{{ .Data.Player.Name }}</a>
         <div class="board-miniprofile-rating">({{ round .Data.Player.Rating }} mmr)</div>
       {{ else }}
-        <a class="board-miniprofile a">Engine</a>
+        <a class="board-miniprofile">Engine</a>
       {{ end }}
     </div>
 
@@ -14,9 +15,9 @@
 
     <div class="board-white-miniprofile">
       {{ if eq .Data.PlayerColor 1 }}
-        <a class="board-miniprofile a">Engine</a>
+        <a class="board-miniprofile">Engine</a>
       {{ else }}
-        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile a">{{ .Data.Player.Name }}</a>
+        <a href="/player/{{ .Data.Player.Id }}" class="board-miniprofile">{{ .Data.Player.Name }}</a>
         <div class="board-miniprofile-rating">({{ round .Data.Player.Rating }} mmr)</div>
       {{ end }}
     </div>
@@ -53,7 +54,7 @@
 
     {{ if eq .Data.Termination 0 }}
       <div class="game-controls flex">
-        <button id="resignBtn" class="button">Resign</button>
+        <button id="resignBtn">Resign</button>
       </div>
 
       <div id="resignDialog" class="dialog flex">
@@ -63,8 +64,8 @@
           <p>Do you really want to resign?</p>
 
           <div class="dialog-buttons">
-            <button id="resignDialogClose" class="button">Close</button>
-            <button id="resignDialogAccept" class="button">Accept</button>
+            <button id="resignDialogClose">Close</button>
+            <button id="resignDialogAccept">Accept</button>
           </div>
       </div>
   </div>
@@ -83,7 +84,7 @@
     <p id="endgameDialogResult">{{ .Data.Result }}</p>
     <p id="endgameDialogTermination">{{ .Data.Termination }}</p>
 
-    <button id="endgameDialogClose" class="dialog-close button">OK</button>
+    <button id="endgameDialogClose" class="dialog-close">OK</button>
   </div>
 </div>
 {{ end }}

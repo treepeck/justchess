@@ -30,6 +30,7 @@ const (
 	msgUnauthorized    string = "Invalid credentials"
 	msgBadRequest      string = "Malformed request body"
 	msgConflict        string = "Not unique username or email"
+	msgTokenMissing    string = "Token not found"
 	msgTokenConflict   string = "You already have a pending token"
 	msgCannotHash      string = "Cannot generate password hash"
 	msgCannotSendEmail string = "Cannot send email. Please, ensure that email is valid"
@@ -80,13 +81,13 @@ type Service struct {
 func NewService(ar db.AuthRepo) Service { return Service{repo: ar} }
 
 func (s *Service) ParseEmails(folder string) error {
-	signup, err := template.ParseFiles(folder + "email_verify_signup.tmpl")
+	signup, err := template.ParseFiles(folder + "email-signup.tmpl")
 	if err != nil {
 		return err
 	}
 	s.emails[0] = signup
 
-	reset, err := template.ParseFiles(folder + "email_reset_password.tmpl")
+	reset, err := template.ParseFiles(folder + "email-reset-password.tmpl")
 	if err != nil {
 		return err
 	}
@@ -99,8 +100,8 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/signup", s.signup)
 	mux.HandleFunc("POST /auth/signin", s.signin)
 	mux.HandleFunc("POST /auth/reset-password", s.resetPassword)
-	mux.HandleFunc("GET /auth/verify-signup/{token}", s.verifySignup)
-	mux.HandleFunc("GET /auth/verify-reset-password/{token}", s.verifyResetPassword)
+	mux.HandleFunc("POST /auth/confirm-signup/{token}", s.confirmSignup)
+	mux.HandleFunc("POST /auth/confirm-reset/{token}", s.confirmReset)
 }
 
 // signup registers a new player.
@@ -153,7 +154,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := os.Getenv("SIGNUP_VERIFY_ENDPOINT") + token
+	url := os.Getenv("CONFIRM_SIGNUP_ENDPOINT") + token
 	var buff bytes.Buffer
 	if err = s.emails[0].Execute(&buff, tmplData{Name: name, Url: url}); err != nil {
 		log.Print(err)
@@ -286,7 +287,7 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := os.Getenv("PASSWORD_RESET_ENDPOINT") + token
+	url := os.Getenv("CONFIRM_RESET_ENDPOINT") + token
 	var buff bytes.Buffer
 	if err = s.emails[1].Execute(&buff, tmplData{Name: p.Name, Url: url}); err != nil {
 		log.Print(err)
@@ -317,28 +318,28 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// verifySignup completes the registration process for players who click the
-// verification email link.
+// confirmSignup completes the registration process for players who click the
+// confirmation email link.
 //
-// The verification process includes the following steps:
+// The confirmation process includes the following steps:
 //  1. Fetch signup credentials from database using provided token.
 //  2. Insert new player record using provided credentials.
 //  3. Delete used token.
 //  4. Generate session for the player.
-func (s Service) verifySignup(rw http.ResponseWriter, r *http.Request) {
+func (s Service) confirmSignup(rw http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 
 	data, err := s.repo.SelectSignupDataByToken(token)
 	if err != nil {
 		log.Print(err)
-		http.Redirect(rw, r, "/error", http.StatusFound)
+		http.Error(rw, msgTokenMissing, http.StatusNotFound)
 		return
 	}
 
 	id := randgen.GenId(randgen.IdLen)
 	if err = s.repo.InsertPlayer(id, data); err != nil {
 		log.Print(err)
-		http.Redirect(rw, r, "/error", http.StatusFound)
+		http.Error(rw, msgConflict, http.StatusConflict)
 		return
 	}
 
@@ -347,35 +348,29 @@ func (s Service) verifySignup(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	s.genSession(rw, id)
-
-	// Redirect to home page after successfull signup.
-	http.Redirect(rw, r, "/", http.StatusFound)
 }
 
-// verifyResetPassword completes the password reset process by updating the player
+// confirmReset completes the password reset process by updating the player
 // password and deleting the used password_reset_token.
-func (s Service) verifyResetPassword(rw http.ResponseWriter, r *http.Request) {
+func (s Service) confirmReset(rw http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 
 	c, err := s.repo.SelectCredentialsByResetToken(token)
 	if err != nil {
 		log.Print(err)
-		http.Redirect(rw, r, "/error", http.StatusFound)
+		http.Error(rw, msgTokenMissing, http.StatusNotFound)
 		return
 	}
 
 	if err = s.repo.UpdatePasswordHash(c.Id, c.PasswordHash); err != nil {
 		log.Print(err)
-		http.Redirect(rw, r, "/error", http.StatusFound)
+		http.Error(rw, msgConflict, http.StatusConflict)
 		return
 	}
 
 	if err = s.repo.DeletePasswordResetToken(token); err != nil {
 		log.Print(err)
 	}
-
-	// Redirect to signin page after successfull password reset.
-	http.Redirect(rw, r, "/signin", http.StatusFound)
 }
 
 type contextKey int

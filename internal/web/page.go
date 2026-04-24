@@ -10,7 +10,6 @@ type page struct {
 	// Player who requested the page.
 	Player db.Player
 	Data   any
-	Title  string
 	tmpl   *template.Template
 }
 

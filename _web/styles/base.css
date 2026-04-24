@@ -29,7 +29,6 @@
 body {
   width: 100%;
   height: 100vh;
-  display: flex;
   flex-direction: column;
   font-family: "Ubuntu";
   color: var(--foreground);
@@ -71,27 +70,12 @@ body {
 }
 
 .site-layout {
-  width: 95%;
+  width: 100%;
+  min-height: calc(100% - 100px);
   max-width: var(--max-width);
   gap: 20px;
   flex-direction: column;
-  margin: 20px auto auto auto;
-}
-
-.site-footer {
-  margin-top: 1rem;
-  gap: 20px;
-  text-align: center;
-  height: 50px;
-  width: 100%;
-  color: var(--container-foreground);
-  background: var(--container-background);
-  font-size: var(--text-small);
-}
-
-.page-header {
-  margin: 0 auto 0 auto;
-  font-weight: bold;
+  margin: auto;
 }
 
 /* Default flex container with centralized items. */
@@ -102,18 +86,18 @@ body {
 }
 
 /* Default style for links. */
-.a {
+a {
   text-decoration: none;
   color: inherit;
   cursor: pointer;
 }
 
-.a:hover {
+a:hover {
   color: var(--text-hover);
 }
 
 /* Default style for buttons. */
-.button {
+button {
   border: none;
   cursor: pointer;
   color: var(--container-foreground);
@@ -125,8 +109,8 @@ body {
     color 0.75s ease-in-out;
 }
 
-.button:hover,
-.button:focus {
+button:hover,
+button:focus {
   outline: none;
   color: var(--container-background);
   background-color: var(--container-foreground);
@@ -217,6 +201,12 @@ body {
   }
 }
 
+#confirm {
+  width: 200px;
+  height: 50px;
+  font-size: x-large;
+}
+
 /* Scrollable container. */
 .scrollable {
   width: 100%;
@@ -235,9 +225,9 @@ body {
   top: -50%;
   left: -50%;
   position: fixed;
-  background-image: url("/images/board.svg");
-  transform: rotate(15deg) scale(1.5);
-  filter: blur(2px);
+  background: url("/images/board.svg");
+  transform: rotate(15deg) scale(2);
+  filter: blur(2px) grayscale(10%) brightness(85%);
   z-index: -1;
   animation: float 200s infinite;
 }
@@ -245,7 +235,7 @@ body {
 #ping {
   font-size: large;
   font-weight: bold;
-  margin: 0 auto 0 20px;
+  margin: 0 auto 20px 20px;
 }
 
 @keyframes float {
@@ -286,7 +276,6 @@ body {
 @media screen and (min-width: 1200px) {
   /* Make background animation slower on larger screens. */
   .floating-chessboard {
-    transform: rotate(15deg);
     animation: float 200s infinite;
   }
 }

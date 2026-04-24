@@ -231,7 +231,7 @@ func TestResetPassword(t *testing.T) {
 	}
 }
 
-func TestVerifySignup(t *testing.T) {
+func TestConfirmSignup(t *testing.T) {
 	s := initServiceOrPanic()
 
 	cases := []struct {
@@ -248,7 +248,7 @@ func TestVerifySignup(t *testing.T) {
 		req.SetPathValue("token", tc.token)
 
 		rec := httptest.NewRecorder()
-		s.verifySignup(rec, req)
+		s.confirmSignup(rec, req)
 
 		res := rec.Result()
 		url, _ := res.Location()
@@ -259,7 +259,7 @@ func TestVerifySignup(t *testing.T) {
 	}
 }
 
-func TestVerifyResetPassword(t *testing.T) {
+func TestConfirmReset(t *testing.T) {
 	s := initServiceOrPanic()
 
 	cases := []struct {
@@ -276,7 +276,7 @@ func TestVerifyResetPassword(t *testing.T) {
 		req.SetPathValue("token", tc.token)
 
 		rec := httptest.NewRecorder()
-		s.verifyResetPassword(rec, req)
+		s.confirmReset(rec, req)
 
 		res := rec.Result()
 		url, _ := res.Location()

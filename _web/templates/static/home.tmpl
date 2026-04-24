@@ -1,12 +1,13 @@
+{{ define "title" }}Home{{ end }}
 {{ define "layout" }}
-<h1 class="page-header">Choose a <span id="helpText" class="help-text">time control</span></h1>
+<h1><b>Choose a <span id="helpText" class="help-text">time control</span></b></h1>
 
 <div class="controls-grid">
   {{ range $i, $v := .Data }}
-    <button id="cell{{ $i }}" class="grid-cell button">{{ $v }}</button>
+    <button id="cell{{ $i }}" class="grid-cell">{{ $v }}</button>
   {{ end }}
 </div>
-<button id="playVsEngine" class="button">Play vs Engine</button>
+<button id="playVsEngine">Play vs Engine</button>
 
 <div id="helpDialog" class="dialog flex">
   <div class="dialog-layout flex">
@@ -15,7 +16,7 @@
     <p>The first number is the initial amount of minutes.</p>
     <p>The second number is the amount of seconds added after each move.</p>
 
-    <button id="helpDialogClose" class="dialog-close button">OK</button>
+    <button id="helpDialogClose" class="dialog-close">OK</button>
   </div>
 </div>
 

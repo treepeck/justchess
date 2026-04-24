@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -16,7 +17,56 @@ const (
 	msgGamesNotFound  = "Start playing and games will be displayed here"
 	msgBadRequest     = "Malformed request body"
 	msgCannotEncode   = "Please, try again later"
+	// Path to the base template file.
+	baseTmpl = "./_web/templates/base.tmpl"
 )
+
+// ParsePages parses the specific [page] for each template in the named folder.
+func ParsePages(folder string) (map[string]page, error) {
+	// Parse pages with static routes.
+	files, err := os.ReadDir(folder)
+	if err != nil {
+		return nil, err
+	}
+
+	pages := make(map[string]page, len(files))
+	for i := range files {
+		tmplFile := files[i].Name()
+
+		// Create an empty template.
+		t := template.New("base.tmpl")
+		// Add common funcs to empty template.
+		t.Funcs(template.FuncMap{
+			"round": func(x float64) float64 { return math.Round(x) },
+		})
+
+		// Add specific funcs to specific templates.
+		if tmplFile == "engine.tmpl" || tmplFile == "rated.tmpl" {
+			t.Funcs(template.FuncMap{
+				"div": func(x, y int) int { return x / y },
+				"mod": func(x, y int) int { return x % y },
+				"add": func(x, y int) int { return x + y },
+				"sub": func(x, y int) int { return y - x },
+			})
+		}
+
+		// Parse template.
+		var err error
+		t, err = t.ParseFiles([]string{baseTmpl, folder + tmplFile}...)
+		if err != nil {
+			return nil, err
+		}
+		// The page key in map must be equal to the page URL. Therefore the
+		// file extension (.tmpl) is truncated.
+		key := "/" + tmplFile[:len(tmplFile)-5]
+		// Special case: truncate /home to /.
+		if key == "/home" {
+			key = "/"
+		}
+		pages[key] = page{tmpl: t}
+	}
+	return pages, nil
+}
 
 type Service struct {
 	playerRepo db.PlayerRepo
@@ -29,98 +79,19 @@ type Service struct {
 	dynamic map[string]page
 }
 
-func NewService(pr db.PlayerRepo, gr db.GameRepo) Service {
+func NewService(pr db.PlayerRepo, gr db.GameRepo, static, dynamic map[string]page) Service {
 	return Service{
 		playerRepo: pr,
 		gameRepo:   gr,
-		static:     make(map[string]page),
-		dynamic:    make(map[string]page),
+		static:     static,
+		dynamic:    dynamic,
 	}
-}
-
-// templateFile defines the template to be parsed and stored in a map.
-type templateFile struct {
-	key      string
-	title    string
-	files    []string
-	isStatic bool
-}
-
-func (s Service) ParsePages(folder string) error {
-	// Define paths to template files.
-	base := folder + "base.tmpl"
-	home := folder + "home.tmpl"
-	signin := folder + "signin.tmpl"
-	signup := folder + "signup.tmpl"
-	leaderboard := folder + "leaderboard.tmpl"
-	reset := folder + "reset_password.tmpl"
-	about := folder + "about.tmpl"
-	notFound := folder + "404.tmpl"
-	queue := folder + "queue.tmpl"
-	ratedGame := folder + "rated_game.tmpl"
-	engineGame := folder + "engine_game.tmpl"
-	player := folder + "player.tmpl"
-
-	// Templates of each page.
-	templates := []templateFile{
-		{key: "/", title: "Home", files: []string{home}, isStatic: true},
-		{key: "/signup", title: "Sign up", files: []string{signup}, isStatic: true},
-		{key: "/signin", title: "Sign in", files: []string{signin}, isStatic: true},
-		{key: "/leaderboard", title: "Leaderboard", files: []string{leaderboard}, isStatic: true},
-		{key: "/reset", title: "Reset", files: []string{reset}, isStatic: true},
-		{key: "/about", title: "About", files: []string{about}, isStatic: true},
-		{key: "/404", title: "Not found", files: []string{notFound}, isStatic: true},
-		{key: "/queue", title: "Queue", files: []string{queue}, isStatic: false},
-		{key: "/rated", files: []string{ratedGame}, isStatic: false},
-		{key: "/engine", files: []string{engineGame}, isStatic: false},
-		{key: "/player", files: []string{player}, isStatic: false},
-	}
-	for _, t := range templates {
-		tmpl := template.New("base.tmpl")
-
-		tmpl.Funcs(template.FuncMap{
-			"round": func(x float64) float64 { return math.Round(x) },
-		})
-
-		if t.key == "/engine" || t.key == "/rated" {
-			tmpl.Funcs(template.FuncMap{
-				"div": func(x, y int) int { return x / y },
-				"mod": func(x, y int) int { return x % y },
-				"add": func(x, y int) int { return x + y },
-				"sub": func(x, y int) int { return y - x },
-			})
-		}
-
-		// Prepend base template before each page.
-		t.files = append([]string{base}, t.files...)
-		// Parse template.
-		var err error
-		tmpl, err = tmpl.ParseFiles(t.files...)
-		if err != nil {
-			return err
-		}
-
-		if t.isStatic {
-			p := page{tmpl: tmpl, Title: t.title}
-
-			switch t.key {
-			case "/":
-				p.Data = [9]string{"1+0", "2+1", "3+0", "3+2", "5+0", "5+2", "10+0", "10+10", "15+10"}
-			}
-
-			s.static[t.key] = p
-		} else {
-			p := page{tmpl: tmpl, Title: t.title}
-			s.dynamic[t.key] = p
-		}
-	}
-	return nil
 }
 
 func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
 	// Serve pages with static routes.
 	mux.HandleFunc("GET /", authService.Authorize(s.staticRoutePage))
-	// Serve pages with path values.
+	// Serve pages with dynamic routes.
 	mux.HandleFunc("GET /queue/{id}", authService.Authorize(s.queuePage))
 	mux.HandleFunc("GET /rated/{id}", authService.Authorize(s.ratedGamePage))
 	mux.HandleFunc("GET /engine/{id}", authService.Authorize(s.engineGamePage))
@@ -129,11 +100,9 @@ func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rated", s.ratedGamesBrief)
 	mux.HandleFunc("GET /api/engine", s.engineGamesBrief)
 
-	// Serve static bundles.
 	bundlesHandler := http.FileServer(http.Dir("./_web/bundles"))
 	mux.Handle("GET /bundles/", http.StripPrefix("/bundles/", bundlesHandler))
 
-	// Serve fonts.
 	fontsHandler := http.FileServer(http.Dir("./_web/fonts"))
 	mux.Handle("GET /fonts/", http.StripPrefix("/fonts/", fontsHandler))
 
@@ -161,6 +130,9 @@ func (s Service) staticRoutePage(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.URL.Path {
+	case "/":
+		page.Data = [9]string{"1+0", "2+1", "3+0", "3+2", "5+0", "5+2", "10+0", "10+10", "15+10"}
+
 	case "/leaderboard":
 		var err error
 		page.Data, err = s.playerRepo.SelectLeaderboard()
@@ -233,7 +205,6 @@ func (s Service) ratedGamePage(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	page := s.dynamic["/rated"]
-	page.Title = g.White.Name + " vs " + g.Black.Name
 	page.Player = p
 	page.Data = g
 	if err = page.tmpl.Execute(rw, page); err != nil {
@@ -256,7 +227,6 @@ func (s Service) engineGamePage(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	page := s.dynamic["/engine"]
-	page.Title = p.Name + " vs Engine"
 	page.Player = p
 	page.Data = g
 	if err = page.tmpl.Execute(rw, page); err != nil {
@@ -279,7 +249,6 @@ func (s Service) playerPage(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	page := s.dynamic["/player"]
-	page.Title = profile.Name
 	page.Player = p
 	page.Data = profile
 	if err = page.tmpl.Execute(rw, page); err != nil {
