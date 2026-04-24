@@ -123,7 +123,7 @@ func (r mockAuthRepo) DeletePasswordResetToken(id string) error {
 
 func initServiceOrPanic() Service {
 	s := NewService(mockAuthRepo{})
-	if err := s.ParseEmails("../../_web/templates/"); err != nil {
+	if err := s.ParseEmails("../../_web/templates/emails/"); err != nil {
 		panic(err)
 	}
 	return s
@@ -235,12 +235,12 @@ func TestConfirmSignup(t *testing.T) {
 	s := initServiceOrPanic()
 
 	cases := []struct {
-		token            string
-		expectedLocation string
+		token          string
+		expectedStatus int
 	}{
-		{"valid", "/"},
-		{"", "/error"},
-		{"invalid", "/error"},
+		{"valid", http.StatusOK},
+		{"", http.StatusNotFound},
+		{"invalid", http.StatusNotFound},
 	}
 
 	for i, tc := range cases {
@@ -251,10 +251,8 @@ func TestConfirmSignup(t *testing.T) {
 		s.confirmSignup(rec, req)
 
 		res := rec.Result()
-		url, _ := res.Location()
-		res.Body.Close()
-		if url.Path != tc.expectedLocation {
-			t.Fatalf("case %d failed: expected %s got %s", i, tc.expectedLocation, url.Path)
+		if res.StatusCode != tc.expectedStatus {
+			t.Fatalf("case %d failed: expected %d got %d", i, tc.expectedStatus, res.StatusCode)
 		}
 	}
 }
@@ -263,12 +261,12 @@ func TestConfirmReset(t *testing.T) {
 	s := initServiceOrPanic()
 
 	cases := []struct {
-		token            string
-		expectedLocation string
+		token          string
+		expectedStatus int
 	}{
-		{"valid", "/signin"},
-		{"", "/error"},
-		{"invalid", "/error"},
+		{"valid", http.StatusOK},
+		{"", http.StatusNotFound},
+		{"invalid", http.StatusNotFound},
 	}
 
 	for i, tc := range cases {
@@ -279,10 +277,8 @@ func TestConfirmReset(t *testing.T) {
 		s.confirmReset(rec, req)
 
 		res := rec.Result()
-		url, _ := res.Location()
-		res.Body.Close()
-		if url.Path != tc.expectedLocation {
-			t.Fatalf("case %d failed: expected %s got %s", i, tc.expectedLocation, url.Path)
+		if res.StatusCode != tc.expectedStatus {
+			t.Fatalf("case %d failed: expected %d got %d", i, tc.expectedStatus, tc.expectedStatus)
 		}
 	}
 }
