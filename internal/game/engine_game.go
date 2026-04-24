@@ -40,7 +40,7 @@ func SpawnEngineGame(id, playerId string, c chego.Color, gr db.GameRepo) (*Engin
 
 func (g *EngineGame) Play(id string, index byte) (MovePayload, bool) {
 	if id != g.playerId || g.Termination != chego.Unterminated ||
-		index > g.Legal.LastMoveIndex {
+		index >= g.Legal.LastMoveIndex {
 		return MovePayload{}, false
 	}
 
