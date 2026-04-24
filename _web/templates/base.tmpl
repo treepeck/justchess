@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Title  }} &ndash; JustChess.org</title>
+  <title>{{ block "title" . }}{{ end }} &ndash; JustChess.org</title>
   <link rel="stylesheet" href="/bundles/bundle.css">
   <link rel="icon" href="/images/favicon.png" type="image/png">
-  <meta name="description" content="Multiplayer chess server with rating system, matchmaking and game history.">
+  <meta name="description" content="Multiplayer chess server with rating system, matchmaking, and game history.">
 </head>
 <body>
   <header class="site-header">
     <div class="site-header-layout flex">
-        <a class="site-header-logo a" href="/">JustChess</a>
-        <a class="site-header-nav a" href="/leaderboard">Leaderboard</a>
-        <a class="site-header-nav a" href="/about">About</a>
+        <a class="site-header-logo" href="/">JustChess</a>
+        <a class="site-header-nav" href="/leaderboard">Leaderboard</a>
+        <a class="site-header-nav" href="/about">About</a>
 
         <div class="site-header-profile flex">
           {{ if .Player.IsGuest }}
-            <a href="/signup" class="a"><b><u>Sign up</u></b></a>
-            <a href="/signin" class="a">Sign in</a>
+            <a href="/signup"><b><u>Sign up</u></b></a>
+            <a href="/signin">Sign in</a>
           {{ else }}
-            <a href="/player/{{ .Player.Id }}" class="a">{{ .Player.Name }}</a>
+            <a href="/player/{{ .Player.Id }}">{{ .Player.Name }}</a>
           {{ end }}
         </div>
       </a>

@@ -30,14 +30,19 @@ func main() {
 
 	log.Print("Initializing services...")
 	authService := auth.NewService(ar)
-	if err = authService.ParseEmails("./_web/templates/"); err != nil {
+	if err = authService.ParseEmails("./_web/templates/emails/"); err != nil {
 		log.Panic(err)
 	}
 
-	webService := web.NewService(pr, gr)
-	if err = webService.ParsePages("./_web/templates/"); err != nil {
+	staticPages, err := web.ParsePages("./_web/templates/static/")
+	if err != nil {
 		log.Panic(err)
 	}
+	dynamicPages, err := web.ParsePages("./_web/templates/dynamic/")
+	if err != nil {
+		log.Panic(err)
+	}
+	webService := web.NewService(pr, gr, staticPages, dynamicPages)
 
 	wsService := ws.NewService(gr, pr)
 	go wsService.ListenEvents()

@@ -1,5 +1,6 @@
+{{ define "title" }}Queue {{ .Data.Control }}+{{ .Data.Bonus }}{{ end }}
 {{ define "layout" }}
-<h1 class="page-header">Finding an opponent...</h1>
+<h1><b>Finding an opponent...</b></h1>
 
 <div class="queue flex">
   <div class="queue-info">Rating: {{ round .Player.Rating }}</div>
@@ -20,8 +21,8 @@
     <p>Try selecting other time controls to find a match faster.</p>
 
     <div class="dialog-buttons">
-      <button id="emptyDialogPlayVsEngine" class="button">Play vs computer</button>
-      <button id="emptyDialogClose" class="dialog-close button">Stay</button>
+      <button id="emptyDialogPlayVsEngine">Play vs computer</button>
+      <button id="emptyDialogClose" class="dialog-close">Stay</button>
     </div>
   </div>
 </div>

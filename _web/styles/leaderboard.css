@@ -1,6 +1,7 @@
 .leaderboard {
   width: 100%;
   max-width: 650px;
+  height: 100%;
   background-color: var(--container-background);
   color: var(--container-foreground);
   border-radius: 15px;
@@ -17,7 +18,6 @@
 .leaderboard-header div,
 .leaderboard-row div {
   flex: 1;
-  /* margin: auto; */
   text-align: center;
   overflow: hidden;
   font-size: large;

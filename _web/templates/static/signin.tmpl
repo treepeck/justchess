@@ -1,5 +1,6 @@
+{{ define "title" }}Sign in{{ end }}
 {{ define "layout" }}
-<h1 class="page-header">Welcome back</h1>
+<h1><b>Welcome back</b></h1>
 
 <form id="authForm" class="form flex">
   <div class="form-section">
@@ -29,11 +30,11 @@
     <div class="form-error" id="formPasswordError"></div>
   </div>
 
-  <a href="/reset" class="a"><small>Forgot your password?</small></a>
+  <a href="/reset-password"><small>Forgot your password?</small></a>
 
   <div class="form-button flex">
     <div id="serverResponse"></div>
-    <button id="formSubmitButton" class="button">Sign in</button>
+    <button id="formSubmitButton">Sign in</button>
   </div>
 
   <small>Doesn't have an account? <a href="/signup">Sign up</a></small>

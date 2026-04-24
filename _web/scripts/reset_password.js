@@ -34,7 +34,7 @@ async function submitForm(event) {
 	})
 
 	if (!res.ok) {
-		resMessage.textContent = "Sign in failed: " + (await res.text())
+		resMessage.textContent = "Reset failed: " + (await res.text())
 		resMessage.style.color = "red"
 		// Reenable the submit button.
 		btn.disabled = false
@@ -49,7 +49,7 @@ async function submitForm(event) {
 }
 
 ;(() => {
-	if (window.location.pathname != "/reset") return
+	if (window.location.pathname != "/reset-password") return
 
 	g("resetPasswordForm").onsubmit = submitForm
 
