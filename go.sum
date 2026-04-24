@@ -6,7 +6,11 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/treepeck/chego v0.0.0-20260318105927-d60f870b6749 h1:wXFPmEtLiGeCYeRcBVPKrf/Yx7CzlVW2QbMw2Vnz+r0=
 github.com/treepeck/chego v0.0.0-20260318105927-d60f870b6749/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
+github.com/treepeck/chego v0.2.0 h1:+WMwtNEuVDTfcKvrdWIcCgauxksBwprgZOtyablSAbU=
+github.com/treepeck/chego v0.2.0/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
 github.com/treepeck/glicko v0.0.4 h1:2fGHVWXFswTBYHTMi/7gwd7Barp10TQ4yGHMjIe1Bb0=
 github.com/treepeck/glicko v0.0.4/go.mod h1:Omcr6WSRD0wZA3xcpNGLE00oRrz2BqiuZRnzvV3W/FU=
 golang.org/x/crypto v0.49.0 h1:+Ng2ULVvLHnJ/ZFEq4KdcDd/cfjrrjjNSXNzxg0Y4U4=
 golang.org/x/crypto v0.49.0/go.mod h1:ErX4dUh2UM+CFYiXZRTcMpEcN8b/1gxEuv3nODoYtCA=
+golang.org/x/crypto v0.50.0 h1:zO47/JPrL6vsNkINmLoo/PH1gcxpls50DNogFvB5ZGI=
+golang.org/x/crypto v0.50.0/go.mod h1:3muZ7vA7PBCE6xgPX7nkzzjiUq87kRItoJQM1Yo8S+Q=
