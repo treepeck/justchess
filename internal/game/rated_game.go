@@ -63,7 +63,7 @@ func (g *RatedGame) Play(id string, index byte) (MovePayload, bool) {
 	if (len(g.Played)%2 == 0 && id != g.white.Id) ||
 		(len(g.Played)%2 != 0 && id != g.black.Id) ||
 		g.Termination != chego.Unterminated ||
-		index > g.Legal.LastMoveIndex {
+		index >= g.Legal.LastMoveIndex {
 		return MovePayload{}, false
 	}
 
