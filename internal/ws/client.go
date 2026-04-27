@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"log"
 	"strconv"
 	"time"
 
@@ -110,7 +109,7 @@ func (c *client) write() {
 			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, raw); err != nil {
-				return
+				continue
 			}
 
 		// Handle pong events in write goroutine to avoid data races between read and write routines.
@@ -132,8 +131,7 @@ func (c *client) write() {
 				Kind:    event.Ping,
 				Payload: []byte(strconv.Itoa(c.ping)),
 			}); err != nil {
-				log.Println(err)
-				return
+				continue
 			}
 			c.hasAnsweredPing = false
 		}
@@ -158,7 +156,7 @@ func (c *client) handlePong() error {
 	return nil
 }
 
-// cleanup closes the connection and unregisters the client from the gatekeeper.
+// cleanup closes the connection and unregisters the client.
 func (c *client) cleanup() {
 	if c.unregister != nil {
 		c.unregister <- c.player.Id
