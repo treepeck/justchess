@@ -21,7 +21,7 @@ const (
 	msgConflict = "Please close any previous tabs and reload the page to reconnect"
 
 	// Max number of clients per room or queue.
-	clientsThreshold = 100
+	clientsThreshold = 1000
 )
 
 // upgrader is used to establish a WebSocket connection.
