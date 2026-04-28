@@ -1,0 +1,18 @@
+{{ define "title" }}AI coach{{ end }}
+{{ define "layout" }}
+<h1>AI coach</h1>
+<div class="chess-coach-widget">
+    <div class="chat-window">
+        <div class="chat-messages" id="chat-messages">
+            <div class="message ai-message">Hello! I'm your AI Chess Coach. Where should we start?</div>
+        </div>
+        <div class="coach-actions">
+            <input type="text" id="chat-input" placeholder="Ask your coach" />
+            <div class="coach-btns-container">
+                <button id="btn-specific" class="primary-btn">Analyze specific game</button>
+                <button id="btn-recent" class="primary-btn">Analyze recent games</button>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

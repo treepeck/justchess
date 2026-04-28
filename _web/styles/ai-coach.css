@@ -1,0 +1,95 @@
+.chess-coach-widget {
+  width: min(100%, 600px);
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-messages {
+  overflow-y: auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-size: normal;
+}
+
+.message {
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  max-width: 85%;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.ai-message {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  align-self: flex-start;
+  border-bottom-left-radius: 0;
+}
+
+.user-message {
+  background-color: #4caf50;
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 0;
+}
+
+#chat-input {
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+#send-btn {
+  margin-left: 8px;
+  padding: 8px 15px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.coach-actions {
+  background-color: var(--container-foreground);
+  display: flex;
+  flex-direction: column;
+  border-radius: 32px;
+  padding: 15px;
+}
+
+.coach-btns-container {
+  display: flex;
+  margin: 0 8px;
+  gap: 1rem;
+}
+
+.primary-btn,
+.secondary-btn {
+  border-radius: 12px;
+  padding: 8px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.primary-btn {
+  border: 2px solid var(--container-background);
+  background-color: var(--container-background);
+}
+
+.primary-btn:hover {
+  background-color: #555;
+  color: var(--container-background);
+  background-color: var(--container-foreground);
+}

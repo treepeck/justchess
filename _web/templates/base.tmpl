@@ -13,6 +13,7 @@
     <div class="site-header-layout flex">
         <a class="site-header-logo" href="/">JustChess</a>
         <a class="site-header-nav" href="/leaderboard">Leaderboard</a>
+        <a class="site-header-nav" href="/ai-coach">AI coach</a>
         <a class="site-header-nav" href="/about">About</a>
 
         <div class="site-header-profile flex">
@@ -27,7 +28,7 @@
     </div>
   </header>
 
-  <main id="main" class="site-layout flex" data-id="{{ .Player.Id }}" data-isguest="{{ .Player.IsGuest }}">
+  <main id="main" data-id="{{ .Player.Id }}" data-isguest="{{ .Player.IsGuest }}">
     {{ template "layout" . }}
   </main>
 
