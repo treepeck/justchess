@@ -56,17 +56,26 @@ function eventHandler(Kind, payload) {
 			g("playersNumber").textContent = `Players in queue: ${payload}`
 
 			if (payload < 2) {
-				g("emptyDialogPlayVsEngine").onclick = async () => {
-					const res = await fetch("/play-vs-engine", {
-						method: "POST",
-						credentials: "include",
-					})
+				g("emptyDialogPlayVsEngine").onclick = () => {
+					g("emptyDialog").classList.remove("show")
+					showDialog("engineDialog")
+					g("engineDialogConfirm").onclick = async () => {
+						const difficulty = document.querySelector(
+							`input[name="difficulty"]:checked`,
+						)
+						if (!difficulty)
+							throw new Error("engine difficulty not set")
 
-					if (!res) {
-						throw new Error("Couldn't create an engine game")
+						const res = await fetch(`/play-vs-engine`, {
+							method: "POST",
+							body: difficulty.value,
+							credentials: "include",
+						})
+						if (!res) {
+							throw new Error("Couldn't create an engine game")
+						}
+						if (res.redirected) window.location.href = res.url
 					}
-
-					if (res.redirected) window.location.href = res.url
 				}
 				showDialog("emptyDialog")
 			}

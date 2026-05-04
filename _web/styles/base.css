@@ -218,6 +218,40 @@ button:focus {
   font-size: large;
 }
 
+/* Engine difficulty dialog on home and queue pages. */
+.difficulty-group {
+  margin: 10px auto 10px auto;
+  padding: 5;
+  border-color: var(--container-foreground);
+  border-radius: 15px;
+  user-select: none;
+  line-height: 2;
+}
+
+.difficulty-group label {
+  cursor: pointer;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 5px;
+  font-size: larger;
+  transition:
+    background-color 0.75s ease-in-out,
+    color 0.75s ease-in-out;
+}
+
+.difficulty-group input {
+  appearance: none;
+}
+
+.difficulty-group label:hover {
+  color: var(--container-background);
+  background-color: var(--container-foreground);
+}
+
+.difficulty-group input:checked + label {
+  background-color: var(--text-hover);
+}
+
 /* Animated background applied on home and queue pages. */
 .floating-chessboard {
   width: 200%;

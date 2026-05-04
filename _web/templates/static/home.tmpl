@@ -9,6 +9,30 @@
 </div>
 <button id="playVsEngine">Play vs Engine</button>
 
+<div id="engineDialog" class="dialog flex">
+  <div class="dialog-layout flex">
+    <div class="dialog-header">Choose difficulty</div>
+
+    <fieldset class="difficulty-group">
+      <input type="radio" name="difficulty" id="easy" value="1" />
+      <label for="easy">Easy</label>
+      <input type="radio" name="difficulty" id="medium" value="2" checked />
+      <label for="medium">Medium</label>
+      <input type="radio" name="difficulty" id="hard" value="3" />
+      <label for="hard">Hard</label>
+      <input type="radio" name="difficulty" id="insane" value="4" />
+      <label for="insane">Insane</label>
+      <input type="radio" name="difficulty" id="impossible" value="5" />
+      <label for="impossible">Impossible</label>
+    </fieldset>
+
+    <div class="dialog-buttons">
+      <button id="engineDialogClose">Cancel</button>
+      <button id="engineDialogConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div id="helpDialog" class="dialog flex">
   <div class="dialog-layout flex">
     <div class="dialog-header">What is time control?</div>

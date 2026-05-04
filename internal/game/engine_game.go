@@ -22,8 +22,9 @@ type EngineGame struct {
 
 // SpawnEngineGame inserts a new engine game record into repository and initializes
 // [EngineGame] fields.
-func SpawnEngineGame(id, playerId string, c chego.Color, gr db.GameRepo) (*EngineGame, error) {
-	err := gr.InsertEngine(id, playerId, c)
+func SpawnEngineGame(id, playerId string, c chego.Color, d db.EngineDifficulty,
+	gr db.GameRepo) (*EngineGame, error) {
+	err := gr.InsertEngine(id, playerId, c, d)
 	if err != nil {
 		return nil, err
 	}

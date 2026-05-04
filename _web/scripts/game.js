@@ -135,7 +135,8 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 	if (parts[1] == "engine" && !isTerminated) {
 		// @ts-expect-error
 		playerColor = parseInt(g("board").dataset.color)
-		engine = new Engine(moveHandler, [], 1 ^ playerColor)
+		const difficulty = parseInt(g("board").dataset.difficulty)
+		engine = new Engine(moveHandler, [], 1 ^ playerColor, difficulty)
 	}
 
 	const store = (/** @type {import("./ws/event").PlayedMove} */ move) => {
@@ -187,7 +188,11 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 						board.currentFen % 2 !== 0 ? Color.Black : Color.White
 				}
 
-				if (engine && engine.color == board.currentFen % 2) {
+				if (
+					pGame.lm.length > 0 &&
+					engine &&
+					engine.color == board.currentFen % 2
+				) {
 					if (pGame.m.length > 0) {
 						// @ts-expect-error
 						engine.play(pGame.m.at(-1).f)
@@ -283,7 +288,11 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 					clock.flip()
 				}
 
-				if (engine && engine.color == board.currentFen % 2) {
+				if (
+					pMove.lm.length > 0 &&
+					engine &&
+					engine.color == board.currentFen % 2
+				) {
 					engine.play(pMove.f)
 				}
 				break
