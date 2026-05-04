@@ -342,9 +342,9 @@ export function appendMove(san, moveIndex, sanClickHandler) {
 			highlightMove(index)
 			// @ts-expect-error
 			san.onclick = () => {
-				board.currentFen = index
+				board.currentFen = index + 1
 				highlightMove(index)
-				board.parsePiecePlacement(board.fens[index])
+				board.parsePiecePlacement(board.fens[board.currentFen])
 			}
 
 			// @ts-expect-error
