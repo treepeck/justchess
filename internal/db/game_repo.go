@@ -48,6 +48,17 @@ type RatedGameUpdate struct {
 	MovesLength     int
 }
 
+// EngineDifficulty represents the skill level of engine.
+type EngineDifficulty int
+
+const (
+	Easy EngineDifficulty = iota + 1
+	Medium
+	Hard
+	Insane
+	Impossible
+)
+
 // EngineGame represents the state of a single game played vs engine.
 type EngineGame struct {
 	Player      Player
@@ -56,6 +67,7 @@ type EngineGame struct {
 	PlayerColor chego.Color
 	Result      chego.Result
 	Termination chego.Termination
+	Difficulty  EngineDifficulty
 	MovesLength int
 }
 
@@ -67,6 +79,7 @@ type EngineGameBrief struct {
 	Result      chego.Result      `json:"r"`
 	Termination chego.Termination `json:"t"`
 	PlayerColor chego.Color       `json:"pc"`
+	Difficulty  EngineDifficulty  `json:"d"`
 	MovesLength int               `json:"m"`
 }
 
@@ -96,7 +109,7 @@ type GameRepo interface {
 	UpdateRated(gu RatedGameUpdate) error
 	MarkRatedAsAbandoned(id string) error
 
-	InsertEngine(id, playerId string, playerColor chego.Color) error
+	InsertEngine(id, playerId string, c chego.Color, d EngineDifficulty) error
 	SelectEngine(id string) (EngineGame, error)
 	SelectNewestEngine(id string) ([]EngineGameBrief, error)
 	SelectOlderEngine(id string, p Pagination) ([]EngineGameBrief, error)
@@ -204,8 +217,9 @@ func (r SQLGameRepo) MarkRatedAsAbandoned(id string) error {
 	return err
 }
 
-func (r SQLGameRepo) InsertEngine(id, playerId string, c chego.Color) error {
-	_, err := r.pool.Exec(insertEngine, id, playerId, c)
+func (r SQLGameRepo) InsertEngine(id, playerId string, c chego.Color,
+	d EngineDifficulty) error {
+	_, err := r.pool.Exec(insertEngine, id, playerId, c, d)
 	return err
 }
 
@@ -218,7 +232,7 @@ func (r SQLGameRepo) SelectEngine(id string) (EngineGame, error) {
 		&g.Player.Id, &g.Player.Name, &g.Player.Rating,
 		&g.Player.Deviation, &g.Player.Volatility,
 		&g.Id, &g.Result, &g.Termination, &g.MovesLength,
-		&encoded, &g.PlayerColor,
+		&encoded, &g.PlayerColor, &g.Difficulty,
 	)
 	if err != nil {
 		return g, err
@@ -243,7 +257,7 @@ func (r SQLGameRepo) SelectNewestEngine(id string) ([]EngineGameBrief, error) {
 		var g EngineGameBrief
 		if err = rows.Scan(
 			&g.Id, &g.Result, &g.Termination, &g.MovesLength,
-			&g.CreatedAt, &g.PlayerColor,
+			&g.CreatedAt, &g.PlayerColor, &g.Difficulty,
 		); err != nil {
 			return nil, err
 		}
@@ -264,7 +278,7 @@ func (r SQLGameRepo) SelectOlderEngine(id string, p Pagination) ([]EngineGameBri
 		var g EngineGameBrief
 		if err = rows.Scan(
 			&g.Id, &g.Result, &g.Termination, &g.MovesLength,
-			&g.CreatedAt, &g.PlayerColor,
+			&g.CreatedAt, &g.PlayerColor, &g.Difficulty,
 		); err != nil {
 			return nil, err
 		}
@@ -389,9 +403,10 @@ const (
 	INSERT INTO engine_game (
 		id,
 		player_id,
-		player_color
+		player_color,
+		difficulty
 	)
-	VALUES (?, ?, ?)`
+	VALUES (?, ?, ?, ?)`
 
 	selectEngine = `
 	SELECT
@@ -406,14 +421,16 @@ const (
 		g.termination,
 		g.moves_length,
 		g.moves,
-		g.player_color
+		g.player_color,
+		g.difficulty
 	FROM engine_game g
 	INNER JOIN player p ON g.player_id = p.id
 	WHERE g.id = ? AND g.termination != 1`
 
 	selectNewestEngine = `
 	SELECT
-		id, result, termination, moves_length, created_at, player_color
+		id, result, termination, moves_length, created_at, player_color,
+		difficulty
 	FROM engine_game
 	WHERE player_id = ? AND termination != 1
 	ORDER BY created_at DESC, id DESC
@@ -421,7 +438,8 @@ const (
 
 	selectOlderEngine = `
 	SELECT
-		id, result, termination, moves_length, created_at, player_color
+		id, result, termination, moves_length, created_at, player_color,
+		difficulty
 	FROM engine_game
 	WHERE
 		(player_id = ? AND termination != 1)

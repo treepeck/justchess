@@ -60,6 +60,14 @@ function UCI2MoveIndex(uci, legalMoves) {
 	throw new Error("Illegal move from engine")
 }
 
+export const EngineDifficulty = /** @type {const} */ ({
+	Easy: 1,
+	Medium: 2,
+	Hard: 3,
+	Insane: 4,
+	Impossible: 5,
+})
+
 export default class Engine {
 	/** @type {Worker} */
 	worker
@@ -69,16 +77,20 @@ export default class Engine {
 	legalMoves
 	/** @type {Color} */
 	color
+	/** @type {EngineDifficulty} */
+	difficulty
 
 	/**
 	 * @param {import("../components/board").MoveHandler} onMove
 	 * @param {Move[]} legalMoves
 	 * @param {Color} color
+	 * @param {} difficulty
 	 */
-	constructor(onMove, legalMoves, color) {
+	constructor(onMove, legalMoves, color, difficulty) {
 		this.onMove = onMove
 		this.legalMoves = legalMoves
 		this.color = color
+		this.difficulty = difficulty
 
 		this.worker = new Worker(stockfishUrl)
 
@@ -99,15 +111,13 @@ export default class Engine {
 		switch (tokens[0]) {
 			// First of all, configure the this.worker with the specified parameters.
 			case "uciok":
-				// this.worker.postMessage(
-				// 	`setoption name Threads value ${threads}`,
-				// )
-				// this.worker.postMessage(`setoption name Hash value ${hashSize}`)
-				// this.worker.postMessage("setoption name MultiPV value 1")
-				// this.worker.postMessage(
-				// 	"setoption name UCI_LimitStrength value true",
-				// )
-				// this.worker.postMessage("setoption name UCI_Elo value 2000")
+				this.worker.postMessage(
+					`setoption name Skill Level value ${this.difficulty - 1}`,
+				)
+				this.worker.postMessage("isready")
+				break
+
+			case "readyok":
 				this.worker.postMessage("ucinewgame")
 				break
 
@@ -123,7 +133,7 @@ export default class Engine {
 	play(fen) {
 		this.worker.postMessage(`position fen ${fen}`)
 		setTimeout(() => {
-			this.worker.postMessage("go depth 10")
+			this.worker.postMessage(`go depth ${this.difficulty}`)
 		}, 1500)
 	}
 

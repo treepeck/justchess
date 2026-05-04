@@ -2,6 +2,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 	"math/rand/v2"
 	"net/http"
@@ -16,9 +17,10 @@ import (
 )
 
 const (
-	msgNotFound = "There are no active rooms or queues with the specified id"
-	msgTooMany  = "There are too many active players. Please, try again later"
-	msgConflict = "Please close any previous tabs and reload the page to reconnect"
+	msgNotFound   = "There are no active rooms or queues with the specified id"
+	msgTooMany    = "There are too many active players. Please, try again later"
+	msgConflict   = "Please close any previous tabs and reload the page to reconnect"
+	msgBadRequest = "Malformed request body"
 
 	// Max number of clients per room or queue.
 	clientsThreshold = 1000
@@ -184,13 +186,20 @@ func (s Service) createEngineRoom(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var d db.EngineDifficulty
+	if err := json.NewDecoder(r.Body).Decode(&d); err != nil ||
+		d < db.Easy || d > db.Impossible {
+		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		return
+	}
+
 	id := randgen.GenId(randgen.IdLen)
 	var c chego.Color
 	if rand.IntN(2) == 1 {
 		c = chego.ColorBlack
 	}
 
-	g, err := game.SpawnEngineGame(id, p.Id, c, s.gameRepo)
+	g, err := game.SpawnEngineGame(id, p.Id, c, d, s.gameRepo)
 	if err != nil {
 		http.Error(rw, msgRoomCreationFailed, http.StatusInternalServerError)
 		return
