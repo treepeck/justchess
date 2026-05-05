@@ -1,6 +1,7 @@
 import { g, c } from "./utils/dom"
 import { Color } from "./components/clock"
 import MessageSystem from "./components/message"
+import { EngineDifficulty } from "./utils/engine"
 import {
 	formatResult,
 	formatTermination,
@@ -47,6 +48,7 @@ async function getRatedGamesBrief(playerId, cursorId, cursorCreatedAt) {
  * @property {Color} pc - Player color.
  * @property {Result} r
  * @property {Termination} t
+ * @property {EngineDifficulty} d
  * @property {number} m - Number of played moves.
  */
 
@@ -128,6 +130,27 @@ function appendRatedGameBrief(brief) {
 }
 
 /**
+ * @param {EngineDifficulty} d
+ * @returns {string}
+ */
+function formatDifficulty(d) {
+	switch (d) {
+		case EngineDifficulty.Easy:
+			return "Easy"
+		case EngineDifficulty.Medium:
+			return "Medium"
+		case EngineDifficulty.Hard:
+			return "Hard"
+		case EngineDifficulty.Insane:
+			return "Insane"
+		case EngineDifficulty.Impossible:
+			return "Impossible"
+		default:
+			throw new Error("unknown engine difficulty")
+	}
+}
+
+/**
  * @param {EngineGameBrief} brief
  */
 function appendEngineGameBrief(brief) {
@@ -153,6 +176,10 @@ function appendEngineGameBrief(brief) {
 	const moves = c("div")
 	moves.textContent = `${Math.ceil(brief.m / 2)}`
 	row.appendChild(moves)
+
+	const difficulty = c("div")
+	difficulty.textContent = formatDifficulty(brief.d)
+	row.appendChild(difficulty)
 
 	const playedAt = document.createElement("div")
 	playedAt.textContent = new Date(brief.c).toLocaleDateString("en-US", {
