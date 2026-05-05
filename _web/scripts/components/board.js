@@ -614,7 +614,7 @@ export class Board {
 			piece.element.classList.add("promotion-choice")
 
 			// Add event listener.
-			piece.element.onclick = () => {
+			piece.element.onpointerup = () => {
 				this.makeMove(this.#legalMoves[moveIndex + i])
 				this.#moveHandler(moveIndex + i)
 			}
@@ -636,7 +636,9 @@ export class Board {
 			)
 		}
 
-		g("board").appendChild(dialog)
+		setTimeout(() => {
+			g("board").appendChild(dialog)
+		}, 100)
 	}
 
 	/**
