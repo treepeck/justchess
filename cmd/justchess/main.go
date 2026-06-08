@@ -29,9 +29,9 @@ func main() {
 
 	log.Print("Initializing services...")
 	authService := auth.NewService(ar)
-	// if err = authService.ParseEmails("./_web/templates/emails/"); err != nil {
-	// 	log.Panic(err)
-	// }
+	if err = authService.ParseEmails("./internal/auth/"); err != nil {
+		log.Panic(err)
+	}
 
 	webService, err := web.InitService(gr, pr, "./_web/")
 	if err != nil {

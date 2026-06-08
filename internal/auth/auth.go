@@ -42,8 +42,7 @@ const (
 	guestSessionMaxAge  = 60 * 60 * 24      // 1 day.
 )
 
-// tmplData is a data object used to fill up the verification email while
-// executing a template file.
+// tmplData is a data object used to fill up the email templates.
 type tmplData struct {
 	Name string
 	Url  string
@@ -73,8 +72,8 @@ type Service struct {
 	repo db.AuthRepo
 	// Store parsed emails to avoid expensive template parsing on each signup
 	// or password reset.
-	// First template is signup_verification_email.tmpl.
-	// Seconds template is password_reset_email.tmpl.
+	// First template is email-signup.tmpl.
+	// Second template is email-reset.tmpl.
 	emails [2]*template.Template
 }
 
@@ -87,7 +86,7 @@ func (s *Service) ParseEmails(folder string) error {
 	}
 	s.emails[0] = signup
 
-	reset, err := template.ParseFiles(folder + "email-reset-password.tmpl")
+	reset, err := template.ParseFiles(folder + "email-reset.tmpl")
 	if err != nil {
 		return err
 	}
