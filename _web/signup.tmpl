@@ -1,0 +1,11 @@
+<!--{
+	"title": "Sign up",
+	"layouts": ["_web/layouts/form.tmpl"],
+	"hasUsernameField": true
+}-->
+
+{{ define "content" }}
+<h1><b>Create a new account</b></h1>
+{{ template "form" . }}
+<small>Already have an account? <a href="/signin">Sign in</a></small>
+{{ end }}

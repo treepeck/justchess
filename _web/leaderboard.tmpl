@@ -1,0 +1,25 @@
+<!--{
+	"title": "Leaderboard"
+}-->
+
+{{ define "content" }}
+<h1><b>Leaderboard</b></h1>
+
+<table class="leaderboard-table">
+	<tr>
+		<th>Name</th>
+		<th>Rating</th>
+		<th>Rated Games</th>
+		<th>Member since</th>
+	</tr>
+
+	{{ range $v := .Data }}
+		<tr>
+			<td>{{ $v.Name }}</td>
+			<td>{{ $v.Rating }}</td>
+			<td>{{ $v.RatedGames }}</td>
+			<td>{{ $v.CreatedAt }}</td>
+		</tr>
+  {{ end }}
+<table>
+{{ end }}

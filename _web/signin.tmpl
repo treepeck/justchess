@@ -1,0 +1,12 @@
+<!--{
+	"title": "Sign in",
+	"layouts": ["_web/layouts/form.tmpl"],
+	"hasUsernameField": false
+}-->
+
+{{ define "content" }}
+<h1><b>Welcome back</b></h1>
+{{ template "form" . }}
+<p><small>Forgot password? <a href="/reset-password">Password reset</a></small></p>
+<p><small>Doesn't have an account? <a href="/signup">Sign up</a></small></p>
+{{ end }}
