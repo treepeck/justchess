@@ -1,0 +1,43 @@
+{{ define "form" }}
+<form id="form">
+	{{ if .Data.hasUsernameField }}
+		<div class="form-field">
+			<p class="form-field-label">Username</p>
+			<input
+				id="usernameInput"
+				type="text"
+				name="username"
+				autocomplete="off"
+				placeholder="MagnusCarlsen"
+			/>
+			<div class="form-error" id="formUsernameError"></div>
+		</div>
+	{{ end }}
+
+	<div class="form-field">
+		<p class="form-field-label">Email</p>
+		<input
+			id="emailInput"
+			type="email"
+			name="email"
+			autocomplete="off"
+			placeholder="magnus@carlsen.com"
+		/>
+		<div class="form-error" id="formEmailError"></div>
+	</div>
+
+	<div class="form-field">
+		<p class="form-field-label">Password</p>
+		<input
+			id="passwordInput"
+			type="password"
+			name="password"
+			autocomplete="off"
+			placeholder="**********"
+		/>
+		<div class="form-error" id="formPasswordError"></div>
+	</div>
+
+	<button id="formConfirm" class="form-confirm">Confirm via email</button>
+</form>
+{{ end }}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{ .Title }} &ndash; JustChess.org</title>
+	<meta name="description" content="Multiplayer chess server with rating system, matchmaking, and game history.">
+	<link rel="icon" href="/assets/images/favicon.png" type="image/png">
+</head>
+
+<body>
+	<header class="site-header">
+		<div class="site-header-layout flex">
+			<a class="site-header-nav" href="/">JustChess</a>
+			<a class="site-header-nav" href="/leaderboard">Leaderboard</a>
+			<a class="site-header-nav" href="/about">About</a>
+
+			<div class="site-header-profile">
+				{{ if .Player.IsGuest }}
+					<a href="/signup"><b><u>Sign up</u></b></a>
+					<a href="/signin">Sign in</a>
+				{{ else }}
+					<a href="/player/{{ .Player.Id }}">{{ .Player.Name }}</a>
+				{{ end }}
+			</div>
+		</div>
+	</header>
+
+	<main id="main" class="site-content">
+		{{ template "content" . }}
+	</main>
+
+	<footer class="site-footer">
+		<a class="site-footer-nav" href="https://github.com/treepeck/justchess">GitHub</a>
+		<a class="site-footer-nav" href="https://www.youtube.com/@treepeck">YouTube</a>
+	</footer>
+</body>
+</html>

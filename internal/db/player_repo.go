@@ -15,15 +15,16 @@ type Player struct {
 	IsGuest    bool
 }
 
-// ProfileData is a data object used to fill up the player.tmpl file while executing
+// Profile is a data object used to fill up the player.tmpl file while executing
 // a template.
-type ProfileData struct {
+type Profile struct {
 	Id        string
 	CreatedAt time.Time
 	Name      string
 	Rating    float64
 	// Number of played rated games.
-	RatedGames int
+	RatedGames  int
+	EngineGames int
 }
 
 // RatingUpdate is used to update the player's rating after completed game.
@@ -37,10 +38,10 @@ type RatingUpdate struct {
 // PlayerRepo ignores guest players.
 type PlayerRepo interface {
 	SelectById(id string) (Player, error)
-	SelectProfileData(id string) (ProfileData, error)
-	// SelectLeaderboard selects [ProfileData] of 100 players with the biggest
+	SelectProfile(id string) (Profile, error)
+	// SelectLeaderboard selects [Profile] of 100 players with the biggest
 	// rating sorted in descending order.
-	SelectLeaderboard() ([]ProfileData, error)
+	SelectLeaderboard() ([]Profile, error)
 	UpdateRatings(white, black RatingUpdate) error
 }
 
@@ -57,22 +58,22 @@ func (r SQLPlayerRepo) SelectById(id string) (Player, error) {
 	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
 }
 
-func (r SQLPlayerRepo) SelectProfileData(id string) (ProfileData, error) {
-	row := r.pool.QueryRow(selectProfileData, id)
-	var p ProfileData
+func (r SQLPlayerRepo) SelectProfile(id string) (Profile, error) {
+	row := r.pool.QueryRow(selectProfile, id)
+	var p Profile
 	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.RatedGames)
 }
 
-func (r SQLPlayerRepo) SelectLeaderboard() ([]ProfileData, error) {
+func (r SQLPlayerRepo) SelectLeaderboard() ([]Profile, error) {
 	rows, err := r.pool.Query(selectLeaderboard)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	leaders := make([]ProfileData, 0, 20)
+	leaders := make([]Profile, 0, 20)
 	for rows.Next() {
-		var pd ProfileData
+		var pd Profile
 		err = rows.Scan(&pd.Id, &pd.Name, &pd.Rating, &pd.CreatedAt, &pd.RatedGames)
 		if err != nil {
 			return nil, err
@@ -97,7 +98,7 @@ const (
 	SELECT id, name, rating, rating_deviation, rating_volatility
 	FROM player WHERE id = ? AND is_guest = FALSE`
 
-	selectProfileData = `
+	selectProfile = `
 	SELECT
 		p.name,
 		p.rating,

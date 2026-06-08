@@ -29,19 +29,14 @@ func main() {
 
 	log.Print("Initializing services...")
 	authService := auth.NewService(ar)
-	if err = authService.ParseEmails("./_web/templates/emails/"); err != nil {
-		log.Panic(err)
-	}
+	// if err = authService.ParseEmails("./_web/templates/emails/"); err != nil {
+	// 	log.Panic(err)
+	// }
 
-	staticPages, err := web.ParsePages("./_web/templates/static/")
+	webService, err := web.InitService(gr, pr, "./_web/")
 	if err != nil {
 		log.Panic(err)
 	}
-	dynamicPages, err := web.ParsePages("./_web/templates/dynamic/")
-	if err != nil {
-		log.Panic(err)
-	}
-	webService := web.NewService(pr, gr, staticPages, dynamicPages)
 
 	wsService := ws.NewService(gr, pr)
 	go wsService.ListenEvents()
@@ -49,7 +44,7 @@ func main() {
 	// Register routes.
 	mux := http.NewServeMux()
 	wsService.RegisterRoutes(authService, mux)
-	webService.RegisterRoutes(authService, mux)
+	webService.RegisterRoutes(mux)
 	authService.RegisterRoutes(mux)
 
 	log.Print("Starting server.")
