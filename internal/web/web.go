@@ -3,6 +3,7 @@
 package web
 
 import (
+	"justchess/internal/auth"
 	"justchess/internal/db"
 	"log"
 	"net/http"
@@ -66,14 +67,14 @@ func InitService(gr db.GameRepo, pr db.PlayerRepo, folder string) (Service, erro
 	}, nil
 }
 
-func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /", s.static)
+func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
+	mux.HandleFunc("GET /", authService.Authorize(s.static))
 
 	// Serve pages with dynamic content.
-	mux.HandleFunc("GET /leaderboard", s.leaderboard)
-	mux.HandleFunc("GET /player/{id}", s.profile)
-	mux.HandleFunc("GET /engine/{id}", s.engineGame)
-	mux.HandleFunc("GET /rated/{id}", s.ratedGame)
+	mux.HandleFunc("GET /leaderboard", authService.Authorize(s.leaderboard))
+	mux.HandleFunc("GET /player/{id}", authService.Authorize(s.profile))
+	mux.HandleFunc("GET /engine/{id}", authService.Authorize(s.engineGame))
+	mux.HandleFunc("GET /rated/{id}", authService.Authorize(s.ratedGame))
 
 	// Serve assets.
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("_web/assets"))))
@@ -81,43 +82,43 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 
 // static serves [page]s with static content.
 func (s Service) static(rw http.ResponseWriter, r *http.Request) {
-	s.renderPage(rw, r.URL.Path, nil)
+	s.renderPage(rw, r, r.URL.Path, nil)
 }
 
 func (s Service) leaderboard(rw http.ResponseWriter, r *http.Request) {
 	leaderboard, err := s.playerRepo.SelectLeaderboard()
 	if err != nil {
-		s.renderPage(rw, "/error", msgDBError)
+		s.renderPage(rw, r, "/error", msgDBError)
 		return
 	}
-	s.renderPage(rw, "/leaderboard", leaderboard)
+	s.renderPage(rw, r, "/leaderboard", leaderboard)
 }
 
 func (s Service) profile(rw http.ResponseWriter, r *http.Request) {
 	profile, err := s.playerRepo.SelectProfile(r.PathValue("id"))
 	if err != nil {
-		s.renderPage(rw, "/error", msgNotFound)
+		s.renderPage(rw, r, "/error", msgNotFound)
 		return
 	}
-	s.renderPage(rw, "/player", profile)
+	s.renderPage(rw, r, "/player", profile)
 }
 
 func (s Service) engineGame(rw http.ResponseWriter, r *http.Request) {
 	game, err := s.gameRepo.SelectEngine(r.PathValue("id"))
 	if err != nil {
-		s.renderPage(rw, "/error", msgNotFound)
+		s.renderPage(rw, r, "/error", msgNotFound)
 		return
 	}
-	s.renderPage(rw, "/engine", game)
+	s.renderPage(rw, r, "/engine", game)
 }
 
 func (s Service) ratedGame(rw http.ResponseWriter, r *http.Request) {
 	game, err := s.gameRepo.SelectEngine(r.PathValue("id"))
 	if err != nil {
-		s.renderPage(rw, "/error", msgNotFound)
+		s.renderPage(rw, r, "/error", msgNotFound)
 		return
 	}
-	s.renderPage(rw, "/rated", game)
+	s.renderPage(rw, r, "/rated", game)
 }
 
 func (s Service) queue(rw http.ResponseWriter, r *http.Request) {
@@ -128,8 +129,15 @@ func (s Service) queue(rw http.ResponseWriter, r *http.Request) {
 }
 
 // renderPage renders named [page] passing given data to the parsed template.
-func (s Service) renderPage(rw http.ResponseWriter, key string, data any) {
+func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, key string, data any) {
+	player, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok {
+		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
+		return
+	}
+
 	p, exists := s.pages[key]
+	p.Player = player
 	if !exists {
 		// Render 404 error page.
 		p = s.pages["/error"]

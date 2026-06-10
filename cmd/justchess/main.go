@@ -44,7 +44,7 @@ func main() {
 	// Register routes.
 	mux := http.NewServeMux()
 	wsService.RegisterRoutes(authService, mux)
-	webService.RegisterRoutes(mux)
+	webService.RegisterRoutes(authService, mux)
 	authService.RegisterRoutes(mux)
 
 	log.Print("Starting server.")

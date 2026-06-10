@@ -1,27 +1,64 @@
 <!--{
-	"title": "Home"
+	"title": "Home",
+	"script": "home.js"
 }-->
 
 {{ define "content" }}
-<h1><b>Choose a time control</b></h1>
+<h1><b>Choose a <u id="help">time control</u></b></h1>
 
-<table class="home-table">
-	<tr>
-		<td>1+0</td>
-		<td>2+1</td>
-		<td>3+0</td>
-	</tr>
-	<tr>
-		<td>3+2</td>
-		<td>5+0</td>
-		<td>5+2</td>
-	</tr>
-	<tr>
-		<td>10+0</td>
-		<td>10+10</td>
-		<td>15+10</td>
-	</tr>
-</table>
+<div class="time-control-grid">
+	<button id="time-control-0">1+0</button>
+	<button id="time-control-1">2+1</button>
+	<button id="time-control-2">3+0</button>
+	<button id="time-control-3">3+2</button>
+	<button id="time-control-4">5+0</button>
+	<button id="time-control-5">5+2</button>
+	<button id="time-control-6">10+0</button>
+	<button id="time-control-7">10+10</button>
+	<button id="time-control-8">15+10</button>
+</div>
 
-<button>Play vs Engine</button>
+<button commandfor="engineConfig" command="show-modal">Play vs Engine</button>
+
+<dialog id="engineConfig">
+	<fieldset>
+		<legend><b>Select engine difficulty</b></legend>
+
+		<div>
+			<input type="radio" id="easy" name="difficulty" value="1" />
+			<label for="easy">Easy</label>
+		</div>
+		<div>
+			<input type="radio" id="medium" name="difficulty" value="2" checked />
+			<label for="medium">Medium</label>
+		</div>
+		<div>
+			<input type="radio" id="hard" name="difficulty" value="3" />
+			<label for="hard">Hard</label>
+		</div>
+		<div>
+			<input type="radio" id="insane" name="difficulty" value="4" />
+			<label for="insane">Insane</label>
+		</div>
+		<div>
+			<input type="radio" id="impossible" name="difficulty" value="5" />
+			<label for="impossible">Impossible</label>
+		</div>
+	</fieldset>
+
+	<div class="dialog-buttons">
+		<button commandfor="engineConfig" command="close">Cancel</button>
+		<button id="play">Play</button>
+	</div>
+</dialog>
+
+<dialog id="helpDialog">
+	<h2><b>What is time control?</b></h2>
+	<p>During rated games players are limited in time.</p>
+	<p>The first number is the initial amount of minutes.</p>
+	<p>The second number is the amount of seconds added after each move.</p>
+	<button commandfor="helpDialog" command="close">Close</dialog>
+</dialog>
+
+<div class="site-animated-background"></div>
 {{ end }}

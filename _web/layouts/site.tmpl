@@ -4,35 +4,49 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>{{ .Title }} &ndash; JustChess.org</title>
-	<meta name="description" content="Multiplayer chess server with rating system, matchmaking, and game history.">
 	<link rel="icon" href="/assets/images/favicon.png" type="image/png">
+	<link rel="stylesheet" href="/assets/styles/site.css">
+	<link rel="stylesheet" href="/assets/styles/fonts.css">
+	{{ if ne .Script "" }}
+		<script src="/assets/scripts/{{ .Script }}" type="module"></script>
+	{{ end }}
+	<meta name="description" content="Multiplayer chess server with rating system, matchmaking, and game history.">
 </head>
 
 <body>
-	<header class="site-header">
-		<div class="site-header-layout flex">
-			<a class="site-header-nav" href="/">JustChess</a>
+	<header class="site-header-wrap">
+		<div class="site-header">
+			<a class="site-header-nav" href="/"><b><h2>JustChess</h2></b></a>
 			<a class="site-header-nav" href="/leaderboard">Leaderboard</a>
 			<a class="site-header-nav" href="/about">About</a>
 
 			<div class="site-header-profile">
 				{{ if .Player.IsGuest }}
-					<a href="/signup"><b><u>Sign up</u></b></a>
-					<a href="/signin">Sign in</a>
+					<a class="site-header-nav" href="/signup"><b><u>Sign up</u></b></a>
+					<a class="site-header-nav" href="/signin">Sign in</a>
 				{{ else }}
-					<a href="/player/{{ .Player.Id }}">{{ .Player.Name }}</a>
+					<a class="site-header-nav" href="/player/{{ .Player.Id }}">
+						{{ .Player.Name }}
+					</a>
 				{{ end }}
 			</div>
 		</div>
 	</header>
 
-	<main id="main" class="site-content">
+	<main id="main" class="site-content flex">
 		{{ template "content" . }}
 	</main>
 
 	<footer class="site-footer">
-		<a class="site-footer-nav" href="https://github.com/treepeck/justchess">GitHub</a>
-		<a class="site-footer-nav" href="https://www.youtube.com/@treepeck">YouTube</a>
+		<a class="site-footer-nav" href="https://github.com/treepeck/justchess">
+			<img src="/assets/images/GitHub_Invertocat_White_Clearspace.png" alt="GitHub" width="40" height="40">
+		</a>
+		<a class="site-footer-nav" href="https://www.youtube.com/@treepeck">
+			<img src="/assets/images/yt_icon_red_digital.png" alt="YoutTube" width="50" height="40">
+		</a>
+		<a class="site-footer-nav" href="mailto:support@justchess.org">
+			<img src="/assets/images/support.svg" alt="Support" width="30" height="30">
+		</a>
 	</footer>
 </body>
 </html>

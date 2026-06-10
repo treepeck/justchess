@@ -1,0 +1,15 @@
+@font-face {
+  font-family: "Ubuntu";
+  src: url("/assets/fonts/UbuntuSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Ubuntu";
+  src: url("/assets/fonts/UbuntuSans-Bold.woff2") format("woff2");
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: "ChessClock";
+  src: url("/assets/fonts/JustChessClock-Regular.woff2") format("woff2");
+}

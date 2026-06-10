@@ -27,6 +27,8 @@ type page struct {
 	Player db.Player
 	// Page title. Either parsed from page head or request-scoped.
 	Title string
+	// Optional page script. Not included if empty.
+	Script string
 	// Arbitrary data to fill up the template. Either parsed from page head or
 	// request-scoped.
 	Data any
@@ -67,10 +69,17 @@ func parsePage(path string, file []byte) (page, error) {
 		title = head["title"].(string)
 	}
 
+	// Parse script if specified in head.
+	script := ""
+	if head["script"] != nil {
+		script = head["script"].(string)
+	}
+
 	return page{
-		Title: title,
-		Data:  head,
-		tmpl:  t,
+		Title:  title,
+		Script: script,
+		Data:   head,
+		tmpl:   t,
 	}, nil
 }
 

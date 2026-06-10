@@ -1,0 +1,303 @@
+:root {
+  --background: #e2d3c4;
+  --foreground: #34211d;
+  --text-hover: #1c6741;
+  --url: #663af9;
+  --input-background: #b5936e69;
+  --input-placeholder: rgba(73, 72, 72, 0.564);
+  --container-background: rgb(37, 22, 22, 85%);
+  --container-foreground: #b5936e;
+  --max-width: 1600px;
+  --max-board-size: 600px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+*,
+*::before,
+*::after {
+  /* Take margin and padding into account while calculating an element's size. */
+  box-sizing: border-box;
+  /* Style all scrollbars on the page. */
+  scrollbar-color: var(--container-foreground) var(--container-background);
+}
+
+.flex {
+  display: flex;
+  align-items: center;
+}
+
+body {
+  width: 100%;
+  height: 100vh;
+  flex-direction: column;
+  font-family: "Ubuntu";
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* Site header. */
+.site-header-wrap {
+  padding: 10px;
+  background: var(--container-background);
+}
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: auto;
+}
+.site-header-nav {
+  color: var(--container-foreground);
+  text-align: center;
+}
+.site-header-profile {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+}
+
+/* Main wrap. */
+.site-content {
+  margin: auto;
+  width: 100%;
+  padding: 10px;
+  /* Page height - site header height. */
+  height: calc(100% - 50px);
+  max-width: var(--max-width);
+  gap: 20px;
+  flex-direction: column;
+}
+
+/* Site footer. */
+.site-footer {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background-color: var(--container-background);
+  border-radius: 15px;
+  padding: 5px;
+}
+.site-footer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 45px;
+  width: 55px;
+}
+
+/* Links. */
+a {
+  color: var(--url);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--text-hover);
+}
+
+/* Buttons. */
+button {
+  border: none;
+  cursor: pointer;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+  border-radius: 15px;
+  font-size: larger;
+  line-height: 2;
+  font-weight: bold;
+  width: 100%;
+  max-width: calc(var(--max-board-size) - 200px);
+  transition:
+    background-color 0.75s ease-in-out,
+    color 0.75s ease-in-out;
+}
+button:hover,
+button:focus {
+  outline: none;
+  color: var(--container-background);
+  background-color: var(--container-foreground);
+}
+
+/* Text fields. */
+input[type="text"] {
+  width: 100%;
+  font-size: large;
+  padding: 5px;
+  border: none;
+  border-radius: 15px;
+  background: var(--input-background);
+}
+input[type="text"]::placeholder {
+  color: var(--input-placeholder);
+}
+input[type="text"]:hover,
+input[type="text"]:focus {
+  outline: 2px solid var(--text-hover);
+}
+
+/* Floating chessboard background. */
+.site-animated-background {
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  position: fixed;
+  background: url("/assets/images/board.svg");
+  transform: rotate(15deg) scale(2);
+  filter: blur(2px) grayscale(10%) brightness(85%);
+  z-index: -1;
+  animation: float 200s infinite;
+}
+
+/* Modal dialog. */
+dialog {
+  margin: auto;
+  border: none;
+  border-radius: 15px;
+  padding: 15px;
+  width: 100%;
+  max-width: var(--max-board-size);
+  color: var(--container-foreground);
+  background-color: var(--container-background);
+}
+dialog .dialog-buttons {
+  margin-top: 15px;
+  display: flex;
+  width: 100%;
+}
+
+/* Chessboard. */
+.board-piece {
+  background-image: url("/assets/images/sheet.svg");
+  background-repeat: no-repeat;
+  background-size: 600% 200%;
+  background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
+  user-select: none;
+  z-index: 1;
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  transform: translate(var(--x), var(--y));
+}
+/* White pawn. */
+.board-piece.P {
+  --col: 0;
+  --row: 0;
+}
+/* White knight. */
+.board-piece.N {
+  --col: 1;
+  --row: 0;
+}
+/* White bishop. */
+.board-piece.B {
+  --col: 2;
+  --row: 0;
+}
+/* White rook. */
+.board-piece.R {
+  --col: 3;
+  --row: 0;
+}
+/* White queen. */
+.board-piece.Q {
+  --col: 4;
+  --row: 0;
+}
+/* White king. */
+.board-piece.K {
+  --col: 5;
+  --row: 0;
+}
+/* Black pawn. */
+.board-piece.p {
+  --col: 0;
+  --row: 1;
+}
+/* Black knight. */
+.board-piece.n {
+  --col: 1;
+  --row: 1;
+}
+/* Black bishop. */
+.board-piece.b {
+  --col: 2;
+  --row: 1;
+}
+/* Black rook. */
+.board-piece.r {
+  --col: 3;
+  --row: 1;
+}
+/* Black queen. */
+.board-piece.q {
+  --col: 4;
+  --row: 1;
+}
+/* Black king. */
+.board-piece.k {
+  --col: 5;
+  --row: 1;
+}
+
+/* Tooltip. */
+#tooltip {
+  cursor: help;
+}
+#tooltip:hover {
+  color: var(--text-hover);
+}
+
+/* Radio buttons. */
+fieldset {
+  padding: 15px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-radius: 15px;
+}
+fieldset legend {
+  font-size: xx-large;
+}
+fieldset div {
+  display: flex;
+  justify-items: center;
+  font-size: x-large;
+  align-items: center;
+  flex-direction: column;
+  font-size: larger;
+  cursor: pointer;
+}
+
+/* Home page. */
+.time-control-grid {
+  width: 100%;
+  height: 100%;
+  max-width: calc(var(--max-board-size) - 60px);
+  max-height: calc(var(--max-board-size) - 60px);
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+.time-control-grid button {
+  font-size: x-large;
+}
+
+/* Animations. */
+@keyframes float {
+  0% {
+    background-position-x: 0;
+    background-position-y: 0;
+  }
+
+  100% {
+    background-position-x: 100vw;
+    background-position-y: 100vh;
+  }
+}
