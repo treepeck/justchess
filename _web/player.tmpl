@@ -1,40 +1,46 @@
+<!--{
+	"script": "player.js"
+}-->
+
 {{ define "content" }}
-<div class="player-card">
-	<div class="player-card-col"><b>{{ .Data.Name }}</b></div>
-	<div class="player-card-col">{{ .Data.Rating }} MMR</div>
-	<div class="player-card-col">
-		<p>Member since</p>
-		<p>{{ .Data.CreatedAt }}</p>
-	</div>
-</div>
-
-<table class="player-table">
+<table>
 	<tr>
-		<th><b>Rated</b></th>
-		<th><b>Engine</b></th>
-	</tr>
+		<td>{{ .Data.Name }}</td>
+		<td>{{ .Data.Rating }}</td>
+		<td><time>{{ .Data.CreatedAt }}</time></td>
 
-	<tr>
-		<table id="ratedGamesTable" class="player-table">
-			<tr>
-				<th><b>Result</b></th>
-				<th><b>Players</b></th>
-				<th><b>Time control</b></th>
-				<th><b>Total moves</b></th>
-				<th><b>Date</b></th>
-			</tr>
-		</table>
-	</tr>
-
-	<tr>
-		<table id="engineGamesTable" class="player-table">
-			<tr>
-				<th><b>Result</b></th>
-				<th><b>Total moves</b></th>
-				<th><b>Difficulty</b></th>
-				<th><b>Date</b></th>
-			</tr>
-		</table>
+		{{ if eq .Data.Id .Player.Id }}
+			{{/* TODO: add help dialog explaining what is rank confidence */}}
+			<td>Rating confidence</td>
+		{{ end }}
 	</tr>
 </table>
+
+<div class="player-table">
+	<div class="player-table-tab-pane">
+		<div id="tabRated">Rated {{ .Data.RatedGames }}</div>
+		<div id="tabEngine">Engine {{ .Data.EngineGames }}</div>
+	</div>
+
+	<div class="scroll-wrap">
+		<table id="ratedGames">
+			<tr>
+				<td>Result</td>
+				<td>Players</td>
+				<td>Time control</td>
+				<td>Total moves</td>
+				<td>Date</td>
+			</tr>
+		</table>
+
+		<table id="engineGames">
+			<tr>
+				<td>Result</td>
+				<td>Difficulty</td>
+				<td>Total moves</td>
+				<td>Date</td>
+			</tr>
+		</table>
+	</div>
+</div>
 {{ end }}

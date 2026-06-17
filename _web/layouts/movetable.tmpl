@@ -1,0 +1,27 @@
+{{ define "movetable" }}
+<div class="scroll-wrap">
+	<table>
+		<tr>
+			<td><b>#</b></td>
+			<td><b>White</b></td>
+			<td><b>Black</b></td>
+		</tr>
+
+		{{ range $i, $v := .Data.Moves }}
+			{{/* White move. */}}
+			{{ if mod $i 2 | eq 0 }}
+				<tr>
+					<td>{{ $v.San }}</td>
+				{{/* If there are no moves left. */}}
+				{{ if len $.Data.Moves | sub 1 | eq $i }}
+					</tr>
+				{{ end }}
+			{{/* Black move. */}}
+			{{ else }}
+					</td>{{ $v.San }}</td>
+				</tr>
+			{{ end }}
+		{{ end }}
+	</table>
+</div>
+{{ end }}

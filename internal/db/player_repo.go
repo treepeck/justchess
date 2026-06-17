@@ -18,13 +18,16 @@ type Player struct {
 // Profile is a data object used to fill up the player.tmpl file while executing
 // a template.
 type Profile struct {
-	Id        string
 	CreatedAt time.Time
+	Id        string
 	Name      string
 	Rating    float64
-	// Number of played rated games.
-	RatedGames  int
-	EngineGames int
+	// Leaderboard place.
+	Rank int
+	// From 0% to 100%.
+	RankConfidence int
+	RatedGames     int
+	EngineGames    int
 }
 
 // RatingUpdate is used to update the player's rating after completed game.
@@ -61,7 +64,7 @@ func (r SQLPlayerRepo) SelectById(id string) (Player, error) {
 func (r SQLPlayerRepo) SelectProfile(id string) (Profile, error) {
 	row := r.pool.QueryRow(selectProfile, id)
 	var p Profile
-	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.RatedGames)
+	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.RatedGames, &p.EngineGames)
 }
 
 func (r SQLPlayerRepo) SelectLeaderboard() ([]Profile, error) {
@@ -103,12 +106,14 @@ const (
 		p.name,
 		p.rating,
 		p.created_at,
-		count(g.id) as num_of_games
+		count(r.id) as rated_games,
+        count(e.id) as engine_games
 	FROM player p
-	LEFT JOIN rated_game g
-	ON
-		(g.white_id = p.id OR g.black_id = p.id)
-		AND g.termination != 1
+	LEFT JOIN rated_game r
+    	ON (r.white_id = p.id OR r.black_id = p.id)
+    	AND r.termination != 1
+    LEFT JOIN engine_game e
+		ON e.player_id = p.id AND r.termination != 1
 	WHERE p.id = ? AND p.is_guest = FALSE
 	GROUP BY p.name, p.rating, p.created_at`
 

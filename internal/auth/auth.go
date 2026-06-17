@@ -36,10 +36,15 @@ const (
 	msgCannotSendEmail string = "Cannot send email. Please, ensure that email is valid"
 	msgDatabaseError   string = "Database cannot be accessed. Please, try again later"
 
-	sessionsThreshold int = 5
+	sessionsThreshold   int = 5
+	playerSessionMaxAge     = 60 * 60 * 24 * 30 // 30 days.
+	guestSessionMaxAge      = 60 * 60 * 24      // 1 day.
+)
 
-	playerSessionMaxAge = 60 * 60 * 24 * 30 // 30 days.
-	guestSessionMaxAge  = 60 * 60 * 24      // 1 day.
+// Delcaration of response messages.
+var (
+	msgSignup []byte = []byte("Please, check your email to confirm the registration. It may take several minutes for the email to be delivered and it may end up in spam.")
+	msgReset  []byte = []byte("Please, check your email to confirm the password reset. It may take several minutes for the email to be delivered and it may end up in spam.")
 )
 
 // tmplData is a data object used to fill up the email templates.
@@ -120,7 +125,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := r.FormValue("name")
+	name := r.FormValue("username")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
@@ -181,7 +186,10 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 		if err = s.repo.DeleteSignupToken(token); err != nil {
 			log.Print(err)
 		}
+		return
 	}
+	// Write information message after successfull sign up.
+	rw.Write(msgSignup)
 }
 
 // signin authenticates a player by the provided credentials.
@@ -246,8 +254,9 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
 	s.genSession(rw, c.Id)
+	// Redirect to the home page after successfull sign in.
+	http.Redirect(rw, r, "/", http.StatusFound)
 }
 
 // If the verification email fails to send, the token insertion is rolled back,
@@ -315,6 +324,8 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 			log.Print(err)
 		}
 	}
+	// Write information message after successfull password reset.
+	rw.Write(msgReset)
 }
 
 // confirmSignup completes the registration process for players who click the
@@ -345,8 +356,9 @@ func (s Service) confirmSignup(rw http.ResponseWriter, r *http.Request) {
 	if err = s.repo.DeleteSignupToken(token); err != nil {
 		log.Print(err)
 	}
-
 	s.genSession(rw, id)
+	// Redirect user to home page after successfull signup confirmation.
+	http.Redirect(rw, r, "/", http.StatusFound)
 }
 
 // confirmReset completes the password reset process by updating the player
@@ -370,6 +382,8 @@ func (s Service) confirmReset(rw http.ResponseWriter, r *http.Request) {
 	if err = s.repo.DeletePasswordResetToken(token); err != nil {
 		log.Print(err)
 	}
+	// Redirect user to sign in page after successfull password reset.
+	http.Redirect(rw, r, "/signin", http.StatusFound)
 }
 
 type contextKey int

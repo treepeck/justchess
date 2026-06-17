@@ -104,15 +104,15 @@ type Pagination struct {
 type GameRepo interface {
 	InsertRated(id, whiteId, blackId string, control, bonus int) error
 	SelectRated(id string) (RatedGame, error)
-	SelectNewestRated(id string) ([]RatedGameBrief, error)
-	SelectOlderRated(id string, p Pagination) ([]RatedGameBrief, error)
+	SelectLatestRatedBrief(id string) ([]RatedGameBrief, error)
+	SelectRatedBrief(id string, p Pagination) ([]RatedGameBrief, error)
 	UpdateRated(gu RatedGameUpdate) error
 	MarkRatedAsAbandoned(id string) error
 
 	InsertEngine(id, playerId string, c chego.Color, d EngineDifficulty) error
 	SelectEngine(id string) (EngineGame, error)
-	SelectNewestEngine(id string) ([]EngineGameBrief, error)
-	SelectOlderEngine(id string, p Pagination) ([]EngineGameBrief, error)
+	SelectLatestEngineBrief(id string) ([]EngineGameBrief, error)
+	SelectEngineBrief(id string, p Pagination) ([]EngineGameBrief, error)
 	UpdateEngine(gu EngineGameUpdate) error
 	MarkEngineAsAbandoned(id string) error
 }
@@ -156,8 +156,8 @@ func (r SQLGameRepo) SelectRated(id string) (RatedGame, error) {
 	return g, nil
 }
 
-func (r SQLGameRepo) SelectNewestRated(id string) ([]RatedGameBrief, error) {
-	rows, err := r.pool.Query(selectNewestRated, id, id)
+func (r SQLGameRepo) SelectLatestRatedBrief(id string) ([]RatedGameBrief, error) {
+	rows, err := r.pool.Query(selectLatestRatedBrief, id, id)
 	if err != nil {
 		return nil, err
 	}
@@ -178,9 +178,9 @@ func (r SQLGameRepo) SelectNewestRated(id string) ([]RatedGameBrief, error) {
 	return games, err
 }
 
-func (r SQLGameRepo) SelectOlderRated(id string, p Pagination) ([]RatedGameBrief, error) {
+func (r SQLGameRepo) SelectRatedBrief(id string, p Pagination) ([]RatedGameBrief, error) {
 	rows, err := r.pool.Query(
-		selectOlderRated, id, id, p.CursorCreatedAt,
+		selectRatedBrief, id, id, p.CursorCreatedAt,
 		p.CursorId, p.CursorCreatedAt,
 	)
 	if err != nil {
@@ -245,8 +245,8 @@ func (r SQLGameRepo) SelectEngine(id string) (EngineGame, error) {
 	return g, nil
 }
 
-func (r SQLGameRepo) SelectNewestEngine(id string) ([]EngineGameBrief, error) {
-	rows, err := r.pool.Query(selectNewestEngine, id)
+func (r SQLGameRepo) SelectLatestEngineBrief(id string) ([]EngineGameBrief, error) {
+	rows, err := r.pool.Query(selectLatestEngineBrief, id)
 	if err != nil {
 		return nil, err
 	}
@@ -266,8 +266,8 @@ func (r SQLGameRepo) SelectNewestEngine(id string) ([]EngineGameBrief, error) {
 	return games, err
 }
 
-func (r SQLGameRepo) SelectOlderEngine(id string, p Pagination) ([]EngineGameBrief, error) {
-	rows, err := r.pool.Query(selectOlderEngine, id, p.CursorCreatedAt, p.CursorId, p.CursorCreatedAt)
+func (r SQLGameRepo) SelectEngineBrief(id string, p Pagination) ([]EngineGameBrief, error) {
+	rows, err := r.pool.Query(selectEngineBrief, id, p.CursorCreatedAt, p.CursorId, p.CursorCreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +338,7 @@ const (
 	INNER JOIN player b ON g.black_id = b.id
 	WHERE g.id = ? AND g.termination != 1`
 
-	selectNewestRated = `
+	selectLatestRatedBrief = `
 	SELECT
 		w.name AS w_name,
 		b.name AS b_name,
@@ -360,7 +360,7 @@ const (
 	ORDER BY g.created_at DESC, g.id DESC
 	LIMIT 100`
 
-	selectOlderRated = `
+	selectRatedBrief = `
 	SELECT
 		w.name AS w_name,
 		b.name AS b_name,
@@ -427,7 +427,7 @@ const (
 	INNER JOIN player p ON g.player_id = p.id
 	WHERE g.id = ? AND g.termination != 1`
 
-	selectNewestEngine = `
+	selectLatestEngineBrief = `
 	SELECT
 		id, result, termination, moves_length, created_at, player_color,
 		difficulty
@@ -436,7 +436,7 @@ const (
 	ORDER BY created_at DESC, id DESC
 	LIMIT 100`
 
-	selectOlderEngine = `
+	selectEngineBrief = `
 	SELECT
 		id, result, termination, moves_length, created_at, player_color,
 		difficulty

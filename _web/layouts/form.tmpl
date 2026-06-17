@@ -1,5 +1,5 @@
 {{ define "form" }}
-<form id="form">
+<form id="form" class="flex">
 	{{ if .Data.hasUsernameField }}
 		<div class="form-field">
 			<p class="form-field-label">Username</p>
@@ -28,16 +28,20 @@
 
 	<div class="form-field">
 		<p class="form-field-label">Password</p>
-		<input
-			id="passwordInput"
-			type="password"
-			name="password"
-			autocomplete="off"
-			placeholder="**********"
-		/>
+		<div class="form-field-password">
+			<input
+				id="passwordInput"
+				type="password"
+				name="password"
+				autocomplete="off"
+				placeholder="**********"
+			/>
+			<img id="passwordToggle" src="/assets/images/show.svg" height="30" width="30">
+		</div>
 		<div class="form-error" id="formPasswordError"></div>
 	</div>
 
-	<button id="formConfirm" class="form-confirm">Confirm via email</button>
+	<div id="serverResponse"></div>
+	<button id="submit" type="submit">Confirm via email</button>
 </form>
 {{ end }}

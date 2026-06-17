@@ -1,25 +1,30 @@
 <!--{
-	"title": "Leaderboard"
+	"title": "Leaderboard",
+	"script": "leaderboard.js"
 }-->
 
 {{ define "content" }}
 <h1><b>Leaderboard</b></h1>
 
-<table class="leaderboard-table">
-	<tr>
-		<th>Name</th>
-		<th>Rating</th>
-		<th>Rated Games</th>
-		<th>Member since</th>
-	</tr>
-
-	{{ range $v := .Data }}
+<div class="scroll-wrap">
+	<table>
 		<tr>
-			<td>{{ $v.Name }}</td>
-			<td>{{ $v.Rating }}</td>
-			<td>{{ $v.RatedGames }}</td>
-			<td>{{ $v.CreatedAt }}</td>
+			<td><b>Rank</b></td>
+			<td><b>Name</b></td>
+			<td><b>Rating</b></td>
+			<td><b>Rated Games</b></td>
+			<td><b>Member since</b></td>
 		</tr>
-  {{ end }}
-<table>
+
+		{{ range $v := .Data }}
+			<tr>
+				<td>{{ $v.Rank }}</td>
+				<td><a href="/player/{{ $v.Id }}">{{ $v.Name }}</a></td>
+				<td>{{ $v.Rating }}</td>
+				<td>{{ $v.RatedGames }}</td>
+				<td><time>{{ $v.CreatedAt }}</time></td>
+			</tr>
+		{{ end }}
+	</table>
+</div>
 {{ end }}

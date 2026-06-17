@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 )
 
 // Declaration of error messages.
@@ -75,6 +77,7 @@ func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
 	mux.HandleFunc("GET /player/{id}", authService.Authorize(s.profile))
 	mux.HandleFunc("GET /engine/{id}", authService.Authorize(s.engineGame))
 	mux.HandleFunc("GET /rated/{id}", authService.Authorize(s.ratedGame))
+	mux.HandleFunc("GET /queue/{id}", authService.Authorize(s.queue))
 
 	// Serve assets.
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("_web/assets"))))
@@ -82,72 +85,107 @@ func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
 
 // static serves [page]s with static content.
 func (s Service) static(rw http.ResponseWriter, r *http.Request) {
-	s.renderPage(rw, r, r.URL.Path, nil)
+	p, exists := s.pages[r.URL.Path]
+	if !exists {
+		// Render 404 error page if page does not exists.
+		p = s.pages["/error"]
+		p.Data = msgNotFound
+		p.Title = msgNotFound
+		if err := p.tmpl.Execute(rw, p); err != nil {
+			log.Printf("%s: %s page key: %s", msgRenderError, err.Error(), r.URL.Path)
+		}
+		return
+	}
+	s.renderPage(rw, r, p, nil, r.URL.Path)
 }
 
 func (s Service) leaderboard(rw http.ResponseWriter, r *http.Request) {
 	leaderboard, err := s.playerRepo.SelectLeaderboard()
 	if err != nil {
-		s.renderPage(rw, r, "/error", msgDBError)
+		s.renderPage(rw, r, s.pages["/error"], msgDBError, "/error")
 		return
 	}
-	s.renderPage(rw, r, "/leaderboard", leaderboard)
+	s.renderPage(rw, r, s.pages["/leaderboard"], leaderboard, "/leaderboard")
 }
 
 func (s Service) profile(rw http.ResponseWriter, r *http.Request) {
 	profile, err := s.playerRepo.SelectProfile(r.PathValue("id"))
 	if err != nil {
-		s.renderPage(rw, r, "/error", msgNotFound)
+		s.renderPage(rw, r, s.pages["/error"], msgNotFound, "/error")
 		return
 	}
-	s.renderPage(rw, r, "/player", profile)
+	p := s.pages["/player"]
+	p.Title = profile.Name
+	s.renderPage(rw, r, p, profile, "/player")
 }
 
 func (s Service) engineGame(rw http.ResponseWriter, r *http.Request) {
 	game, err := s.gameRepo.SelectEngine(r.PathValue("id"))
 	if err != nil {
-		s.renderPage(rw, r, "/error", msgNotFound)
+		s.renderPage(rw, r, s.pages["/error"], msgNotFound, "/error")
 		return
 	}
-	s.renderPage(rw, r, "/engine", game)
+	p := s.pages["/engine"]
+	p.Title = game.Player.Name + " vs Engine"
+	s.renderPage(rw, r, p, game, "/engine")
 }
 
 func (s Service) ratedGame(rw http.ResponseWriter, r *http.Request) {
-	game, err := s.gameRepo.SelectEngine(r.PathValue("id"))
+	game, err := s.gameRepo.SelectRated(r.PathValue("id"))
 	if err != nil {
-		s.renderPage(rw, r, "/error", msgNotFound)
+		s.renderPage(rw, r, s.pages["/error"], msgNotFound, "/error")
 		return
 	}
-	s.renderPage(rw, r, "/rated", game)
+	p := s.pages["/rated"]
+	p.Title = game.White.Name + " vs " + game.Black.Name
+	s.renderPage(rw, r, p, game, "/rated")
+}
+
+// Used to fill up the queue template.
+var controls = []struct {
+	Control int // In minutes.
+	Bonus   int // In seconds.
+}{
+	{1, 0}, {2, 1}, {3, 0},
+	{3, 2}, {5, 0}, {5, 2},
+	{10, 0}, {10, 10}, {15, 10},
 }
 
 func (s Service) queue(rw http.ResponseWriter, r *http.Request) {
-	// Store engine game data to fill up the template.
-	// f, err := s.readPage("queue.tmpl")
-	// f["timeControl"] = game
-	// s.servePage(rw, r, f)
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id < 0 || id > 8 {
+		s.renderPage(rw, r, s.pages["/error"], msgNotFound, "/error")
+		return
+	}
+
+	player, ok := r.Context().Value(auth.PlayerKey).(db.Player)
+	if !ok || player.IsGuest {
+		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
+		return
+	}
+	p := s.pages["/queue"]
+
+	// Construct the page title.
+	var title strings.Builder
+	title.WriteString("Queue ")
+	title.WriteString(strconv.Itoa(controls[id].Control))
+	title.WriteString("m + ")
+	title.WriteString(strconv.Itoa(controls[id].Bonus))
+	title.WriteByte('s')
+	p.Title = title.String()
+
+	s.renderPage(rw, r, p, controls[id], "/queue")
 }
 
 // renderPage renders named [page] passing given data to the parsed template.
-func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, key string, data any) {
+func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page,
+	data any, key string) {
 	player, ok := r.Context().Value(auth.PlayerKey).(db.Player)
 	if !ok {
 		http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
 		return
 	}
-
-	p, exists := s.pages[key]
 	p.Player = player
-	if !exists {
-		// Render 404 error page.
-		p = s.pages["/error"]
-		p.Data = msgNotFound
-		p.Title = msgNotFound
-		if err := p.tmpl.Execute(rw, p); err != nil {
-			log.Printf("%s: %s page key: %s", msgRenderError, err.Error(), key)
-		}
-		return
-	}
 
 	// Pass optional data.
 	if data != nil {
