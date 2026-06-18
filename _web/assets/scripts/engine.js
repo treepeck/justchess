@@ -7,3 +7,7 @@ const board = new Board()
 board.parsePiecePlacement(startPiecePlacement)
 
 get("boardFlip").onclick = () => board.flip()
+
+const gameId = window.location.pathname.split("/").at(-1)
+
+const socket = new WebSocket(`/ws/${gameId}`)

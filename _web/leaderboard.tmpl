@@ -9,8 +9,7 @@
 <div class="scroll-wrap">
 	<table>
 		<tr>
-			<td><b>Rank</b></td>
-			<td><b>Name</b></td>
+			<td><b>Player</b></td>
 			<td><b>Rating</b></td>
 			<td><b>Rated Games</b></td>
 			<td><b>Member since</b></td>
@@ -18,8 +17,12 @@
 
 		{{ range $v := .Data }}
 			<tr>
-				<td>{{ $v.Rank }}</td>
-				<td><a href="/player/{{ $v.Id }}">{{ $v.Name }}</a></td>
+				<td>
+					<div class="player-rank">{{ $v.Rank }}</div>
+					<a href="/player/{{ $v.Id }}">
+						{{ $v.Name }}
+					</a>
+				</td>
 				<td>{{ $v.Rating }}</td>
 				<td>{{ $v.RatedGames }}</td>
 				<td><time>{{ $v.CreatedAt }}</time></td>

@@ -1,0 +1,34 @@
+{{/* Engine configuration dialog. */}}
+{{ define "engine" }}
+<dialog id="engineConfig">
+	<fieldset>
+		<legend><b>Select engine difficulty</b></legend>
+
+		<div>
+			<input type="radio" id="easy" name="difficulty" value="1" />
+			<label for="easy">Easy</label>
+		</div>
+		<div>
+			<input type="radio" id="medium" name="difficulty" value="2" checked />
+			<label for="medium">Medium</label>
+		</div>
+		<div>
+			<input type="radio" id="hard" name="difficulty" value="3" />
+			<label for="hard">Hard</label>
+		</div>
+		<div>
+			<input type="radio" id="insane" name="difficulty" value="4" />
+			<label for="insane">Insane</label>
+		</div>
+		<div>
+			<input type="radio" id="impossible" name="difficulty" value="5" />
+			<label for="impossible">Impossible</label>
+		</div>
+	</fieldset>
+
+	<div class="dialog-buttons">
+		<button commandfor="engineConfig" command="close">Cancel</button>
+		<button id="play">Play</button>
+	</div>
+</dialog>
+{{ end }}

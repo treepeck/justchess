@@ -23,7 +23,3 @@ get("play").onclick = async () => {
 	}
 	// TODO: show error notification
 }
-
-get("help").onclick = () => {
-	get("helpDialog").showModal()
-}

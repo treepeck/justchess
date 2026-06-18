@@ -63,6 +63,12 @@ class Piece {
  * @property {number} from - Originating square.
  */
 
+/**
+ * @typedef SelectedSquare
+ * @property {HTMLDivElement} element
+ * @property {number} square
+ */
+
 const files = ["a", "b", "c", "d", "e", "f", "g", "h"]
 const ranks = ["1", "2", "3", "4", "5", "6", "7", "8"]
 
@@ -86,6 +92,8 @@ export default class Board {
 	 * @type {DraggedPiece | null}
 	 */
 	draggedPiece
+	/** @type {SelectedSquare} */
+	selected
 
 	constructor() {
 		this.element = get("board")
@@ -94,6 +102,11 @@ export default class Board {
 		this.draggedPiece = null
 		this.pieces = new Map()
 		this.orientation = true
+		this.selected = /** @type {SelectedSquare} */ ({
+			element: make("div", "board-selected"),
+			square: -1,
+		})
+		this.element.appendChild(this.selected.element)
 
 		this.element.onpointerdown = (e) => this.onDrag(e)
 		this.element.onpointermove = (e) => this.onMove(e)
@@ -153,25 +166,47 @@ export default class Board {
 	appendPiece(square, p) {
 		this.pieces.set(square, p)
 		this.element.appendChild(p.element)
-		this.render()
+		this.positionElementOnSquare(p.element, square)
 	}
 
 	/** @param {PointerEvent} e */
 	onDrag(e) {
 		const { x, y, square } = this.parseEventCoordinates(e)
 
+		// If some piece is already selected.
+		const selectedPiece = this.pieces.get(this.selected.square)
+		if (selectedPiece) {
+			// Remove captured piece.
+			const captured = this.pieces.get(square)
+			if (captured) {
+				this.pieces.delete(square)
+				this.element.removeChild(captured.element)
+			}
+			// Place selected piece on the clicked square.
+			this.pieces.delete(this.selected.square)
+			this.appendPiece(square, selectedPiece)
+
+			this.selected.square = -1
+			this.positionElementOnSquare(
+				this.selected.element,
+				this.selected.square,
+			)
+			return
+		}
+
+		// Highlight selected square.
+		this.selected.square = square
+		this.positionElementOnSquare(this.selected.element, square)
+
 		const p = this.pieces.get(square)
 		if (!p) return
 
 		// Begin piece drag.
 		this.draggedPiece = { piece: p, from: square }
-
 		// Temporary remove the dragged piece from the board.
 		this.pieces.delete(square)
-
 		// Position dragged piece.
-		p.element.style.setProperty("--x", `${x - this.squareSize / 2}px`)
-		p.element.style.setProperty("--y", `${y - this.squareSize / 2}px`)
+		this.positionElementOnSquare(p.element, square)
 		p.element.style.zIndex = 2
 	}
 
@@ -181,6 +216,7 @@ export default class Board {
 
 		const { x, y, square } = this.parseEventCoordinates(e)
 
+		// Drop piece on orginating square if it was moved outside of the board boundaries.
 		if (x < 0 || y < 0 || x > this.size || y > this.size) {
 			this.appendPiece(this.draggedPiece.from, this.draggedPiece.piece)
 			this.draggedPiece.piece.element.style.zIndex = 1
@@ -188,8 +224,8 @@ export default class Board {
 			return
 		}
 
-		const element = this.draggedPiece.piece.element
 		// Position dragged piece.
+		const element = this.draggedPiece.piece.element
 		element.style.setProperty("--x", `${x - this.squareSize / 2}px`)
 		element.style.setProperty("--y", `${y - this.squareSize / 2}px`)
 	}
@@ -204,6 +240,14 @@ export default class Board {
 		let { square } = this.parseEventCoordinates(e)
 		if (square < 0 || square > 63) {
 			square = this.draggedPiece.from
+		}
+
+		if (square != this.selected.square) {
+			this.selected.square = -1
+			this.positionElementOnSquare(
+				this.selected.element,
+				this.selected.square,
+			)
 		}
 
 		this.appendPiece(square, this.draggedPiece.piece)
@@ -249,35 +293,12 @@ export default class Board {
 	}
 
 	render() {
-		const offset = this.size - this.squareSize
-
-		// Reposition pieces.
+		// Render pieces.
 		for (const [square, p] of this.pieces.entries()) {
-			const rank = Math.floor(square / 8)
-			const file = square % 8
-
-			if (this.orientation) {
-				p.element.style.setProperty(
-					"--x",
-					`${file * this.squareSize}px`,
-				)
-				p.element.style.setProperty(
-					"--y",
-					`${offset - rank * this.squareSize}px`,
-				)
-			} else {
-				p.element.style.setProperty(
-					"--x",
-					`${offset - file * this.squareSize}px`,
-				)
-				p.element.style.setProperty(
-					"--y",
-					`${rank * this.squareSize}px`,
-				)
-			}
+			this.positionElementOnSquare(p.element, square)
 		}
 
-		// Reposition board coordinates.
+		// Render board coordinates.
 		for (const coord of this.element.getElementsByClassName(
 			"board-coord",
 		)) {
@@ -286,10 +307,15 @@ export default class Board {
 
 			if (coord.classList.contains("rank")) {
 				const rank = parseInt(coord.textContent) - 1
+				if ((rank + this.orientation) % 2 == 0) {
+					coord.style.color = "#8e684b"
+				} else {
+					coord.style.color = "#e2d3c4"
+				}
 				coord.style.setProperty("--x", `${0}px`)
 
 				const y = this.orientation
-					? offset - rank * this.squareSize
+					? this.size - this.squareSize - rank * this.squareSize
 					: rank * this.squareSize
 				coord.style.setProperty("--y", `${y}px`)
 			} else {
@@ -305,12 +331,55 @@ export default class Board {
 					? file * this.squareSize
 					: this.size - (file + 1) * this.squareSize
 
+				if ((file + this.orientation) % 2 == 0) {
+					coord.style.color = "#8e684b"
+				} else {
+					coord.style.color = "#e2d3c4"
+				}
 				coord.style.setProperty("--x", `${x}px`)
 				coord.style.setProperty(
 					"--y",
 					`${this.size - this.size * 0.045}px`,
 				)
 			}
+		}
+
+		// Render selected square.
+		this.positionElementOnSquare(
+			this.selected.element,
+			this.selected.square,
+		)
+	}
+
+	/**
+	 * @param {HTMLDivElement} element
+	 * @param {number} square
+	 */
+	positionElementOnSquare(element, square) {
+		// Hide element if it is not positioned on a valid square.
+		if (square < 0 || square > 63) {
+			element.style.visibility = "hidden"
+			return
+		}
+
+		element.style.visibility = "visible"
+
+		const rank = Math.floor(square / 8)
+		const file = square % 8
+		const offset = this.size - this.squareSize
+
+		if (this.orientation) {
+			element.style.setProperty("--x", `${file * this.squareSize}px`)
+			element.style.setProperty(
+				"--y",
+				`${offset - rank * this.squareSize}px`,
+			)
+		} else {
+			element.style.setProperty(
+				"--x",
+				`${offset - file * this.squareSize}px`,
+			)
+			element.style.setProperty("--y", `${rank * this.squareSize}px`)
 		}
 	}
 }

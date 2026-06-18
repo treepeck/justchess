@@ -5,6 +5,10 @@
 {{ define "content" }}
 <table>
 	<tr>
+		{{ if ne .Data.Rank 0 }}
+			<div id="rank">{{ .Data.Rank }}</div>
+		{{ end }}
+
 		<td>{{ .Data.Name }}</td>
 		<td>{{ .Data.Rating }}</td>
 		<td><time>{{ .Data.CreatedAt }}</time></td>
@@ -43,4 +47,10 @@
 		</table>
 	</div>
 </div>
+
+<dialog id="helpDialog">
+	<h2><b>What is rating confidence?</b></h2>
+	<p></p>
+	<button commandfor="helpDialog" command="close">Close</button>
+</dialog>
 {{ end }}
