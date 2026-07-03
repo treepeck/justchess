@@ -1,13 +1,10 @@
-package mm
+package matchmaking
 
-import (
-	"strconv"
-	"testing"
-)
+import "testing"
 
 // Validated with https://www.cs.usfca.edu/~galles/visualization/RedBlack.html
 
-func TestInsertNode(t *testing.T) {
+func TestInsert(t *testing.T) {
 	cases := []struct {
 		values      []float64
 		expectedBFS []float64
@@ -34,7 +31,7 @@ func TestInsertNode(t *testing.T) {
 		tree := newRedBlackTree()
 
 		for _, val := range tc.values {
-			tree.insertNode(tree.spawn(val, ""))
+			tree.insert(tree.spawn(val, ""))
 		}
 
 		got := bfs(tree)
@@ -44,14 +41,14 @@ func TestInsertNode(t *testing.T) {
 		}
 
 		for j, val := range tc.expectedBFS {
-			if val != got[j].key.rating {
+			if val != got[j].mmr {
 				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expectedBFS, got)
 			}
 		}
 	}
 }
 
-func TestRemoveNode(t *testing.T) {
+func TestRemove(t *testing.T) {
 	cases := []struct {
 		values      []float64
 		value       float64
@@ -108,10 +105,10 @@ func TestRemoveNode(t *testing.T) {
 		tree := newRedBlackTree()
 
 		for _, val := range tc.values {
-			tree.insertNode(tree.spawn(val, ""))
+			tree.insert(tree.spawn(val, ""))
 		}
 
-		tree.removeNode(search(tree.root, tc.value, ""))
+		tree.remove(search(tree.root, tc.value, ""))
 
 		got := bfs(tree)
 
@@ -121,7 +118,7 @@ func TestRemoveNode(t *testing.T) {
 
 		if len(tc.expectedBFS) > 0 {
 			for j, val := range tc.expectedBFS {
-				if val != got[j].key.rating {
+				if val != got[j].mmr {
 					t.Fatalf("case %d: expected: %v, got: %v", i, tc.expectedBFS, got)
 				}
 			}
@@ -129,85 +126,13 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
-func TestMakeMatches(t *testing.T) {
-	cases := []struct {
-		ratings  []float64
-		expected [][2]string
-	}{
-		{
-			[]float64{38, 19, 120, 8, 31, 86, 140, 55, 89, 130, 150, 56, 160},
-			[][2]string{
-				{"5", "8"}, {"11", "7"}, {"0", "4"}, {"1", "3"}, {"6", "10"}, {"9", "2"},
-			},
-		},
-		{
-			[]float64{1500, 3000, 2900, 2300, 500, 780, 6000, 200},
-			[][2]string{{"2", "1"}, {"4", "5"}},
-		},
-	}
-
-	for i, tc := range cases {
-		pool := NewPool()
-
-		for i, rating := range tc.ratings {
-			pool.tree.insertNode(pool.tree.spawn(rating, strconv.Itoa(i)))
-		}
-
-		got := make([][2]string, 0)
-		for match := range pool.MakeMatches() {
-			got = append(got, match)
-		}
-
-		if len(tc.expected) != len(got) {
-			t.Fatalf("case %d: expected: %v, got: %v", i, tc.expected, got)
-		}
-
-		for j, pair := range tc.expected {
-			if pair[0] != got[j][0] || pair[1] != got[j][1] {
-				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expected, got)
-			}
-		}
-	}
-}
-
-func TestExpandRatingGaps(t *testing.T) {
-	cases := []struct {
-		thresholds []float64
-		expected   []float64
-	}{
-		{
-			[]float64{3000, 1400, 1500, 500, 200, 12},
-			[]float64{2000, 1000, 3000, 700, 1900, 512},
-		},
-	}
-
-	for i, tc := range cases {
-		pool := NewPool()
-
-		for j := range len(tc.thresholds) {
-			n := pool.tree.spawn(tc.thresholds[j], "")
-			n.key.maxGap = tc.thresholds[j]
-			pool.tree.insertNode(n)
-		}
-
-		pool.ExpandRatingGaps()
-		got := bfs(pool.tree)
-
-		for j, maxGap := range tc.expected {
-			if maxGap != got[j].key.maxGap {
-				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expected[j], got[j])
-			}
-		}
-	}
-}
-
-func bfs(t *redBlackTree) []*redBlackNode {
-	res := make([]*redBlackNode, 0, t.size)
+func bfs(t *redBlackTree) []*node {
+	res := make([]*node, 0)
 	if t.root == t.leaf {
 		return res
 	}
 
-	visit := make([]*redBlackNode, 1)
+	visit := make([]*node, 1)
 	visit[0] = t.root
 
 	for len(visit) > 0 {
@@ -228,60 +153,29 @@ func bfs(t *redBlackTree) []*redBlackNode {
 	return res
 }
 
-func BenchmarkInsertNode(b *testing.B) {
+func BenchmarkInsert(b *testing.B) {
 	tree := newRedBlackTree()
 
 	i := float64(10)
 	for b.Loop() {
-		tree.insertNode(tree.spawn(i, ""))
+		tree.insert(tree.spawn(i, ""))
 		i += 10
 	}
 }
 
-func BenchmarkRemoveNode(b *testing.B) {
+func BenchmarkRemove(b *testing.B) {
 	tree := newRedBlackTree()
 
 	i := float64(0)
 	for ; i <= 10000000; i++ {
-		tree.insertNode(tree.spawn(i, ""))
+		tree.insert(tree.spawn(i, ""))
 	}
 
 	for b.Loop() {
 		i -= 1
 		n := search(tree.root, i, "")
 		if n != nil {
-			tree.removeNode(n)
+			tree.remove(n)
 		}
 	}
-}
-
-func BenchmarkExpandRatingGaps(b *testing.B) {
-	pool := NewPool()
-
-	i := float64(0)
-	for ; i <= 10000; i++ {
-		pool.tree.insertNode(pool.tree.spawn(i, ""))
-	}
-
-	for b.Loop() {
-		pool.ExpandRatingGaps()
-	}
-}
-
-func BenchmarkMakeMatches(b *testing.B) {
-	pool := NewPool()
-
-	i := float64(0)
-	for ; i <= 10000; i++ {
-		pool.tree.insertNode(pool.tree.spawn(i, ""))
-	}
-
-	cnt := 0
-	for b.Loop() {
-		for range pool.MakeMatches() {
-			cnt++
-		}
-	}
-
-	b.Logf("matches counter: %d", cnt)
 }
