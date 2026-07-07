@@ -4,6 +4,7 @@ package auth
 
 import (
 	"bytes"
+	"strings"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -11,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 )
@@ -24,26 +26,38 @@ var (
 	errUnsigned         = errors.New("auth: maybe next time")
 	errInvalidTimestamp = errors.New("auth: invalid timestamp")
 	errExpired          = errors.New("auth: cookie is expired")
+	errKey              = errors.New("auth: cannot parse the cookie hash key")
 )
 
-// secureCookie stores the player's id and role. It serves as a session and is
+func ParseCookieKey(raw string) ([]byte, error) {
+	result := make([]byte, 0, 64)
+	for chunk := range strings.SplitSeq(raw, " ") {
+		b, err := strconv.ParseInt(chunk, 10, 32)
+		if err != nil {
+			log.Println(err.(*strconv.NumError).Err)
+			return nil, errKey
+		}
+		result = append(result, byte(b))
+	}
+	return result, nil
+}
+
+// Session stores the player's id and role. It serves as a session and is
 // entirely client-based (not stored anywhere outside of client's Cookie storage).
-type secureCookie struct {
-	hashKey []byte
+type Session struct {
 	Id      string `json:"i"`
-	maxAge  int64
 	IsGuest bool `json:"g"`
 }
 
-func (c *secureCookie) encrypt() (string, error) {
+func genSecureCookie(s Session, hashKey []byte) (string, error) {
 	// Serialize the credentials.
-	credentials, err := json.Marshal(c)
+	credentials, err := json.Marshal(s)
 	if err != nil {
 		return "", err
 	}
 	// Generate the MAC of data.
 	timestamp := time.Now().UTC().Unix()
-	mac := c.sign(credentials, timestamp)
+	mac := signSecureCookie(credentials, hashKey, timestamp)
 	// Concatenate MAC with data.
 	// WARN: It is important to place the MAC in the end of the string, since it can
 	// contain '|' symbols. If it will be not the last part of the cookie, the decrypt
@@ -56,42 +70,42 @@ func (c *secureCookie) encrypt() (string, error) {
 	return encoded, nil
 }
 
-func (c *secureCookie) decrypt(encrypted []byte) error {
+func validateSecureCookie(encrypted, hashKey []byte) (Session, error) {
 	if len(encrypted) > maxCookieLen {
-		return errTooLarge
+		return Session{}, errTooLarge
 	}
 	decoded, err := base64.RawURLEncoding.DecodeString(string(encrypted))
 	if err != nil {
-		return errInvalidEncoding
+		return Session{}, errInvalidEncoding
 	}
 	// WARN: It is important to use SplitN with parameter 3 to correctly
 	// parse the expected MAC.
 	parts := bytes.SplitN(decoded, []byte("|"), 3)
 	if len(parts) != 3 {
-		return errInvalidEncrypted
+		return Session{}, errInvalidEncrypted
 	}
 	// Handle the possible expiration.
 	createdAt, err := strconv.ParseInt(string(parts[1]), 10, 64)
 	if err != nil {
-		return errInvalidTimestamp
+		return Session{}, errInvalidTimestamp
 	}
-	now := time.Now().UTC().Unix()
-	if createdAt < now-c.maxAge {
-		return errExpired
+	if createdAt < time.Now().UTC().Unix()-cookieMaxAge {
+		return Session{}, errExpired
 	}
 	// Validate MAC.
-	expectedMac := c.sign(parts[0], createdAt)
+	expectedMac := signSecureCookie(parts[0], hashKey, createdAt)
 	if subtle.ConstantTimeCompare(expectedMac, parts[2]) != 1 {
-		return errUnsigned
+		return Session{}, errUnsigned
 	}
 	// Deserialize the credentials.
-	return json.Unmarshal(parts[0], c)
+	var s Session
+	return s, json.Unmarshal(parts[0], &s)
 }
 
-func (c *secureCookie) sign(credentials []byte, timestamp int64) []byte {
+func signSecureCookie(session, hashKey []byte, timestamp int64) []byte {
 	// Concatenate credentials with timestamp
-	data := fmt.Sprintf("%s|%b", string(credentials), timestamp)
-	h := hmac.New(sha256.New, c.hashKey)
+	data := fmt.Sprintf("%s|%b", string(session), timestamp)
+	h := hmac.New(sha256.New, hashKey)
 	h.Write([]byte(data))
 	return h.Sum(nil)
 }

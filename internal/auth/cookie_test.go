@@ -1,44 +1,43 @@
 package auth
 
 import (
-	"testing"
-	"justchess/internal/randgen"
 	"crypto/rand"
+	"justchess/internal/randgen"
+	"testing"
+	"os"
 )
 
-func BenchmarkEncrypt(b *testing.B) {
+func TestParseCookieKey(t *testing.T) {
+	raw := os.Getenv("COOKIE_KEY")
+	var err error
+	if _, err = ParseCookieKey(raw); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func BenchmarkGenSecureCookie(b *testing.B) {
 	key := make([]byte, 64)
 	rand.Read(key)
 
-	c := &secureCookie{
-		Id: randgen.GenId(randgen.IdLen),
-		IsGuest: false,
-		hashKey: key,
-		maxAge: playerSessionMaxAge,
-	}
+	s := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: false}
 	for b.Loop() {
-		if _, err := c.encrypt(); err != nil {
+		if _, err := genSecureCookie(s, key); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
-func BenchmarkDecrypt(b *testing.B) {
+func BenchmarkValidateSecureCookie(b *testing.B) {
 	key := make([]byte, 64)
 	rand.Read(key)
 
-	c := &secureCookie{
-		Id: randgen.GenId(randgen.IdLen),
-		IsGuest: false,
-		hashKey: key,
-		maxAge: playerSessionMaxAge,
-	}
-	raw, err := c.encrypt()
+	s := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: false}
+	raw, err := genSecureCookie(s, key)
 	if err != nil {
 		b.Fatal(err)
 	}
 	for b.Loop() {
-		if err = c.decrypt([]byte(raw)); err != nil {
+		if s, err = validateSecureCookie([]byte(raw), key); err != nil {
 			b.Fatal(err)
 		}
 	}

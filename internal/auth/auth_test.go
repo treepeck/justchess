@@ -7,16 +7,14 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"os"
 	"testing"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type mockAuthRepo struct {
 }
-
-func (r mockAuthRepo) InsertGuest(id string) error { return nil }
 
 func (r mockAuthRepo) InsertPlayer(id string, d db.SignupData) error {
 	return nil
@@ -52,39 +50,7 @@ func (r mockAuthRepo) SelectIdentityByEmail(email string) (db.Identity, error) {
 	return db.Identity{}, nil
 }
 
-func (r mockAuthRepo) SelectPlayerBySessionId(id string) (db.Player, error) {
-	if id == "valid" {
-		return db.Player{}, nil
-	}
-	return db.Player{}, errors.New("session is missing")
-}
-
 func (r mockAuthRepo) UpdatePasswordHash(id string, pwdHash []byte) error {
-	return nil
-}
-
-func (r mockAuthRepo) InsertSession(id, playerId string) error {
-	return nil
-}
-
-func (r mockAuthRepo) SelectSessionById(id string) (db.Session, error) {
-	return db.Session{}, nil
-}
-
-func (r mockAuthRepo) SelectSessionsByPlayerId(id string) ([]db.Session, error) {
-	if id == "manySessions" {
-		var sessions [5]db.Session
-		for i := range 5 {
-			sessions[i] = db.Session{
-				CreatedAt: time.Now().Add(time.Duration(i) * time.Minute),
-			}
-		}
-		return sessions[:], nil
-	}
-	return []db.Session{}, nil
-}
-
-func (r mockAuthRepo) DeleteSession(id string) error {
 	return nil
 }
 
@@ -122,8 +88,13 @@ func (r mockAuthRepo) DeletePasswordResetToken(id string) error {
 }
 
 func initServiceOrPanic() Service {
-	s := NewService(mockAuthRepo{})
-	if err := s.ParseEmails("../../_web/templates/emails/"); err != nil {
+	cookieKey, err := ParseCookieKey(os.Getenv("COOKIE_KEY"))
+	if err != nil {
+		panic(err)
+	}
+
+	s := NewService(cookieKey, mockAuthRepo{})
+	if err = s.ParseEmails("./templates/"); err != nil {
 		panic(err)
 	}
 	return s
@@ -148,7 +119,7 @@ func TestSignup(t *testing.T) {
 
 	for i, tc := range cases {
 		body := url.Values{}
-		body.Set("name", tc.formName)
+		body.Set("username", tc.formName)
 		body.Set("email", tc.formEmail)
 		body.Set("password", tc.formPassword)
 
@@ -173,12 +144,12 @@ func TestSignin(t *testing.T) {
 		formPassword string
 		expectedCode int
 	}{
-		{"valid@valid.com", "valid", http.StatusOK},
+		{"valid@valid.com", "valid", http.StatusFound},
 		{"", "valid", http.StatusBadRequest},
 		{"valid@valid.com", "", http.StatusBadRequest},
 		{"invalid@invalid.com", "valid", http.StatusUnauthorized},
 		{"valid@valid.com", "invalid", http.StatusUnauthorized},
-		{"many@sessions.com", "valid", http.StatusOK},
+		{"many@sessions.com", "valid", http.StatusFound},
 	}
 
 	for i, tc := range cases {
@@ -238,7 +209,7 @@ func TestConfirmSignup(t *testing.T) {
 		token          string
 		expectedStatus int
 	}{
-		{"valid", http.StatusOK},
+		{"valid", http.StatusFound},
 		{"", http.StatusNotFound},
 		{"invalid", http.StatusNotFound},
 	}
@@ -264,7 +235,7 @@ func TestConfirmReset(t *testing.T) {
 		token          string
 		expectedStatus int
 	}{
-		{"valid", http.StatusOK},
+		{"valid", http.StatusFound},
 		{"", http.StatusNotFound},
 		{"invalid", http.StatusNotFound},
 	}
