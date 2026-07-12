@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="254.23839"
+   height="255.73758"
+   viewBox="0 0 254.23839 255.73758"
+   version="1.1"
+   id="svg5"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <g
+     id="layer1"
+     style="display:inline"
+     transform="translate(-0.68258762,1.0825415)">
+    <ellipse
+       style="fill:#ff1705;fill-opacity:1;fill-rule:evenodd;stroke:#ea8143;stroke-width:5.233;stroke-dasharray:none;stroke-opacity:1"
+       id="path636"
+       cx="127.80178"
+       cy="126.78625"
+       rx="124.50269"
+       ry="125.25229" />
+    <ellipse
+       style="fill:#64280a;fill-opacity:1;fill-rule:evenodd;stroke-width:0.760276"
+       id="path1920"
+       cx="88.261673"
+       cy="90.503052"
+       rx="19.13604"
+       ry="25.618273" />
+    <ellipse
+       style="display:inline;fill:#64280a;fill-opacity:1;fill-rule:evenodd;stroke-width:0.760276"
+       id="path1920-7"
+       cx="172.5"
+       cy="89"
+       rx="19.13604"
+       ry="25.618273" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke-width:2.03631"
+       id="rect8762"
+       width="241.36786"
+       height="57.228657"
+       x="7.8361893"
+       y="140.00877" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dasharray:none;stroke-opacity:1"
+       id="rect27199"
+       width="49.574276"
+       height="14.291947"
+       x="84.258415"
+       y="1.9281921"
+       transform="matrix(0.89098756,0.45402771,-0.85651928,0.51611502,0,0)" />
+    <rect
+       style="display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0;stroke-dasharray:none;stroke-opacity:1"
+       id="rect27199-5"
+       width="49.574276"
+       height="14.291947"
+       x="-76.043228"
+       y="140.93344"
+       transform="matrix(-0.89098756,0.45402771,0.85651928,0.51611502,0,0)" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:51.3067px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0;stroke-dasharray:none;stroke-opacity:1"
+       x="59.521976"
+       y="177.61755"
+       id="text30192"
+       transform="scale(0.95686748,1.0450768)"><tspan
+         id="tspan30190"
+         x="59.521976"
+         y="177.61755"
+         style="stroke-width:0">!#%@?</tspan></text>
+  </g>
+</svg>
