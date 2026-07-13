@@ -13,6 +13,7 @@ import (
 
 	"justchess/internal/db"
 	"justchess/internal/randgen"
+	"justchess/internal/response"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -25,17 +26,6 @@ var (
 )
 
 const (
-	// Declaration of error messages.
-	msgUnauthorized    string = "Invalid credentials"
-	msgBadRequest      string = "Malformed request body"
-	msgConflict        string = "Not unique username or email"
-	msgTokenMissing    string = "Token not found"
-	msgTokenConflict   string = "You already have a pending token"
-	msgCannotHash      string = "Cannot generate password hash"
-	msgCannotSendEmail string = "Cannot send email. Please, ensure that email is valid"
-	msgDatabaseError   string = "Database cannot be accessed. Please, try again later"
-	msgCookieError     string = "Cannot generate secure cookie"
-
 	cookieMaxAge = 60 * 60 * 24 * 30 // 30 days.
 )
 
@@ -50,7 +40,7 @@ var (
 type Service struct {
 	// cookieKey is used to sign the secure Cookie.
 	cookieKey []byte
-	repo db.AuthRepo
+	repo      db.AuthRepo
 	// Store parsed emails to avoid expensive template parsing on each signup
 	// or password reset.
 	// First template is email-signup.tmpl.
@@ -82,7 +72,7 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 // letting the player try again.
 func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -92,19 +82,19 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 
 	if !nameEx.MatchString(name) || !emailEx.MatchString(email) ||
 		!pwdEx.MatchString(password) {
-		http.Error(rw, msgBadRequest, http.StatusNotAcceptable)
+		http.Error(rw, response.BadRequest, http.StatusNotAcceptable)
 		return
 	}
 
 	unique, err := s.repo.IsEmailUnique(email)
 	if err != nil || !unique {
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
 
 	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(rw, msgCannotHash, http.StatusInternalServerError)
+		http.Error(rw, response.CannotHash, http.StatusInternalServerError)
 		return
 	}
 
@@ -115,7 +105,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 			Name: name, Email: email, PasswordHash: pwdHash,
 		},
 	); err != nil {
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
 
@@ -123,7 +113,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	var buff bytes.Buffer
 	if err = s.emails[0].Execute(&buff, tmplData{Name: name, Url: url}); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
@@ -136,13 +126,13 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
 	if err = s.sendEmail(body); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		// Remove inserted token.
 		if err = s.repo.DeleteSignupToken(token); err != nil {
 			log.Print(err)
@@ -163,7 +153,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 //  5. Respond with [secureCookie] and the player data.
 func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -171,19 +161,19 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
 	c, err := s.repo.SelectCredentialsByEmail(email)
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword(c.PasswordHash, []byte(password))
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 		return
 	}
 	s.setSecureCookie(rw, c.Id, false)
@@ -195,7 +185,7 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 // letting the player try again.
 func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -203,27 +193,27 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
 	p, err := s.repo.SelectIdentityByEmail(email)
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 		return
 	}
 
 	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotHash, http.StatusInternalServerError)
+		http.Error(rw, response.CannotHash, http.StatusInternalServerError)
 		return
 	}
 
 	token := randgen.GenId(randgen.SecureIdLen)
 	if err = s.repo.InsertPasswordResetToken(token, p.Id, pwdHash); err != nil {
 		log.Print(err)
-		http.Error(rw, msgTokenConflict, http.StatusConflict)
+		http.Error(rw, response.TokenConflict, http.StatusConflict)
 		return
 	}
 
@@ -231,7 +221,7 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	var buff bytes.Buffer
 	if err = s.emails[1].Execute(&buff, tmplData{Name: p.Name, Url: url}); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
@@ -244,13 +234,13 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
 	if err = s.sendEmail(body); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		// Remove inserted token.
 		if err = s.repo.DeletePasswordResetToken(token); err != nil {
 			log.Print(err)
@@ -274,13 +264,13 @@ func (s Service) confirmSignup(rw http.ResponseWriter, r *http.Request) {
 	data, err := s.repo.SelectSignupDataByToken(token)
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgTokenMissing, http.StatusNotFound)
+		http.Error(rw, response.TokenMissing, http.StatusNotFound)
 		return
 	}
 	id := randgen.GenId(randgen.IdLen)
 	if err = s.repo.InsertPlayer(id, data); err != nil {
 		log.Print(err)
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
 	if err = s.repo.DeleteSignupToken(token); err != nil {
@@ -299,13 +289,13 @@ func (s Service) confirmReset(rw http.ResponseWriter, r *http.Request) {
 	c, err := s.repo.SelectCredentialsByResetToken(token)
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgTokenMissing, http.StatusNotFound)
+		http.Error(rw, response.TokenMissing, http.StatusNotFound)
 		return
 	}
 
 	if err = s.repo.UpdatePasswordHash(c.Id, c.PasswordHash); err != nil {
 		log.Print(err)
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
 
@@ -326,15 +316,15 @@ const SessionKey contextKey = 0
 // are expected to handle the guest traffic.
 func (s Service) Authorize(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		ses := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: true}
+		session := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: true}
 		c, err := r.Cookie("Auth")
 		if err == nil {
-			ses, err = validateSecureCookie([]byte(c.Value), s.cookieKey)
+			session, err = validateSecureCookie([]byte(c.Value), s.cookieKey)
 			if err != nil {
-				ses.Id = randgen.GenId(randgen.IdLen)
+				session.Id = randgen.GenId(randgen.IdLen)
 			}
 		}
-		ctx := context.WithValue(r.Context(), SessionKey, ses)
+		ctx := context.WithValue(r.Context(), SessionKey, session)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
@@ -348,15 +338,15 @@ func (s Service) MustAuthorize(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("Auth")
 		if err != nil {
-			http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+			http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 			return
 		}
-		s, err := validateSecureCookie([]byte(c.Value), s.cookieKey)
+		session, err := validateSecureCookie([]byte(c.Value), s.cookieKey)
 		if err != nil {
-			http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+			http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), SessionKey, s)
+		ctx := context.WithValue(r.Context(), SessionKey, session)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
@@ -365,12 +355,12 @@ func (s Service) setSecureCookie(rw http.ResponseWriter, id string, isGuest bool
 	val, err := genSecureCookie(Session{Id: id, IsGuest: isGuest}, s.cookieKey)
 	if err != nil {
 		log.Println(err)
-		http.Error(rw, msgCookieError, http.StatusInternalServerError)
+		http.Error(rw, response.CookieError, http.StatusInternalServerError)
 		return
 	}
 	http.SetCookie(rw, &http.Cookie{
-		Name: "Auth",
-		Value: val,
+		Name:     "Auth",
+		Value:    val,
 		Path:     "/",
 		MaxAge:   cookieMaxAge,
 		HttpOnly: true,

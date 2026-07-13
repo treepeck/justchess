@@ -5,50 +5,35 @@ import (
 	"time"
 )
 
-// Player represents a registered player.
+// Player is a public player data commonly reused on multiple pages.
 type Player struct {
-	Id         string
-	Name       string
-	Rating     float64
-	Deviation  float64
-	Volatility float64
-	IsGuest    bool
+	Id     string  `json:"i"`
+	Name   string  `json:"n"`
+	Rating float64 `json:"r"`
 }
 
-// Profile is a data object used to fill up the player.tmpl file while executing
-// a template.
+// Profile is used to fill up the player profile page.
 type Profile struct {
 	CreatedAt time.Time
 	Id        string
 	Name      string
 	Rating    float64
-	// Leaderboard place.
+	// TODO: Leaderboard place.
 	Rank int
-	// From 0% to 100%.
+	// TODO: Rank confidence in %.
 	RankConfidence int
 	RatedGames     int
 	EngineGames    int
 }
 
-// RatingUpdate is used to update the player's rating after completed game.
-type RatingUpdate struct {
-	Id         string
-	Rating     float64
-	Deviation  float64
-	Volatility float64
-}
-
-// PlayerRepo ignores guest players.
 type PlayerRepo interface {
 	SelectById(id string) (Player, error)
 	SelectProfile(id string) (Profile, error)
 	// SelectLeaderboard selects [Profile] of 100 players with the biggest
 	// rating sorted in descending order.
 	SelectLeaderboard() ([]Profile, error)
-	UpdateRatings(white, black RatingUpdate) error
 }
 
-// SQLPlayerRepo wraps the database connection pool and implements [PlayerRepo].
 type SQLPlayerRepo struct {
 	pool *sql.DB
 }
@@ -58,7 +43,7 @@ func NewSQLPlayerRepo(p *sql.DB) SQLPlayerRepo { return SQLPlayerRepo{pool: p} }
 func (r SQLPlayerRepo) SelectById(id string) (Player, error) {
 	row := r.pool.QueryRow(selectPlayerById, id)
 	var p Player
-	return p, row.Scan(&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility)
+	return p, row.Scan(&p.Id, &p.Name, &p.Rating)
 }
 
 func (r SQLPlayerRepo) SelectProfile(id string) (Profile, error) {
@@ -76,81 +61,41 @@ func (r SQLPlayerRepo) SelectLeaderboard() ([]Profile, error) {
 
 	leaders := make([]Profile, 0, 20)
 	for rows.Next() {
-		var pd Profile
-		err = rows.Scan(&pd.Id, &pd.Name, &pd.Rating, &pd.CreatedAt, &pd.RatedGames)
+		var p Profile
+		err = rows.Scan(&p.Id, &p.Name, &p.Rating, &p.CreatedAt, &p.RatedGames)
 		if err != nil {
 			return nil, err
 		}
-		leaders = append(leaders, pd)
+		leaders = append(leaders, p)
 	}
 	return leaders, err
 }
 
-func (r SQLPlayerRepo) UpdateRatings(white, black RatingUpdate) error {
-	_, err := r.pool.Exec(updateRatings,
-		white.Id, white.Rating, black.Id, black.Rating,
-		white.Id, white.Deviation, black.Id, black.Deviation,
-		white.Id, white.Volatility, black.Id, black.Volatility,
-		white.Id, black.Id,
-	)
-	return err
-}
-
 const (
-	selectPlayerById = `
-	SELECT id, name, rating, rating_deviation, rating_volatility
-	FROM player WHERE id = ? AND is_guest = FALSE`
+	selectPlayerById = `SELECT id, name, rating FROM player WHERE id = $1`
 
-	selectProfile = `
-	SELECT
+	selectProfile = `SELECT
 		p.name,
 		p.rating,
 		p.created_at,
-		count(r.id) as rated_games,
-        count(e.id) as engine_games
+		count(r.game_id) as rated_games,
+        count(e.game_id) as engine_games
 	FROM player p
-	LEFT JOIN rated_game r
-    	ON (r.white_id = p.id OR r.black_id = p.id)
-    	AND r.termination != 1
-    LEFT JOIN engine_game e
-		ON e.player_id = p.id AND r.termination != 1
-	WHERE p.id = ? AND p.is_guest = FALSE
+	INNER JOIN rated_game r ON (r.white_id = p.id OR r.black_id = p.id)
+    INNER JOIN engine_game e ON e.player_id = p.id
+	WHERE p.id = $1
 	GROUP BY p.name, p.rating, p.created_at`
 
-	selectLeaderboard = `
-	SELECT
+	selectLeaderboard = `SELECT
 		p.id,
 		p.name,
 	    p.rating,
 	    p.created_at,
-	    count(g.id) as num_of_games
+	    count(r.game_id) as num_of_games
 	FROM player p
-	LEFT JOIN rated_game g
-	ON
-		(g.white_id = p.id OR g.black_id = p.id)
-	    AND g.termination != 1
-	WHERE p.is_guest = FALSE
+	LEFT JOIN rated_game r
+	ON r.white_id = p.id OR r.black_id = p.id
 	GROUP BY p.id, p.name, p.rating, p.created_at
 	ORDER BY p.rating DESC, num_of_games DESC
 	LIMIT 100`
-
-	updateRatings = `
-	UPDATE player
-	SET
-		rating = CASE
-			WHEN id = ? THEN ?
-			WHEN id = ? THEN ?
-			ELSE rating
-		END,
-		rating_deviation = CASE
-			WHEN id = ? THEN ?
-			WHEN id = ? THEN ?
-			ELSE rating_deviation
-		END,
-		rating_volatility = CASE
-			WHEN id = ? THEN ?
-			WHEN id = ? THEN ?
-			ELSE rating_volatility
-		END
-	WHERE (player.id = ? OR player.id = ?) AND player.is_guest = FALSE`
 )

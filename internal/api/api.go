@@ -3,96 +3,131 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/treepeck/chego"
+	"justchess/internal/auth"
 	"justchess/internal/db"
+	"justchess/internal/randgen"
+	"justchess/internal/response"
 	"log"
+	"math/rand/v2"
 	"net/http"
 	"time"
 )
 
-// Declaration of error messages.
-const (
-	msgNotFound     = "The requested game wasn't found"
-	msgBadRequest   = "Missing or invalid parameters"
-	msgEncoderError = "Couldn't encode the response"
-)
-
 type Service struct {
-	gameRepo db.SQLGameRepo
+	gameRepo   db.GameRepo
+	playerRepo db.PlayerRepo
 }
 
-func NewService(gr db.SQLGameRepo) Service {
+func NewService(gr db.GameRepo, pr db.PlayerRepo) Service {
 	return Service{
-		gameRepo: gr,
+		gameRepo:   gr,
+		playerRepo: pr,
 	}
 }
 
-func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/rated-brief", s.ratedBrief)
+func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/engine", authService.MustAuthorize(s.createEngineGame))
 	mux.HandleFunc("GET /api/engine-brief", s.engineBrief)
+	mux.HandleFunc("GET /api/rated-brief", s.ratedBrief)
 }
 
-// ratedBrief serves brief info about the player's rated games.
-func (s Service) ratedBrief(rw http.ResponseWriter, r *http.Request) {
-	playerId := r.URL.Query().Get("pid")
-	if len(playerId) != 12 {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
-		return
-	}
-	// Optional cursor-based pagination parameters.
-	cursorId := r.URL.Query().Get("cid")
-	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cca"))
-
-	var games []db.RatedGameBrief
-	// If optional pagination paramers are defined.
-	if err == nil && len(cursorId) == 12 {
-		games, err = s.gameRepo.SelectRatedBrief(playerId, db.Pagination{
-			CursorCreatedAt: cursorCreatedAt,
-			CursorId:        cursorId,
-		})
-	} else {
-		games, err = s.gameRepo.SelectLatestRatedBrief(playerId)
-	}
-
-	if err != nil {
-		http.Error(rw, msgNotFound, http.StatusNotFound)
+func (s Service) createEngineGame(rw http.ResponseWriter, r *http.Request) {
+	session, ok := r.Context().Value(auth.SessionKey).(auth.Session)
+	if !ok {
+		log.Print("request context is broken")
 		return
 	}
 
-	if err = json.NewEncoder(rw).Encode(games); err != nil {
+	var c chego.Color
+	if rand.IntN(2) == 1 {
+		c = chego.ColorBlack
+	}
+
+	var d db.EngineDifficulty
+	if err := json.NewDecoder(r.Body).Decode(&d); err != nil ||
+		d < db.Easy || d > db.Impossible {
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
+		return
+	}
+	gameId := randgen.GenId(randgen.IdLen)
+	if session.IsGuest {
+		session.Id = ""
+	}
+	if err := s.gameRepo.InsertEngineGame(gameId, session.Id, c, d); err != nil {
 		log.Print(err)
-		http.Error(rw, msgNotFound, http.StatusInternalServerError)
+		http.Error(rw, response.InternalError, http.StatusInternalServerError)
+		return
 	}
+	http.Redirect(rw, r, "/engine/"+gameId, http.StatusFound)
 }
 
-// engineBrief serves brief info about player's engine games.
 func (s Service) engineBrief(rw http.ResponseWriter, r *http.Request) {
+	// Mandatory parameter.
 	playerId := r.URL.Query().Get("pid")
 	if len(playerId) != 12 {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
-	// Optional cursor-based pagination parameters.
+	// Optional parameters for cursor-based pagination.
 	cursorId := r.URL.Query().Get("cid")
 	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cca"))
 
-	var games []db.EngineGameBrief
-	// If optional pagination paramers are defined.
+	var games []db.EngineBrief
 	if err == nil && len(cursorId) == 12 {
-		games, err = s.gameRepo.SelectEngineBrief(playerId, db.Pagination{
-			CursorCreatedAt: cursorCreatedAt,
+		// If optional pagination parameters are defined.
+		games, err = s.gameRepo.SelectEngineBrief(playerId, &db.Pagination{
 			CursorId:        cursorId,
+			CursorCreatedAt: cursorCreatedAt,
 		})
 	} else {
-		games, err = s.gameRepo.SelectLatestEngineBrief(playerId)
+		games, err = s.gameRepo.SelectEngineBrief(playerId, nil)
 	}
 
 	if err != nil {
-		http.Error(rw, msgNotFound, http.StatusNotFound)
+		http.Error(rw, response.NotFound, http.StatusNotFound)
 		return
 	}
 
 	if err = json.NewEncoder(rw).Encode(games); err != nil {
 		log.Print(err)
-		http.Error(rw, msgNotFound, http.StatusInternalServerError)
+		http.Error(rw, response.InternalError, http.StatusInternalServerError)
+		return
 	}
+	rw.Header().Add("Content-Type", "application/json")
+}
+
+func (s Service) ratedBrief(rw http.ResponseWriter, r *http.Request) {
+	// Mandatory parameter.
+	playerId := r.URL.Query().Get("pid")
+	if len(playerId) != 12 {
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
+		return
+	}
+	// Optional parameters for cursor-based pagination.
+	cursorId := r.URL.Query().Get("cid")
+	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cca"))
+
+	var games []db.RatedBrief
+	if err == nil && len(cursorId) == 12 {
+		// If optional pagination parameters are defined.
+		games, err = s.gameRepo.SelectRatedBrief(playerId, &db.Pagination{
+			CursorId:        cursorId,
+			CursorCreatedAt: cursorCreatedAt,
+		})
+	} else {
+		games, err = s.gameRepo.SelectRatedBrief(playerId, nil)
+	}
+
+	if err != nil {
+		http.Error(rw, response.NotFound, http.StatusNotFound)
+		return
+	}
+
+	if err = json.NewEncoder(rw).Encode(games); err != nil {
+		log.Print(err)
+		http.Error(rw, response.InternalError, http.StatusInternalServerError)
+		return
+	}
+	rw.Header().Add("Content-Type", "application/json")
 }

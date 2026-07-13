@@ -3,8 +3,8 @@ package auth
 import (
 	"crypto/rand"
 	"justchess/internal/randgen"
-	"testing"
 	"os"
+	"testing"
 )
 
 func TestParseCookieKey(t *testing.T) {

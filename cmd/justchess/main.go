@@ -5,14 +5,20 @@ import (
 	"net/http"
 	"os"
 
+	"justchess/internal/api"
 	"justchess/internal/auth"
 	"justchess/internal/db"
 	"justchess/internal/web"
-	"justchess/internal/ws"
+	// "justchess/internal/ws"
 )
 
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
+
+	cookieKey, err := auth.ParseCookieKey(os.Getenv("COOKIE_KEY"))
+	if err != nil {
+		log.Panic(err)
+	}
 
 	log.Print("Connecting to db...")
 	pool, err := db.OpenDB(os.Getenv("DB_DSN"))
@@ -28,24 +34,27 @@ func main() {
 	gr := db.NewSQLGameRepo(pool)
 
 	log.Print("Initializing services...")
-	authService := auth.NewService(ar)
-	if err = authService.ParseEmails("./internal/auth/"); err != nil {
+	authService := auth.NewService(cookieKey, ar)
+	if err = authService.ParseEmails("./internal/auth/templates/"); err != nil {
 		log.Panic(err)
 	}
+
+	apiService := api.NewService(gr, pr)
 
 	webService, err := web.InitService(gr, pr, "./_web/")
 	if err != nil {
 		log.Panic(err)
 	}
 
-	wsService := ws.NewService(gr, pr)
-	go wsService.ListenEvents()
+	// wsService := ws.NewService(gr, pr)
+	// go wsService.ListenEvents()
 
 	// Register routes.
 	mux := http.NewServeMux()
-	wsService.RegisterRoutes(authService, mux)
-	webService.RegisterRoutes(authService, mux)
 	authService.RegisterRoutes(mux)
+	apiService.RegisterRoutes(authService, mux)
+	// wsService.RegisterRoutes(authService, mux)
+	webService.RegisterRoutes(authService, mux)
 
 	log.Print("Starting server.")
 	log.Panic(http.ListenAndServe(":3502", mux))

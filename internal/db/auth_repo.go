@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"time"
 )
 
 // SignupData represents the registration credentials.
@@ -24,30 +23,13 @@ type Identity struct {
 	Name string
 }
 
-// Session is an authorization token for a player.  Each protected endpoint
-// expects the Auth cookie to contain valid and not expired session.
-type Session struct {
-	CreatedAt time.Time
-	ExpiresAt time.Time
-	Id        string
-	PlayerId  string
-}
-
 // AuthRepo provides access to authorization and authentication data.
 type AuthRepo interface {
-	InsertGuest(id string) error
 	InsertPlayer(id string, d SignupData) error
 	IsEmailUnique(email string) (bool, error)
 	SelectCredentialsByEmail(email string) (Credentials, error)
 	SelectIdentityByEmail(email string) (Identity, error)
-	// SelectPlayerBySessionId skips expired sessions.
-	SelectPlayerBySessionId(id string) (Player, error)
 	UpdatePasswordHash(id string, pwdHash []byte) error
-
-	InsertSession(id, playerId string) error
-	SelectSessionById(id string) (Session, error)
-	SelectSessionsByPlayerId(id string) ([]Session, error)
-	DeleteSession(id string) error
 
 	InsertSignupToken(id string, d SignupData) error
 	SelectSignupDataByToken(id string) (SignupData, error)
@@ -64,11 +46,6 @@ type SQLAuthRepo struct {
 }
 
 func NewSQLAuthRepo(p *sql.DB) SQLAuthRepo { return SQLAuthRepo{pool: p} }
-
-func (r SQLAuthRepo) InsertGuest(id string) error {
-	_, err := r.pool.Exec(insertGuest, id)
-	return err
-}
 
 func (r SQLAuthRepo) InsertPlayer(id string, d SignupData) error {
 	_, err := r.pool.Exec(insertPlayer, id, d.Name, d.Email, d.PasswordHash)
@@ -93,51 +70,8 @@ func (r SQLAuthRepo) SelectIdentityByEmail(email string) (Identity, error) {
 	return i, row.Scan(&i.Id, &i.Name)
 }
 
-func (r SQLAuthRepo) SelectPlayerBySessionId(id string) (Player, error) {
-	row := r.pool.QueryRow(selectPlayerBySessionId, id)
-	var p Player
-	return p, row.Scan(
-		&p.Id, &p.Name, &p.Rating, &p.Deviation, &p.Volatility, &p.IsGuest,
-	)
-}
-
 func (r SQLAuthRepo) UpdatePasswordHash(id string, pwdHash []byte) error {
 	_, err := r.pool.Exec(updatePasswordHash, pwdHash, id)
-	return err
-}
-
-func (r SQLAuthRepo) InsertSession(id, playerId string) error {
-	_, err := r.pool.Exec(insertSession, id, playerId)
-	return err
-}
-
-func (r SQLAuthRepo) SelectSessionById(id string) (Session, error) {
-	row := r.pool.QueryRow(selectSessionById, id)
-	var s Session
-	return s, row.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt)
-}
-
-func (r SQLAuthRepo) SelectSessionsByPlayerId(id string) ([]Session, error) {
-	rows, err := r.pool.Query(selectSessionsByPlayerId, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var sessions []Session
-
-	for rows.Next() {
-		var s Session
-		if err = rows.Scan(&s.Id, &s.PlayerId, &s.CreatedAt, &s.ExpiresAt); err != nil {
-			return nil, err
-		}
-		sessions = append(sessions, s)
-	}
-	return sessions, rows.Err()
-}
-
-func (r SQLAuthRepo) DeleteSession(id string) error {
-	_, err := r.pool.Exec(deleteSession, id)
 	return err
 }
 
@@ -174,75 +108,30 @@ func (r SQLAuthRepo) DeletePasswordResetToken(id string) error {
 }
 
 const (
-	insertGuest = `
-	INSERT INTO player (id, name, is_guest)
-	VALUES (?, 'Guest', TRUE)`
+	insertPlayer = `INSERT INTO player (id, name, email, password_hash)	VALUES ($1, $2, $3, $4)`
 
-	insertPlayer = `
-	INSERT INTO player (id, name, email, password_hash, is_guest)
-	VALUES (?, ?, ?, ?, FALSE)`
+	isEmailUnique = `SELECT COUNT(*) FROM player WHERE email = $1`
 
-	isEmailUnique = `SELECT COUNT(*) FROM player WHERE email = ?`
+	selectCredentialsByEmail = `SELECT id, password_hash FROM player WHERE email = $1`
 
-	selectCredentialsByEmail = `
-	SELECT id, password_hash FROM player WHERE email = ?`
+	selectIdentityByEmail = `SELECT id, name FROM player WHERE email = $1`
 
-	selectIdentityByEmail = `
-	SELECT id, name	FROM player WHERE email = ?`
+	updatePasswordHash = `UPDATE player SET password_hash = $1 WHERE id = $2`
 
-	selectPlayerBySessionId = `
-	SELECT
-		p.id, p.name, p.rating, p.rating_deviation,
-		p.rating_volatility, p.is_guest
-	FROM player p
-	INNER JOIN session s
-	ON p.id = s.player_id
-	WHERE s.id = ? AND s.expires_at > NOW()`
+	insertSignupToken = `INSERT INTO signup_token (id, name, email, password_hash) VALUES ($1, $2, $3, $4)`
 
-	updatePasswordHash = `UPDATE player SET password_hash = ? WHERE id = ?`
+	selectSignupDataByToken = `SELECT name, email, password_hash
+	FROM signup_token WHERE id = $1 AND created_at >= NOW() - INTERVAL '15 MINUTES'`
 
-	insertSession = `
-	INSERT INTO session (
-		id,
-		player_id
-	)
-	VALUES (?, ?)`
+	deleteSignupToken = `DELETE FROM signup_token WHERE id = $1`
 
-	selectSessionById = `
-	SELECT * FROM session
-	WHERE id = ?
-	AND	expires_at > NOW()`
-
-	selectSessionsByPlayerId = `
-	SELECT * FROM session
-	WHERE player_id = ?
-	AND	expires_at > NOW()`
-
-	deleteSession = `DELETE FROM session WHERE id = ?`
-
-	insertSignupToken = `
-	INSERT INTO signup_token (
-		id, name, email, password_hash
-	)
-	VALUES (?, ?, ?, ?)`
-
-	selectSignupDataByToken = `
-	SELECT name, email, password_hash
-	FROM signup_token
-	WHERE id = ? AND created_at >= NOW() - INTERVAL 15 MINUTE`
-
-	deleteSignupToken = `DELETE FROM signup_token WHERE id = ?`
-
-	insertPasswordResetToken = `
-	INSERT INTO password_reset_token (
+	insertPasswordResetToken = `INSERT INTO password_reset_token (
 		id, player_id, new_password_hash
 	)
-	VALUES (?, ?, ?)`
+	VALUES ($1, $2, $3)`
 
-	selectCredentialsByResetToken = `
-	SELECT player_id, new_password_hash
-	FROM password_reset_token
-	WHERE id = ? AND created_at >= NOW() - INTERVAL 15 MINUTE`
+	selectCredentialsByResetToken = `SELECT player_id, new_password_hash
+	FROM password_reset_token WHERE id = $1 AND created_at >= NOW() - INTERVAL '15 MINUTES'`
 
-	deletePasswordResetToken = `DELETE FROM password_reset_token WHERE id = ?`
+	deletePasswordResetToken = `DELETE FROM password_reset_token WHERE id = $1`
 )

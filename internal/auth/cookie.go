@@ -4,7 +4,6 @@ package auth
 
 import (
 	"bytes"
-	"strings"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -12,8 +11,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -34,7 +33,6 @@ func ParseCookieKey(raw string) ([]byte, error) {
 	for chunk := range strings.SplitSeq(raw, " ") {
 		b, err := strconv.ParseInt(chunk, 10, 32)
 		if err != nil {
-			log.Println(err.(*strconv.NumError).Err)
 			return nil, errKey
 		}
 		result = append(result, byte(b))
@@ -46,7 +44,7 @@ func ParseCookieKey(raw string) ([]byte, error) {
 // entirely client-based (not stored anywhere outside of client's Cookie storage).
 type Session struct {
 	Id      string `json:"i"`
-	IsGuest bool `json:"g"`
+	IsGuest bool   `json:"g"`
 }
 
 func genSecureCookie(s Session, hashKey []byte) (string, error) {

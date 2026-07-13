@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"os"
+	"strings"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"

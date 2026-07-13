@@ -1,13 +1,8 @@
 package ws
 
 import (
-	"strconv"
-	"time"
-
-	"justchess/internal/db"
-	"justchess/internal/event"
-
 	"github.com/gorilla/websocket"
+	"time"
 )
 
 // Connection parameters.
@@ -22,79 +17,67 @@ const (
 	maxMessageSize = 1024
 )
 
-// client wraps a single socket and player info.
+// client is a wrapper around a single WebSocket connection.
 type client struct {
-	player db.Player
-	// Timestamp when the last ping event was sent.
+	// Timestamp when the last [messagePing] was sent.
 	pingTimestamp time.Time
-	// send is a channel which recieves events that the client will write to
+	conn          *websocket.Conn
+	// send is a channel which recieves messages that the client will write to
 	// the WebSocket connection.  It must recieve raw bytes to avoid expensive
-	// JSON encoding for each client in case of event broadcasting.
-	// The reason for the send channel is that events must be read and written
-	// sequentially, since the Gorilla WebSocket library allows only one
-	// concurrent writer to a connection at a time.
+	// encoding for each client in case of message broadcasting. The reason for
+	// the unbuffered send channel is that Gorilla WebSocket library allows only
+	// one concurrent writer to a connection at a time.
 	send chan []byte
-	// forward is a channel to which the client will send events.
-	forward chan event.Event
-	// unregister is a channel to which the client will send to unregister themself
-	// from the room or queue.
-	unregister chan string
-	// pong channel is used to prevent race conditions while handling pong events
-	// from client.
+	// pong is used to prevent race conditions while handling [messagePong].
 	pong chan struct{}
-	conn *websocket.Conn
-	// Network delay in milliseconds.
+	// ping is is a network latency in milliseconds. To calculate it, a full
+	// roundtrip is performed.
 	ping int
-	// New ping event must be sent only when the client responses to the
-	// previous one.  Otherwise the delay cannot be correctly measured.
-	hasAnsweredPing bool
+	// New [messagePing] must be sent only when the client doesn't have a
+	// pending one. Otherwise the delay cannot be correctly measured.
+	hasPendingPing bool
 }
 
-// newClient creates a new client and sets the connection properties.
-func newClient(conn *websocket.Conn, p db.Player) *client {
+// initClient returns [client] with configured connection parameters.
+// also runs client's goroutines.
+func initClient(conn *websocket.Conn) *client {
 	c := &client{
-		player: p,
-		send:   make(chan []byte, 192),
-		pong:   make(chan struct{}, 10),
-		conn:   conn,
-		ping:   0,
-		// Must be true to be able to send the first ping message.
-		hasAnsweredPing: true,
+		conn: conn,
+		send: make(chan []byte, 192),
+		pong: make(chan struct{}, 10),
 	}
 
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 
+	go c.read()
+	go c.write()
+
 	return c
 }
 
-// read reads and handles events from the connection sequentially (one at a time).
+// read sequentially reads messages from the connection.
 //
-// Pong events are handled by the client itself.  In the case of other event,
-// they are forwarded to the forward channel.  If an event cannot be read, the
-// connection will be closed.
+// If the message cannot be properly read or decoded, the connection is
+// instantly closed.
 func (c *client) read() {
-	defer c.cleanup()
-
 	for {
-		var e event.Event
-		if err := c.conn.ReadJSON(&e); err != nil {
+		var m message
+		if err := c.conn.ReadJSON(&m); err != nil {
 			return
 		}
 
-		if e.Kind == event.Pong {
+		if m.Kind == messagePong {
 			c.pong <- struct{}{}
-		} else if c.forward != nil {
-			e.SenderId = c.player.Id
-			c.forward <- e
+		} else {
+			m.SenderId = c.id
 		}
 	}
 }
 
-// write takes the incomming events from the send channel and writes them to the
-// connection sequentially (one at a time).
-//
-// Automatically sends ping events to maintain a heartbeat.
+// write sequentially takes the incomming messages from the send channel and
+// writes them to the connection. It also sends [pingMessage]s each
+// [pingPeriod] seconds to maintain a heartbeat.
 func (c *client) write() {
 	pingTicker := time.NewTicker(pingPeriod)
 	defer pingTicker.Stop()
@@ -104,63 +87,47 @@ func (c *client) write() {
 		case raw, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, nil)
 				return
 			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, raw); err != nil {
 				continue
 			}
-
-		// Handle pong events in write goroutine to avoid data races between read and write routines.
+		// heartbeat is a mechanism that is necessary for several reasons:
+		//   - Detect inactive connections and free resources after a player leaves the page.
+		//   - Measure ping to provide a fairer gameplay experience.
+		//   - Prevent the browser from automatically closing an idle client-side connection
+		//     after a few minutes without outgoing messages. A player may spend several
+		//     minutes thinking about a move, so periodically sending a heartbeat in the
+		//     background is necessary to keep the connection alive.
 		case <-c.pong:
-			c.handlePong()
-
-		// Send ping messages periodically.
+			// Handle pong messages only when the client has a pending ping.
+			// Otherwise the latency cannot be correctly measured. Important
+			// note is WebSocket protocol doesn't allow dropped frames, meaning
+			// all messages are eventually delivered.
+			if c.hasPendingPing {
+				c.hasPendingPing = false
+				c.ping = int(time.Since(c.pingTimestamp).Milliseconds())
+				if c.conn.SetReadDeadline(time.Now().Add(pongWait)) != nil {
+					return
+				}
+			}
 		case <-pingTicker.C:
-			// Send a new ping event only if the client has already answered to
-			// the previous one.
-			if !c.hasAnsweredPing {
+			// Send a new [messagePing] only if the previous one is answered.
+			if c.hasPendingPing {
 				continue
 			}
 
 			c.pingTimestamp = time.Now()
 			c.conn.SetWriteDeadline(c.pingTimestamp.Add(writeWait))
 
-			if err := c.conn.WriteJSON(event.Event{
-				Kind:    event.Ping,
+			if err := c.conn.WriteJSON(message{
+				Kind:    messagePing,
 				Payload: []byte(strconv.Itoa(c.ping)),
 			}); err != nil {
 				continue
 			}
-			c.hasAnsweredPing = false
+			c.hasPendingPing = true
 		}
 	}
-}
-
-// handlePong handles the incomming pong messages to maintain a heartbeat.
-//
-// Sending ping and pong messages is necessary because without it the connections
-// are interrupted after about 2 minutes of no message sending from the client.
-//
-// Sets the delay value to the time elapsed since the last ping was sent.  This
-// helps determine an up-to-date network delay value, which will be subtracted from
-// the player's clock to provide a fairer gameplay experience.
-func (c *client) handlePong() error {
-	// Handle pong events only when the client has a pending ping event.
-	if !c.hasAnsweredPing {
-		c.hasAnsweredPing = true
-		c.ping = int(time.Since(c.pingTimestamp).Milliseconds())
-		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	}
-	return nil
-}
-
-// cleanup closes the connection and unregisters the client.
-func (c *client) cleanup() {
-	if c.unregister != nil {
-		c.unregister <- c.player.Id
-	}
-	close(c.send)
-	c.conn.Close()
 }

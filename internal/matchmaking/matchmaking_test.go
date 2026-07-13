@@ -1,8 +1,8 @@
 package matchmaking
 
 import (
-	"testing"
 	"strconv"
+	"testing"
 )
 
 func TestMatchmaking(t *testing.T) {

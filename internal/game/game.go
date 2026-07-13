@@ -1,4 +1,6 @@
 // Package game implements real time game management.
+// It is needed since the chego module implements pure chess logic, without
+// any player and time related stuff.
 package game
 
 import "github.com/treepeck/chego"

@@ -16,10 +16,10 @@
 package matchmaking
 
 import (
+	"fmt"
 	"iter"
 	"math"
 	"time"
-	"fmt"
 )
 
 const (
