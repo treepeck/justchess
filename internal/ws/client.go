@@ -2,6 +2,8 @@ package ws
 
 import (
 	"github.com/gorilla/websocket"
+	"justchess/internal/talk"
+	"strconv"
 	"time"
 )
 
@@ -22,12 +24,18 @@ type client struct {
 	// Timestamp when the last [messagePing] was sent.
 	pingTimestamp time.Time
 	conn          *websocket.Conn
-	// send is a channel which recieves messages that the client will write to
+	// send is a channel which recieves messages that the client writes to
 	// the WebSocket connection.  It must recieve raw bytes to avoid expensive
 	// encoding for each client in case of message broadcasting. The reason for
 	// the unbuffered send channel is that Gorilla WebSocket library allows only
 	// one concurrent writer to a connection at a time.
 	send chan []byte
+	// forward is a channel whic recieves messages that the client reads from
+	// the WebSocket connection.
+	forward chan talk.Message
+	// unregister is a channel to which the client will send to unregister themself
+	// from the [room] or [queue].
+	unregister chan string
 	// pong is used to prevent race conditions while handling [messagePong].
 	pong chan struct{}
 	// ping is is a network latency in milliseconds. To calculate it, a full
@@ -38,21 +46,17 @@ type client struct {
 	hasPendingPing bool
 }
 
-// initClient returns [client] with configured connection parameters.
-// also runs client's goroutines.
-func initClient(conn *websocket.Conn) *client {
+// newClient returns [client] with configured connection parameters.
+func newClient(conn *websocket.Conn, forward chan talk.Message, unregister chan string) *client {
 	c := &client{
-		conn: conn,
-		send: make(chan []byte, 192),
-		pong: make(chan struct{}, 10),
+		conn:       conn,
+		send:       make(chan []byte, 192),
+		forward:    forward,
+		unregister: unregister,
+		pong:       make(chan struct{}, 10),
 	}
-
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-
-	go c.read()
-	go c.write()
-
 	return c
 }
 
@@ -60,19 +64,24 @@ func initClient(conn *websocket.Conn) *client {
 //
 // If the message cannot be properly read or decoded, the connection is
 // instantly closed.
-func (c *client) read() {
+func (c *client) read(id string) {
+	var m talk.Message
 	for {
-		var m message
 		if err := c.conn.ReadJSON(&m); err != nil {
-			return
+			break
 		}
 
-		if m.Kind == messagePong {
+		if m.Kind == talk.MessagePong {
 			c.pong <- struct{}{}
+		} else if c.forward != nil {
+			m.PlayerId = id
+			c.forward <- m
 		} else {
-			m.SenderId = c.id
+			// Close the connection if client tries to send messages to a nil channel.
+			break
 		}
 	}
+	c.cleanup(id)
 }
 
 // write sequentially takes the incomming messages from the send channel and
@@ -80,14 +89,12 @@ func (c *client) read() {
 // [pingPeriod] seconds to maintain a heartbeat.
 func (c *client) write() {
 	pingTicker := time.NewTicker(pingPeriod)
-	defer pingTicker.Stop()
-
 	for {
 		select {
 		case raw, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				return
+				break
 			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, raw); err != nil {
@@ -109,7 +116,7 @@ func (c *client) write() {
 				c.hasPendingPing = false
 				c.ping = int(time.Since(c.pingTimestamp).Milliseconds())
 				if c.conn.SetReadDeadline(time.Now().Add(pongWait)) != nil {
-					return
+					break
 				}
 			}
 		case <-pingTicker.C:
@@ -121,8 +128,8 @@ func (c *client) write() {
 			c.pingTimestamp = time.Now()
 			c.conn.SetWriteDeadline(c.pingTimestamp.Add(writeWait))
 
-			if err := c.conn.WriteJSON(message{
-				Kind:    messagePing,
+			if err := c.conn.WriteJSON(talk.Message{
+				Kind:    talk.MessagePing,
 				Payload: []byte(strconv.Itoa(c.ping)),
 			}); err != nil {
 				continue
@@ -130,4 +137,12 @@ func (c *client) write() {
 			c.hasPendingPing = true
 		}
 	}
+	pingTicker.Stop()
+}
+
+// cleanup closes the connection and unregisters the client.
+func (c *client) cleanup(id string) {
+	c.unregister <- id
+	close(c.send)
+	c.conn.Close()
 }

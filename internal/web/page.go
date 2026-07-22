@@ -6,9 +6,7 @@ import (
 	"errors"
 	"html/template"
 	"justchess/internal/db"
-	"os/exec"
 	"strings"
-	"time"
 )
 
 // HTML frame layout used on every page.
@@ -37,13 +35,6 @@ type page struct {
 	// Parsed template. Changes to a file will not be displayed automatically and
 	// require a server restart.
 	tmpl *template.Template
-}
-
-// commit represents a Git commit. Used to fill up the 'versions' section on the home page.
-type commit struct {
-	Date string
-	Hash string
-	Msg  string
 }
 
 // parsePage parses [page] from a given file.
@@ -82,33 +73,6 @@ func parsePage(path string, file []byte) (page, error) {
 	script := ""
 	if head["script"] != nil {
 		script = head["script"].(string)
-	}
-
-	// Special case: add home page data.
-	if title == "Home" {
-		// Get 10 latest commits in format 'Date|Hash|Message'.
-		cmd := exec.Command("git", "log", "--pretty=format:'%ad|%h|%s'", "-n", "10")
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		if err := cmd.Run(); err != nil {
-			return page{}, err
-		}
-		commits := make([]commit, 0, 10)
-		// Split commits by new line.
-		for line := range bytes.SplitSeq(out.Bytes(), []byte{10}) {
-			// Split parts of commit.
-			parts := bytes.SplitN(line, []byte("|"), 3)
-			date, err := time.Parse("Mon Jan 2 15:04:05 2006 +0300", string(parts[0][1:]))
-			if err != nil {
-				return page{}, err
-			}
-			commits = append(commits, commit{
-				Date: date.Format(time.DateTime),
-				Hash: string(parts[1]),
-				Msg:  string(parts[2][:len(parts[2])-1]),
-			})
-		}
-		head["Commits"] = commits
 	}
 
 	return page{

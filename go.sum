@@ -2,9 +2,7 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/lib/pq v1.12.3 h1:tTWxr2YLKwIvK90ZXEw8GP7UFHtcbTtty8zsI+YjrfQ=
 github.com/lib/pq v1.12.3/go.mod h1:/p+8NSbOcwzAEI7wiMXFlgydTwcgTr3OSKMsD2BitpA=
-github.com/treepeck/chego v0.2.0 h1:+WMwtNEuVDTfcKvrdWIcCgauxksBwprgZOtyablSAbU=
-github.com/treepeck/chego v0.2.0/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
-github.com/treepeck/glicko v0.0.4 h1:2fGHVWXFswTBYHTMi/7gwd7Barp10TQ4yGHMjIe1Bb0=
-github.com/treepeck/glicko v0.0.4/go.mod h1:Omcr6WSRD0wZA3xcpNGLE00oRrz2BqiuZRnzvV3W/FU=
+github.com/treepeck/chego v0.5.0 h1:pebn3S8Dj7UfOtKqpcOlv9I9zAl2MFcHxwsxMIf0g30=
+github.com/treepeck/chego v0.5.0/go.mod h1:LTZ/UZ8vevs3fiHQJmXTN8j0mzs+x9uLkY3Y1vVqzJQ=
 golang.org/x/crypto v0.54.0 h1:YLIA59K4fiNzHzjnZt2tUJQjQtUWfWbeHBqKtk3eScw=
 golang.org/x/crypto v0.54.0/go.mod h1:KWL8ny2AZdGR2cWmzeHrp2azQPGogOv+HeQaVEXC2dk=

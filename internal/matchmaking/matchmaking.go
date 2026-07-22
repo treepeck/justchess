@@ -38,7 +38,7 @@ type Profile struct {
 // WARN: it's the caller's responsibility to ensure thread-safetiness.
 type Pool struct {
 	nodes  *redBlackTree
-	ticker *time.Ticker
+	Ticker *time.Ticker
 	// Number of players.
 	size int
 }
@@ -46,7 +46,7 @@ type Pool struct {
 func NewPool() *Pool {
 	return &Pool{
 		nodes:  newRedBlackTree(),
-		ticker: time.NewTicker(Interval),
+		Ticker: time.NewTicker(Interval),
 	}
 }
 

@@ -108,30 +108,74 @@ func (r SQLAuthRepo) DeletePasswordResetToken(id string) error {
 }
 
 const (
-	insertPlayer = `INSERT INTO player (id, name, email, password_hash)	VALUES ($1, $2, $3, $4)`
+	insertPlayer = `INSERT INTO
+	PLAYER (ID, NAME, EMAIL, PASSWORD_HASH)
+VALUES
+	($1, $2, $3, $4)`
 
-	isEmailUnique = `SELECT COUNT(*) FROM player WHERE email = $1`
+	isEmailUnique = `SELECT
+	COUNT(*)
+FROM
+	PLAYER
+WHERE
+	EMAIL = $1`
 
-	selectCredentialsByEmail = `SELECT id, password_hash FROM player WHERE email = $1`
+	selectCredentialsByEmail = `SELECT
+	ID,
+	PASSWORD_HASH
+FROM
+	PLAYER
+WHERE
+	EMAIL = $1`
 
-	selectIdentityByEmail = `SELECT id, name FROM player WHERE email = $1`
+	selectIdentityByEmail = `SELECT
+	ID,
+	NAME
+FROM
+	PLAYER
+WHERE
+	EMAIL = $1`
 
-	updatePasswordHash = `UPDATE player SET password_hash = $1 WHERE id = $2`
+	updatePasswordHash = `UPDATE PLAYER
+SET
+	PASSWORD_HASH = $1
+WHERE
+	ID = $2`
 
-	insertSignupToken = `INSERT INTO signup_token (id, name, email, password_hash) VALUES ($1, $2, $3, $4)`
+	insertSignupToken = `INSERT INTO
+	SIGNUP_TOKEN (ID, NAME, EMAIL, PASSWORD_HASH)
+VALUES
+	($1, $2, $3, $4)`
 
-	selectSignupDataByToken = `SELECT name, email, password_hash
-	FROM signup_token WHERE id = $1 AND created_at >= NOW() - INTERVAL '15 MINUTES'`
+	selectSignupDataByToken = `SELECT
+	NAME,
+	EMAIL,
+	PASSWORD_HASH
+FROM
+	SIGNUP_TOKEN
+WHERE
+	ID = $1
+	AND CREATED_AT >= NOW() - INTERVAL '15 MINUTES'`
 
-	deleteSignupToken = `DELETE FROM signup_token WHERE id = $1`
+	deleteSignupToken = `DELETE FROM SIGNUP_TOKEN
+WHERE
+	ID = $1`
 
-	insertPasswordResetToken = `INSERT INTO password_reset_token (
-		id, player_id, new_password_hash
-	)
-	VALUES ($1, $2, $3)`
+	insertPasswordResetToken = `INSERT INTO
+	PASSWORD_RESET_TOKEN (ID, PLAYER_ID, NEW_PASSWORD_HASH)
+VALUES
+	($1, $2, $3)`
 
-	selectCredentialsByResetToken = `SELECT player_id, new_password_hash
-	FROM password_reset_token WHERE id = $1 AND created_at >= NOW() - INTERVAL '15 MINUTES'`
+	selectCredentialsByResetToken = `SELECT
+	PLAYER_ID,
+	NEW_PASSWORD_HASH
+FROM
+	PASSWORD_RESET_TOKEN
+WHERE
+	ID = $1
+	AND CREATED_AT >= NOW() - INTERVAL '15 MINUTES'`
 
-	deletePasswordResetToken = `DELETE FROM password_reset_token WHERE id = $1`
+	deletePasswordResetToken = `DELETE FROM PASSWORD_RESET_TOKEN
+WHERE
+	ID = $1`
 )

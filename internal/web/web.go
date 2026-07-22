@@ -118,10 +118,16 @@ func (s Service) profile(rw http.ResponseWriter, r *http.Request) {
 
 /*
 func (s Service) engineGame(rw http.ResponseWriter, r *http.Request) {
-	game, err := s.gameRepo.SelectEngine(r.PathValue("id"))
-	if err != nil {
-		s.renderPage(rw, r, s.pages["/error"], response.NotFound, "/error")
-		return
+	gameId := r.PathValue("id")
+
+	game := s.storage.Find(gameId)
+	if game == nil {
+		engine, err := s.gameRepo.SelectEngineById(r.PathValue("id"))
+		if err != nil {
+			s.renderPage(rw, r, s.pages["/error"], response.NotFound, "/error")
+			return
+		}
+		// TODO: add game to storage.
 	}
 	p := s.pages["/engine"]
 	p.Title = game.Player.Name + " vs Engine"
@@ -129,10 +135,16 @@ func (s Service) engineGame(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s Service) ratedGame(rw http.ResponseWriter, r *http.Request) {
-	game, err := s.gameRepo.SelectRated(r.PathValue("id"))
-	if err != nil {
-		s.renderPage(rw, r, s.pages["/error"], response.NotFound, "/error")
-		return
+	gameId := r.PathValue("id")
+
+	game := s.storage.Find(gameId)
+	if game == nil {
+		rated, err := s.gameRepo.SelectRated(r.PathValue("id"))
+		if err != nil {
+			s.renderPage(rw, r, s.pages["/error"], response.NotFound, "/error")
+			return
+		}
+		// TODO: add game to storage.
 	}
 	p := s.pages["/rated"]
 	p.Title = game.White.Name + " vs " + game.Black.Name

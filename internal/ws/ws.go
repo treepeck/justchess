@@ -1,22 +1,20 @@
-// Package ws implements the WebSocket server. It is a transport-layer package
-// that knows about game logic as little as possible. All it does is instantiates
-// and maintains incomming connections and broadcasts messages.
-//
-// This package follows the Pub/Sub-like architecture, where [room] is equivalent
-// to the Topic, and by regisreting to the room, [client]s will recieve all [message]s
-// that are broadcasted in this [room].
-//
-// [Service] is a central instance of the package. It manages the [room] lifecycle and
-// handles incomming requests.
 package ws
 
 import (
+	"errors"
 	"github.com/gorilla/websocket"
 	"justchess/internal/auth"
-	"justchess/internal/db"
 	"justchess/internal/response"
+	"justchess/internal/talk"
+	"log"
 	"net/http"
-	"sync"
+)
+
+// Max number of clients per [room] or [queue].
+const clientsThreshold = 100
+
+var (
+	errAlreadyRegistered = errors.New("Already connected to a room or queue")
 )
 
 // upgrader is used to establish a WebSocket connection.
@@ -26,53 +24,142 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+type registrant struct {
+	id  string
+	req *http.Request
+	res http.ResponseWriter
+	err chan error
+}
+
+type findRegistrant struct {
+	id  string
+	res chan chan registrant
+}
+
+type createRoom struct {
+	id       string
+	channels talk.GameChannels
+	res      chan chan registrant
+}
+
+// Service manages the [room] lifecycle (creation and deletion) and handles
+// incomming handshake requests.
 type Service struct {
-	sync.Mutex
-	gameRepo db.GameRepo
-	rooms    map[string]room
+	find    chan talk.GameFinder
+	findReg chan findRegistrant
+	create  chan createRoom
+	destroy chan string
+	rooms   map[string]room
+	queues  map[string]queue
 }
 
-func InitService(gr db.GameRepo) Service {
+var timeControls = []struct {
+	c int // Control.
+	b int // Bonus.
+}{{1, 0}, {2, 1}, {3, 0}, {3, 2}, {5, 0}, {5, 2}, {10, 0}, {10, 10}, {15, 10}}
+
+func NewService(find chan talk.GameFinder, create chan talk.GameCreator) Service {
+	// Declare a distinct queue for each available time control.
+	queues := make(map[string]queue, 9)
+	for _, c := range timeControls {
+		queues[string(byte(c.c+'0'))] = initQueue(c.c, c.b, create)
+	}
+
 	return Service{
-		gameRepo: gr,
+		find:    find,
+		findReg: make(chan findRegistrant),
+		create:  make(chan createRoom),
+		destroy: make(chan string),
+		rooms:   make(map[string]room),
+		queues:  queues,
 	}
 }
 
-func (s Service) RegisterRoutes(as auth.Service, mux *http.ServeMux) {
-	mux.HandleFunc("GET /ws/{id}", as.MustAuthorize(s.handshake))
+func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
+	mux.HandleFunc("GET /ws/{id}", authService.MustAuthorize(s.handshake))
 }
 
-// handshake handles a WebSocket handshake request by instantiating
-// a [client] and registering it in the named [room].
-//
-// First of all, the [room] is looked up by the named id in the internal
-// [Service] memory. If it's not found, then the database is probed.
-// The handshake is declined if there is no [room] or databse record
-// with the named id.
+func (s Service) Listen() {
+	for {
+		select {
+		case f := <-s.findReg:
+			s.onFind(f)
+		case c := <-s.create:
+			s.onCreate(c)
+		case id := <-s.destroy:
+			s.onDestroy(id)
+		}
+	}
+}
+
+func (s Service) onFind(f findRegistrant) {
+	if r, exists := s.rooms[f.id]; exists {
+		f.res <- r.register
+		return
+	}
+	if q, exists := s.queues[f.id]; exists {
+		f.res <- q.register
+		return
+	}
+	f.res <- nil
+}
+
+func (s Service) onCreate(c createRoom) {
+	log.Printf("room %s created", c.id)
+	r := initRoom(c.channels)
+	s.rooms[c.id] = r
+	c.res <- r.register
+}
+
+func (s Service) onDestroy(id string) {
+	log.Printf("room %s destroyed", id)
+	delete(s.rooms, id)
+}
+
 func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
-	s.Lock()
-	// Check does room with the named id exist.
-	r, ok := s.rooms[r.PathValue("id")]
+	session, ok := r.Context().Value(auth.SessionKey).(auth.Session)
 	if !ok {
-		http.Error(rw, r, response.NotFound, http.StatusNotFound)
+		log.Print("request context is broken")
+		http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 		return
 	}
-	s.gameRepo.
-		s.Unlock()
-	// Identify the player.
-	p, ok := r.Context().Value(auth.PlayerKey).(db.Player)
-	if !ok {
-		log.Print("ws: request context is broken")
-		http.Error(rw, r, response.InternalError, http.StatusInternalServerError)
-		return
+
+	f := findRegistrant{
+		id:  r.PathValue("id"),
+		res: make(chan chan registrant),
 	}
-	// Instantiate the client.
-	conn, err := upgrader.Upgrade(rw, r, nil)
-	if err != nil {
-		// Upgrader writes the response, so simply return here.
-		return
+	s.findReg <- f
+
+	register := <-f.res
+	if register == nil {
+		// If the game room wasn't found, it might need to be created.
+		gf := talk.GameFinder{
+			Id:  f.id,
+			Res: make(chan talk.GameChannels),
+		}
+		s.find <- gf
+		gc := <-gf.Res
+		if gc.In == nil || gc.Out == nil || gc.Ban == nil {
+			http.Error(rw, response.NotFound, http.StatusNotFound)
+			return
+		}
+		c := createRoom{
+			id:       f.id,
+			channels: gc,
+			res:      make(chan chan registrant),
+		}
+		s.create <- c
+		register = <-c.res
 	}
-	c := initClient(conn)
-	// Register the client in a room.
-	r.register(p, c)
+	// If the endpoint was found, wait for response.
+	dto := registrant{
+		id:  session.Id,
+		req: r,
+		res: rw,
+		err: make(chan error),
+	}
+	register <- dto
+	if err := <-dto.err; err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+	}
 }

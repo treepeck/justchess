@@ -8,8 +8,9 @@ import (
 	"justchess/internal/api"
 	"justchess/internal/auth"
 	"justchess/internal/db"
+	"justchess/internal/game"
 	"justchess/internal/web"
-	// "justchess/internal/ws"
+	"justchess/internal/ws"
 )
 
 func main() {
@@ -33,6 +34,9 @@ func main() {
 	pr := db.NewSQLPlayerRepo(pool)
 	gr := db.NewSQLGameRepo(pool)
 
+	gs := game.NewStorage(gr)
+	go gs.Listen()
+
 	log.Print("Initializing services...")
 	authService := auth.NewService(cookieKey, ar)
 	if err = authService.ParseEmails("./internal/auth/templates/"); err != nil {
@@ -46,14 +50,14 @@ func main() {
 		log.Panic(err)
 	}
 
-	// wsService := ws.NewService(gr, pr)
-	// go wsService.ListenEvents()
+	wsService := ws.NewService(gs.Find, gs.Create)
+	go wsService.Listen()
 
 	// Register routes.
 	mux := http.NewServeMux()
 	authService.RegisterRoutes(mux)
 	apiService.RegisterRoutes(authService, mux)
-	// wsService.RegisterRoutes(authService, mux)
+	wsService.RegisterRoutes(authService, mux)
 	webService.RegisterRoutes(authService, mux)
 
 	log.Print("Starting server.")

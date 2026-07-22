@@ -72,30 +72,53 @@ func (r SQLPlayerRepo) SelectLeaderboard() ([]Profile, error) {
 }
 
 const (
-	selectPlayerById = `SELECT id, name, rating FROM player WHERE id = $1`
+	selectPlayerById = `SELECT
+	ID,
+	NAME,
+	RATING
+FROM
+	PLAYER
+WHERE
+	ID = $1`
 
 	selectProfile = `SELECT
-		p.name,
-		p.rating,
-		p.created_at,
-		count(r.game_id) as rated_games,
-        count(e.game_id) as engine_games
-	FROM player p
-	INNER JOIN rated_game r ON (r.white_id = p.id OR r.black_id = p.id)
-    INNER JOIN engine_game e ON e.player_id = p.id
-	WHERE p.id = $1
-	GROUP BY p.name, p.rating, p.created_at`
+	P.NAME,
+	P.RATING,
+	P.CREATED_AT,
+	COUNT(R.GAME_ID) AS RATED_GAMES,
+	COUNT(E.GAME_ID) AS ENGINE_GAMES
+FROM
+	PLAYER P
+	INNER JOIN RATED_GAME R ON (
+		R.WHITE_ID = P.ID
+		OR R.BLACK_ID = P.ID
+	)
+	INNER JOIN ENGINE_GAME E ON E.PLAYER_ID = P.ID
+WHERE
+	P.ID = $1
+GROUP BY
+	P.NAME,
+	P.RATING,
+	P.CREATED_AT`
 
 	selectLeaderboard = `SELECT
-		p.id,
-		p.name,
-	    p.rating,
-	    p.created_at,
-	    count(r.game_id) as num_of_games
-	FROM player p
-	LEFT JOIN rated_game r
-	ON r.white_id = p.id OR r.black_id = p.id
-	GROUP BY p.id, p.name, p.rating, p.created_at
-	ORDER BY p.rating DESC, num_of_games DESC
-	LIMIT 100`
+	P.ID,
+	P.NAME,
+	P.RATING,
+	P.CREATED_AT,
+	COUNT(R.GAME_ID) AS NUM_OF_GAMES
+FROM
+	PLAYER P
+	LEFT JOIN RATED_GAME R ON R.WHITE_ID = P.ID
+	OR R.BLACK_ID = P.ID
+GROUP BY
+	P.ID,
+	P.NAME,
+	P.RATING,
+	P.CREATED_AT
+ORDER BY
+	P.RATING DESC,
+	NUM_OF_GAMES DESC
+LIMIT
+	100`
 )

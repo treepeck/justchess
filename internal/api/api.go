@@ -3,7 +3,6 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/treepeck/chego"
 	"justchess/internal/auth"
 	"justchess/internal/db"
 	"justchess/internal/randgen"
@@ -27,34 +26,60 @@ func NewService(gr db.GameRepo, pr db.PlayerRepo) Service {
 }
 
 func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/engine", authService.MustAuthorize(s.createEngineGame))
-	mux.HandleFunc("GET /api/engine-brief", s.engineBrief)
-	mux.HandleFunc("GET /api/rated-brief", s.ratedBrief)
+	mux.HandleFunc("POST /api/create-engine", authService.MustAuthorize(s.createEngineGame))
+	mux.HandleFunc("GET /api/engine", s.engine)
+	mux.HandleFunc("GET /api/rated", s.rated)
 }
 
 func (s Service) createEngineGame(rw http.ResponseWriter, r *http.Request) {
+	// TODO: support time control and time bonus.
 	session, ok := r.Context().Value(auth.SessionKey).(auth.Session)
 	if !ok {
 		log.Print("request context is broken")
 		return
 	}
-
-	var c chego.Color
-	if rand.IntN(2) == 1 {
-		c = chego.ColorBlack
-	}
-
 	var d db.EngineDifficulty
 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil ||
 		d < db.Easy || d > db.Impossible {
 		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
-	gameId := randgen.GenId(randgen.IdLen)
-	if session.IsGuest {
-		session.Id = ""
+
+	stockfishId := db.EasyStockfishId
+	switch d {
+	case db.Medium:
+		stockfishId = db.MediumStockfishId
+	case db.Hard:
+		stockfishId = db.HardStockfishId
+	case db.Insane:
+		stockfishId = db.InsaneStockfishId
+	case db.Impossible:
+		stockfishId = db.ImpossibleStockfishId
 	}
-	if err := s.gameRepo.InsertEngineGame(gameId, session.Id, c, d); err != nil {
+	// 0 - White; 1 - Black.
+	var whiteId, blackId string
+	if rand.IntN(2) == 1 {
+		if !session.IsGuest {
+			whiteId = session.Id
+		}
+		blackId = stockfishId
+	} else {
+		if !session.IsGuest {
+			blackId = session.Id
+		}
+		whiteId = stockfishId
+	}
+
+	gameId := randgen.GenId(randgen.IdLen)
+	if err := s.gameRepo.Insert(db.Game{
+		Id: gameId,
+		White: db.Player{
+			Id: whiteId,
+		},
+		Black: db.Player{
+			Id: blackId,
+		},
+	}); err != nil {
 		log.Print(err)
 		http.Error(rw, response.InternalError, http.StatusInternalServerError)
 		return
@@ -62,10 +87,10 @@ func (s Service) createEngineGame(rw http.ResponseWriter, r *http.Request) {
 	http.Redirect(rw, r, "/engine/"+gameId, http.StatusFound)
 }
 
-func (s Service) engineBrief(rw http.ResponseWriter, r *http.Request) {
+func (s Service) engine(rw http.ResponseWriter, r *http.Request) {
 	// Mandatory parameter.
-	playerId := r.URL.Query().Get("pid")
-	if len(playerId) != 12 {
+	id := r.URL.Query().Get("pid")
+	if len(id) != 12 {
 		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
@@ -73,15 +98,15 @@ func (s Service) engineBrief(rw http.ResponseWriter, r *http.Request) {
 	cursorId := r.URL.Query().Get("cid")
 	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cca"))
 
-	var games []db.EngineBrief
+	var games []db.Game
 	if err == nil && len(cursorId) == 12 {
 		// If optional pagination parameters are defined.
-		games, err = s.gameRepo.SelectEngineBrief(playerId, &db.Pagination{
+		games, err = s.gameRepo.SelectByPlayerId(id, &db.Pagination{
 			CursorId:        cursorId,
 			CursorCreatedAt: cursorCreatedAt,
 		})
 	} else {
-		games, err = s.gameRepo.SelectEngineBrief(playerId, nil)
+		games, err = s.gameRepo.SelectByPlayerId(id, nil)
 	}
 
 	if err != nil {
@@ -97,10 +122,10 @@ func (s Service) engineBrief(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Add("Content-Type", "application/json")
 }
 
-func (s Service) ratedBrief(rw http.ResponseWriter, r *http.Request) {
+func (s Service) rated(rw http.ResponseWriter, r *http.Request) {
 	// Mandatory parameter.
-	playerId := r.URL.Query().Get("pid")
-	if len(playerId) != 12 {
+	id := r.URL.Query().Get("pid")
+	if len(id) != 12 {
 		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
@@ -108,15 +133,15 @@ func (s Service) ratedBrief(rw http.ResponseWriter, r *http.Request) {
 	cursorId := r.URL.Query().Get("cid")
 	cursorCreatedAt, err := time.Parse(time.RFC3339, r.URL.Query().Get("cca"))
 
-	var games []db.RatedBrief
+	var games []db.Game
 	if err == nil && len(cursorId) == 12 {
 		// If optional pagination parameters are defined.
-		games, err = s.gameRepo.SelectRatedBrief(playerId, &db.Pagination{
+		games, err = s.gameRepo.SelectByPlayerId(id, &db.Pagination{
 			CursorId:        cursorId,
 			CursorCreatedAt: cursorCreatedAt,
 		})
 	} else {
-		games, err = s.gameRepo.SelectRatedBrief(playerId, nil)
+		games, err = s.gameRepo.SelectByPlayerId(id, nil)
 	}
 
 	if err != nil {
