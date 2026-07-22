@@ -28,7 +28,6 @@ type game struct {
 	moves                    []compression.Move
 	playedIndices            []int
 	channels                 talk.GameChannels
-	id                       string
 	position                 *chego.Position
 	legal                    *chego.MoveList
 	ticker                   *time.Ticker
@@ -42,7 +41,7 @@ type game struct {
 	isPendingBlackDrawOffer  bool
 }
 
-func newGame(id string, s db.Game) *game {
+func newGame(s db.Game) *game {
 	return &game{
 		State: s,
 		channels: talk.GameChannels{

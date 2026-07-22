@@ -47,7 +47,7 @@ func (s Storage) onCreate(c talk.GameCreator) {
 	}
 	err := s.gameRepo.Insert(g)
 	if err != nil {
-		s.games[c.Id] = newGame(c.Id, g)
+		s.games[c.Id] = newGame(g)
 	}
 	c.Res <- err
 }
