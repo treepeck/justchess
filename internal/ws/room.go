@@ -8,18 +8,22 @@ import (
 const msgBan string = "You have been banned for suspicious activity"
 
 type room struct {
+	id         string
 	channels   talk.GameChannels
 	clients    map[string]*client
 	register   chan registrant
 	unregister chan string
+	destroy    chan string
 }
 
-func initRoom(channels talk.GameChannels) room {
+func initRoom(channels talk.GameChannels, destroy chan string, id string) room {
 	r := room{
+		id:         id,
 		channels:   channels,
 		clients:    make(map[string]*client, 2),
 		register:   make(chan registrant),
 		unregister: make(chan string),
+		destroy:    destroy,
 	}
 	go r.listen()
 	return r
@@ -78,7 +82,12 @@ func (r room) onUnregister(id string) {
 		log.Print(err)
 		return
 	}
-	r.broadcast(msg)
+	// Destroy empty room.
+	if len(r.clients) == 0 {
+		r.destroy <- r.id
+	} else {
+		r.broadcast(msg)
+	}
 }
 
 func (r room) onBan(id string) {

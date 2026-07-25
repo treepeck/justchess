@@ -106,7 +106,7 @@ func (s Service) onFind(f findRegistrant) {
 
 func (s Service) onCreate(c createRoom) {
 	log.Printf("room %s created", c.id)
-	r := initRoom(c.channels)
+	r := initRoom(c.channels, s.destroy, c.id)
 	s.rooms[c.id] = r
 	c.res <- r.register
 }

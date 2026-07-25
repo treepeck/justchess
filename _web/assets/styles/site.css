@@ -68,10 +68,10 @@ body {
 .site-content {
   padding: 15px;
   display: flex;
-  margin: 10px auto auto auto;
+  margin: 0 auto auto auto;
   width: 100%;
+  gap: 15px;
   max-width: var(--max-width);
-  gap: 20px;
   flex-direction: column;
 }
 
@@ -80,9 +80,6 @@ body {
   position: fixed;
   bottom: 10px;
   right: 10px;
-  background-color: var(--container-background);
-  border-radius: 15px;
-  padding: 5px;
 }
 .site-footer-nav {
   justify-content: center;
@@ -99,18 +96,23 @@ a:hover {
   color: var(--text-hover);
 }
 
+/* Page header. */
+h1 {
+	padding-top: 30px;
+}
+
 /* Buttons. */
 button {
   border: none;
-  cursor: pointer;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
   border-radius: 15px;
+  cursor: pointer;
   font-size: larger;
   line-height: 1.5;
   font-weight: bold;
   width: 100%;
   max-width: 400px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
   transition:
     background-color 0.75s ease-in-out,
     color 0.75s ease-in-out;
@@ -164,18 +166,32 @@ input[type="password"]:focus {
 /* Modal dialog. */
 dialog {
   margin: auto;
-  border: none;
-  border-radius: 15px;
-  padding: 15px;
+  padding: 20px;
   width: 100%;
   max-width: 500px;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
+}
+dialog::backdrop {
+  backdrop-filter: blur(5px);
+}
+dialog h2 {
+  text-align: center;
+  margin-bottom: 15px;
 }
 dialog .dialog-buttons {
-  margin-top: 15px;
   display: flex;
+  margin: 15px auto 5px auto;
   width: 100%;
+}
+dialog .dialog-buttons button {
+  margin: auto;
+}
+
+/* Arbitrary container. */
+.wrap {
+  border: none;
+  border-radius: 15px;
+  color: var(--container-foreground);
+  background-color: var(--container-background);
 }
 
 /* Tooltip. */
@@ -236,8 +252,6 @@ fieldset div {
   font-weight: bold;
   border: 2px solid var(--container-foreground);
   border-radius: 50%;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
 }
 
 /* Form. */
@@ -279,7 +293,8 @@ form button {
 
 /** Table. */
 table {
-  width: var(--max-container-size);
+  width: 95%;
+  max-width: var(--max-container-size);
   table-layout: fixed;
   border-collapse: collapse;
 }
@@ -295,10 +310,6 @@ tr:last-child td:first-child {
 tr:last-child td:last-child {
   border-radius: 0 0 15px 0;
 }
-tr {
-  padding: 50px;
-  height: 90px;
-}
 tr:nth-child(even) td {
   color: var(--container-background);
   background-color: var(--container-foreground);
@@ -307,11 +318,12 @@ tr:nth-child(odd) td {
   color: var(--container-foreground);
   background-color: var(--container-background);
 }
+tr th {
+  height: 50px;
+}
 tr td {
+  height: 70px;
   text-align: center;
-  width: 25%;
-  min-width: 125px;
-  font-size: x-large;
 }
 
 /* Home page. */
@@ -324,50 +336,94 @@ tr td {
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
 }
+.time-control-grid button:nth-child(even) {
+	color: black;
+	background-color: #e2d3c4;
+}
+.time-control-grid button:nth-child(odd) {
+	color: black;
+	background-color: #8e684b;
+}
 .time-control-grid button {
   font-size: x-large;
 }
-.playVsEngine {
-  line-height: 2;
+.time-control-grid button:nth-child(even):hover {
+  background-color: #fefefe;
+}
+.time-control-grid button:nth-child(odd):hover {
+  background-color: #b5936e;
+}
+.playVsEngine, .playVsHuman {
+  line-height: 3;
+}
+
+/** Slider. */
+input[type=range] {
+  -webkit-appearance: none;
+  margin: 50px auto 50px auto;
+  background-color: #5a5a5a;
+  width: 100%;
+}
+input[type=range]::-moz-range-thumb {
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  border: none;
+  background-size: contain;
+  background-color: transparent;
+  background-image: var(--bg);
+}
+input[type=range]::-moz-range-progress {
+  width: 100%;
+  height: 100%;
+  background: #b5936e;
+  border: none;
+  border-radius: 3px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  border: none;
+  background-size: contain;
+  background-color: transparent;
+  background-image: var(--bg);
+}
+#sliderDemo {
+  width: 100%;
+  text-align: center;
+  font-size: xx-large;
+  font-weight: bold;
 }
 
 /** Chessboard. */
 #board {
-  cursor: pointer;
-  position: relative;
   width: 100%;
   max-width: 600px;
+  position: relative;
   aspect-ratio: 1/1;
   background-size: contain;
   background-image: url("/assets/images/board.svg");
   border: 2px solid var(--container-background);
   border-radius: 15px;
   user-select: none;
+  cursor: pointer;
 }
-.board-piece {
+.board-square {
   position: absolute;
   width: 12.5%;
   height: 12.5%;
-  background-size: 600% 200%;
-  z-index: 1;
-  background-repeat: no-repeat;
-  background-position: calc(20% * var(--col)) calc(100% * var(--row));
-  background-image: url("/assets/images/sheet.svg");
   transform: translate(var(--x), var(--y));
 }
 .board-selected {
-  position: absolute;
-  width: 12.5%;
-  height: 12.5%;
-  background-color: yellow;
-  transform: translate(var(--x), var(--y));
+  background-color: magenta;
 }
-.board-coord {
-  user-select: none;
-  position: absolute;
-  font-weight: bolder;
-  transform: translate(var(--x), var(--y));
-  margin: 5px;
+.board-piece {
+  background-size: 600% 200%;
+  background-repeat: no-repeat;
+  background-position: calc(20% * var(--col)) calc(100% * var(--row));
+  background-image: url("/assets/images/sheet.svg");
 }
 /* White pawn. */
 .board-piece.P {
@@ -449,8 +505,6 @@ tr td {
   max-width: var(--max-container-size);
 }
 .player-table-tab-pane {
-  color: var(--container-foreground);
-  background-color: var(--container-background);
   display: flex;
   width: 100%;
 }
@@ -466,12 +520,8 @@ tr td {
   gap: 30px;
   justify-content: center;
   align-items: center;
-  padding: 25px;
   width: 100%;
   max-width: var(--max-container-size);
-  border-radius: 15px;
-  color: var(--container-foreground);
-  background-color: var(--container-background);
 }
 #countUpTimer {
   margin: 0 0 auto 0;

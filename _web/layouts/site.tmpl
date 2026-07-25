@@ -19,10 +19,9 @@
 			<a class="site-header-nav" href="/"><b><h2>JustChess</h2></b></a>
 			<a class="site-header-nav" href="/leaderboard">Leaderboard</a>
 			<a class="site-header-nav" href="/about">About</a>
-			<a class="site-header-nav" href="/blog">Blog</a>
 
 			<div class="site-header-profile">
-				{{ if .Player.IsGuest }}
+				{{ if len .Player.Id | eq 0 }}
 					<a class="site-header-nav" href="/signup"><b><u>Sign up</u></b></a>
 					<a class="site-header-nav" href="/signin">Sign in</a>
 				{{ else }}
@@ -38,12 +37,12 @@
 		{{ template "content" . }}
 	</main>
 
-	<footer class="site-footer">
+	<footer class="site-footer wrap">
 		<a class="site-footer-nav flex" href="https://github.com/treepeck/justchess">
-			<img src="/assets/images/GitHub_Invertocat_White_Clearspace.png" alt="GitHub" width="40" height="40">
+			<img src="/assets/images/github.png" alt="GitHub" width="40" height="40">
 		</a>
 		<a class="site-footer-nav flex" href="https://www.youtube.com/@treepeck">
-			<img src="/assets/images/yt_icon_red_digital.png" alt="YoutTube" width="50" height="40">
+			<img src="/assets/images/youtube.png" alt="YoutTube" width="50" height="40">
 		</a>
 		<a class="site-footer-nav flex" href="mailto:support@justchess.org">
 			<img src="/assets/images/support.svg" alt="Support" width="30" height="30">

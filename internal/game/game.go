@@ -39,6 +39,8 @@ type game struct {
 	movesSinceBlackDrawOffer int
 	isPendingWhiteDrawOffer  bool
 	isPendingBlackDrawOffer  bool
+	isWhiteOnline            bool
+	isBlackOnline            bool
 }
 
 func newGame(s db.Game) *game {
@@ -61,7 +63,7 @@ func newGame(s db.Game) *game {
 	}
 }
 
-func (g *game) MessagePump() {
+func (g *game) listen() {
 	for {
 		select {
 		case m := <-g.channels.In:
