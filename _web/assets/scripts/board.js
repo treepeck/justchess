@@ -7,7 +7,13 @@ const boardElement = document.getElementById("board")
 
 const position = parseFen(initialPosition)
 
-const board = new Board(position, boardElement)
+const board = new Board(position, boardElement, () => {})
 board.render()
 board.observeResize()
 board.registerEventHandlers()
+
+const boardFlip = document.getElementById("boardFlip")
+boardFlip.onclick = () => {
+	board.orientation = !board.orientation
+	board.render()
+}

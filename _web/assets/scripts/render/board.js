@@ -136,10 +136,18 @@ export class Board {
 		this.translate(this.squareElement, x, y)
 
 		const piece = this.position.pieces.get(square)
-		if (piece) {
+		if (piece !== undefined) {
 			// Begin piece drag.
 			const { element } = this.elements.get(square)
-			this.translate(element, x - squareSize / 2, y - squareSize / 2)
+			this.translate(
+				element,
+				this.orientation == Color.White
+					? coords.x - squareSize / 2
+					: (squareSize * 7) - coords.x + squareSize / 2,
+				this.orientation == Color.White
+					? coords.y - squareSize / 2
+					: (squareSize * 7) - coords.y + squareSize / 2
+			)
 		}
 	}
 
@@ -159,15 +167,23 @@ export class Board {
 			squareSize = res.squareSize
 			coords = res.coords
 			// Center the dragged piece.
-			coords.x -= squareSize / 2
-			coords.y -= squareSize / 2
+			coords.x = this.orientation == Color.White
+				? coords.x - squareSize / 2
+				: (squareSize * 7) - coords.x + squareSize / 2
+			coords.y = this.orientation == Color.White
+				? coords.y - squareSize / 2
+				: (squareSize * 7) - coords.y + squareSize / 2
 		} catch (e) {
 			// Return the piece to it's initial position and reset the selected square.
 			coords = this.square2Coords(this.selectedSquare)
 			this.selectedSquare = -1
 			this.squareElement.style.visibility = "hidden"
 		} finally {
-			this.translate(p.element, coords.x, coords.y)
+			this.translate(
+				p.element,
+				coords.x,
+				coords.y
+			)
 		}
 	}
 
@@ -185,6 +201,7 @@ export class Board {
 			let res = this.event2Coords(e)
 			square = res.square
 			coords = this.square2Coords(square)
+			this.drawArrow(this.selectedSquare, square)
 			this.onMove()
 		} catch (e) {
 			// Return the piece to it's initial position and reset the selected square.
@@ -201,6 +218,7 @@ export class Board {
 	 */
 	onRightClick(e) {
 		e.stopPropagation()
+		e.preventDefault()
 	}
 
 	/**
