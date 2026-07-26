@@ -1,4 +1,3 @@
-
 /**
  * @readonly
  * @enum {number}
@@ -19,7 +18,6 @@ export const PieceType = {
 	PieceNone: -1
 }
 
-
 /**
  * @readonly
  * @enum {number}
@@ -38,6 +36,56 @@ export const CastlingRights = {
 export const Color = {
 	White: 0,
 	Black: 1
+}
+
+/**
+ * @readonly
+ * @enum {number}
+ */
+export const MoveType = {
+	Normal:    0,
+	Castling:  1,
+	Promotion: 2,
+	EnPassant: 3
+}
+
+/**
+ * @readonly
+ * @enum {number}
+ */
+export const PromotionFlag = {
+	Knight: 0,
+	Bishop: 1,
+	Rook:   2,
+	Queen:  3
+}
+
+/**
+ * @readonly
+ * @enum {number}
+ */
+export const Result = {
+	Unknown:  0,
+	WhiteWon: 1,
+	BlackWon: 2,
+	Draw:     3
+}
+
+/**
+ * @readonly
+ * @enum {number}
+ */
+export const Termination = {
+	Unterminated:         0,
+	Abandoned:            1,
+	Checkmate:            2,
+	Stalemate:            3,
+	InsufficientMaterial: 4,
+	FiftyMoves:           5,
+	ThreefoldRepetition:  6,
+	Resignation:          7,
+	Agreement:            8,
+	TimeForfeit:          9
 }
 
 /**

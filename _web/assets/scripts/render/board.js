@@ -1,4 +1,5 @@
 import { Color, PieceType } from "/assets/scripts/chess/types.js"
+import { decode } from "/assets/scripts/chess/move.js"
 
 /**
  * @typedef {Object} Piece
@@ -32,6 +33,14 @@ function pieceType2ClassName(pt) {
 		case PieceType.BKing:   return "k"
 	}
 }
+
+/**
+ * @callback moveCallback
+ * @param {number} moveIndex
+ */
+
+const files = ["a", "b", "c", "d", "e", "f", "g", "h"]
+const ranks = ["1", "2", "3", "4", "5", "6", "7", "8"]
 
 /**
  * Manages board rendering.
@@ -72,9 +81,21 @@ export class Board {
 	 */
 	squareElement
 	/**
-	 * @callback
+	 * @type {moveCallback}
 	 */
 	onMove
+	/**
+	 * @type {Move[]}
+	 */
+	legal
+	/**
+	 * @type {HTMLDivElement[]}
+	 */
+	files
+	/**
+	 * @type {HTMLDivElement[]}
+	 */
+	ranks
 
 	/**
 	 * @param {Position} position
@@ -88,6 +109,26 @@ export class Board {
 		this.orientation = Color.White
 		this.selectedSquare = -1
 		this.onMove = onMove
+		this.legal = []
+
+		this.files = []
+		for (const file of files) {
+			const fileEl = document.createElement("div")
+			fileEl.classList.add("board-coord")
+			fileEl.classList.add("board-file")
+			fileEl.textContent = file
+			this.element.appendChild(fileEl)
+			this.files.push(fileEl)
+		}
+		this.ranks = []
+		for (const rank of ranks) {
+			const rankEl = document.createElement("div")
+			rankEl.classList.add("board-coord")
+			rankEl.classList.add("board-rank")
+			rankEl.textContent = rank
+			this.element.appendChild(rankEl)
+			this.ranks.push(rankEl)
+		}
 
 		this.squareElement = document.createElement("div")
 		this.squareElement.classList.add("board-square")
@@ -120,6 +161,23 @@ export class Board {
 			const { x, y } = this.square2Coords(square)
 			this.translate(onBoard.element, x, y)
 		}
+
+		for (let i = 0; i < this.files.length; i++) {
+			const file = this.files[i]
+			const square = this.orientation == Color.White
+				? i
+				: 56 + i
+			const { x, y } = this.square2Coords(square)
+			this.translate(file, x, y)
+		}
+		for (let i = 0; i < this.ranks.length; i++) {
+			const rank = this.ranks[i]
+			const square = this.orientation == Color.White
+				? 8 * i
+				: 8 * i + 7
+			const { x, y } = this.square2Coords(square)
+			this.translate(rank, x, y)
+		}
 	}
 
 	/**
@@ -135,8 +193,8 @@ export class Board {
 		const { x, y } = this.square2Coords(square)
 		this.translate(this.squareElement, x, y)
 
-		const piece = this.position.pieces.get(square)
-		if (piece !== undefined) {
+		const p = this.position.pieces.get(square)
+		if (p !== undefined) {
 			// Begin piece drag.
 			const { element } = this.elements.get(square)
 			this.translate(
@@ -148,6 +206,8 @@ export class Board {
 					? coords.y - squareSize / 2
 					: (squareSize * 7) - coords.y + squareSize / 2
 			)
+			// Temporarily increase zIndex of the dragged piece.
+			element.style.zIndex = 4
 		}
 	}
 
@@ -178,6 +238,8 @@ export class Board {
 			coords = this.square2Coords(this.selectedSquare)
 			this.selectedSquare = -1
 			this.squareElement.style.visibility = "hidden"
+			// Restore zIndex of the piece.
+			p.element.style.zIndex = 3
 		} finally {
 			this.translate(
 				p.element,
@@ -210,6 +272,8 @@ export class Board {
 			this.translate(p.element, coords.x, coords.y)
 			this.selectedSquare = -1
 			this.squareElement.style.visibility = "hidden"
+			// Restore zIndex of the piece.
+			p.element.style.zIndex = 3
 		}
 	}
 
@@ -288,6 +352,12 @@ export class Board {
 			coords: { x: x, y: y },
 		}
 	}
+
+	/**
+	 * @param {number} src
+	 * @param {number} dst
+	 */
+	drawArrow(src, dst) {}
 
 	observeResize() {
 		const observer = new ResizeObserver((entries) => {

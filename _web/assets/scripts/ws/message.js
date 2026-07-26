@@ -11,12 +11,16 @@
  * @enum {number}
  */
 const MessageKind = {
+    MessageAcceptDraw: 6,
     MessageClientsCounter: 2,
-    MessageDrawAccept: 6,
-    MessageDrawDecline: 5,
-    MessageDrawOffer: 4,
+    MessageDeclineDraw: 5,
+    MessageError: 8,
+    MessageJoin: 10,
+    MessageLeave: 11,
     MessageMove: 3,
+    MessageOfferDraw: 4,
     MessagePing: 0,
     MessagePong: 1,
+    MessageRedirect: 9,
     MessageResign: 7,
 }

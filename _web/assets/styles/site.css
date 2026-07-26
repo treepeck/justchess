@@ -418,8 +418,24 @@ input[type=range]::-webkit-slider-thumb {
 }
 .board-selected {
   background-color: magenta;
+  z-index: 1;
+}
+.board-coord {
+  z-index: 2;
+  user-select: none;
+  position: absolute;
+  font-weight: bolder;
+  font-size: calc(10px + 100vw / 200);
+  transform: translate(var(--x), var(--y));
+}
+.board-file {
+  margin: 9% 1% 1% 1%;
+}
+.board-rank {
+  margin: 1% 1% 1% 1%;
 }
 .board-piece {
+  z-index: 3;
   background-size: 600% 200%;
   background-repeat: no-repeat;
   background-position: calc(20% * var(--col)) calc(100% * var(--row));
