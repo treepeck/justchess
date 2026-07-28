@@ -29,6 +29,8 @@ type page struct {
 	Title string
 	// Optional page script. Not included if empty.
 	Script string
+	// Optional page stylesheet. Not included if empty.
+	Style string
 	// Arbitrary data to fill up the template. Either parsed from page head or
 	// request-scoped.
 	Data any
@@ -75,9 +77,16 @@ func parsePage(path string, file []byte) (page, error) {
 		script = head["script"].(string)
 	}
 
+	// Parse style if specified in head.
+	style := ""
+	if head["style"] != nil {
+		style = head["style"].(string)
+	}
+
 	return page{
 		Title:  title,
 		Script: script,
+		Style:  style,
 		Data:   head,
 		tmpl:   t,
 	}, nil
