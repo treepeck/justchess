@@ -5,10 +5,13 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>{{ .Title }} &ndash; JustChess.org</title>
 	<link rel="icon" href="/assets/images/favicon.png" type="image/png">
-	<link rel="stylesheet" href="/assets/styles/site.css">
 	<link rel="stylesheet" href="/assets/styles/fonts.css">
+	<link rel="stylesheet" href="/assets/styles/site.css">
 	{{ if ne .Script "" }}
 		<script src="/assets/scripts/{{ .Script }}" type="module"></script>
+	{{ end }}
+	{{ if ne .Style "" }}
+		<link rel="stylesheet" href="/assets/styles/{{ .Style }}">
 	{{ end }}
 	<meta name="description" content="Multiplayer chess server with rating system, matchmaking, and game history.">
 </head>
