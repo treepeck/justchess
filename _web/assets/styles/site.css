@@ -67,9 +67,9 @@ body {
 All elements that wrap some other elements are styled similarly.
 */
 .wrap {
-  color:         var(--wrap-foreground);
-  padding:       20px;
-  background:    var(--wrap-background);
+  color:      var(--wrap-foreground);
+  padding:    20px;
+  background: var(--wrap-background);
 }
 
 /*
@@ -121,8 +121,8 @@ sidebar thus two different styles.
 Site header.
 */
 .site-header {
-  width:         100%;
-  height:        var(--site-header-height);
+  width:  100%;
+  height: var(--site-header-height);
 }
 /*
 Site header nav is used to prevent header items to take all
@@ -133,12 +133,11 @@ page space on wider screens.
   max-width: 1200px;
 }
 .site-header-logo {
-  font-size:    x-large;
-  font-weight:  bold;
+  font-size:   x-large;
+  font-weight: bold;
 }
 .site-header-menu {
   font-size:      large;
-  font-weight:    bold;
   margin-right:   auto;
   flex-direction: row;
 }
@@ -153,6 +152,7 @@ page space on wider screens.
   background-image: url("/assets/images/show-sidebar.svg");
 }
 .site-header-profile {
+  font-size:   large;
   font-weight: bold;
 }
 .site-header-signup {
@@ -190,6 +190,28 @@ Site sidebar. Hidden by default.
   margin:      10px 0;
   font-size:   larger;
   line-height: 2.5;
+  font-weight: bold;
+}
+
+/*
+Main container.
+*/
+.site-content {
+  width:  100%;
+}
+
+/*
+Site footer.
+*/
+.site-footer {
+  width: 100%;
+}
+.site-footer-col {
+  flex:           1;
+  flex-direction: column;
+}
+.site-footer-col-header {
+  font-size:   larger;
   font-weight: bold;
 }
 
