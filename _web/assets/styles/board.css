@@ -1,0 +1,53 @@
+.board {
+  width:       600px;
+  height:      600px;
+  margin:      40px;
+/*
+  perspective: 500px;
+*/
+
+}
+.board-box {
+  cursor:          pointer;
+  position:        relative;
+  transform-style: preserve-3d;
+}
+.board-box-face {
+/*
+  position:          absolute;
+*/
+  border-radius:     15px;
+  background-size:   1200px 1200px;
+  background-image:  url("/assets/images/board.svg");
+  background-repeat: no-repeat;
+}
+.front {
+  width:               600px;
+  height:              600px;
+  background-position: 0 0;
+}
+.back {
+  width:               600px;
+  height:              600px;
+  background-position: -600px 0;
+}
+.left {
+  width:               75px;
+  height:              600px;
+  background-position: 0 -600px;
+}
+.right {
+  width:               75px;
+  height:              600px;
+  background-position: -75px -600px;
+}
+.top {
+  width:               600px;
+  height:              75px;
+  background-position: -150px -600px;
+}
+.bottom {
+  width:               600px;
+  height:              75px;
+  background-position: -150px -675px;
+}
