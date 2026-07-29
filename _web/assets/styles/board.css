@@ -1,53 +1,98 @@
-.board {
-  width:       600px;
-  height:      600px;
-  margin:      40px;
-/*
-  perspective: 500px;
-*/
+#board {
+  --board-size: 300px;
 
+  width:        var(--board-size);
+  height:       var(--board-size);
+  margin:       50px auto 50px auto;
+  perspective:  2000px;
 }
 .board-box {
+  width:           var(--board-size);
+  height:          var(--board-size);
   cursor:          pointer;
   position:        relative;
   transform-style: preserve-3d;
+  transform:       rotate3d(1, 0, 0, 35deg);
+  transition:      transform 5s;
+}
+.board-box:hover {
+  transform:       rotate3d(1, 0, 0, 395deg);
+  transition:      transform 5s;
 }
 .board-box-face {
-/*
-  position:          absolute;
-*/
-  border-radius:     15px;
-  background-size:   1200px 1200px;
-  background-image:  url("/assets/images/board.svg");
-  background-repeat: no-repeat;
+  --lateral-face-size:     calc(var(--board-size) / 20);
+  --board-background-size: calc(1200 * var(--board-size) / 600);
+  --board-lateral-background-size: calc(75 * var(--board-size) / 1200);
+
+  position:                absolute;
+  background-size:         var(--board-background-size) var(--board-background-size);
+  background-image:        url("/assets/images/board.svg");
+  background-repeat:       no-repeat;
 }
 .front {
-  width:               600px;
-  height:              600px;
-  background-position: 0 0;
+  width:     var(--board-size);
+  height:    var(--board-size);
+  transform: translateZ(calc(var(--lateral-face-size) / 2 - 1px));
 }
 .back {
-  width:               600px;
-  height:              600px;
-  background-position: -600px 0;
+  width:               var(--board-size);
+  height:              var(--board-size);
+  transform:           rotateY(180deg) translateZ(calc(var(--lateral-face-size) / 2 - 2px));
+  background-position: calc(0px - var(--board-background-size) / 2) 0;
 }
 .left {
-  width:               75px;
-  height:              600px;
-  background-position: 0 -600px;
+  left:                calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
+  width:               var(--lateral-face-size);
+  height:              var(--board-size);
+  transform:           rotateY(-90deg) translateZ(calc(var(--board-size) / 2));
+  background-position:
+    0
+    calc(0px - var(--board-lateral-background-size));
 }
 .right {
-  width:               75px;
-  height:              600px;
-  background-position: -75px -600px;
+  left:                calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
+  width:               var(--lateral-face-size);
+  height:              var(--board-size);
+  transform:           rotateY(90deg) translateZ(calc(var(--board-size) / 2));
+  background-position:
+    calc(0px - var(--board-lateral-background-size))
+    calc(0px - var(--board-background-size) / 2);
 }
 .top {
-  width:               600px;
-  height:              75px;
-  background-position: -150px -600px;
+  top:                 calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
+  width:               var(--board-size);
+  height:              var(--lateral-face-size);
+  transform:           rotateX(90deg) translateZ(calc(var(--board-size) / 2));
+  background-position:
+    calc(0px - var(--board-lateral-background-size) * 2)
+    calc(0px - var(--board-background-size) / 2);
 }
 .bottom {
-  width:               600px;
-  height:              75px;
-  background-position: -150px -675px;
+  top:                 calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
+  width:               var(--board-size);
+  height:              var(--lateral-face-size);
+  transform:           rotateX(-90deg) translateZ(calc(var(--board-size) / 2));
+  background-position:
+    calc(0px - var(--board-lateral-background-size) * 2)
+    calc(0px - var(--board-background-size) / 2);
 }
+
+/* Extra small devices (phones, 600px and up) */
+@media only screen and (min-width: 600px) {
+  #board {
+    --board-size: 500px;
+  }
+}
+
+/* Medium devices (landscape tablets, 768px and up) */
+@media only screen and (min-width: 768px) {
+  #board {
+    --board-size: 600px;
+  }
+}
+
+/* Large devices (laptops/desktops, 992px and up) */
+@media only screen and (min-width: 992px) {...}
+
+/* Extra large devices (large laptops and desktops, 1200px and up) */
+@media only screen and (min-width: 1200px) {...}

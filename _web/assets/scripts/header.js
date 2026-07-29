@@ -1,6 +1,5 @@
-// header.js makes header responsive. On smaller screens,
-// menu items are hidden in the sidebar and are displayed
-// on a click.
+// header.js makes site header responsive. On smaller screens, menu items are
+// hidden in the sidebar and are displayed on a click.
 const sidebar = document.getElementById("siteSidebar")
 const toggle = document.getElementById("toggleSidebar")
 toggle.onclick = () => {

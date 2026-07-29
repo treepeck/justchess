@@ -197,7 +197,11 @@ Site sidebar. Hidden by default.
 Main container.
 */
 .site-content {
-  width:  100%;
+  width:          100%;
+  margin:         0 auto 0 auto;
+  padding:        15px;
+  max-width:      1200px;
+  flex-direction: column;
 }
 
 /*
