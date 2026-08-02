@@ -10,16 +10,16 @@ Declare custom fonts.
 */
 @font-face {
   font-family: "Ubuntu";
-  src:         url("/assets/fonts/UbuntuSans-Regular.woff2") format("woff2");
+  src: url("/assets/fonts/UbuntuSans-Regular.woff2") format("woff2");
 }
 @font-face {
   font-family: "Ubuntu";
   font-weight: bold;
-  src:         url("/assets/fonts/UbuntuSans-Bold.woff2") format("woff2");
+  src: url("/assets/fonts/UbuntuSans-Bold.woff2") format("woff2");
 }
 @font-face {
   font-family: "ChessClock";
-  src:         url("/assets/fonts/JustChessClock-Regular.woff2") format("woff2");
+  src: url("/assets/fonts/JustChessClock-Regular.woff2") format("woff2");
 }
 
 /*
@@ -28,13 +28,13 @@ CSS variables.
 :root {
   --site-header-height: 60px;
 
-  --site-background:    #e2d3c4;
-  --site-foreground:    #34211d;
+  --site-background: #e2d3c4;
+  --site-foreground: #34211d;
   /*
   Wraps use slighly transparent background.
   */
-  --wrap-background:    rgb(37, 22, 22, 85%);
-  --wrap-foreground:    #b5936e;
+  --wrap-background: rgb(37, 22, 22, 85%);
+  --wrap-foreground: #b5936e;
 }
 
 /*
@@ -46,20 +46,20 @@ element. Style all scrollbars on the page as well.
 *,
 *::before,
 *::after {
-  margin:          0;
-  padding:         0;
-  box-sizing:      border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   scrollbar-color: var(--wrap-foreground) var(--wrap-background);
 }
 /*
 body element takes all available space.
 */
 body {
-  width:       100%;
-  height:      100vh;
-  color:       var(--site-foreground);
-  font-size:   medium;
-  background:  var(--site-background);
+  width: 100%;
+  height: 100vh;
+  color: var(--site-foreground);
+  font-size: medium;
+  background: var(--site-background);
   font-family: "Ubuntu";
 }
 
@@ -67,8 +67,8 @@ body {
 All elements that wrap some other elements are styled similarly.
 */
 .wrap {
-  color:      var(--wrap-foreground);
-  padding:    20px;
+  color: var(--wrap-foreground);
+  padding: 20px;
   background: var(--wrap-background);
 }
 
@@ -77,9 +77,9 @@ Arbitrary flex container with centered content.
 WARN: It's the caller's responsibility to specify flex-direction.
 */
 .flex {
-  gap:             10px;
-  display:         flex;
-  align-items:     center;
+  gap: 10px;
+  display: flex;
+  align-items: center;
   justify-content: center;
 }
 
@@ -87,11 +87,11 @@ WARN: It's the caller's responsibility to specify flex-direction.
 Style URL elements.
 */
 a {
-  color:           inherit;
+  color: inherit;
   text-decoration: none;
 }
-a:hover{
-  cusror:          pointer;
+a:hover {
+  cusror: pointer;
   text-decoration: underline;
 }
 
@@ -100,20 +100,20 @@ Site navigation menu. Can be displayed in both header and
 sidebar thus two different styles.
 */
 .site-header .site-nav-menu {
-  display:         none; /* By default hidden on smaller screens. */
-  flex-direction:  row;
+  display: none; /* By default hidden on smaller screens. */
+  flex-direction: row;
   list-style-type: none;
 }
 .site-header .site-nav-menu-item {
   margin: auto 0 auto 15px;
 }
 #siteSidebar .site-nav-menu {
-  width:          100%;
+  width: 100%;
   flex-direction: column;
 }
 #siteSidebar .site-nav-menu-item {
-  margin:      15px auto 0px 15px;
-  font-size:   larger;
+  margin: 15px auto 0px 15px;
+  font-size: larger;
   font-weight: bold;
 }
 
@@ -121,7 +121,7 @@ sidebar thus two different styles.
 Site header.
 */
 .site-header {
-  width:  100%;
+  width: 100%;
   height: var(--site-header-height);
 }
 /*
@@ -129,30 +129,30 @@ Site header nav is used to prevent header items to take all
 page space on wider screens.
 */
 .site-header-nav {
-  width:     100%;
+  width: 100%;
   max-width: 1200px;
 }
 .site-header-logo {
-  font-size:   x-large;
+  font-size: x-large;
   font-weight: bold;
 }
 .site-header-menu {
-  font-size:      large;
-  margin-right:   auto;
+  font-size: large;
+  margin-right: auto;
   flex-direction: row;
 }
 #toggleSidebar {
-  width:            30px;
-  height:           30px;
-  border:           none;
-  display:          block;
-  transition:       background-image 100ms ease-in-out;
-  background-size:  contain;
+  width: 30px;
+  height: 30px;
+  border: none;
+  display: block;
+  transition: background-image 100ms ease-in-out;
+  background-size: contain;
   background-color: transparent;
   background-image: url("/assets/images/show-sidebar.svg");
 }
 .site-header-profile {
-  font-size:   large;
+  font-size: large;
   font-weight: bold;
 }
 .site-header-signup {
@@ -163,16 +163,16 @@ page space on wider screens.
 Site sidebar. Hidden by default.
 */
 #siteSidebar {
-  top:           0;
-  right:         0;
-  width:         100%;
-  height:        calc(100% - var(--site-header-height));
-  padding:       15px;
-  z-index:       20;
-  position:      fixed;
-  transform:     translateY(110%);
-  border-top:    2px solid var(--wrap-foreground);
-  transition:    transform 100ms ease-in-out;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: calc(100% - var(--site-header-height));
+  padding: 15px;
+  z-index: 20;
+  position: fixed;
+  transform: translateY(110%);
+  border-top: 2px solid var(--wrap-foreground);
+  transition: transform 100ms ease-in-out;
   border-radius: 0;
 }
 #siteSidebar.active {
@@ -182,13 +182,13 @@ Site sidebar. Hidden by default.
   background-image: url("/assets/images/hide-sidebar.svg");
 }
 .site-sidebar-menu {
-  width:   100%;
-  height:  90%;
+  width: 100%;
+  height: 90%;
   padding: 20px;
 }
 .site-sidebar-menu-item {
-  margin:      10px 0;
-  font-size:   larger;
+  margin: 10px 0;
+  font-size: larger;
   line-height: 2.5;
   font-weight: bold;
 }
@@ -197,10 +197,10 @@ Site sidebar. Hidden by default.
 Main container.
 */
 .site-content {
-  width:          100%;
-  margin:         0 auto 0 auto;
-  padding:        15px;
-  max-width:      1200px;
+  width: 100%;
+  margin: 0 auto 0 auto;
+  padding: 15px;
+  max-width: 1200px;
   flex-direction: column;
 }
 
@@ -211,18 +211,18 @@ Site footer.
   width: 100%;
 }
 .site-footer-col {
-  flex:           1;
+  flex: 1;
   flex-direction: column;
 }
 .site-footer-col-header {
-  font-size:   larger;
+  font-size: larger;
   font-weight: bold;
 }
 
 /* Large devices (laptops/desktops, 992px and up) */
 @media only screen and (min-width: 992px) {
   .site-header .site-nav-menu {
-    display:         flex;
+    display: flex;
     text-decoration: none;
   }
   .site-header #toggleSidebar {

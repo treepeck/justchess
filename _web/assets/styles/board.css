@@ -1,98 +1,123 @@
 #board {
-  --board-size: 300px;
+  /* CSS variables are declared for the board element so that they are recomputed
+   only once after resize. */
+  --size: 300px;
+  --lateral-size: calc(var(--size) / 20);
+  /* Used for translateZ of front and back faces. */
+  --depth: calc(var(--lateral-size) / 2 - 1px);
+  /* Used for translateZ of left, right, top, and bottom faces. */
+  --lateral-depth: calc(var(--size) / 2 - 1px);
+  /* Variables below are calculated based on the source background image resolution - 1200x1200 px.
+   If it will ever chage, the consts must be updated. */
+  --background: calc(1200 * var(--size) / 600);
+  --lateral-background: calc(0px - 75 * var(--size) / 1200);
+  --double-lateral-background: calc(0px - 75 * var(--size) / 600);
+  /* Center of the background image. */
+  --background-center: calc(0px - var(--background) / 2);
+  --lateral-background-center: calc(0px - var(--lateral-background) / 2);
+  /* For a lateral face to be centered. */
+  --lateral-center: calc(var(--size) / 2 - var(--lateral-size) / 2);
 
-  width:        var(--board-size);
-  height:       var(--board-size);
-  margin:       50px auto 50px auto;
-  perspective:  2000px;
+  width: var(--size);
+  height: var(--size);
+  margin: 20px auto 50px auto;
+  perspective: 2000px;
 }
 .board-box {
-  width:           var(--board-size);
-  height:          var(--board-size);
-  cursor:          pointer;
-  position:        relative;
+  width: var(--size);
+  height: var(--size);
+  cursor: pointer;
+  position: relative;
   transform-style: preserve-3d;
-  transform:       rotate3d(1, 0, 0, 35deg);
-  transition:      transform 5s;
+  transform: rotate3d(1, 1, 0, 0deg);
+  transition: transform 5s;
 }
 .board-box:hover {
-  transform:       rotate3d(1, 0, 0, 395deg);
-  transition:      transform 5s;
+  transform: rotate3d(1, 1, 0, 395deg);
+  transition: transform 5s;
 }
 .board-box-face {
-  --lateral-face-size:     calc(var(--board-size) / 20);
-  --board-background-size: calc(1200 * var(--board-size) / 600);
-  --board-lateral-background-size: calc(75 * var(--board-size) / 1200);
-
-  position:                absolute;
-  background-size:         var(--board-background-size) var(--board-background-size);
-  background-image:        url("/assets/images/board.svg");
-  background-repeat:       no-repeat;
+  position: absolute;
+  background-size: var(--background) var(--background);
+  background-image: url("/assets/images/board.svg");
+  background-repeat: no-repeat;
 }
 .front {
-  width:     var(--board-size);
-  height:    var(--board-size);
-  transform: translateZ(calc(var(--lateral-face-size) / 2 - 1px));
+  width: var(--size);
+  height: var(--size);
+  transform: translateZ(var(--depth));
 }
 .back {
-  width:               var(--board-size);
-  height:              var(--board-size);
-  transform:           rotateY(180deg) translateZ(calc(var(--lateral-face-size) / 2 - 2px));
-  background-position: calc(0px - var(--board-background-size) / 2) 0;
+  width: var(--size);
+  height: var(--size);
+  transform: rotateY(180deg) translateZ(var(--depth));
+  background-position: var(--background-center) 0;
 }
 .left {
-  left:                calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
-  width:               var(--lateral-face-size);
-  height:              var(--board-size);
-  transform:           rotateY(-90deg) translateZ(calc(var(--board-size) / 2));
-  background-position:
-    0
-    calc(0px - var(--board-lateral-background-size));
+  left: var(--lateral-center);
+  width: var(--lateral-size);
+  height: var(--size);
+  transform: rotateY(-90deg) translateZ(var(--lateral-depth));
+  background-position: 0 var(--background-center);
 }
 .right {
-  left:                calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
-  width:               var(--lateral-face-size);
-  height:              var(--board-size);
-  transform:           rotateY(90deg) translateZ(calc(var(--board-size) / 2));
-  background-position:
-    calc(0px - var(--board-lateral-background-size))
-    calc(0px - var(--board-background-size) / 2);
+  left: var(--lateral-center);
+  width: var(--lateral-size);
+  height: var(--size);
+  transform: rotateY(90deg) translateZ(var(--lateral-depth));
+  background-position: var(--lateral-background) var(--background-center);
 }
 .top {
-  top:                 calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
-  width:               var(--board-size);
-  height:              var(--lateral-face-size);
-  transform:           rotateX(90deg) translateZ(calc(var(--board-size) / 2));
-  background-position:
-    calc(0px - var(--board-lateral-background-size) * 2)
-    calc(0px - var(--board-background-size) / 2);
+  top: var(--lateral-center);
+  width: var(--size);
+  height: var(--lateral-size);
+  transform: rotateX(90deg) translateZ(var(--lateral-depth));
+  background-position: var(--double-lateral-background) var(--background-center);
 }
 .bottom {
-  top:                 calc(var(--board-size) / 2 - var(--lateral-face-size) / 2);
-  width:               var(--board-size);
-  height:              var(--lateral-face-size);
-  transform:           rotateX(-90deg) translateZ(calc(var(--board-size) / 2));
-  background-position:
-    calc(0px - var(--board-lateral-background-size) * 2)
-    calc(0px - var(--board-background-size) / 2);
+  top: var(--lateral-center);
+  width: var(--size);
+  height: var(--lateral-size);
+  transform: rotateX(-90deg) translateZ(var(--lateral-depth));
+  background-position: var(--double-lateral-background) var(--background-center);
 }
-
+/* Arbitrary board object such as chess piece or board coordinate. */
+.board-object {
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  transform: translate(var(--x), var(--y));
+  font-size: smaller;
+  font-weight: bold;
+}
+.board-rank {
+  margin: 2px 0 0 2px;
+}
+.board-file {
+  margin: 7% 0 0 2px;
+}
 /* Extra small devices (phones, 600px and up) */
 @media only screen and (min-width: 600px) {
   #board {
-    --board-size: 500px;
+    --size: 500px;
+  }
+  .board-object {
+    font-size: medium;
+  }
+  .board-rank {
+    margin: 5px 0 0 5px;
+  }
+  .board-file {
+    margin: 8% 0 0 5px;
   }
 }
 
 /* Medium devices (landscape tablets, 768px and up) */
 @media only screen and (min-width: 768px) {
   #board {
-    --board-size: 600px;
+    --size: 600px;
+  }
+  .board-file {
+    margin: 8.5% 0 0 5px;
   }
 }
-
-/* Large devices (laptops/desktops, 992px and up) */
-@media only screen and (min-width: 992px) {...}
-
-/* Extra large devices (large laptops and desktops, 1200px and up) */
-@media only screen and (min-width: 1200px) {...}
