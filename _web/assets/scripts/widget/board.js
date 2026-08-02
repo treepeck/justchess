@@ -1,3 +1,9 @@
+// import { Piece } from "/assets/scripts/chess/types.js"
+import { initPos, parseFen } from "/assets/scripts/chess/fen.js"
+
+// prettier-ignore
+const classNames = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
+
 /**
  * Board handles rendering of the 3D board. It manages drag&drop, square selection,
  * animations, etc. However, it doesn't know anything about chess logic. The 3D
@@ -10,21 +16,28 @@ export class Board {
 	 * @type {HTMLDivElement}
 	 */
 	front
+	/**
+	 * @type {import("/assets/scripts/chess/types.js").Position}
+	 */
+	position
 
 	constructor() {
 		this.front = document.getElementById("front")
 
 		this.appendRanks()
 		this.appendFiles()
+
+		this.position = parseFen(initPos)
+		this.appendPieces()
 	}
 
 	/**
-	 * Responsively positions an element on the front. Not all types of elements
+	 * Responsively translates an element on the front. Not all types of elements
 	 * are positioned the same way. For instance, files and ranks are positioned
 	 * @param {HTMLDivElement} element
 	 * @param {number} square
 	 */
-	position(element, square) {
+	translate(element, square) {
 		const file = square % 8
 		const rank = Math.floor(square / 8)
 
@@ -53,7 +66,7 @@ export class Board {
 			rankDiv.classList.add("board-object")
 			rankDiv.classList.add("board-rank")
 			this.front.appendChild(rankDiv)
-			this.position(rankDiv, i * 8)
+			this.translate(rankDiv, i * 8)
 		}
 	}
 
@@ -68,7 +81,17 @@ export class Board {
 			fileDiv.classList.add("board-object")
 			fileDiv.classList.add("board-file")
 			this.front.appendChild(fileDiv)
-			this.position(fileDiv, i)
+			this.translate(fileDiv, i)
+		}
+	}
+
+	appendPieces() {
+		for (const [square, piece] of this.position.pieces) {
+			const pieceDiv = document.createElement("div")
+			pieceDiv.classList.add("board-piece")
+			pieceDiv.classList.add(classNames[piece])
+			this.front.appendChild(pieceDiv)
+			this.translate(pieceDiv, square)
 		}
 	}
 
@@ -82,11 +105,9 @@ export class Board {
 				const square = parseInt(
 					element.style.getPropertyValue("--square"),
 				)
-				this.position(element, square ? square : 0)
+				this.translate(element, square)
 			}
 		})
 		observer.observe(this.front)
 	}
-
-	render() {}
 }

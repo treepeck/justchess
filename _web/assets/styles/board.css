@@ -6,7 +6,7 @@
   /* Used for translateZ of front and back faces. */
   --depth: calc(var(--lateral-size) / 2 - 1px);
   /* Used for translateZ of left, right, top, and bottom faces. */
-  --lateral-depth: calc(var(--size) / 2 - 1px);
+  --lateral-depth: calc(var(--size) / 2);
   /* Variables below are calculated based on the source background image resolution - 1200x1200 px.
    If it will ever chage, the consts must be updated. */
   --background: calc(1200 * var(--size) / 600);
@@ -22,6 +22,7 @@
   height: var(--size);
   margin: 20px auto 50px auto;
   perspective: 2000px;
+  user-select: none;
 }
 .board-box {
   width: var(--size);
@@ -29,13 +30,15 @@
   cursor: pointer;
   position: relative;
   transform-style: preserve-3d;
-  transform: rotate3d(1, 1, 0, 0deg);
+  transform: rotate3d(1, 0, 0, 35deg);
   transition: transform 5s;
 }
+/*
 .board-box:hover {
-  transform: rotate3d(1, 1, 0, 395deg);
+  transform: rotate3d(1, 0, 0, 395deg);
   transition: transform 5s;
 }
+*/
 .board-box-face {
   position: absolute;
   background-size: var(--background) var(--background);
@@ -86,8 +89,8 @@
   width: 12.5%;
   height: 12.5%;
   position: absolute;
-  transform: translate(var(--x), var(--y));
   font-size: smaller;
+  transform: translate(var(--x), var(--y));
   font-weight: bold;
 }
 .board-rank {
@@ -96,6 +99,81 @@
 .board-file {
   margin: 7% 0 0 2px;
 }
+
+.board-piece {
+  width: 12.5%;
+  height: 29.296875%;
+  top: -16.796875%;
+  position: absolute;
+  font-size: smaller;
+  z-index: 30;
+  transform: translate(var(--x), var(--y));
+  background-size: 600% 200%;
+  background-image: url("/assets/images/sheet.svg");
+  background-repeat: no-repeat;
+  background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
+}
+/* White pawn. */
+.board-piece.P {
+  --col: 0;
+  --row: 0;
+}
+/* White knight. */
+.board-piece.N {
+  --col: 1;
+  --row: 0;
+}
+/* White bishop. */
+.board-piece.B {
+  --col: 2;
+  --row: 0;
+}
+/* White rook. */
+.board-piece.R {
+  --col: 3;
+  --row: 0;
+}
+/* White queen. */
+.board-piece.Q {
+  --col: 4;
+  --row: 0;
+}
+/* White king. */
+.board-piece.K {
+  --col: 5;
+  --row: 0;
+}
+/* Black pawn. */
+.board-piece.p {
+  --col: 0;
+  --row: 1;
+}
+/* Black knight. */
+.board-piece.n {
+  --col: 1;
+  --row: 1;
+}
+/* Black bishop. */
+.board-piece.b {
+  --col: 2;
+  --row: 1;
+}
+/* Black rook. */
+.board-piece.r {
+  --col: 3;
+  --row: 1;
+}
+/* Black queen. */
+.board-piece.q {
+  --col: 4;
+  --row: 1;
+}
+/* Black king. */
+.board-piece.k {
+  --col: 5;
+  --row: 1;
+}
+
 /* Extra small devices (phones, 600px and up) */
 @media only screen and (min-width: 600px) {
   #board {
@@ -116,6 +194,9 @@
 @media only screen and (min-width: 768px) {
   #board {
     --size: 600px;
+  }
+  .board-object {
+    font-size: large;
   }
   .board-file {
     margin: 8.5% 0 0 5px;
