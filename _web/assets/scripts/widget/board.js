@@ -24,6 +24,8 @@ export class Board {
 	constructor() {
 		this.front = document.getElementById("front")
 
+		this.appendSquares()
+
 		this.appendRanks()
 		this.appendFiles()
 
@@ -32,8 +34,39 @@ export class Board {
 	}
 
 	/**
-	 * Responsively translates an element on the front. Not all types of elements
-	 * are positioned the same way. For instance, files and ranks are positioned
+	 * @param {PointerEvent} e
+	 */
+	onClick(e) {
+		if (e.buttons === 2) return // Ignore right clicks.
+
+		this.resetSelected()
+	}
+
+	/**
+	 * @param {PointerEvent} e
+	 */
+	onDrag(e) {}
+
+	/**
+	 * @param {PointerEvent} e
+	 */
+	onDrop(e) {
+		if (e.buttons === 2) return // Ignore right clicks.
+	}
+
+	/**
+	 * @param {PointerEvent} e
+	 */
+	onRightClick(e) {
+		e.preventDefault()
+		e.stopPropagation()
+
+		const squareDiv = e.target.closest(".board-square")
+		squareDiv.classList.toggle("board-selected")
+	}
+
+	/**
+	 * Responsively positions the element on the named square.
 	 * @param {HTMLDivElement} element
 	 * @param {number} square
 	 */
@@ -53,6 +86,20 @@ export class Board {
 		element.style.setProperty("--square", `${square}`)
 		element.style.setProperty("--x", `${x}px`)
 		element.style.setProperty("--y", `${y}px`)
+	}
+
+	/**
+	 * Appends square elements to front and positions them. Those are required to
+	 * render highlight effects and parse event coordinates.
+	 */
+	appendSquares() {
+		for (let i = 0; i < 64; i++) {
+			const squareDiv = document.createElement("div")
+			squareDiv.classList.add("board-object")
+			squareDiv.classList.add("board-square")
+			this.front.appendChild(squareDiv)
+			this.translate(squareDiv, i)
+		}
 	}
 
 	/**
@@ -95,6 +142,14 @@ export class Board {
 		}
 	}
 
+	resetSelected() {
+		for (const selected of document.querySelectorAll(
+			".board-square.board-selected",
+		)) {
+			selected.classList.remove("board-selected")
+		}
+	}
+
 	/**
 	 * Makes board responsive by observing the size changes of the front and repositioning elements.
 	 */
@@ -109,5 +164,23 @@ export class Board {
 			}
 		})
 		observer.observe(this.front)
+	}
+
+	/**
+	 * Registers handler functions for pointer events.
+	 */
+	registerEventHandlers() {
+		this.front.addEventListener("pointerdown", (e) => {
+			this.onClick(e)
+		})
+		this.front.addEventListener("pointermove", (e) => {
+			this.onDrag(e)
+		})
+		this.front.addEventListener("pointerup", (e) => {
+			this.onDrop(e)
+		})
+		this.front.addEventListener("contextmenu", (e) => {
+			this.onRightClick(e)
+		})
 	}
 }

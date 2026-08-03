@@ -2,3 +2,4 @@ import { Board } from "/assets/scripts/widget/board.js"
 
 const board = new Board()
 board.registerResizeObserver()
+board.registerEventHandlers()

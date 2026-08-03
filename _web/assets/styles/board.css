@@ -95,19 +95,25 @@
 }
 .board-rank {
   margin: 2px 0 0 2px;
+  pointer-events: none;
 }
 .board-file {
   margin: 7% 0 0 2px;
+  pointer-events: none;
 }
-
+.board-selected {
+  background-color: magenta;
+}
 .board-piece {
   width: 12.5%;
   height: 29.296875%;
   top: -16.796875%;
+  perspective: 0;
   position: absolute;
   font-size: smaller;
   z-index: 30;
   transform: translate(var(--x), var(--y));
+  pointer-events: none;
   background-size: 600% 200%;
   background-image: url("/assets/images/sheet.svg");
   background-repeat: no-repeat;
