@@ -27,6 +27,7 @@ CSS variables.
 */
 :root {
   --site-header-height: 60px;
+  --site-footer-height: 130px;
 
   --site-background: #e2d3c4;
   --site-foreground: #34211d;
@@ -91,21 +92,49 @@ a {
   text-decoration: none;
 }
 a:hover {
-  cusror: pointer;
+  cursor: pointer;
   text-decoration: underline;
+}
+
+/*
+Style button elements.
+*/
+button {
+  color: var(--wrap-foreground);
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  font-size: large;
+  transition:
+    background-color 0.75s ease-in-out,
+    color 0.75s ease-in-out;
+  line-height: 2;
+  font-weight: bold;
+  border-radius: 15px;
+  background-color: var(--wrap-background);
+}
+button:hover,
+button:focus {
+  color: var(--wrap-background);
+  outline: none;
+  background-color: var(--wrap-foreground);
 }
 
 /*
 Site navigation menu. Can be displayed in both header and
 sidebar thus two different styles.
 */
+.site-header {
+  height: var(--site-header-height);
+}
 .site-header .site-nav-menu {
   display: none; /* By default hidden on smaller screens. */
   flex-direction: row;
   list-style-type: none;
 }
 .site-header .site-nav-menu-item {
-  margin: auto 0 auto 15px;
+  margin: auto 0 auto;
+  padding-bottom: 15px;
 }
 #siteSidebar .site-nav-menu {
   width: 100%;
@@ -201,6 +230,7 @@ Main container.
   margin: 0 auto 0 auto;
   padding: 15px;
   max-width: 1200px;
+  height: calc(100vh - var(--site-header-height) - var(--site-footer-height));
   flex-direction: column;
 }
 
@@ -208,6 +238,7 @@ Main container.
 Header of the page content.
 */
 .content-header {
+  margin: 15px 0 0 0;
   font-weight: bold;
 }
 
@@ -222,7 +253,8 @@ Site footer.
 */
 .site-footer {
   width: 100%;
-  margin: 20px 0 0 0;
+  height: var(--site-footer-height);
+  padding-top: 20px;
 }
 .site-footer-col {
   flex: 1;
