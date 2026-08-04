@@ -38,6 +38,12 @@
 		<div class="form-error" id="formPasswordError"></div>
 	</div>
 
-	<button id="formConfirm" class="form-confirm">Confirm via email</button>
+	<button id="formConfirm" class="form-confirm">
+		{{ if .Data.hasUsernameField }}
+			Confirm via email
+		{{ else }}
+			Confirm
+		{{ end }}
+	</button>
 </form>
 {{ end }}
