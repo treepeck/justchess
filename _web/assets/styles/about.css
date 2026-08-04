@@ -1,0 +1,11 @@
+.about-header {
+  width: 100%;
+  text-align: center;
+  margin: 20px 0 0 0;
+  font-size: larger;
+  font-weight: bold;
+}
+.content-list {
+  font-size: large;
+  line-height: 1.5;
+}

@@ -31,5 +31,5 @@ License, v. 2.0.  See the [LICENSE](LICENSE) file for details.
 The Ubuntu fonts are licensed under the Ubuntu Font License, v. 1.0.<br/>
 See the [UbuntuFonts-LICENCE.txt](_web/fonts/UbuntuFonts-LICENCE.txt) file for details.
 
-The JustChess*.woff2 fonts and images are licensed under the
-[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license.
+The JustChess*.woff2 fonts, images, and sounds are licensed under the
+[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en) license.

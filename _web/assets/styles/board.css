@@ -24,7 +24,7 @@
   perspective: 2000px;
   user-select: none;
 }
-.board-box {
+#boardBox {
   width: var(--size);
   height: var(--size);
   cursor: pointer;
@@ -101,18 +101,23 @@
   margin: 7% 0 0 2px;
   pointer-events: none;
 }
+.board-square:hover {
+  border: 2px solid var(--wrap-foreground);
+}
 .board-selected {
-  background-color: magenta;
+  background-color: gold;
+}
+.board-highlighted {
+  background-color: var(--wrap-foreground);
 }
 .board-piece {
   width: 12.5%;
   height: 29.296875%;
   top: -16.796875%;
-  perspective: 0;
   position: absolute;
   font-size: smaller;
   z-index: 30;
-  transform: translate(var(--x), var(--y));
+  transform: translateX(var(--x)) translateY(var(--y)) translateZ(var(--depth));
   pointer-events: none;
   background-size: 600% 200%;
   background-image: url("/assets/images/sheet.svg");

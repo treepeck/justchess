@@ -205,10 +205,24 @@ Main container.
 }
 
 /*
+Header of the page content.
+*/
+.content-header {
+  font-weight: bold;
+}
+
+.content-section-header {
+  margin: 20px 0 0 0;
+  font-size: larger;
+  font-weight: bold;
+}
+
+/*
 Site footer.
 */
 .site-footer {
   width: 100%;
+  margin: 20px 0 0 0;
 }
 .site-footer-col {
   flex: 1;
