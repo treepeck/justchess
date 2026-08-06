@@ -1,0 +1,14 @@
+{{/* Engine configuration dialog used on home and queue pages. */}}
+{{ define "engine" }}
+<dialog id="engineConfig" class="wrap">
+	<h2 class="dialog-header">Choose difficulty</h2>
+	<div class="slider-wrap">
+		<input id="difficultySlider" type="range" min="1" max="5" value="2" />
+		<div id="sliderDemo">Medium</div>
+	</div>
+	<div class="dialog-buttons">
+		<button commandfor="engineConfig" command="close">Close</button>
+		<button id="playEngine">Play</button>
+	</div>
+</dialog>
+{{ end }}

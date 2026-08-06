@@ -26,8 +26,8 @@ Declare custom fonts.
 CSS variables.
 */
 :root {
-  --site-header-height: 60px;
-  --site-footer-height: 130px;
+  --site-header-height: 50px;
+  --site-footer-height: 150px;
 
   --site-background: #e2d3c4;
   --site-foreground: #34211d;
@@ -69,7 +69,7 @@ All elements that wrap some other elements are styled similarly.
 */
 .wrap {
   color: var(--wrap-foreground);
-  padding: 20px;
+  padding: 10px;
   background: var(--wrap-background);
 }
 
@@ -124,17 +124,17 @@ button:focus {
 Site navigation menu. Can be displayed in both header and
 sidebar thus two different styles.
 */
-.site-header {
-  height: var(--site-header-height);
-}
 .site-header .site-nav-menu {
+  height: var(--site-header-height);
   display: none; /* By default hidden on smaller screens. */
   flex-direction: row;
   list-style-type: none;
 }
+.site-header .flex {
+  gap: 20px;
+}
 .site-header .site-nav-menu-item {
   margin: auto 0 auto;
-  padding-bottom: 15px;
 }
 #siteSidebar .site-nav-menu {
   width: 100%;
@@ -195,7 +195,7 @@ Site sidebar. Hidden by default.
   top: 0;
   right: 0;
   width: 100%;
-  height: calc(100% - var(--site-header-height));
+  height: calc(100%);
   padding: 15px;
   z-index: 20;
   position: fixed;
@@ -230,7 +230,7 @@ Main container.
   margin: 0 auto 0 auto;
   padding: 15px;
   max-width: 1200px;
-  height: calc(100vh - var(--site-header-height) - var(--site-footer-height));
+  min-height: calc(100vh - var(--site-header-height) - var(--site-footer-height));
   flex-direction: column;
 }
 
@@ -254,7 +254,6 @@ Site footer.
 .site-footer {
   width: 100%;
   height: var(--site-footer-height);
-  padding-top: 20px;
 }
 .site-footer-col {
   flex: 1;
@@ -265,6 +264,92 @@ Site footer.
   font-weight: bold;
 }
 
+/*
+Modal dialog.
+*/
+dialog {
+  width: 95%;
+  margin: auto;
+  padding: 20px;
+  max-width: 500px;
+}
+dialog::backdrop {
+  backdrop-filter: blur(5px);
+}
+dialog h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+dialog .dialog-buttons {
+  display: flex;
+  margin: 15px auto 5px auto;
+  width: 100%;
+}
+dialog .dialog-buttons button {
+  margin: auto;
+}
+
+/*
+Slider for engine configuration dialog.
+*/
+#difficultySlider {
+  /* Default thumb image. */
+  --bg: url("/assets/images/medium.svg");
+
+  -webkit-appearance: none;
+  margin: 50px auto 50px auto;
+  background-color: #5a5a5a;
+  width: 100%;
+}
+#difficultySlider::-moz-range-thumb {
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  border: none;
+  background-size: contain;
+  background-color: transparent;
+  background-image: var(--bg);
+}
+#difficultySlider::-moz-range-progress {
+  width: 100%;
+  height: 100%;
+  background: #b5936e;
+  border: none;
+  border-radius: 3px;
+}
+#difficultySlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  border: none;
+  background-size: contain;
+  background-color: transparent;
+  background-image: var(--bg);
+}
+#sliderDemo {
+  width: 100%;
+  text-align: center;
+  font-size: xx-large;
+  font-weight: bold;
+}
+
+/*
+Animated background applied on home and queue pages.
+*/
+.floating-chessboard {
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  position: fixed;
+  background: url("/assets/images/background-board.svg");
+  transform: rotate(15deg) scale(2);
+  filter: blur(2px) grayscale(10%) brightness(85%);
+  z-index: -1;
+  animation: float 200s infinite;
+}
+
 /* Large devices (laptops/desktops, 992px and up) */
 @media only screen and (min-width: 992px) {
   .site-header .site-nav-menu {
@@ -273,5 +358,22 @@ Site footer.
   }
   .site-header #toggleSidebar {
     display: none;
+  }
+}
+
+@keyframes float {
+  0% {
+    background-position-x: 0;
+    background-position-y: 0;
+  }
+
+  50% {
+    background-position-x: 50vw;
+    background-position-y: 50vh;
+  }
+
+  100% {
+    background-position-x: 100vw;
+    background-position-y: -100vh;
   }
 }
