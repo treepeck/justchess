@@ -1,0 +1,9 @@
+.rated-grid {
+  gap: 5px;
+  width: 100%;
+  display: grid;
+  max-width: 500px;
+  aspect-ratio: 1/1;
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+}

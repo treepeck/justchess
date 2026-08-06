@@ -230,7 +230,9 @@ Main container.
   margin: 0 auto 0 auto;
   padding: 15px;
   max-width: 1200px;
-  min-height: calc(100vh - var(--site-header-height) - var(--site-footer-height));
+  min-height: calc(
+    100vh - var(--site-header-height) - var(--site-footer-height)
+  );
   flex-direction: column;
 }
 
@@ -272,6 +274,7 @@ dialog {
   margin: auto;
   padding: 20px;
   max-width: 500px;
+  border-radius: 15px;
 }
 dialog::backdrop {
   backdrop-filter: blur(5px);
@@ -286,6 +289,7 @@ dialog .dialog-buttons {
   width: 100%;
 }
 dialog .dialog-buttons button {
+  flex: 1;
   margin: auto;
 }
 
