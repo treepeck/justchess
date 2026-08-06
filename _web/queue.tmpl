@@ -1,0 +1,34 @@
+<!--{
+	"title": "Queue",
+	"style": "queue.css",
+	"layouts": ["_web/layouts/engine.tmpl"],
+	"script": "queue.js"
+}-->
+
+{{ define "content" }}
+<h1 class="content-header">Finding match...</h1>
+
+<div id="ping">Latency: ? ms</div>
+
+<div class="queue wrap flex">
+	<div>Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s</div>
+	<div id="playersNumber">Players in queue: ?</div>
+	<div id="hintBox"></div>
+	<div id="countUpTimer">00:00</div>
+</div>
+
+<dialog id="emptyQueueDialog" class="wrap">
+	<h2 class="dialog-header">Empty queue</h2>
+	<p>There are not enough players to find a match.</p>
+	<p>Try selecting other time controls to find a match faster.</p>
+
+	<div class="dialog-buttons">
+		<button commandfor="engineConfig" command="show-modal">Play vs Engine</button>
+		<button commandfor="emptyQueueDialog" command="close">Close</dialog>
+	</div>
+</dialog>
+
+{{ template "engine" . }}
+
+<div class="floating-chessboard"></div>
+{{ end }}
