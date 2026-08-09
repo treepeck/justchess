@@ -1,6 +1,7 @@
 <!--{
 	"title": "Sign in",
 	"style": "form.css",
+	"script": "signin.js",
 	"layouts": ["_web/layouts/form.tmpl"],
 	"hasUsernameField": false
 }-->
@@ -8,6 +9,9 @@
 {{ define "content" }}
 <h1 class="content-header">Welcome back</h1>
 {{ template "form" .}}
+
+<button id="confirmBtn" class="form-confirm">Confirm</button>
+
 <p><small>Forgot password? <a href="/reset-password">Password reset</a></small></p>
 <p><small>Doesn't have an account? <a href="/signup">Sign up</a></small></p>
 {{ end }}

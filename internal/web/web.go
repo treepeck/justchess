@@ -99,6 +99,7 @@ func (s Service) static(rw http.ResponseWriter, r *http.Request) {
 func (s Service) leaderboard(rw http.ResponseWriter, r *http.Request) {
 	leaderboard, err := s.playerRepo.SelectLeaderboard()
 	if err != nil {
+		log.Print(err)
 		s.renderPage(rw, r, s.pages["/error"], response.DatabaseError, "/error")
 		return
 	}
@@ -108,6 +109,7 @@ func (s Service) leaderboard(rw http.ResponseWriter, r *http.Request) {
 func (s Service) profile(rw http.ResponseWriter, r *http.Request) {
 	profile, err := s.playerRepo.SelectProfile(r.PathValue("id"))
 	if err != nil {
+		log.Print(err)
 		s.renderPage(rw, r, s.pages["/error"], response.NotFound, "/error")
 		return
 	}

@@ -283,14 +283,20 @@ dialog h2 {
   text-align: center;
   margin-bottom: 15px;
 }
+dialog p {
+  font-size: larger;
+  text-align: center;
+  width: 100%;
+}
 dialog .dialog-buttons {
   display: flex;
   margin: 15px auto 5px auto;
   width: 100%;
 }
 dialog .dialog-buttons button {
-  flex: 1;
   margin: auto;
+  line-height: 1;
+  flex: 1;
 }
 
 /*
@@ -336,6 +342,27 @@ Slider for engine configuration dialog.
   text-align: center;
   font-size: xx-large;
   font-weight: bold;
+}
+
+/*
+Text that activates help dialog.
+*/
+.helper-button {
+  width: 100%;
+  color: inherit;
+  cursor: help;
+  padding: 0;
+  font-size: inherit;
+  background: transparent;
+  line-height: inherit;
+  font-weight: inherit;
+  border-radius: 0;
+  text-decoration: underline;
+}
+.helper-button:hover,
+.helper-button:focus {
+  color: inherit;
+  background: transparent;
 }
 
 /*

@@ -15,7 +15,7 @@
 	{{ end }}
 
 	<div class="form-field flex">
-		<p class="form-field-label">Email</p>
+		<button commandfor="helpDialog" command="show-modal" class="helper-button"><p class="form-field-label">Email</p></button>
 		<input
 			id="emailInput"
 			type="email"
@@ -28,22 +28,28 @@
 
 	<div class="form-field flex">
 		<p class="form-field-label">Password</p>
-		<input
-			id="passwordInput"
-			type="password"
-			name="password"
-			autocomplete="off"
-			placeholder="**********"
-		/>
+		<div class="form-field-password-wrap">
+			<input
+				id="passwordInput"
+				type="password"
+				name="password"
+				autocomplete="off"
+				placeholder="**********"
+			/>
+			<div id="formPasswordToggle"></div>
+		</div>
 		<div class="form-error" id="formPasswordError"></div>
 	</div>
 
-	<button id="formConfirm" class="form-confirm">
-		{{ if .Data.hasUsernameField }}
-			Confirm via email
-		{{ else }}
-			Confirm
-		{{ end }}
-	</button>
+	<div id="serverResponse"></div>
+
+	<dialog id="helpDialog" class="wrap">
+		<h2 class="dialog-header">Why do I need to enter my email?</h2>
+		<p>To securely reset your password if you forget it.</p>
+		<p>Your email will never be shared or used for any other purpose.</p>
+		<div class="dialog-buttons">
+			<button commandfor="helpDialog" command="close">Close</button>
+		</div>
+	</dialog>
 </form>
 {{ end }}

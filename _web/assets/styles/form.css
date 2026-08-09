@@ -16,9 +16,10 @@
   flex-direction: column;
 }
 .form-field-label {
-  font-size: larger;
-  font-weight: bold;
   margin: 0 auto 0 5px;
+  font-size: larger;
+  text-align: left;
+  font-weight: bold;
 }
 .form-field input {
   width: 100%;
@@ -27,6 +28,28 @@
   border: none;
   border-radius: 15px;
   background: var(--input-background);
+}
+.form-field-password-wrap {
+  width: 100%;
+  display: flex;
+  background: var(--input-background);
+  border-radius: 10px;
+}
+.form-field-password-wrap input {
+  background: transparent;
+}
+#formPasswordToggle {
+  width: 30px;
+  height: 30px;
+  margin: auto 10px auto 10px;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  background-color: transparent;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: url("/assets/images/show.svg");
 }
 .form-field input::placeholder {
   color: var(--input-placeholder);
@@ -38,6 +61,7 @@
 .form-error {
   color: #d40000;
 }
-#form button {
-  min-width: 170px;
+#serverResponse {
+  width: 350px;
+  font-size: large;
 }
