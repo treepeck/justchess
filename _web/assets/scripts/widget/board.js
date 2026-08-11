@@ -12,7 +12,12 @@ const classNames = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
  */
 export class Board {
 	/**
-	 * Front element of the board, to which all UI elements are rendered.
+	 * Container of the board, to which pieces and board parts are rendered.
+	 * @type {HTMLDivElement}
+	 */
+	boardBox
+	/**
+	 * Front element of the board, to which board UI elements are rendered.
 	 * @type {HTMLDivElement}
 	 */
 	front
@@ -22,6 +27,7 @@ export class Board {
 	position
 
 	constructor() {
+		this.boardBox = document.getElementById("boardBox")
 		this.front = document.getElementById("front")
 
 		this.appendSquares()
@@ -137,7 +143,7 @@ export class Board {
 			const pieceDiv = document.createElement("div")
 			pieceDiv.classList.add("board-piece")
 			pieceDiv.classList.add(classNames[piece])
-			this.front.appendChild(pieceDiv)
+			this.boardBox.appendChild(pieceDiv)
 			this.translate(pieceDiv, square)
 		}
 	}
