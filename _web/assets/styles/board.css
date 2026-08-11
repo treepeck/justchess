@@ -5,7 +5,7 @@
   --lateral-size: calc(var(--size) / 20);
   /* Used for translateZ of 3d elements. */
   --depth: calc(var(--lateral-size) / 2 - 1px);
-  --dragged-piece-depth: calc(var(--lateral-size) / 2 + 15px);
+  --dragged-piece-depth: calc(var(--lateral-size) / 2 + 60px);
   /* Used for translateZ of left, right, top, and bottom faces. */
   --lateral-depth: calc(var(--size) / 2);
   /* Variables below are calculated based on the source background image resolution - 1200x1200 px.
@@ -103,12 +103,12 @@
   pointer-events: none;
 }
 .board-square:hover {
-  border: 2px solid var(--wrap-foreground);
+  background-color: green;
 }
-.board-selected {
+.board-square.selected {
   background-color: gold;
 }
-.board-highlighted {
+.board-square.highlighted {
   background-color: var(--wrap-foreground);
 }
 .board-piece {
@@ -119,15 +119,14 @@
   font-size: smaller;
   z-index: 30;
   transform: translateX(var(--x)) translateY(var(--y)) translateZ(var(--depth));
-  transition: transform 0.75s ease-in-out, z-index 0.75s ease-in-out;
+  transition: transform 0.75s ease-in-out;
   pointer-events: none;
   background-size: 600% 200%;
   background-image: url("/assets/images/sheet.svg");
   background-repeat: no-repeat;
   background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
 }
-.board-piece.dragged {
-  z-index: 40;
+.board-piece.selected {
   transform: translateX(var(--x)) translateY(var(--y)) translateZ(var(--dragged-piece-depth));
 }
 /* White pawn. */

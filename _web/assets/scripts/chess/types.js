@@ -34,9 +34,9 @@ export const PromotionFlag = {
  * @enum {number}
  */
 export const Color = {
-	ColorWhite: 0,
-	ColorBlack: 1,
-	ColorBoth: 2,
+	White: 0,
+	Black: 1,
+	Both: 2,
 }
 
 /**

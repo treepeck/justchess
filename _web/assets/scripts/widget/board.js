@@ -1,3 +1,6 @@
+// TODO: render an arrow which will show the destination square of selected piece
+// while moving the pointer across the board.
+
 // import { Piece } from "/assets/scripts/chess/types.js"
 import { initPos, parseFen } from "/assets/scripts/chess/fen.js"
 
@@ -25,10 +28,20 @@ export class Board {
 	 * @type {import("/assets/scripts/chess/types.js").Position}
 	 */
 	position
+	/**
+	 * Determines the player perspective.
+	 * @type {import("/assets/scripts/chess/types.js").Color}
+	 */
+	color
 
-	constructor() {
+	/**
+	 * @param {import("/assets/scripts/chess/types.js").Color} color
+	 */
+	constructor(color) {
 		this.boardBox = document.getElementById("boardBox")
 		this.front = document.getElementById("front")
+
+		this.color = color
 
 		this.appendSquares()
 
@@ -45,19 +58,44 @@ export class Board {
 	onClick(e) {
 		if (e.buttons === 2) return // Ignore right clicks.
 
-		this.resetSelected()
-	}
+		// If some piece is already selected.
+		// NOTE: do it before reseting the selection.
+		const selectedPieceDiv = this.boardBox.querySelector(".board-piece.selected")
 
-	/**
-	 * @param {PointerEvent} e
-	 */
-	onDrag(e) {}
+		this.unselect()
 
-	/**
-	 * @param {PointerEvent} e
-	 */
-	onDrop(e) {
-		if (e.buttons === 2) return // Ignore right clicks.
+		// Get index of clicked square.
+		const squareDiv = e.target.closest(".board-square")
+		const square = parseInt(squareDiv.style.getPropertyValue("--square"))
+
+		if (selectedPieceDiv) {
+			// TODO: validate the move.
+			// Perform the move.
+			const pieceSquare = parseInt(selectedPieceDiv.style.getPropertyValue("--square"))
+			const piece = this.position.pieces.get(pieceSquare)
+
+			this.position.pieces.delete(pieceSquare)
+			this.position.pieces.set(piece, square)
+
+			this.translate(selectedPieceDiv, square)
+		}
+
+		// If no valid piece of player's color was selected, simply return.
+		const piece = this.position.pieces.get(square)
+		if (piece == undefined || piece % 2 !== this.color) return
+
+		// Find the clicked piece element.
+		for (const pieceDiv of this.boardBox.querySelectorAll(".board-piece")) {
+			const pieceSquare = parseInt(pieceDiv.style.getPropertyValue("--square"))
+			if (pieceSquare == square) {
+				squareDiv.classList.add("selected")
+				pieceDiv.classList.add("selected")
+				return
+			} else {
+				continue
+			}
+		}
+		throw new Error("piece element not found on board")
 	}
 
 	/**
@@ -68,7 +106,7 @@ export class Board {
 		e.stopPropagation()
 
 		const squareDiv = e.target.closest(".board-square")
-		squareDiv.classList.toggle("board-selected")
+		squareDiv.classList.toggle("highlighted")
 	}
 
 	/**
@@ -148,11 +186,16 @@ export class Board {
 		}
 	}
 
-	resetSelected() {
-		for (const selected of document.querySelectorAll(
-			".board-square.board-selected",
+	unselect() {
+		for (const selected of this.front.querySelectorAll(
+			".board-square.selected",
 		)) {
-			selected.classList.remove("board-selected")
+			selected.classList.remove("selected")
+		}
+		for (const selected of this.boardBox.querySelectorAll(
+			".board-piece.selected",
+		)) {
+			selected.classList.remove("selected")
 		}
 	}
 
@@ -178,12 +221,6 @@ export class Board {
 	registerEventHandlers() {
 		this.front.addEventListener("pointerdown", (e) => {
 			this.onClick(e)
-		})
-		this.front.addEventListener("pointermove", (e) => {
-			this.onDrag(e)
-		})
-		this.front.addEventListener("pointerup", (e) => {
-			this.onDrop(e)
 		})
 		this.front.addEventListener("contextmenu", (e) => {
 			this.onRightClick(e)
