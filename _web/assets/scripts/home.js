@@ -9,7 +9,9 @@ for (let i = 0; i < 9; i++) {
 }
 
 document.getElementById("playEngine").addEventListener("click", async () => {
-	const difficulty = parseInt(document.getElementById("difficultySlider").value)
+	const difficulty = parseInt(
+		document.getElementById("difficultySlider").value,
+	)
 	if (!difficulty) throw new Error("engine difficulty not set")
 
 	await createEngine(difficulty)

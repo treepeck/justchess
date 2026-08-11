@@ -22,8 +22,7 @@ type Profile struct {
 	Rank int
 	// TODO: Rank confidence in %.
 	RankConfidence int
-	RatedGames     int
-	EngineGames    int
+	Games          int
 }
 
 type PlayerRepo interface {
@@ -49,7 +48,7 @@ func (r SQLPlayerRepo) SelectById(id string) (Player, error) {
 func (r SQLPlayerRepo) SelectProfile(id string) (Profile, error) {
 	row := r.pool.QueryRow(selectProfile, id)
 	var p Profile
-	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.RatedGames, &p.EngineGames)
+	return p, row.Scan(&p.Name, &p.Rating, &p.CreatedAt, &p.Games)
 }
 
 func (r SQLPlayerRepo) SelectLeaderboard() ([]Profile, error) {
@@ -62,7 +61,7 @@ func (r SQLPlayerRepo) SelectLeaderboard() ([]Profile, error) {
 	leaders := make([]Profile, 0, 20)
 	for rows.Next() {
 		var p Profile
-		err = rows.Scan(&p.Id, &p.Name, &p.Rating, &p.CreatedAt, &p.RatedGames)
+		err = rows.Scan(&p.Id, &p.Name, &p.Rating, &p.CreatedAt, &p.Games)
 		if err != nil {
 			return nil, err
 		}
@@ -85,15 +84,11 @@ WHERE
 	P.NAME,
 	P.RATING,
 	P.CREATED_AT,
-	COUNT(R.GAME_ID) AS RATED_GAMES,
-	COUNT(E.GAME_ID) AS ENGINE_GAMES
+	COUNT(G.ID) AS GAMES
 FROM
 	PLAYER P
-	INNER JOIN RATED_GAME R ON (
-		R.WHITE_ID = P.ID
-		OR R.BLACK_ID = P.ID
-	)
-	INNER JOIN ENGINE_GAME E ON E.PLAYER_ID = P.ID
+	LEFT JOIN GAME G ON G.WHITE_ID = P.ID
+	OR G.BLACK_ID = P.ID
 WHERE
 	P.ID = $1
 GROUP BY
@@ -106,7 +101,7 @@ GROUP BY
 	P.NAME,
 	P.RATING,
 	P.CREATED_AT,
-	COUNT(G.ID) AS NUM_OF_GAMES
+	COUNT(G.ID) AS GAMES
 FROM
 	PLAYER P
 	LEFT JOIN GAME G ON G.WHITE_ID = P.ID
@@ -120,7 +115,7 @@ GROUP BY
 	P.CREATED_AT
 ORDER BY
 	P.RATING DESC,
-	NUM_OF_GAMES DESC
+	GAMES DESC
 LIMIT
 	100`
 )

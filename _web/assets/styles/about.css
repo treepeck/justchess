@@ -1,10 +1,10 @@
 .about-text {
-  width: 95%;
+  margin: auto;
 }
 .about-header {
   width: 100%;
   text-align: center;
-  margin: 20px 0 0 0;
+  margin: 10px 0 0 0;
   font-size: larger;
   font-weight: bold;
 }

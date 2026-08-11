@@ -1,4 +1,8 @@
-import { validateName, validateEmail, validatePassword } from "/assets/scripts/widget/form.js"
+import {
+	validateName,
+	validateEmail,
+	validatePassword,
+} from "/assets/scripts/widget/form.js"
 
 async function submitForm() {
 	// Close the confirmation dialog.
