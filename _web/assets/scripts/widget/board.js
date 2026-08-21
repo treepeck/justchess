@@ -1,6 +1,3 @@
-// TODO: render an arrow which will show the destination square of selected piece
-// while moving the pointer across the board.
-
 // import { Piece } from "/assets/scripts/chess/types.js"
 import { initPos, parseFen } from "/assets/scripts/chess/fen.js"
 
@@ -60,7 +57,9 @@ export class Board {
 
 		// If some piece is already selected.
 		// NOTE: do it before reseting the selection.
-		const selectedPieceDiv = this.boardBox.querySelector(".board-piece.selected")
+		const selectedPieceDiv = this.boardBox.querySelector(
+			".board-piece.selected",
+		)
 
 		this.unselect()
 
@@ -69,33 +68,25 @@ export class Board {
 		const square = parseInt(squareDiv.style.getPropertyValue("--square"))
 
 		if (selectedPieceDiv) {
-			// TODO: validate the move.
 			// Perform the move.
-			const pieceSquare = parseInt(selectedPieceDiv.style.getPropertyValue("--square"))
-			const piece = this.position.pieces.get(pieceSquare)
-
-			this.position.pieces.delete(pieceSquare)
-			this.position.pieces.set(piece, square)
-
-			this.translate(selectedPieceDiv, square)
+			// TODO: validate the move.
+			const from = parseInt(
+				selectedPieceDiv.style.getPropertyValue("--square"),
+			)
+			this.makeMove(selectedPieceDiv, {
+				to: square,
+				from: from,
+			})
+			return
 		}
 
 		// If no valid piece of player's color was selected, simply return.
 		const piece = this.position.pieces.get(square)
-		if (piece == undefined || piece % 2 !== this.color) return
+		if (piece === undefined || piece % 2 !== this.color) return
 
-		// Find the clicked piece element.
-		for (const pieceDiv of this.boardBox.querySelectorAll(".board-piece")) {
-			const pieceSquare = parseInt(pieceDiv.style.getPropertyValue("--square"))
-			if (pieceSquare == square) {
-				squareDiv.classList.add("selected")
-				pieceDiv.classList.add("selected")
-				return
-			} else {
-				continue
-			}
-		}
-		throw new Error("piece element not found on board")
+		const pieceDiv = this.findPieceDivOnSquare(square)
+		squareDiv.classList.add("selected")
+		pieceDiv.classList.add("selected")
 	}
 
 	/**
@@ -130,6 +121,46 @@ export class Board {
 		element.style.setProperty("--square", `${square}`)
 		element.style.setProperty("--x", `${x}px`)
 		element.style.setProperty("--y", `${y}px`)
+	}
+
+	/**
+	 * It's the caller's responsibility to validate the provided move.
+	 * @param {HTMLDivElement} pieceDiv
+	 * @param {import("/assets/scripts/chess/types.js").Move} move
+	 */
+	makeMove(pieceDiv, move) {
+		const piece = this.position.pieces.get(move.from)
+		// Delete the captured piece.
+		const captured = this.position.pieces.get(move.to)
+		if (captured) {
+			const capturedDiv = this.findPieceDivOnSquare(move.to)
+			this.boardBox.removeChild(capturedDiv)
+			this.position.pieces.delete(move.to)
+		}
+		// Perform the move.
+		this.position.pieces.delete(move.from)
+		this.position.pieces.set(move.to, piece)
+		// Translate the piece.
+		this.translate(pieceDiv, move.to)
+	}
+
+	/**
+	 * Returns piece element from square index.
+	 * @param {number} square
+	 * @returns {HTMLDivElement}
+	 */
+	findPieceDivOnSquare(square) {
+		for (const pieceDiv of this.boardBox.querySelectorAll(".board-piece")) {
+			const pieceSquare = parseInt(
+				pieceDiv.style.getPropertyValue("--square"),
+			)
+			if (pieceSquare === square) {
+				return pieceDiv
+			} else {
+				continue
+			}
+		}
+		throw new Error("piece not found")
 	}
 
 	/**
@@ -192,6 +223,11 @@ export class Board {
 		)) {
 			selected.classList.remove("selected")
 		}
+		for (const selected of this.front.querySelectorAll(
+			".board-square.highlighted",
+		)) {
+			selected.classList.remove("highlighted")
+		}
 		for (const selected of this.boardBox.querySelectorAll(
 			".board-piece.selected",
 		)) {
@@ -210,6 +246,14 @@ export class Board {
 					element.style.getPropertyValue("--square"),
 				)
 				this.translate(element, square)
+			}
+			for (const piece of this.boardBox.querySelectorAll(
+				".board-piece",
+			)) {
+				const square = parseInt(
+					piece.style.getPropertyValue("--square"),
+				)
+				this.translate(piece, square)
 			}
 		})
 		observer.observe(this.front)

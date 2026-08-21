@@ -5,7 +5,7 @@
   --lateral-size: calc(var(--size) / 20);
   /* Used for translateZ of 3d elements. */
   --depth: calc(var(--lateral-size) / 2 - 1px);
-  --dragged-piece-depth: calc(var(--lateral-size) / 2 + 60px);
+  --selected-piece-depth: calc(var(--lateral-size) / 2 + 60px);
   /* Used for translateZ of left, right, top, and bottom faces. */
   --lateral-depth: calc(var(--size) / 2);
   /* Variables below are calculated based on the source background image resolution - 1200x1200 px.
@@ -22,7 +22,7 @@
   width: var(--size);
   height: var(--size);
   margin: 20px auto 50px auto;
-  perspective: 2000px;
+  perspective: 1500px;
   user-select: none;
 }
 #boardBox {
@@ -31,15 +31,10 @@
   cursor: pointer;
   position: relative;
   transform-style: preserve-3d;
-  transform: rotate3d(1, 0, 0, 35deg);
-  transition: transform 5s;
+  transform: rotateX(15deg);
+  animation: board-anim 5s linear;
+  transition: transform 5s ease-in-out;
 }
-/*
-.board-box:hover {
-  transform: rotate3d(1, 0, 0, 395deg);
-  transition: transform 5s;
-}
-*/
 .board-box-face {
   position: absolute;
   background-size: var(--background) var(--background);
@@ -102,19 +97,23 @@
   margin: 7% 0 0 2px;
   pointer-events: none;
 }
-.board-square:hover {
-  background-color: green;
-}
 .board-square.selected {
   background-color: gold;
 }
-.board-square.highlighted {
-  background-color: var(--wrap-foreground);
+.board-square.highlighted::before {
+  content: "";
+  position: absolute;
+  top: 5%;
+  left: 5%;
+  height: 90%;
+  width: 90%;
+  border: 5px solid green;
+  border-radius: 50%;
 }
 .board-piece {
+  top: -16.796875%;
   width: 12.5%;
   height: 29.296875%;
-  top: -16.796875%;
   position: absolute;
   font-size: smaller;
   z-index: 30;
@@ -127,7 +126,9 @@
   background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
 }
 .board-piece.selected {
-  transform: translateX(var(--x)) translateY(var(--y)) translateZ(var(--dragged-piece-depth));
+  z-index: 40;
+  transform: translateX(var(--x)) translateY(var(--y))
+    translateZ(var(--selected-piece-depth));
 }
 /* White pawn. */
 .board-piece.P {
@@ -203,5 +204,20 @@
   }
   .board-file {
     margin: 8% 0 0 5px;
+  }
+}
+
+/* TODO: better naming? */
+@keyframes board-anim {
+  0% {
+    transform: rotateX(240deg) rotateY(240deg) translateX(175%) translateY(175%);
+  }
+
+  50% {
+    transform: rotateX(90deg) rotateY(90deg) translateX(95%) translateY(95%);
+  }
+
+  100% {
+    transform: rotateX(15deg) rotateY(0deg) translateX(0) translateY(0);
   }
 }

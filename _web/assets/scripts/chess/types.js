@@ -51,6 +51,27 @@ export const MoveType = {
 }
 
 /**
+ * @typedef {Object} Move
+ * @property {number} to - Destination square index.
+ * @property {number} from - Source square index.
+ * @property {PromotionFlag} promoPiece
+ * @property {MoveType} moveType
+ */
+
+/**
+ * @param {number} raw
+ * @returns {Move}
+ */
+export function decodeMove(raw) {
+	return {
+		to: raw & 0x3f,
+		from: (raw >> 6) & 0x3f,
+		promoPiece: (raw >> 12) & 0x3,
+		moveType: (raw >> 14) & 0x3,
+	}
+}
+
+/**
  * @readonly
  * @enum {number}
  */
