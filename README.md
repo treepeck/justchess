@@ -17,6 +17,14 @@ Chess rules implemented in [chego](https://github.com/treepeck/chego).
 Don't clone this repository directly, clone the [umbrella](https://github.com/treepeck/judo) repository
 instead.
 
+## AI Policy
+
+JustChess is written in educational purposes. The code must be clean and understandable for programmers
+with different levels of experience. That's why minimal amount of dependencies and abstractions are
+involved. Each line of code including the documentation is written by hand without any LLM usage.
+
+No LLMs for issues, patches, and pull requests.
+
 ## License
 
 Copyright (c) 2024-2026 Artem Bielikov
