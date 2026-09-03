@@ -61,5 +61,5 @@ func main() {
 	webService.RegisterRoutes(authService, mux)
 
 	log.Print("Starting server.")
-	log.Panic(http.ListenAndServeTLS(":443", "cert.pem", "key.pem", security.Headers(mux)))
+	log.Panic(http.ListenAndServe(":3502", mux))
 }
