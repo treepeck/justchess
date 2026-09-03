@@ -1,24 +1,35 @@
 <!--{
-	"title": "About"
+	"title": "About",
+	"style": "about.css"
 }-->
 
 {{ define "content" }}
-<h1><b>JustChess.org</b></h1>
+<h1 class="content-header">About JustChess.org</h1>
 
-<p><b>A multiplayer chess server started in 2024 by Artem Bielikov</b></p>
+<div class="about-text">
+	<div class="about-header">A multiplayer chess server started in 2024 by Artem Bielikov</div>
 
-<h3>Features:</h3>
-<ul>
-  <li>Match history</li>
-  <li>Glicko-2 rating system</li>
-  <li>Skill-based matchmaking</li>
-  <li>Multiple concurrent games</li>
-</ul>
+	<h3 class="content-section-header">Features:</h3>
+	<ul class="content-list">
+		<li>Match history</li>
+		<li>Concurrent matches</li>
+		<li>Glicko-2 rating system</li>
+		<li>Skill-based matchmaking</li>
+	</ul>
 
-<h3>License:</h3>
-<ul>
-  <li>Source code is licensed under <a href="http://mozilla.org/MPL/2.0/">MPL 2.0</a></li>
-  <li><a href="https://stockfishchess.org/">Stockfish</a> chess engine used under <a href="https://github.com/official-stockfish/Stockfish?tab=readme-ov-file#terms-of-use">GNU GPL v3</a></li>
-  <li><a href="https://github.com/canonical/Ubuntu-Sans-fonts">Ubuntu Fonts</a> used under <a href="https://canonical.com/legal/font-licence">UBUNTU FONT LICENCE Version 1.0</a></li>
-</ul>
+	<h3 class="content-section-header">Development:</h3>
+	<ul class="content-list">
+		<li>Broadcasted on <a href="https://www.youtube.com/@treepeck">YouTube</a></li>
+		<li><a href="/releases">"Releases"</a> page contains patch notes</li>
+		<li><a href="https://github.com/treepeck/justchess">GitHub</a> and <a href="mailto:support@justchess.org">mailing</a> are used to track bugs and feedback</li>
+	</ul>
+
+	<h3 class="content-section-header">License:</h3>
+	<ul class="content-list">
+		<li>Source code is licensed under <a href="http://mozilla.org/MPL/2.0/">MPL 2.0</a></li>
+		<li><a href="https://stockfishchess.org/">Stockfish</a> chess engine used under <a href="https://github.com/official-stockfish/Stockfish?tab=readme-ov-file#terms-of-use">GNU GPL v3</a></li>
+		<li><a href="https://github.com/canonical/Ubuntu-Sans-fonts">Ubuntu fonts</a> used under <a href="https://canonical.com/legal/font-licence">UBUNTU FONT LICENCE Version 1.0</a></li>
+		<li><a href="https://github.com/treepeck/justchess/tree/main/_web/assets/fonts">JustChess fonts</a>, <a href="https://github.com/treepeck/justchess/tree/main/_web/assets/images">images</a>, and <a href="https://github.com/treepeck/justchess/tree/main/_web/assets/sounds">sounds</a> are licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en">CC BY-NC-ND 4.0</a></li>
+	</ul>
+</div>
 {{ end }}

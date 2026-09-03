@@ -1,49 +1,37 @@
-package mm
+package matchmaking
 
-type nodeKey struct {
-	playerId string
-	rating   float64
-	// Max allowed rating gap between players.
-	maxGap float64
-}
-
-// redBlackNode represents the Red-Black Tree node.
-type redBlackNode struct {
-	parent *redBlackNode
-	left   *redBlackNode
-	right  *redBlackNode
-	key    nodeKey
-	isRed  bool
-}
-
-// Red-Black Tree satisfies the following properties:
+// redBlackTree implements the Red-Black Tree data structure described in
+// "Introduction to Algorithms 3rd Edition" by Cormen et al.
 //
-//   - Every node is either red or black;
-//   - The root is black;
-//   - The leaf node is black;
-//   - If a node is red, both its children are black;
-//   - For each node, all simple paths from the node to descendant leaves
-//     contain the same number of black nodes.
+// It is used by the matchmaking algorithm because it allows player MMRs to be
+// stored in sorted order while supporting efficient lookups.
+//
+// TODO: The main downside of a Red-Black Tree is poor concurrent performance.
+// It may be better to use the SyncList data structure instead.
 type redBlackTree struct {
-	root *redBlackNode
-	leaf *redBlackNode
-	// Number of nodes excluding leafs.
-	size int
+	root, leaf *node
 }
 
-func newRedBlackTree() *redBlackTree {
-	leaf := &redBlackNode{isRed: false}
-	return &redBlackTree{root: leaf, leaf: leaf}
+type node struct {
+	parent, left, right *node
+	id                  string
+	mmr                 float64
+	// Max allowed MMR gap. See package documentation for more details.
+	maxGap float64
+	// isRed is used to maintain the Red-Black Tree properties.
+	isRed bool
 }
 
-// Inserts the node and fixes any violations of the Red-Black Tree properties.
-func (t *redBlackTree) insertNode(z *redBlackNode) {
+func newRedBlackTree() *redBlackTree { leaf := &node{}; return &redBlackTree{root: leaf, leaf: leaf} }
+
+// insert inserts the [node] and fixes any violations of the Red-Black Tree properties.
+func (t *redBlackTree) insert(z *node) {
 	y := t.leaf
 	x := t.root
 
 	for x != t.leaf {
 		y = x
-		if z.key.rating < x.key.rating {
+		if z.mmr < x.mmr {
 			x = x.left
 		} else {
 			x = x.right
@@ -53,20 +41,18 @@ func (t *redBlackTree) insertNode(z *redBlackNode) {
 	z.parent = y
 	if y == t.leaf {
 		t.root = z
-	} else if z.key.rating < y.key.rating {
+	} else if z.mmr < y.mmr {
 		y.left = z
 	} else {
 		y.right = z
 	}
 
 	t.fixInsert(z)
-
-	t.size++
 }
 
-// Removes the node and fixes any violations of the Red-Black Tree properties.
-func (t *redBlackTree) removeNode(z *redBlackNode) {
-	var x *redBlackNode
+// remove removes the [node] and fixes any violations of the Red-Black Tree properties.
+func (t *redBlackTree) remove(z *node) {
+	var x *node
 
 	y := z
 	wasRed := y.isRed
@@ -99,37 +85,9 @@ func (t *redBlackTree) removeNode(z *redBlackNode) {
 	if !wasRed {
 		t.fixRemove(x)
 	}
-
-	t.size--
 }
 
-func search(n *redBlackNode, rating float64, playerId string) *redBlackNode {
-	// While n is not leaf.
-	for n.left != nil && n.right != nil {
-		if n.key.rating > rating {
-			n = n.left
-		} else if n.key.rating < rating {
-			n = n.right
-		} else if n.key.playerId == playerId {
-			return n
-		} else {
-			right := search(n.right, rating, playerId)
-			if right != nil {
-				return right
-			}
-			left := search(n.left, rating, playerId)
-			if left != nil {
-				return left
-			}
-			break
-		}
-	}
-	return nil
-}
-
-// Fixes any violations of the Red-Black Tree properties which occurs after
-// insertion of the node.
-func (t *redBlackTree) fixInsert(z *redBlackNode) {
+func (t *redBlackTree) fixInsert(z *node) {
 	for z.parent.isRed {
 		if z.parent == z.parent.parent.left {
 			uncle := z.parent.parent.right
@@ -182,9 +140,7 @@ func (t *redBlackTree) fixInsert(z *redBlackNode) {
 	t.root.isRed = false
 }
 
-// Fixes any violations of the Red-Black Tree properties which occurs after
-// deletion of the node.
-func (t *redBlackTree) fixRemove(x *redBlackNode) {
+func (t *redBlackTree) fixRemove(x *node) {
 	for x != t.root && !x.isRed {
 		if x == x.parent.left {
 			sibling := x.parent.right
@@ -266,20 +222,20 @@ func (t *redBlackTree) fixRemove(x *redBlackNode) {
 //
 // Before:
 //
-//			       (x)
-//	              /   \
-//	             a    (y)
-//	                 /   \
-//		            b     g
+//			(x)
+//	       /   \
+//	      a    (y)
+//	          /   \
+//	     	 b     g
 //
 // After:
 //
-//			       (y)
-//	              /   \
-//	            (x)    g
-//	           /   \
-//		      a     b
-func (t *redBlackTree) rotateLeft(x *redBlackNode) {
+//		    (y)
+//	       /   \
+//	     (x)    g
+//	    /   \
+//	   a     b
+func (t *redBlackTree) rotateLeft(x *node) {
 	y := x.right
 
 	// Turn x's right subtree into y's left subtree.
@@ -309,20 +265,20 @@ func (t *redBlackTree) rotateLeft(x *redBlackNode) {
 //
 // Before:
 //
-//			       (x)
-//	              /   \
-//	            (y)    g
-//	           /   \
-//		      a     b
+//	     (x)
+//	    /   \
+//	  (y)    g
+//	 /   \
+//	a     b
 //
 // After:
 //
-//			       (y)
-//	              /   \
-//	             a    (x)
-//	                 /   \
-//		            b     g
-func (t *redBlackTree) rotateRight(x *redBlackNode) {
+//	  (y)
+//	 /   \
+//	a    (x)
+//	    /   \
+//	   b     g
+func (t *redBlackTree) rotateRight(x *node) {
 	y := x.left
 
 	// Turn x's left subtree into y's right subtree.
@@ -348,7 +304,7 @@ func (t *redBlackTree) rotateRight(x *redBlackNode) {
 }
 
 // Finds the node with the biggest value in the specified tree.
-func (t *redBlackTree) findMax(z *redBlackNode) *redBlackNode {
+func (t *redBlackTree) findMax(z *node) *node {
 	for z.right != t.leaf {
 		z = z.right
 	}
@@ -356,7 +312,7 @@ func (t *redBlackTree) findMax(z *redBlackNode) *redBlackNode {
 }
 
 // Finds the node with the smallest value in the specified tree.
-func (t *redBlackTree) findMin(z *redBlackNode) *redBlackNode {
+func (t *redBlackTree) findMin(z *node) *node {
 	for z.left != t.leaf {
 		z = z.left
 	}
@@ -364,14 +320,14 @@ func (t *redBlackTree) findMin(z *redBlackNode) *redBlackNode {
 }
 
 // Recolors nodes to resolve the cases 1 and 4 of the [fixInsert] function.
-func recolor(z, uncle *redBlackNode) {
+func recolor(z, uncle *node) {
 	z.parent.isRed = false
 	uncle.isRed = false
 	z.parent.parent.isRed = true
 }
 
 // Copies v into u's position.
-func (t *redBlackTree) transplant(u, v *redBlackNode) {
+func (t *redBlackTree) transplant(u, v *node) {
 	if u.parent == t.leaf {
 		t.root = v
 	} else if u == u.parent.left {
@@ -383,12 +339,39 @@ func (t *redBlackTree) transplant(u, v *redBlackNode) {
 }
 
 // creates a new node with specified value and default fields.
-func (t *redBlackTree) spawn(rating float64, playerId string) *redBlackNode {
-	return &redBlackNode{
-		key:    nodeKey{rating: rating, playerId: playerId, maxGap: defaultMaxGap},
+func (t *redBlackTree) spawn(mmr float64, id string) *node {
+	return &node{
+		mmr:    mmr,
+		id:     id,
+		maxGap: DefaultMaxGap,
 		isRed:  true,
 		parent: t.leaf,
 		left:   t.leaf,
 		right:  t.leaf,
 	}
+}
+
+// search searches for the [node] in the subtree.
+func search(n *node, mmr float64, id string) *node {
+	// While n is not leaf.
+	for n.left != nil && n.right != nil {
+		if n.mmr > mmr {
+			n = n.left
+		} else if n.mmr < mmr {
+			n = n.right
+		} else if n.id == id {
+			return n
+		} else {
+			right := search(n.right, mmr, id)
+			if right != nil {
+				return right
+			}
+			left := search(n.left, mmr, id)
+			if left != nil {
+				return left
+			}
+			break
+		}
+	}
+	return nil
 }

@@ -2,51 +2,17 @@ package db
 
 import (
 	"database/sql"
-	"log"
+	"justchess/internal/compression"
 	"time"
-
-	"github.com/treepeck/chego"
 )
 
-// RatedGame represents the state of a single rated game.
-type RatedGame struct {
-	White       Player
-	Black       Player
-	Moves       []chego.PlayedMove
-	TimeDiffs   []int
-	Id          string
-	MovesLength int
-	Control     int
-	Bonus       int
-	Result      chego.Result
-	Termination chego.Termination
-}
-
-// RatedGameBrief represents a brief rated game description to fill up
-// the player profile page with game history.
-type RatedGameBrief struct {
-	CreatedAt   time.Time         `json:"c"`
-	Id          string            `json:"i"`
-	WhiteName   string            `json:"w"`
-	WhiteId     string            `json:"wi"`
-	BlackName   string            `json:"b"`
-	BlackId     string            `json:"bi"`
-	Result      chego.Result      `json:"r"`
-	Termination chego.Termination `json:"t"`
-	MovesLength int               `json:"m"`
-	Control     int               `json:"ctl"`
-	Bonus       int               `json:"bns"`
-}
-
-// RatedGameUpdate is used to update the rated game entity in database.
-type RatedGameUpdate struct {
-	EncodedMoves    []byte
-	CompressedDiffs []byte
-	Id              string
-	Result          chego.Result
-	Termination     chego.Termination
-	MovesLength     int
-}
+const (
+	EasyStockfishId       string = "9W2yEWc2B8yE"
+	MediumStockfishId     string = "qaCrtP1_C5qe"
+	HardStockfishId       string = "2mHgm-6Jzwt4"
+	InsaneStockfishId     string = "dnFoiSQXqwAR"
+	ImpossibleStockfishId string = "ORZAsZ5MlE6c"
+)
 
 // EngineDifficulty represents the skill level of engine.
 type EngineDifficulty int
@@ -59,406 +25,256 @@ const (
 	Impossible
 )
 
-// EngineGame represents the state of a single game played vs engine.
-type EngineGame struct {
-	Player      Player
-	Moves       []chego.PlayedMove
-	Id          string
-	PlayerColor chego.Color
-	Result      chego.Result
-	Termination chego.Termination
-	Difficulty  EngineDifficulty
-	MovesLength int
+// Result represents the possible outcomes of a chess game.
+type Result int
+
+const (
+	Unknown Result = iota
+	WhiteWon
+	BlackWon
+	Draw
+)
+
+// Termination represents the reason for the conclusion of the game.  While the
+// [Result] types gives the result of the game, it does not provide any extra
+// information and so the Termination type is defined for this purpose.
+type Termination int
+
+const (
+	Unterminated Termination = iota
+	Abandoned
+	Checkmate
+	Stalemate
+	InsufficientMaterial
+	FiftyMoves
+	ThreefoldRepetition
+	Resignation
+	Agreement
+	TimeForfeit
+)
+
+// OptionalPlayer is used to handle possible null players in game tables.
+// Guest players are not stored in db even though they can play games.
+type OptionalPlayer struct {
+	Id     sql.Null[string]
+	Name   sql.Null[string]
+	Rating sql.Null[float64]
 }
 
-// EngineGameBrief represents a brief engine game description to fill up
-// the player profile page with game history.
-type EngineGameBrief struct {
-	CreatedAt   time.Time         `json:"c"`
-	Id          string            `json:"i"`
-	Result      chego.Result      `json:"r"`
-	Termination chego.Termination `json:"t"`
-	PlayerColor chego.Color       `json:"pc"`
-	Difficulty  EngineDifficulty  `json:"d"`
-	MovesLength int               `json:"m"`
+type Game struct {
+	White       Player             `json:"w"`
+	Black       Player             `json:"b"`
+	CreatedAt   time.Time          `json:"c"`
+	Moves       []compression.Move `json:"m,omitempty"`
+	TimeDiffs   []int              `json:"td,omitempty"`
+	Id          string             `json:"id"`
+	MovesLength int                `json:"ml"`
+	Result      Result             `json:"r"`
+	Termination Termination        `json:"t"`
+	TimeControl int                `json:"tc,omitempty"`
+	TimeBonus   int                `json:"tb,omitempty"`
 }
 
-// RatedGameUpdate is used to update the engine game entity in database.
-type EngineGameUpdate struct {
-	EncodedMoves []byte
-	Id           string
-	Result       chego.Result
-	Termination  chego.Termination
-	MovesLength  int
-}
-
-// Pagination is used to skip certain amount of game records without use of slow
-// OFFSET SQL statement. Can be used for all kinds of games.
+// Pagination is used to skip certain amount of game records without using slow
+// OFFSET SQL statement. It can be used for all kinds of games.
 type Pagination struct {
 	CursorCreatedAt time.Time `json:"cca"`
 	CursorId        string    `json:"cid"`
 }
 
-// GameRepo provides access to game data.
-// SelectOlder* is same as SelectNewest* but applies pagination.
 type GameRepo interface {
-	InsertRated(id, whiteId, blackId string, control, bonus int) error
-	SelectRated(id string) (RatedGame, error)
-	SelectNewestRated(id string) ([]RatedGameBrief, error)
-	SelectOlderRated(id string, p Pagination) ([]RatedGameBrief, error)
-	UpdateRated(gu RatedGameUpdate) error
-	MarkRatedAsAbandoned(id string) error
-
-	InsertEngine(id, playerId string, c chego.Color, d EngineDifficulty) error
-	SelectEngine(id string) (EngineGame, error)
-	SelectNewestEngine(id string) ([]EngineGameBrief, error)
-	SelectOlderEngine(id string, p Pagination) ([]EngineGameBrief, error)
-	UpdateEngine(gu EngineGameUpdate) error
-	MarkEngineAsAbandoned(id string) error
+	Insert(g Game) error
+	// SelectById selects full [Game] information by named id.
+	SelectById(id string) (Game, error)
+	// SelectByPlayerId selects brief information about [Game]s in which the
+	// player with named id took part.
+	SelectByPlayerId(id string, p *Pagination) ([]Game, error)
 }
 
-// SQLGameRepo wraps the SQL database handle and implements [GameRepo].
 type SQLGameRepo struct {
 	pool *sql.DB
 }
 
-func NewSQLGameRepo(p *sql.DB) SQLGameRepo { return SQLGameRepo{pool: p} }
+func NewSQLGameRepo(p *sql.DB) SQLGameRepo {
+	return SQLGameRepo{pool: p}
+}
 
-func (r SQLGameRepo) InsertRated(id, whiteId, blackId string, control, bonus int) error {
-	_, err := r.pool.Exec(insertRated, id, whiteId, blackId, control, bonus)
+func (r SQLGameRepo) Insert(g Game) error {
+	var wid, bid *string
+	if g.White.Id != "" {
+		wid = &g.White.Id
+	}
+	if g.Black.Id != "" {
+		wid = &g.Black.Id
+	}
+	_, err := r.pool.Exec(insertGame, g.Id, wid, bid, g.TimeControl, g.TimeBonus)
 	return err
 }
 
-func (r SQLGameRepo) SelectRated(id string) (RatedGame, error) {
-	row := r.pool.QueryRow(selectRated, id)
+func (r SQLGameRepo) SelectById(id string) (Game, error) {
+	row := r.pool.QueryRow(selectGameById, id)
 
-	var g RatedGame
-	var encoded, compressed []byte
+	var g Game
+	var w, b OptionalPlayer
+	var moves, diffs []byte
 	if err := row.Scan(
-		// Scan white player.
-		&g.White.Id, &g.White.Name, &g.White.Rating,
-		&g.White.Deviation, &g.White.Volatility,
-		// Scan black player.
-		&g.Black.Id, &g.Black.Name, &g.Black.Rating,
-		&g.Black.Deviation, &g.Black.Volatility,
-		// Scan game data.
-		&g.Id, &g.Control, &g.Bonus, &g.Result, &g.MovesLength,
-		&encoded, &g.Termination, &compressed,
+		&g.Id, &moves, &g.MovesLength, &diffs,
+		&g.TimeControl, &g.TimeBonus, &g.Result,
+		&g.Termination, &g.CreatedAt, &w.Id,
+		&w.Name, &w.Rating, &b.Id, &b.Name, &b.Rating,
 	); err != nil {
-		return g, err
+		return Game{}, err
 	}
 
-	// Decode moves and time diffs if the game has been terminated.
-	if g.Termination != chego.Unterminated {
-		g.Moves = chego.HuffmanDecoding(encoded, g.MovesLength)
-		g.TimeDiffs = chego.DecompressTimeDiffs(compressed, g.MovesLength)
+	if w.Id.Valid {
+		g.White = Player{Id: w.Id.V, Name: w.Name.V, Rating: w.Rating.V}
+	} else {
+		g.White = Player{Name: "Guest"}
 	}
-	return g, nil
-}
-
-func (r SQLGameRepo) SelectNewestRated(id string) ([]RatedGameBrief, error) {
-	rows, err := r.pool.Query(selectNewestRated, id, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	games := make([]RatedGameBrief, 0, 10)
-	for rows.Next() {
-		var g RatedGameBrief
-		if err = rows.Scan(
-			&g.WhiteName, &g.BlackName, &g.Result, &g.Termination,
-			&g.Control, &g.Bonus, &g.MovesLength, &g.CreatedAt, &g.Id,
-			&g.WhiteId, &g.BlackId,
-		); err != nil {
-			return nil, err
-		}
-		games = append(games, g)
-	}
-	return games, err
-}
-
-func (r SQLGameRepo) SelectOlderRated(id string, p Pagination) ([]RatedGameBrief, error) {
-	rows, err := r.pool.Query(
-		selectOlderRated, id, id, p.CursorCreatedAt,
-		p.CursorId, p.CursorCreatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	games := make([]RatedGameBrief, 0, 10)
-	for rows.Next() {
-		var g RatedGameBrief
-		if err = rows.Scan(
-			&g.WhiteName, &g.BlackName, &g.Result, &g.Termination,
-			&g.Control, &g.Bonus, &g.MovesLength, &g.CreatedAt, &g.Id,
-			&g.WhiteId, &g.BlackId,
-		); err != nil {
-			log.Print(err)
-			return nil, err
-		}
-		games = append(games, g)
-	}
-	return games, err
-}
-
-func (r SQLGameRepo) UpdateRated(gu RatedGameUpdate) error {
-	_, err := r.pool.Exec(
-		updateRated, gu.Result, gu.Termination, gu.MovesLength,
-		gu.EncodedMoves, gu.CompressedDiffs, gu.Id,
-	)
-	return err
-}
-
-func (r SQLGameRepo) MarkRatedAsAbandoned(id string) error {
-	_, err := r.pool.Exec(markRatedAsAbandoned, id)
-	return err
-}
-
-func (r SQLGameRepo) InsertEngine(id, playerId string, c chego.Color,
-	d EngineDifficulty) error {
-	_, err := r.pool.Exec(insertEngine, id, playerId, c, d)
-	return err
-}
-
-func (r SQLGameRepo) SelectEngine(id string) (EngineGame, error) {
-	row := r.pool.QueryRow(selectEngine, id)
-
-	var g EngineGame
-	var encoded []byte
-	err := row.Scan(
-		&g.Player.Id, &g.Player.Name, &g.Player.Rating,
-		&g.Player.Deviation, &g.Player.Volatility,
-		&g.Id, &g.Result, &g.Termination, &g.MovesLength,
-		&encoded, &g.PlayerColor, &g.Difficulty,
-	)
-	if err != nil {
-		return g, err
+	if w.Id.Valid {
+		g.Black = Player{Id: b.Id.V, Name: b.Name.V, Rating: b.Rating.V}
+	} else {
+		g.Black = Player{Name: "Guest"}
 	}
 
-	// Decode moves if the game has been terminated.
-	if g.Termination != chego.Unterminated {
-		g.Moves = chego.HuffmanDecoding(encoded, g.MovesLength)
+	if g.Termination != Unterminated {
+		g.Moves = compression.HuffmanDecoding(moves, g.MovesLength)
+		g.TimeDiffs = compression.DecompressTimeDiffs(diffs, g.MovesLength)
 	}
 	return g, nil
 }
 
-func (r SQLGameRepo) SelectNewestEngine(id string) ([]EngineGameBrief, error) {
-	rows, err := r.pool.Query(selectNewestEngine, id)
+func (r SQLGameRepo) SelectByPlayerId(id string, p *Pagination) ([]Game, error) {
+	var rows *sql.Rows
+	var err error
+	if p == nil {
+		rows, err = r.pool.Query(selectGameByPlayerId, id)
+	} else {
+		rows, err = r.pool.Query(selectGameByPlayerIdPagination, id, p.CursorId, p.CursorCreatedAt)
+	}
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	games := make([]EngineGameBrief, 0, 10)
+	games := make([]Game, 0, 10)
 	for rows.Next() {
-		var g EngineGameBrief
-		if err = rows.Scan(
-			&g.Id, &g.Result, &g.Termination, &g.MovesLength,
-			&g.CreatedAt, &g.PlayerColor, &g.Difficulty,
+		var g Game
+		var w, b OptionalPlayer
+		if err := rows.Scan(
+			&g.Id, &g.MovesLength, &g.TimeControl,
+			&g.TimeBonus, &g.Result, &g.Termination,
+			&g.CreatedAt, &w.Id, &w.Name, &w.Rating,
+			&b.Id, &b.Name, &b.Rating,
 		); err != nil {
 			return nil, err
 		}
-		games = append(games, g)
-	}
-	return games, err
-}
-
-func (r SQLGameRepo) SelectOlderEngine(id string, p Pagination) ([]EngineGameBrief, error) {
-	rows, err := r.pool.Query(selectOlderEngine, id, p.CursorCreatedAt, p.CursorId, p.CursorCreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	games := make([]EngineGameBrief, 0, 10)
-	for rows.Next() {
-		var g EngineGameBrief
-		if err = rows.Scan(
-			&g.Id, &g.Result, &g.Termination, &g.MovesLength,
-			&g.CreatedAt, &g.PlayerColor, &g.Difficulty,
-		); err != nil {
-			return nil, err
+		if w.Id.Valid {
+			g.White = Player{Id: w.Id.V, Name: w.Name.V, Rating: w.Rating.V}
+		} else {
+			g.White = Player{Name: "Guest"}
+		}
+		if w.Id.Valid {
+			g.Black = Player{Id: b.Id.V, Name: b.Name.V, Rating: b.Rating.V}
+		} else {
+			g.Black = Player{Name: "Guest"}
 		}
 		games = append(games, g)
 	}
-	return games, err
-}
-
-func (r SQLGameRepo) UpdateEngine(gu EngineGameUpdate) error {
-	_, err := r.pool.Exec(
-		updateEngine, gu.Result, gu.Termination,
-		gu.MovesLength, gu.EncodedMoves, gu.Id,
-	)
-	return err
-}
-
-func (r SQLGameRepo) MarkEngineAsAbandoned(id string) error {
-	_, err := r.pool.Exec(markEngineAsAbandoned, id)
-	return err
+	return games, nil
 }
 
 const (
-	insertRated = `
-	INSERT INTO rated_game (
-		id,
-		white_id,
-		black_id,
-		time_control,
-		time_bonus
+	insertGame = `INSERT INTO
+	GAME (ID, WHITE_ID, BLACK_ID, TIME_CONTROL, TIME_BONUS)
+VALUES
+	($1, $2, $3)`
+
+	selectGameById = `SELECT
+	G.ID,
+	G.MOVES,
+	G.MOVES_LENGTH,
+	G.TIME_DIFFERENCES,
+	G.TIME_CONTROL,
+	G.TIME_BONUS,
+	G.RESULT,
+	G.TERMINATION,
+	G.CREATED_AT,
+	W.ID,
+	W.NAME,
+	W.RATING,
+	B.ID,
+	B.NAME,
+	B.RATING
+FROM
+	GAME G
+	LEFT JOIN PLAYER W ON G.WHITE_ID = W.ID
+	LEFT JOIN PLAYER B ON G.BLACK_ID = B.ID
+WHERE
+	G.ID = $1`
+
+	selectGameByPlayerId = `SELECT
+	G.ID,
+	G.MOVES_LENGTH,
+	G.TIME_CONTROL,
+	G.TIME_BONUS,
+	G.RESULT,
+	G.TERMINATION,
+	G.CREATED_AT,
+	W.ID,
+	W.NAME,
+	W.RATING,
+	B.ID,
+	B.NAME,
+	B.RATING
+FROM
+	GAME G
+	LEFT JOIN PLAYER W ON G.WHITE_ID = W.ID
+	LEFT JOIN PLAYER B ON G.BLACK_ID = B.ID
+WHERE
+	(
+		G.WHITE_ID = $1
+		OR G.BLACK_ID = $1
 	)
-	VALUES (?, ?, ?, ?, ?)`
+ORDER BY
+	G.CREATED_AT DESC,
+	G.ID DESC
+LIMIT
+	100`
 
-	selectRated = `
-	SELECT
-		w.id AS w_id,
-		w.name AS w_name,
-		w.rating AS w_rating,
-		w.rating_deviation AS w_rating_deviation,
-		w.rating_volatility AS w_rating_volatility,
-
-		b.id AS b_id,
-		b.name AS b_name,
-		b.rating AS b_rating,
-		b.rating_deviation AS b_rating_deviation,
-		b.rating_volatility AS b_rating_volatility,
-
-		g.id,
-		g.time_control,
-		g.time_bonus,
-		g.result,
-		g.moves_length,
-		g.moves,
-		g.termination,
-		g.time_differences
-	FROM rated_game g
-	INNER JOIN player w ON g.white_id = w.id
-	INNER JOIN player b ON g.black_id = b.id
-	WHERE g.id = ? AND g.termination != 1`
-
-	selectNewestRated = `
-	SELECT
-		w.name AS w_name,
-		b.name AS b_name,
-	    g.result,
-	    g.termination,
-	    g.time_control,
-   	    g.time_bonus,
-	    g.moves_length,
-	    g.created_at,
-	    g.id,
-		g.white_id,
-		g.black_id
-	FROM rated_game g
-	INNER JOIN player w ON g.white_id = w.id
-	INNER JOIN player b ON g.black_id = b.id
-	WHERE
-		(g.white_id = ? OR g.black_id = ?)
-	    AND g.termination != 1
-	ORDER BY g.created_at DESC, g.id DESC
-	LIMIT 100`
-
-	selectOlderRated = `
-	SELECT
-		w.name AS w_name,
-		b.name AS b_name,
-		g.result,
-		g.termination,
-		g.time_control,
-		g.time_bonus,
-		g.moves_length,
-		g.created_at,
-		g.id,
-		g.white_id,
-		g.black_id
-	FROM rated_game g
-	INNER JOIN player w ON g.white_id = w.id
-	INNER JOIN player b ON g.black_id = b.id
-	WHERE
-		(g.white_id = ? OR g.black_id = ?)
-		AND g.termination != 1
-		AND (
-			(g.created_at = ? AND g.id < ?)
-	        OR g.created_at < ?
-	    )
-	ORDER BY g.created_at DESC, g.id DESC
-	LIMIT 100`
-
-	updateRated = `
-	UPDATE rated_game
-	SET
-		result = ?,
-		termination = ?,
-		moves_length = ?,
-		moves = ?,
-		time_differences = ?,
-		updated_at = CURRENT_TIMESTAMP
-	WHERE id = ?`
-
-	markRatedAsAbandoned = `UPDATE rated_game SET termination = 1 WHERE id = ?`
-
-	insertEngine = `
-	INSERT INTO engine_game (
-		id,
-		player_id,
-		player_color,
-		difficulty
+	selectGameByPlayerIdPagination = `SELECT
+	G.ID,
+	G.MOVES_LENGTH,
+	G.TIME_CONTROL,
+	G.TIME_BONUS,
+	G.RESULT,
+	G.TERMINATION,
+	G.CREATED_AT,
+	W.ID,
+	W.NAME,
+	W.RATING,
+	B.ID,
+	B.NAME,
+	B.RATING
+FROM
+	GAME G
+	LEFT JOIN PLAYER W ON G.WHITE_ID = W.ID
+	LEFT JOIN PLAYER B ON G.BLACK_ID = B.ID
+WHERE
+	(
+		G.WHITE_ID = $1
+		OR G.BLACK_ID = $1
 	)
-	VALUES (?, ?, ?, ?)`
-
-	selectEngine = `
-	SELECT
-		p.id AS p_id,
-		p.name AS p_name,
-		p.rating AS p_rating,
-		p.rating_deviation AS p_rating_deviation,
-		p.rating_volatility AS p_rating_volatility,
-
-		g.id,
-		g.result,
-		g.termination,
-		g.moves_length,
-		g.moves,
-		g.player_color,
-		g.difficulty
-	FROM engine_game g
-	INNER JOIN player p ON g.player_id = p.id
-	WHERE g.id = ? AND g.termination != 1`
-
-	selectNewestEngine = `
-	SELECT
-		id, result, termination, moves_length, created_at, player_color,
-		difficulty
-	FROM engine_game
-	WHERE player_id = ? AND termination != 1
-	ORDER BY created_at DESC, id DESC
-	LIMIT 100`
-
-	selectOlderEngine = `
-	SELECT
-		id, result, termination, moves_length, created_at, player_color,
-		difficulty
-	FROM engine_game
-	WHERE
-		(player_id = ? AND termination != 1)
-		AND (
-			(created_at = ? AND id < ?)
-	        OR created_at < ?
-	    )
-	ORDER BY created_at DESC, id DESC
-	LIMIT 100`
-
-	updateEngine = `
-	UPDATE engine_game
-	SET
-		result = ?,
-		termination = ?,
-		moves_length = ?,
-		moves = ?,
-		updated_at = CURRENT_TIMESTAMP
-	WHERE id = ?`
-
-	markEngineAsAbandoned = `UPDATE engine_game SET termination = 1 WHERE id = ?`
+	AND (
+		(
+			G.CREATED_AT = $2
+			AND G.ID < $3
+		)
+		OR G.CREATED_AT < $2
+	)
+ORDER BY
+	G.CREATED_AT DESC,
+	G.ID DESC
+LIMIT
+	100`
 )

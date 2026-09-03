@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"html/template"
 	"log"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 
 	"justchess/internal/db"
 	"justchess/internal/randgen"
+	"justchess/internal/response"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,74 +26,29 @@ var (
 )
 
 const (
-	// Declaration of error messages.
-	msgUnauthorized    string = "Invalid credentials"
-	msgBadRequest      string = "Malformed request body"
-	msgConflict        string = "Not unique username or email"
-	msgTokenMissing    string = "Token not found"
-	msgTokenConflict   string = "You already have a pending token"
-	msgCannotHash      string = "Cannot generate password hash"
-	msgCannotSendEmail string = "Cannot send email. Please, ensure that email is valid"
-	msgDatabaseError   string = "Database cannot be accessed. Please, try again later"
-
-	sessionsThreshold int = 5
-
-	playerSessionMaxAge = 60 * 60 * 24 * 30 // 30 days.
-	guestSessionMaxAge  = 60 * 60 * 24      // 1 day.
+	cookieMaxAge = 60 * 60 * 24 * 30 // 30 days.
 )
 
-// tmplData is a data object used to fill up the verification email while
-// executing a template file.
-type tmplData struct {
-	Name string
-	Url  string
-}
-
-type emailSender struct {
-	Email string `json:"email"`
-	Name  string `json:"name"`
-}
-
-type emailReciever struct {
-	Email string `json:"email"`
-}
-
-// deliveryServicePayload is needed to send email through a service such as Mailtrap.
-type deliveryServicePayload struct {
-	From     emailSender      `json:"from"`
-	To       [1]emailReciever `json:"to"`
-	Subject  string           `json:"subject"`
-	Html     string           `json:"html"`
-	Category string           `json:"category"`
-}
+// Delcaration of response messages.
+var (
+	msgSignup []byte = []byte("Please, check your email to confirm the registration. It may take several minutes for the email to be delivered and it may end up in spam.")
+	msgReset  []byte = []byte("Please, check your email to confirm the password reset. It may take several minutes for the email to be delivered and it may end up in spam.")
+)
 
 // Service wraps the database repositories and provides methods for handling
 // authorization and authentication of HTTP requests.
 type Service struct {
-	repo db.AuthRepo
+	// cookieKey is used to sign the secure Cookie.
+	cookieKey []byte
+	repo      db.AuthRepo
 	// Store parsed emails to avoid expensive template parsing on each signup
 	// or password reset.
-	// First template is signup_verification_email.tmpl.
-	// Seconds template is password_reset_email.tmpl.
+	// First template is email-signup.tmpl.
+	// Second template is email-reset.tmpl.
 	emails [2]*template.Template
 }
 
-func NewService(ar db.AuthRepo) Service { return Service{repo: ar} }
-
-func (s *Service) ParseEmails(folder string) error {
-	signup, err := template.ParseFiles(folder + "email-signup.tmpl")
-	if err != nil {
-		return err
-	}
-	s.emails[0] = signup
-
-	reset, err := template.ParseFiles(folder + "email-reset-password.tmpl")
-	if err != nil {
-		return err
-	}
-	s.emails[1] = reset
-	return nil
-}
+func NewService(key []byte, ar db.AuthRepo) Service { return Service{cookieKey: key, repo: ar} }
 
 // RegisterRoutes registers enpoints to the specified ServeMux.
 func (s Service) RegisterRoutes(mux *http.ServeMux) {
@@ -117,29 +72,29 @@ func (s Service) RegisterRoutes(mux *http.ServeMux) {
 // letting the player try again.
 func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
-	name := r.FormValue("name")
+	name := r.FormValue("username")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
 	if !nameEx.MatchString(name) || !emailEx.MatchString(email) ||
 		!pwdEx.MatchString(password) {
-		http.Error(rw, msgBadRequest, http.StatusNotAcceptable)
+		http.Error(rw, response.BadRequest, http.StatusNotAcceptable)
 		return
 	}
 
 	unique, err := s.repo.IsEmailUnique(email)
 	if err != nil || !unique {
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
 
 	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(rw, msgCannotHash, http.StatusInternalServerError)
+		http.Error(rw, response.CannotHash, http.StatusInternalServerError)
 		return
 	}
 
@@ -150,7 +105,7 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 			Name: name, Email: email, PasswordHash: pwdHash,
 		},
 	); err != nil {
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
 
@@ -158,31 +113,34 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 	var buff bytes.Buffer
 	if err = s.emails[0].Execute(&buff, tmplData{Name: name, Url: url}); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
-	body, err := json.Marshal(deliveryServicePayload{
-		From:     emailSender{Email: os.Getenv("EMAIL_FROM")},
-		To:       [1]emailReciever{{email}},
+	body, err := json.Marshal(emailPayload{
+		From:     sender{Email: os.Getenv("EMAIL_FROM")},
+		To:       [1]reciever{{email}},
 		Subject:  "Signup Verification",
 		Category: "Transactional",
 		Html:     buff.String(),
 	})
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
 	if err = s.sendEmail(body); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		// Remove inserted token.
 		if err = s.repo.DeleteSignupToken(token); err != nil {
 			log.Print(err)
 		}
+		return
 	}
+	// Write information message after successfull sign up.
+	rw.Write(msgSignup)
 }
 
 // signin authenticates a player by the provided credentials.
@@ -192,15 +150,10 @@ func (s Service) signup(rw http.ResponseWriter, r *http.Request) {
 //  2. Validate the credentials using regular expressions.
 //  3. Retrieve the player data from the database using the email from request.
 //  4. Compare the stored password hash with the provided password.
-//  5. Get all non-expired sessions with the same player_id.
-//  6. If the number of sessions is more than or equal to five, remove the
-//     oldest created session.
-//  7. Create a new session.
-//  8. Insert a newly created session.
-//  9. Respond with an authorization cookie and the player data.
+//  5. Respond with [secureCookie] and the player data.
 func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -208,54 +161,31 @@ func (s Service) signin(rw http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
 	c, err := s.repo.SelectCredentialsByEmail(email)
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword(c.PasswordHash, []byte(password))
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 		return
 	}
-
-	sessions, err := s.repo.SelectSessionsByPlayerId(c.Id)
-	if err != nil {
-		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
-		return
-	}
-
-	if len(sessions) == sessionsThreshold {
-		// Find the oldest session.
-		min := sessions[0].CreatedAt
-		ind := 0
-		for i := 1; i < 5; i++ {
-			if sessions[i].CreatedAt.Before(min) {
-				min = sessions[i].CreatedAt
-				ind = i
-			}
-		}
-
-		// Delete the oldest session to replace it with the new one.
-		if err = s.repo.DeleteSession(sessions[ind].Id); err != nil {
-			http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
-			return
-		}
-	}
-
-	s.genSession(rw, c.Id)
+	s.setSecureCookie(rw, c.Id, false)
+	// Redirect to the home page after successfull sign in.
+	http.Redirect(rw, r, "/", http.StatusFound)
 }
 
 // If the verification email fails to send, the token insertion is rolled back,
 // letting the player try again.
 func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -263,27 +193,27 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !emailEx.MatchString(email) || !pwdEx.MatchString(password) {
-		http.Error(rw, msgBadRequest, http.StatusBadRequest)
+		http.Error(rw, response.BadRequest, http.StatusBadRequest)
 		return
 	}
 
 	p, err := s.repo.SelectIdentityByEmail(email)
 	if err != nil {
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
+		http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
 		return
 	}
 
 	pwdHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotHash, http.StatusInternalServerError)
+		http.Error(rw, response.CannotHash, http.StatusInternalServerError)
 		return
 	}
 
 	token := randgen.GenId(randgen.SecureIdLen)
 	if err = s.repo.InsertPasswordResetToken(token, p.Id, pwdHash); err != nil {
 		log.Print(err)
-		http.Error(rw, msgTokenConflict, http.StatusConflict)
+		http.Error(rw, response.TokenConflict, http.StatusConflict)
 		return
 	}
 
@@ -291,31 +221,33 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 	var buff bytes.Buffer
 	if err = s.emails[1].Execute(&buff, tmplData{Name: p.Name, Url: url}); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
-	body, err := json.Marshal(deliveryServicePayload{
-		From:     emailSender{Email: os.Getenv("EMAIL_FROM")},
-		To:       [1]emailReciever{{email}},
+	body, err := json.Marshal(emailPayload{
+		From:     sender{Email: os.Getenv("EMAIL_FROM")},
+		To:       [1]reciever{{email}},
 		Subject:  "Password Reset",
 		Category: "Transactional",
 		Html:     buff.String(),
 	})
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		return
 	}
 
 	if err = s.sendEmail(body); err != nil {
 		log.Print(err)
-		http.Error(rw, msgCannotSendEmail, http.StatusInternalServerError)
+		http.Error(rw, response.CannotSendEmail, http.StatusInternalServerError)
 		// Remove inserted token.
 		if err = s.repo.DeletePasswordResetToken(token); err != nil {
 			log.Print(err)
 		}
 	}
+	// Write information message after successfull password reset.
+	rw.Write(msgReset)
 }
 
 // confirmSignup completes the registration process for players who click the
@@ -325,29 +257,28 @@ func (s Service) resetPassword(rw http.ResponseWriter, r *http.Request) {
 //  1. Fetch signup credentials from database using provided token.
 //  2. Insert new player record using provided credentials.
 //  3. Delete used token.
-//  4. Generate session for the player.
+//  4. Generate [secureCookie] for the player.
 func (s Service) confirmSignup(rw http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 
 	data, err := s.repo.SelectSignupDataByToken(token)
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgTokenMissing, http.StatusNotFound)
+		http.Error(rw, response.TokenMissing, http.StatusNotFound)
 		return
 	}
-
 	id := randgen.GenId(randgen.IdLen)
 	if err = s.repo.InsertPlayer(id, data); err != nil {
 		log.Print(err)
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
-
 	if err = s.repo.DeleteSignupToken(token); err != nil {
 		log.Print(err)
 	}
-
-	s.genSession(rw, id)
+	s.setSecureCookie(rw, id, false)
+	// Redirect user to home page after successfull signup confirmation.
+	http.Redirect(rw, r, "/", http.StatusFound)
 }
 
 // confirmReset completes the password reset process by updating the player
@@ -358,110 +289,81 @@ func (s Service) confirmReset(rw http.ResponseWriter, r *http.Request) {
 	c, err := s.repo.SelectCredentialsByResetToken(token)
 	if err != nil {
 		log.Print(err)
-		http.Error(rw, msgTokenMissing, http.StatusNotFound)
+		http.Error(rw, response.TokenMissing, http.StatusNotFound)
 		return
 	}
 
 	if err = s.repo.UpdatePasswordHash(c.Id, c.PasswordHash); err != nil {
 		log.Print(err)
-		http.Error(rw, msgConflict, http.StatusConflict)
+		http.Error(rw, response.Conflict, http.StatusConflict)
 		return
 	}
 
 	if err = s.repo.DeletePasswordResetToken(token); err != nil {
 		log.Print(err)
 	}
+	// Redirect user to sign in page after successfull password reset.
+	http.Redirect(rw, r, "/signin", http.StatusFound)
 }
 
 type contextKey int
 
-const PlayerKey contextKey = 0
+const SessionKey contextKey = 0
 
-// MustAuthorize is a middleware that fetches player data from database by
-// session id. If session is expired or missing, http.StatusUnauthorized is
-// written to response.
-func (s Service) MustAuthorize(next http.HandlerFunc) http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		session, err := r.Cookie("Auth")
-		if err == nil {
-			p, err := s.repo.SelectPlayerBySessionId(session.Value)
-			if err == nil {
-				ctx := context.WithValue(r.Context(), PlayerKey, p)
-				next.ServeHTTP(rw, r.WithContext(ctx))
-				return
-			}
-		}
-		http.Error(rw, msgUnauthorized, http.StatusUnauthorized)
-	}
-}
-
-// Authorize is a middleware that fetches player data from database by session
-// id. If session is expired or missing, guest player will be inserted to db.
-//
-// Player data is passed to the next handler via request context.
+// Authorize is a middleware that validates the Auth Cookie. If cookie
+// is expired, missing, or not valid, the new Guest cookie is generated.
+// NOTE: This middleware should be applied to general endpoints that
+// are expected to handle the guest traffic.
 func (s Service) Authorize(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		session, err := r.Cookie("Auth")
+		session := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: true}
+		c, err := r.Cookie("Auth")
 		if err == nil {
-			p, err := s.repo.SelectPlayerBySessionId(session.Value)
-			if err == nil {
-				ctx := context.WithValue(r.Context(), PlayerKey, p)
-				next.ServeHTTP(rw, r.WithContext(ctx))
-				return
+			session, err = validateSecureCookie([]byte(c.Value), s.cookieKey)
+			if err != nil {
+				session.Id = randgen.GenId(randgen.IdLen)
 			}
 		}
-
-		// Create guest player.
-		id := randgen.GenId(randgen.IdLen)
-		if err = s.repo.InsertGuest(id); err != nil {
-			log.Print(err)
-			http.Redirect(rw, r, "/signup", http.StatusTemporaryRedirect)
-			return
-		}
-		// Generate session for guest.
-		s.genSession(rw, id)
-		// Pass guest data to next handler.
-		p := db.Player{Id: id, Name: "Guest", IsGuest: true}
-		ctx := context.WithValue(r.Context(), PlayerKey, p)
+		ctx := context.WithValue(r.Context(), SessionKey, session)
 		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
 }
 
-// genSession inserts a new record in the session table and adds the HTTP-only
-// secure cookie to the response.
-func (s Service) genSession(rw http.ResponseWriter, playerId string) {
-	// Use generated unique string as session value.
-	sessionId := randgen.GenId(randgen.SecureIdLen)
-
-	if err := s.repo.InsertSession(sessionId, playerId); err != nil {
-		log.Print(err)
-		http.Error(rw, msgDatabaseError, http.StatusInternalServerError)
-		return
+// MustAuthorize is a middleware that validates the Auth Cookie. If cookie
+// is expired, missing, or not valid, the http.StatusUnauthorized is
+// written to response.
+// NOTE: This middleware should be applied to strictly protected endpoints
+// which are not expected to handle the guest traffic.
+func (s Service) MustAuthorize(next http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		c, err := r.Cookie("Auth")
+		if err != nil {
+			http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
+			return
+		}
+		session, err := validateSecureCookie([]byte(c.Value), s.cookieKey)
+		if err != nil {
+			http.Error(rw, response.Unauthorized, http.StatusUnauthorized)
+			return
+		}
+		ctx := context.WithValue(r.Context(), SessionKey, session)
+		next.ServeHTTP(rw, r.WithContext(ctx))
 	}
-
-	http.SetCookie(rw, &http.Cookie{
-		Name:     "Auth",
-		Value:    sessionId,
-		Path:     "/",
-		MaxAge:   playerSessionMaxAge,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
 }
 
-// sendEmail sends the email using the Email Delivery Platform.
-func (s Service) sendEmail(body []byte) error {
-	req, err := http.NewRequest("POST", os.Getenv("EMAIL_SERVICE_URL"), bytes.NewReader(body))
+func (s Service) setSecureCookie(rw http.ResponseWriter, id string, isGuest bool) {
+	val, err := genSecureCookie(Session{Id: id, IsGuest: isGuest}, s.cookieKey)
 	if err != nil {
-		return err
+		log.Println(err)
+		http.Error(rw, response.CookieError, http.StatusInternalServerError)
+		return
 	}
-	req.Header.Add("Authorization", os.Getenv("EMAIL_SERVICE_TOKEN"))
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil || (res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent) {
-		return errors.New("mailtrap error " + err.Error())
-	}
-	return res.Body.Close()
+	http.SetCookie(rw, &http.Cookie{
+		Name:     "Auth",
+		Value:    val,
+		Path:     "/",
+		MaxAge:   cookieMaxAge,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }

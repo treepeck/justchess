@@ -1,191 +1,106 @@
 package ws
 
 import (
-	"encoding/json"
-	"justchess/internal/event"
-	"justchess/internal/game"
+	"justchess/internal/talk"
 	"log"
-	"strings"
-	"time"
-
-	"github.com/treepeck/chego"
 )
 
-const (
-	// How many seconds will empty room live.
-	emptyDeadline = 5
-)
+const msgBan string = "You have been banned for suspicious activity"
 
 type room struct {
-	game       game.Game
+	id         string
+	channels   talk.GameChannels
 	clients    map[string]*client
-	register   chan *client
+	register   chan registrant
 	unregister chan string
-	handle     chan event.Event
-	ticker     *time.Ticker
-	timeToLive int
+	destroy    chan string
 }
 
-func newRoom(g game.Game) room {
-	return room{
-		game:       g,
+func initRoom(channels talk.GameChannels, destroy chan string, id string) room {
+	r := room{
+		id:         id,
+		channels:   channels,
 		clients:    make(map[string]*client, 2),
-		register:   make(chan *client),
+		register:   make(chan registrant),
 		unregister: make(chan string),
-		handle:     make(chan event.Event),
-		ticker:     time.NewTicker(time.Second),
-		timeToLive: emptyDeadline,
+		destroy:    destroy,
 	}
+	go r.listen()
+	return r
 }
 
-func (r room) listenEvents(id string, remove chan<- string) {
-	defer func() { remove <- id }()
-
+func (r room) listen() {
 	for {
 		select {
-		case c := <-r.register:
-			r.add(c)
-
-		case clientId := <-r.unregister:
-			r.remove(clientId)
-
-		case e := <-r.handle:
-			switch e.Kind {
-			case event.Chat:
-				r.chat(e)
-
-			case event.Move:
-				var index byte
-				if err := json.Unmarshal(e.Payload, &index); err != nil {
-					log.Printf("invalid msg from client: %s", err)
-					continue
-				}
-				if p, ok := r.game.Play(e.SenderId, index); ok {
-					r.broadcast(event.JSON(event.Move, p))
-
-					// If game has been terminated, broadcast EndPayload.
-					end := r.game.EndPayload()
-					if end.Termination != chego.Unterminated {
-						r.broadcast(event.JSON(event.End, r.game.EndPayload()))
-					}
-				}
-
-			case event.Resign:
-				if r.game.Resign(e.SenderId) {
-					r.broadcast(event.JSON(event.End, r.game.EndPayload()))
-				}
-
-			default:
-				g, ok := r.game.(*game.RatedGame)
-				if !ok {
-					continue
-				}
-
-				sender := r.clients[e.SenderId]
-				if sender == nil {
-					continue
-				}
-
-				switch e.Kind {
-				case event.OfferDraw:
-					if oppId := g.OfferDraw(e.SenderId); len(oppId) != 0 {
-						r.broadcast(event.JSON(event.Chat, sender.player.Name+" offers draw"))
-						if opp := r.clients[oppId]; opp != nil {
-							opp.send <- event.JSON(event.OfferDraw, nil)
-						}
-					}
-				case event.AcceptDraw:
-					if g.AcceptDraw(e.SenderId) {
-						r.broadcast(event.JSON(event.End, r.game.EndPayload()))
-						r.broadcast(event.JSON(event.Chat, sender.player.Name+" accepts draw"))
-					}
-				case event.DeclineDraw:
-					if g.DeclineDraw(e.SenderId) {
-						r.broadcast(event.JSON(event.Chat, sender.player.Name+" declines draw"))
-					}
-				}
-			}
-
-		case <-r.ticker.C:
-			r.timeTick()
-			if r.timeToLive == 0 {
-				// Destroy the empty room.
-				r.game.Abandon()
-				return
-			}
+		case reg := <-r.register:
+			r.onRegister(reg)
+		case id := <-r.unregister:
+			r.onUnregister(id)
+		case msg := <-r.channels.Out:
+			r.broadcast(msg)
+		case id := <-r.channels.Ban:
+			r.onBan(id)
 		}
 	}
 }
 
-// add adds client to the room.
-//
-// Client will not be added if one of the following is true:
-//   - The number of clients has reached the [clientsThreshold];
-//   - The client with the same ID is already connected to the room.
-func (r room) add(c *client) {
-	if len(r.clients) == clientsThreshold {
-		c.send <- event.JSON(event.Error, msgTooMany)
+func (r room) onRegister(reg registrant) {
+	// Decline the request if the client is already registered.
+	if _, exists := r.clients[reg.id]; exists || len(r.clients) == clientsThreshold {
+		reg.err <- errAlreadyRegistered
 		return
 	}
-	if _, connected := r.clients[c.player.Id]; connected {
-		c.send <- event.JSON(event.Error, msgConflict)
+	defer func() {
+		reg.err <- nil
+	}()
+
+	conn, err := upgrader.Upgrade(reg.res, reg.req, nil)
+	if err != nil {
+		// Upgrader writes the response, so simply return here.
 		return
 	}
+	c := newClient(conn, r.channels.In, r.unregister)
+	go c.read(reg.id)
+	go c.write()
+	r.clients[reg.id] = c
 
-	r.clients[c.player.Id] = c
-	r.game.Join(c.player.Id)
-
-	c.forward = r.handle
-	c.unregister = r.unregister
-
-	// Send current game state to clients.
-	c.send <- event.JSON(event.Game, r.game.GamePayload())
-
-	// Broadcast number of online players.
-	r.broadcast(event.JSON(event.ClientsCounter, len(r.clients)))
-}
-
-func (r room) remove(clientId string) {
-	if _, connected := r.clients[clientId]; connected {
-		delete(r.clients, clientId)
-		r.game.Leave(clientId)
-
-		// Broadcast number of online players.
-		r.broadcast(event.JSON(event.ClientsCounter, len(r.clients)))
-	} else {
-		log.Printf("client %s isn't connected", clientId)
+	msg, err := talk.JSON(talk.MessageJoin, reg.id)
+	if err != nil {
+		log.Print(err)
+		return
 	}
+	r.broadcast(msg)
 }
 
-func (r room) chat(e event.Event) {
-	name := r.clients[e.SenderId].player.Name
-
-	var b strings.Builder
-	// Append sender's name.
-	b.WriteString(name)
-	b.WriteString(": ")
-	// Append message.
-	b.WriteString(strings.TrimSpace(strings.ReplaceAll(string(e.Payload), "\"", " ")))
-
-	e.Payload = json.RawMessage(b.String())
-	r.broadcast(event.JSON(event.Chat, b.String()))
-}
-
-func (r *room) timeTick() {
+func (r room) onUnregister(id string) {
+	if _, exists := r.clients[id]; !exists {
+		return
+	}
+	delete(r.clients, id)
+	msg, err := talk.JSON(talk.MessageLeave, id)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	// Destroy empty room.
 	if len(r.clients) == 0 {
-		r.timeToLive--
-	}
-
-	if p := r.game.EndPayload(); p.Termination == chego.Unterminated {
-		r.game.TimeTick()
-		if p = r.game.EndPayload(); p.Termination != chego.Unterminated {
-			r.broadcast(event.JSON(event.End, p))
-		}
+		r.destroy <- r.id
+	} else {
+		r.broadcast(msg)
 	}
 }
 
-func (r room) broadcast(raw []byte) {
+func (r room) onBan(id string) {
+	c, exists := r.clients[id]
+	if !exists {
+		return
+	}
+	msg, _ := talk.JSON(talk.MessageError, msgBan)
+	c.send <- msg
+}
+
+func (r room) broadcast(msg []byte) {
 	for _, c := range r.clients {
-		c.send <- raw
+		c.send <- msg
 	}
 }

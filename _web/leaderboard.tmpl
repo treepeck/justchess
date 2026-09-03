@@ -1,25 +1,27 @@
 <!--{
-	"title": "Leaderboard"
+	"title": "Leaderboard",
+	"style": "leaderboard.css",
+	"script": "leaderboard.js"
 }-->
 
 {{ define "content" }}
-<h1><b>Leaderboard</b></h1>
+<h1 class="page-header">Leaderboard</h1>
 
-<table class="leaderboard-table">
-	<tr>
-		<th>Name</th>
-		<th>Rating</th>
-		<th>Rated Games</th>
-		<th>Member since</th>
-	</tr>
+<div class="leaderboard">
+	<div class="leaderboard-header">
+		<div>Name</div>
+		<div>Games</div>
+		<div>Rating</div>
+		<div>Member since</div>
+	</div>
 
 	{{ range $v := .Data }}
-		<tr>
-			<td>{{ $v.Name }}</td>
-			<td>{{ $v.Rating }}</td>
-			<td>{{ $v.RatedGames }}</td>
-			<td>{{ $v.CreatedAt }}</td>
-		</tr>
-  {{ end }}
-<table>
+		<a class="leaderboard-row {{ if eq $v.Id $.Player.Id }}owner{{ end }}" href="/player/{{ $v.Id }}">
+			<div>{{ $v.Name }}</div>
+			<div>{{ $v.Games }}</div>
+			<div>{{ $v.Rating }}</div>
+			<div class="leaderboard-row-time">{{ $v.CreatedAt }}</div>
+		</a>
+	{{ end }}
+</div>
 {{ end }}

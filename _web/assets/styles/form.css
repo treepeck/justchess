@@ -1,0 +1,67 @@
+/* Styles for /signup and /signin pages. */
+
+#form {
+  --input-background: #b5936e69;
+  --input-placeholder: rgba(73, 72, 72, 0.564);
+
+  gap: 20px;
+  width: 100%;
+  padding: 10px;
+  max-width: 350px;
+  flex-direction: column;
+}
+.form-field {
+  gap: 5px;
+  width: 100%;
+  flex-direction: column;
+}
+.form-field-label {
+  margin: 0 auto 0 5px;
+  font-size: larger;
+  text-align: left;
+  font-weight: bold;
+}
+.form-field input {
+  width: 100%;
+  font-size: large;
+  padding: 5px;
+  border: none;
+  border-radius: 15px;
+  background: var(--input-background);
+}
+.form-field-password-wrap {
+  width: 100%;
+  display: flex;
+  background: var(--input-background);
+  border-radius: 10px;
+}
+.form-field-password-wrap input {
+  background: transparent;
+}
+#formPasswordToggle {
+  width: 30px;
+  height: 30px;
+  margin: auto 10px auto 10px;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  background-color: transparent;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: url("/assets/images/show.svg");
+}
+.form-field input::placeholder {
+  color: var(--input-placeholder);
+}
+.form-field input:hover,
+.form-field input:focus {
+  outline: 2px solid;
+}
+.form-error {
+  color: #d40000;
+}
+#serverResponse {
+  width: 350px;
+  font-size: large;
+}

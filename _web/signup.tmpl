@@ -1,11 +1,25 @@
 <!--{
 	"title": "Sign up",
+	"style": "form.css",
+	"script": "signup.js",
 	"layouts": ["_web/layouts/form.tmpl"],
 	"hasUsernameField": true
 }-->
 
 {{ define "content" }}
-<h1><b>Create a new account</b></h1>
-{{ template "form" . }}
+<h1 class="content-header">Create a new account</h1>
+{{ template "form" .}}
+
+<button id="submit" commandfor="confirmDialog" command="show-modal" class="form-confirm">Confirm via email</button>
+
+<dialog id="confirmDialog" class="wrap">
+	<p>The verification link will be send to your email</p>
+
+	<div class="dialog-buttons">
+		<button id="formConfirm">Continue</button>
+		<button commandfor="confirmDialog" command="close">Close</button>
+	</div>
+</dialog>
+
 <small>Already have an account? <a href="/signin">Sign in</a></small>
 {{ end }}

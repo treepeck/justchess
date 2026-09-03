@@ -1,0 +1,248 @@
+#board {
+  /* CSS variables are declared for the board element so that they are recomputed
+   only once after resize. */
+  --size: 300px;
+  --lateral-size: calc(var(--size) / 20);
+  /* Used for translateZ of 3d elements. */
+  --depth: calc(var(--lateral-size) / 2 - 1px);
+  --selected-piece-depth: calc(var(--lateral-size) / 2 + 120px);
+  /* Used for translateZ of left, right, top, and bottom faces. */
+  --lateral-depth: calc(var(--size) / 2);
+  /* Variables below are calculated based on the source background image resolution - 1200x1200 px.
+   If it will ever chage, the consts must be updated. */
+  --background: calc(1200 * var(--size) / 600);
+  --lateral-background: calc(0px - 75 * var(--size) / 1200);
+  --double-lateral-background: calc(0px - 75 * var(--size) / 600);
+  /* Center of the background image. */
+  --background-center: calc(0px - var(--background) / 2);
+  --lateral-background-center: calc(0px - var(--lateral-background) / 2);
+  /* For a lateral face to be centered. */
+  --lateral-center: calc(var(--size) / 2 - var(--lateral-size) / 2);
+
+  width: var(--size);
+  height: var(--size);
+  margin: 20px auto 50px auto;
+  perspective: 1500px;
+  user-select: none;
+}
+#boardBox {
+  width: var(--size);
+  height: var(--size);
+  cursor: pointer;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(15deg);
+  animation: board-anim 2s linear;
+  transition: transform 2s ease-in-out;
+}
+.board-box-face {
+  position: absolute;
+  background-size: var(--background) var(--background);
+  background-image: url("/assets/images/board.svg");
+  background-repeat: no-repeat;
+}
+.front {
+  width: var(--size);
+  height: var(--size);
+  transform: translateZ(var(--depth));
+}
+.back {
+  width: var(--size);
+  height: var(--size);
+  transform: rotateY(180deg) translateZ(var(--depth));
+  background-position: var(--background-center) 0;
+}
+.left {
+  left: var(--lateral-center);
+  width: var(--lateral-size);
+  height: var(--size);
+  transform: rotateY(-90deg) translateZ(var(--lateral-depth));
+  background-position: 0 var(--background-center);
+}
+.right {
+  left: var(--lateral-center);
+  width: var(--lateral-size);
+  height: var(--size);
+  transform: rotateY(90deg) translateZ(var(--lateral-depth));
+  background-position: var(--lateral-background) var(--background-center);
+}
+.top {
+  top: var(--lateral-center);
+  width: var(--size);
+  height: var(--lateral-size);
+  transform: rotateX(90deg) translateZ(var(--lateral-depth));
+  background-position: var(--double-lateral-background) var(--background-center);
+}
+.bottom {
+  top: var(--lateral-center);
+  width: var(--size);
+  height: var(--lateral-size);
+  transform: rotateX(-90deg) translateZ(var(--lateral-depth));
+  background-position: var(--double-lateral-background) var(--background-center);
+}
+/* Arbitrary board object such as chess piece or board coordinate. */
+.board-object {
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  font-size: smaller;
+  transform: translate(var(--x), var(--y));
+  font-weight: bold;
+}
+.board-rank {
+  margin: 2px 0 0 2px;
+  pointer-events: none;
+}
+.board-file {
+  margin: 7% 0 0 2px;
+  pointer-events: none;
+}
+.board-square.selected {
+  background-color: gold;
+}
+.board-square.highlighted::before {
+  content: "";
+  position: absolute;
+  top: 5%;
+  left: 5%;
+  height: 90%;
+  width: 90%;
+  border: 5px solid green;
+  border-radius: 50%;
+}
+.board-piece {
+  top: -16.796875%;
+  width: 12.5%;
+  height: 29.296875%;
+  position: absolute;
+  font-size: smaller;
+  transform: translateX(var(--x)) translateY(var(--y)) translateZ(var(--depth));
+  transition: transform 0.25s ease-in-out;
+  pointer-events: none;
+  background-size: 600% 200%;
+  background-image: url("/assets/images/sheet.svg");
+  background-repeat: no-repeat;
+  background-position: calc(var(--col) * 20%) calc(var(--row) * 100%);
+}
+.board-piece.selected {
+  z-index: 0;
+  transform: translateX(var(--x)) translateY(var(--y))
+    translateZ(var(--selected-piece-depth));
+}
+/*
+Pieces that are standing on ranks nearer to the player view must have
+higher z-index. That will prevent overlapping of pieces standing on
+different ranks.
+*/
+.board-piece.rank-0 {
+  z-index: 80;
+}
+.board-piece.rank-1 {
+  z-index: 70;
+}
+.board-piece.rank-2 {
+  z-index: 60;
+}
+.board-piece.rank-3 {
+  z-index: 50;
+}
+.board-piece.rank-4 {
+  z-index: 40;
+}
+.board-piece.rank-5 {
+  z-index: 30;
+}
+.board-piece.rank-6 {
+  z-index: 20;
+}
+.board-piece.rank-7 {
+  z-index: 10;
+}
+
+/* White pawn. */
+.board-piece.P {
+  --col: 0;
+  --row: 0;
+}
+/* White knight. */
+.board-piece.N {
+  --col: 1;
+  --row: 0;
+}
+/* White bishop. */
+.board-piece.B {
+  --col: 2;
+  --row: 0;
+}
+/* White rook. */
+.board-piece.R {
+  --col: 3;
+  --row: 0;
+}
+/* White queen. */
+.board-piece.Q {
+  --col: 4;
+  --row: 0;
+}
+/* White king. */
+.board-piece.K {
+  --col: 5;
+  --row: 0;
+}
+/* Black pawn. */
+.board-piece.p {
+  --col: 0;
+  --row: 1;
+}
+/* Black knight. */
+.board-piece.n {
+  --col: 1;
+  --row: 1;
+}
+/* Black bishop. */
+.board-piece.b {
+  --col: 2;
+  --row: 1;
+}
+/* Black rook. */
+.board-piece.r {
+  --col: 3;
+  --row: 1;
+}
+/* Black queen. */
+.board-piece.q {
+  --col: 4;
+  --row: 1;
+}
+/* Black king. */
+.board-piece.k {
+  --col: 5;
+  --row: 1;
+}
+
+/* Extra small devices (phones, 600px and up) */
+@media only screen and (min-width: 600px) {
+  #board {
+    --size: 500px;
+  }
+  .board-object {
+    font-size: medium;
+  }
+  .board-rank {
+    margin: 5px 0 0 5px;
+  }
+  .board-file {
+    margin: 8% 0 0 5px;
+  }
+}
+
+/* TODO: better naming? */
+@keyframes board-anim {
+  0% {
+    transform: rotateX(40deg) rotateY(240deg);
+  }
+
+  100% {
+    transform: rotateX(15deg) rotateY(0deg);
+  }
+}
