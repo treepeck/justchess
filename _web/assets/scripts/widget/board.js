@@ -121,6 +121,14 @@ export class Board {
 		element.style.setProperty("--square", `${square}`)
 		element.style.setProperty("--x", `${x}px`)
 		element.style.setProperty("--y", `${y}px`)
+		for (const name of element.classList) {
+			if (name.includes("rank-")) {
+				element.classList.remove(name)
+			}
+		}
+		if (element.classList.contains("board-piece")) {
+			element.classList.add(`rank-${rank}`)
+		}
 	}
 
 	/**
@@ -132,7 +140,7 @@ export class Board {
 		const piece = this.position.pieces.get(move.from)
 		// Delete the captured piece.
 		const captured = this.position.pieces.get(move.to)
-		if (captured) {
+		if (captured !== undefined) {
 			const capturedDiv = this.findPieceDivOnSquare(move.to)
 			this.boardBox.removeChild(capturedDiv)
 			this.position.pieces.delete(move.to)
