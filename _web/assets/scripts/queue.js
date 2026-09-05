@@ -6,8 +6,8 @@ function formatTime(id, ms) {
 	const minutes = Math.trunc(ms / 1000 / 60)
 	const seconds = Math.trunc(ms / 1000) % 60
 
-	let mins = `${minutes > 9 ? minutes : "0" + minutes.toString()}`
-	let secs = `${seconds > 9 ? seconds : "0" + seconds.toString()}`
+	const mins = `${minutes > 9 ? minutes : "0" + minutes.toString()}`
+	const secs = `${seconds > 9 ? seconds : "0" + seconds.toString()}`
 	document.getElementById(id).textContent = `${mins}:${secs}`
 }
 
@@ -54,31 +54,6 @@ function showHint(prev) {
 
 	setTimeout(() => showHint(prev), 5000)
 }
-
-/** @type {import("./ws/socket").EventHandler} */
-function eventHandler(Kind, payload) {
-	switch (Kind) {
-		case EventKind.ClientsCounter:
-			const cnt = document.getElementById("playersNumber")
-			// Update clients counter.
-			cnt.textContent = `Players in queue: ${payload}`
-
-			if (payload < 2) {
-			}
-			break
-
-		case EventKind.Redirect:
-			// Redirect to game room.
-			// @ts-expect-error - API_URL comes from webpack.
-			window.location.href = `${API_URL}/${payload}`
-			break
-
-		default:
-			throw new Error("Invalid event from server")
-	}
-}
-
-showHint([])
 
 // Self-adjusting countup timer.
 const interval = 1000 // Milliseconds.

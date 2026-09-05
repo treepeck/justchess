@@ -6,7 +6,6 @@ type messageKind int
 
 const (
 	kindPing messageKind = iota
-	kindPong
 )
 
 type message struct {

@@ -158,6 +158,6 @@ func (c *client) handlePing(payload json.RawMessage) error {
 		return err
 	}
 	c.reportedLatency = latency
-	c.send <- mustEncode(kindPong, nil)
+	c.send <- nil
 	return nil
 }

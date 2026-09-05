@@ -6,4 +6,4 @@ const board = new Board(Color.White)
 board.registerResizeObserver()
 board.registerEventHandlers()
 
-const c = new Client()
+new Client()
