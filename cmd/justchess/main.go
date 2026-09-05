@@ -50,8 +50,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	wsService := ws.NewService()
-	// go wsService.Listen()
+	wsService := ws.InitService()
 
 	// Register routes.
 	mux := http.NewServeMux()

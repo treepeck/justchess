@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"log"
-	"slices"
 	"time"
 )
 
@@ -13,11 +12,6 @@ const (
 	writeWait = 10 * time.Second
 	// Maximum message size in bytes.
 	maxMessageSize = 1024
-)
-
-var (
-	messagePing = []byte("null")
-	messagePong = []byte("0")
 )
 
 // client is a wrapper around the connection object. It incapsulates the
@@ -35,17 +29,22 @@ type client struct {
 	// between multiple concurrent writers. The "gorilla/websocket"
 	// package allows only one concurrent writer at time.
 	send chan []byte
-	// Network latency in milliseconds.
-	delay int
+	// Notify the server about disconnection.
+	out chan *client
+	// Network latency in milliseconds. It is reported by client so
+	// shoudln't be trusted. Used only to render the UI connection bar.
+	// In milliseconds.
+	reportedLatency int
 }
 
 // initClient initializes the client, sets the connection properties,
 // and runs the client's goroutines.
-func initClient(id string, conn *websocket.Conn) *client {
+func initClient(id string, conn *websocket.Conn, out chan *client) *client {
 	c := &client{
 		id:   id,
 		conn: conn,
 		send: make(chan []byte, 256),
+		out:  out,
 	}
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -63,7 +62,7 @@ func (c *client) read() {
 			// Those are often "CloseGoingAway" and "CloseAbnormalClosure".
 			// This represents the case in which the client manually terminates
 			// the connection by closing the browser tab.
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
 				// A "real" error occurred. May want to handle it.
 				log.Printf("error: %v\n", err)
 			}
@@ -75,10 +74,20 @@ func (c *client) read() {
 			break
 		}
 
+		var msg message
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			log.Printf("client %s sends invalid message: %v\n", c.id, err)
+			break
+		}
+
+		switch msg.Kind {
 		// Immediately handle ping messages.
-		if slices.Compare(raw, messagePing) == 0 {
-			c.send <- messagePong
-			continue
+		case kindPing:
+			if err := c.handlePing(msg.Payload); err != nil {
+				break
+			}
+		default:
+			c.send <- raw
 		}
 	}
 	c.conn.Close()
@@ -140,4 +149,15 @@ func (c *client) write() {
 	}
 	// It's safe to close the connection multiple times.
 	c.conn.Close()
+	c.out <- c
+}
+
+func (c *client) handlePing(payload json.RawMessage) error {
+	var latency int
+	if err := json.Unmarshal(payload, &latency); err != nil {
+		return err
+	}
+	c.reportedLatency = latency
+	c.send <- mustEncode(kindPong, nil)
+	return nil
 }

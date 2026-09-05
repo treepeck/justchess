@@ -16,7 +16,10 @@ import (
 	"time"
 )
 
-const maxCookieLen = 4000 // In bytes.
+const (
+	maxCookieLen = 4000              // In bytes.
+	cookieMaxAge = 60 * 60 * 24 * 30 // 30 days.
+)
 
 var (
 	errTooLarge         = errors.New("auth: cookie len limit exceeded")

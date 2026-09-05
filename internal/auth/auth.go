@@ -17,10 +17,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	cookieMaxAge = 60 * 60 * 24 * 30 // 30 days.
-)
-
 var (
 	nameEx  = regexp.MustCompile(`^[a-zA-Z0-9]{2,60}$`)
 	emailEx = regexp.MustCompile(`^[a-zA-Z0-9._]+@[a-zA-Z0-9._]+\.[a-zA-Z0-9._]+$`)

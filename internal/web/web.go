@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	msgNotFound            = "The requested page wasn't found."
+	msgNotFound      = "The requested page wasn't found."
 	msgInternalError = "Internal server error. Please, try again later."
 )
 
