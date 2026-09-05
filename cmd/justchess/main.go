@@ -50,14 +50,14 @@ func main() {
 		log.Panic(err)
 	}
 
-	wsService := ws.NewService(gs.Find, gs.Create)
-	go wsService.Listen()
+	wsService := ws.NewService()
+	// go wsService.Listen()
 
 	// Register routes.
 	mux := http.NewServeMux()
 	authService.RegisterRoutes(mux)
 	apiService.RegisterRoutes(authService, mux)
-	wsService.RegisterRoutes(authService, mux)
+	wsService.RegisterRoutes(mux)
 	webService.RegisterRoutes(authService, mux)
 
 	log.Print("Starting server.")

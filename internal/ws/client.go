@@ -1,148 +1,143 @@
 package ws
 
 import (
+	"encoding/json"
 	"github.com/gorilla/websocket"
-	"justchess/internal/talk"
-	"strconv"
+	"log"
+	"slices"
 	"time"
 )
 
-// Connection parameters.
 const (
-	//  Time allowed to write a message to the peer.
+	// Time allowed to write a message to the peer.
 	writeWait = 10 * time.Second
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 7 * time.Second
-	// Send pings to peer with this period.  Must be less than pongWait.
-	pingPeriod = 3 * time.Second
-	// Maximum message size allowed from peer.
+	// Maximum message size in bytes.
 	maxMessageSize = 1024
 )
 
-// client is a wrapper around a single WebSocket connection.
+var (
+	messagePing = []byte("null")
+	messagePong = []byte("0")
+)
+
+// client is a wrapper around the connection object. It incapsulates the
+// process of reading and writing messages for a single connection.
+// It also stores the network delay calculated during "hearbeat".
+//
+// It knows nothing about the actual "User model" whose connection
+// it stores. This is outside of the scope of the ws package.
 type client struct {
-	// Timestamp when the last [messagePing] was sent.
-	pingTimestamp time.Time
-	conn          *websocket.Conn
-	// send is a channel which recieves messages that the client writes to
-	// the WebSocket connection.  It must recieve raw bytes to avoid expensive
-	// encoding for each client in case of message broadcasting. The reason for
-	// the unbuffered send channel is that Gorilla WebSocket library allows only
-	// one concurrent writer to a connection at a time.
+	// id is stored to identify the "User model" that stands behind the
+	// connection.
+	id   string
+	conn *websocket.Conn
+	// Buffered channel of outbound messages. Used to prevent race condition
+	// between multiple concurrent writers. The "gorilla/websocket"
+	// package allows only one concurrent writer at time.
 	send chan []byte
-	// forward is a channel whic recieves messages that the client reads from
-	// the WebSocket connection.
-	forward chan talk.Message
-	// unregister is a channel to which the client will send to unregister themself
-	// from the [room] or [queue].
-	unregister chan string
-	// pong is used to prevent race conditions while handling [messagePong].
-	pong chan struct{}
-	// ping is is a network latency in milliseconds. To calculate it, a full
-	// roundtrip is performed.
-	ping int
-	// New [messagePing] must be sent only when the client doesn't have a
-	// pending one. Otherwise the delay cannot be correctly measured.
-	hasPendingPing bool
+	// Network latency in milliseconds.
+	delay int
 }
 
-// newClient returns [client] with configured connection parameters.
-func newClient(conn *websocket.Conn, forward chan talk.Message, unregister chan string) *client {
+// initClient initializes the client, sets the connection properties,
+// and runs the client's goroutines.
+func initClient(id string, conn *websocket.Conn) *client {
 	c := &client{
-		conn:       conn,
-		send:       make(chan []byte, 192),
-		forward:    forward,
-		unregister: unregister,
-		pong:       make(chan struct{}, 10),
+		id:   id,
+		conn: conn,
+		send: make(chan []byte, 256),
 	}
+
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+
+	go c.read()
+	go c.write()
 	return c
 }
 
-// read sequentially reads messages from the connection.
-//
-// If the message cannot be properly read or decoded, the connection is
-// instantly closed.
-func (c *client) read(id string) {
-	var m talk.Message
+func (c *client) read() {
 	for {
-		if err := c.conn.ReadJSON(&m); err != nil {
+		msgType, raw, err := c.conn.ReadMessage()
+		if err != nil {
+			// "gorilla/websocket" package allows to have "expected" error codes.
+			// Those are often "CloseGoingAway" and "CloseAbnormalClosure".
+			// This represents the case in which the client manually terminates
+			// the connection by closing the browser tab.
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				// A "real" error occurred. May want to handle it.
+				log.Printf("error: %v\n", err)
+			}
+			break
+		}
+		// Since all messages are JSON encoded, they must have text type.
+		if msgType != websocket.TextMessage {
+			log.Printf("client %s sends message of incorrect type: %d\n", c.id, msgType)
 			break
 		}
 
-		if m.Kind == talk.MessagePong {
-			c.pong <- struct{}{}
-		} else if c.forward != nil {
-			m.PlayerId = id
-			c.forward <- m
-		} else {
-			// Close the connection if client tries to send messages to a nil channel.
-			break
+		// Immediately handle ping messages.
+		if slices.Compare(raw, messagePing) == 0 {
+			c.send <- messagePong
+			continue
 		}
 	}
-	c.cleanup(id)
+	c.conn.Close()
 }
 
-// write sequentially takes the incomming messages from the send channel and
-// writes them to the connection. It also sends [pingMessage]s each
-// [pingPeriod] seconds to maintain a heartbeat.
 func (c *client) write() {
-	pingTicker := time.NewTicker(pingPeriod)
 	for {
-		select {
-		case raw, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				break
-			}
+		raw, ok := <-c.send
+		if !ok {
+			// The channel is closed. Terminate the connection.
+			c.conn.WriteMessage(websocket.CloseMessage, nil)
+			break
+		}
+		c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 
-			if err := c.conn.WriteMessage(websocket.TextMessage, raw); err != nil {
-				continue
-			}
-		// heartbeat is a mechanism that is necessary for several reasons:
-		//   - Detect inactive connections and free resources after a player leaves the page.
-		//   - Measure ping to provide a fairer gameplay experience.
-		//   - Prevent the browser from automatically closing an idle client-side connection
-		//     after a few minutes without outgoing messages. A player may spend several
-		//     minutes thinking about a move, so periodically sending a heartbeat in the
-		//     background is necessary to keep the connection alive.
-		case <-c.pong:
-			// Handle pong messages only when the client has a pending ping.
-			// Otherwise the latency cannot be correctly measured. Important
-			// note is WebSocket protocol doesn't allow dropped frames, meaning
-			// all messages are eventually delivered.
-			if c.hasPendingPing {
-				c.hasPendingPing = false
-				c.ping = int(time.Since(c.pingTimestamp).Milliseconds())
-				if c.conn.SetReadDeadline(time.Now().Add(pongWait)) != nil {
+		// If there are more than one message awaiting to be delivered,
+		// group them into a single JSON array and send as a single package.
+		// This helps to reduce the amount of memory allocations needed to
+		// instantiate a lot of message writers.
+		// It is important to not exceed the message size threshold.
+		// If it can be exceeded, leave the rest of messages in queue for
+		// better times.
+		numMessages := len(c.send)
+		if numMessages > 0 {
+			pack := make([]json.RawMessage, 0, numMessages+1)
+			pack = append(pack, raw)
+			currSize := len(raw)
+			for range numMessages {
+				next := <-c.send
+				pack = append(pack, next)
+				currSize += len(next)
+				if currSize >= maxMessageSize {
 					break
 				}
 			}
-		case <-pingTicker.C:
-			// Send a new [messagePing] only if the previous one is answered.
-			if c.hasPendingPing {
-				continue
-			}
 
-			c.pingTimestamp = time.Now()
-			c.conn.SetWriteDeadline(c.pingTimestamp.Add(writeWait))
-
-			if err := c.conn.WriteJSON(talk.Message{
-				Kind:    talk.MessagePing,
-				Payload: []byte(strconv.Itoa(c.ping)),
-			}); err != nil {
-				continue
+			var err error
+			raw, err = json.Marshal(pack)
+			if err != nil {
+				log.Printf("couldn't encode a pack of messages for client %s: %v\n", c.id, err)
+				break
 			}
-			c.hasPendingPing = true
+		}
+
+		w, err := c.conn.NextWriter(websocket.TextMessage)
+		if err != nil {
+			log.Printf("couldn't istantiate message writer for client %s: %v\n", c.id, err)
+			break
+		}
+		_, err = w.Write(raw)
+		if err != nil {
+			log.Printf("couldn't write message for client %s: %v\n", c.id, err)
+		}
+
+		if err := w.Close(); err != nil {
+			log.Printf("couldn't close message writer for client %s: %v\n", c.id, err)
+			break
 		}
 	}
-	pingTicker.Stop()
-}
-
-// cleanup closes the connection and unregisters the client.
-func (c *client) cleanup(id string) {
-	c.unregister <- id
-	close(c.send)
+	// It's safe to close the connection multiple times.
 	c.conn.Close()
 }
