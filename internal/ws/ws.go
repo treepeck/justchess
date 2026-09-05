@@ -2,7 +2,7 @@ package ws
 
 import (
 	"github.com/gorilla/websocket"
-	"justchess/internal/randgen"
+	"justchess/internal/auth"
 	"log"
 	"net/http"
 )
@@ -29,18 +29,22 @@ func NewService() Service {
 	}
 }
 
-func (s Service) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /handshake", s.handshake)
+func (s Service) RegisterRoutes(authService auth.Service, mux *http.ServeMux) {
+	mux.HandleFunc("GET /handshake", authService.MustAuthorize(s.handshake))
 }
 
 func (s Service) handshake(rw http.ResponseWriter, r *http.Request) {
+	session, ok := r.Context().Value(auth.SessionKey).(auth.Session)
+	if !ok {
+		panic("request context is broken")
+	}
+
 	conn, err := upgrader.Upgrade(rw, r, nil)
 	if err != nil {
 		log.Printf("error while trying to upgrade the connection: %v\n", err)
 		return
 	}
 
-	tmpId := randgen.GenId(randgen.IdLen)
-	c := initClient(tmpId, conn)
-	s.clients[tmpId] = c
+	c := initClient(session.Id, conn)
+	s.clients[session.Id] = c
 }

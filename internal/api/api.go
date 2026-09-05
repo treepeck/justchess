@@ -6,7 +6,6 @@ import (
 	"justchess/internal/auth"
 	"justchess/internal/db"
 	"justchess/internal/randgen"
-	"justchess/internal/response"
 	"log"
 	"math/rand/v2"
 	"net/http"
@@ -35,13 +34,12 @@ func (s Service) createEngineGame(rw http.ResponseWriter, r *http.Request) {
 	// TODO: support time control and time bonus.
 	session, ok := r.Context().Value(auth.SessionKey).(auth.Session)
 	if !ok {
-		log.Print("request context is broken")
-		return
+		panic("request context is broken")
 	}
 	var d db.EngineDifficulty
 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil ||
 		d < db.Easy || d > db.Impossible {
-		http.Error(rw, response.BadRequest, http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -81,7 +79,7 @@ func (s Service) createEngineGame(rw http.ResponseWriter, r *http.Request) {
 		},
 	}); err != nil {
 		log.Print(err)
-		http.Error(rw, response.InternalError, http.StatusInternalServerError)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	http.Redirect(rw, r, "/engine/"+gameId, http.StatusFound)
@@ -91,7 +89,7 @@ func (s Service) engine(rw http.ResponseWriter, r *http.Request) {
 	// Mandatory parameter.
 	id := r.URL.Query().Get("pid")
 	if len(id) != 12 {
-		http.Error(rw, response.BadRequest, http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	// Optional parameters for cursor-based pagination.
@@ -110,13 +108,13 @@ func (s Service) engine(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		http.Error(rw, response.NotFound, http.StatusNotFound)
+		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	if err = json.NewEncoder(rw).Encode(games); err != nil {
 		log.Print(err)
-		http.Error(rw, response.InternalError, http.StatusInternalServerError)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	rw.Header().Add("Content-Type", "application/json")
@@ -126,7 +124,7 @@ func (s Service) rated(rw http.ResponseWriter, r *http.Request) {
 	// Mandatory parameter.
 	id := r.URL.Query().Get("pid")
 	if len(id) != 12 {
-		http.Error(rw, response.BadRequest, http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	// Optional parameters for cursor-based pagination.
@@ -145,13 +143,13 @@ func (s Service) rated(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		http.Error(rw, response.NotFound, http.StatusNotFound)
+		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	if err = json.NewEncoder(rw).Encode(games); err != nil {
 		log.Print(err)
-		http.Error(rw, response.InternalError, http.StatusInternalServerError)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	rw.Header().Add("Content-Type", "application/json")

@@ -5,12 +5,16 @@ package web
 import (
 	"justchess/internal/auth"
 	"justchess/internal/db"
-	"justchess/internal/response"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+)
+
+const (
+	msgNotFound            = "The requested page wasn't found."
+	msgInternalError = "Internal server error. Please, try again later."
 )
 
 // Service serves [page]s and assets from the file system.
@@ -86,10 +90,10 @@ func (s Service) static(rw http.ResponseWriter, r *http.Request) {
 	if !exists {
 		// Render 404 error page if page does not exists.
 		p = s.pages["/error"]
-		p.Data = response.NotFound
-		p.Title = response.NotFound
+		p.Data = msgNotFound
+		p.Title = "Not found"
 		if err := p.tmpl.Execute(rw, p); err != nil {
-			log.Printf("%s: %s page key: %s", response.InternalError, err.Error(), r.URL.Path)
+			log.Printf("%s: %s page key: %s", msgInternalError, err.Error(), r.URL.Path)
 		}
 		return
 	}
@@ -100,7 +104,7 @@ func (s Service) leaderboard(rw http.ResponseWriter, r *http.Request) {
 	leaderboard, err := s.playerRepo.SelectLeaderboard()
 	if err != nil {
 		log.Print(err)
-		s.renderPage(rw, r, s.pages["/error"], response.DatabaseError, "/error")
+		s.renderPage(rw, r, s.pages["/error"], msgInternalError, "/error")
 		return
 	}
 	s.renderPage(rw, r, s.pages["/leaderboard"], leaderboard, "/leaderboard")
@@ -110,7 +114,7 @@ func (s Service) profile(rw http.ResponseWriter, r *http.Request) {
 	profile, err := s.playerRepo.SelectProfile(r.PathValue("id"))
 	if err != nil {
 		log.Print(err)
-		s.renderPage(rw, r, s.pages["/error"], response.NotFound, "/error")
+		s.renderPage(rw, r, s.pages["/error"], msgNotFound, "/error")
 		return
 	}
 	p := s.pages["/player"]
@@ -167,7 +171,7 @@ var controls = []struct {
 func (s Service) queue(rw http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 0 || id > 8 {
-		s.renderPage(rw, r, s.pages["/error"], response.NotFound, "/error")
+		s.renderPage(rw, r, s.pages["/error"], msgNotFound, "/error")
 		return
 	}
 
@@ -196,8 +200,8 @@ func (s Service) renderPage(rw http.ResponseWriter, r *http.Request, p page,
 	data any, key string) {
 	session, ok := r.Context().Value(auth.SessionKey).(auth.Session)
 	if !ok {
-		log.Print("web: request context does not contain session")
-		http.Error(rw, response.InternalError, http.StatusInternalServerError)
+		panic("request context is broken")
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	player, err := s.playerRepo.SelectById(session.Id)
