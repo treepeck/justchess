@@ -2,7 +2,7 @@ package db
 
 import (
 	"database/sql"
-	"justchess/internal/compression"
+	"justchess/internal/comp"
 	"time"
 )
 
@@ -65,7 +65,7 @@ type Game struct {
 	White       Player             `json:"w"`
 	Black       Player             `json:"b"`
 	CreatedAt   time.Time          `json:"c"`
-	Moves       []compression.Move `json:"m,omitempty"`
+	Moves       []comp.Move `json:"m,omitempty"`
 	TimeDiffs   []int              `json:"td,omitempty"`
 	Id          string             `json:"id"`
 	MovesLength int                `json:"ml"`
@@ -138,8 +138,8 @@ func (r SQLGameRepo) SelectById(id string) (Game, error) {
 	}
 
 	if g.Termination != Unterminated {
-		g.Moves = compression.HuffmanDecoding(moves, g.MovesLength)
-		g.TimeDiffs = compression.DecompressTimeDiffs(diffs, g.MovesLength)
+		g.Moves = comp.HuffmanDecoding(moves, g.MovesLength)
+		g.TimeDiffs = comp.DecompressTimeDiffs(diffs, g.MovesLength)
 	}
 	return g, nil
 }

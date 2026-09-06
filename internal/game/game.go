@@ -3,7 +3,7 @@ package game
 import (
 	"encoding/json"
 	"github.com/treepeck/chego"
-	"justchess/internal/compression"
+	"justchess/internal/comp"
 	"justchess/internal/db"
 	"justchess/internal/talk"
 	"log"
@@ -25,7 +25,7 @@ const (
 // module implements pure chess logic, without any player and time related stuff.
 type game struct {
 	State                    db.Game
-	moves                    []compression.Move
+	moves                    []comp.Move
 	playedIndices            []int
 	channels                 talk.GameChannels
 	position                 *chego.Position
@@ -52,7 +52,7 @@ func newGame(s db.Game) *game {
 			Ban: make(chan string),
 		},
 		ticker:         time.NewTicker(time.Second),
-		moves:          make([]compression.Move, 0),
+		moves:          make([]comp.Move, 0),
 		playedIndices:  make([]int, 0),
 		position:       chego.ParseFen(chego.InitialPos),
 		legal:          &chego.MoveList{},
@@ -119,7 +119,7 @@ func (g *game) play(playerId string, moveIndex int) {
 	g.repetitions[g.position.ZobristKey()]++
 
 	// Store played move.
-	g.State.Moves = append(g.State.Moves, compression.Move{
+	g.State.Moves = append(g.State.Moves, comp.Move{
 		San: san,
 		Fen: chego.SerializeFen(g.position),
 	})

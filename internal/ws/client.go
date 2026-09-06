@@ -17,9 +17,6 @@ const (
 // client is a wrapper around the connection object. It incapsulates the
 // process of reading and writing messages for a single connection.
 // It also stores the network delay calculated during "hearbeat".
-//
-// It knows nothing about the actual "User model" whose connection
-// it stores. This is outside of the scope of the ws package.
 type client struct {
 	// id is stored to identify the "User model" that stands behind the
 	// connection.
@@ -63,7 +60,7 @@ func (c *client) read() {
 			// This represents the case in which the client manually terminates
 			// the connection by closing the browser tab.
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
-				// A "real" error occurred. May want to handle it.
+				// A "real" error occurred. Might want to handle it.
 				log.Printf("error: %v\n", err)
 			}
 			break
@@ -103,7 +100,7 @@ func (c *client) write() {
 		}
 		c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 
-		// If there are more than one message awaiting to be delivered,
+		// If there are more than one message awaiting delivery,
 		// group them into a single JSON array and send as a single package.
 		// This helps to reduce the amount of memory allocations needed to
 		// instantiate a lot of message writers.

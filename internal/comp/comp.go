@@ -1,7 +1,6 @@
-// Package compression implements move and clock compression.
-// Moves are encoded using Huffman's algorithm.
-// Clock values are encoded using Zig-Zag algorithm.
-package compression
+// Package comp implements move and clock compression. Moves are encoded using
+// Huffman's algorithm. Clock values are encoded using Zig-Zag algorithm.
+package comp
 
 import (
 	"github.com/treepeck/chego"
