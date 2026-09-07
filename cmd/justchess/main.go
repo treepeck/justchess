@@ -10,7 +10,6 @@ import (
 	"justchess/internal/db"
 	"justchess/internal/game"
 	"justchess/internal/web"
-	"justchess/internal/ws"
 )
 
 func main() {

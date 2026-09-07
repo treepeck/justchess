@@ -62,17 +62,17 @@ type OptionalPlayer struct {
 }
 
 type Game struct {
-	White       Player             `json:"w"`
-	Black       Player             `json:"b"`
-	CreatedAt   time.Time          `json:"c"`
+	White       Player      `json:"w"`
+	Black       Player      `json:"b"`
+	CreatedAt   time.Time   `json:"c"`
 	Moves       []comp.Move `json:"m,omitempty"`
-	TimeDiffs   []int              `json:"td,omitempty"`
-	Id          string             `json:"id"`
-	MovesLength int                `json:"ml"`
-	Result      Result             `json:"r"`
-	Termination Termination        `json:"t"`
-	TimeControl int                `json:"tc,omitempty"`
-	TimeBonus   int                `json:"tb,omitempty"`
+	TimeDiffs   []int       `json:"td,omitempty"`
+	Id          string      `json:"id"`
+	MovesLength int         `json:"ml"`
+	Result      Result      `json:"r"`
+	Termination Termination `json:"t"`
+	TimeControl int         `json:"tc,omitempty"`
+	TimeBonus   int         `json:"tb,omitempty"`
 }
 
 // Pagination is used to skip certain amount of game records without using slow
