@@ -1,6 +1,6 @@
 import { messageKind } from "/assets/scripts/ws/message.js"
 
-const wsUri = "ws://localhost:3502/handshake"
+const wsUri = "ws://localhost:8888/handshake"
 const pingTick = 3000 // In milliseconds.
 
 export class Client {
