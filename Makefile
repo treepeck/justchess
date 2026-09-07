@@ -1,4 +1,5 @@
 include ../../config/justchess.env
+include ../../config/common.env
 export
 
 normal:
