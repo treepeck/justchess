@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"os"
 
-	"justchess/internal/api"
-	"justchess/internal/auth"
-	"justchess/internal/db"
-	"justchess/internal/game"
-	"justchess/internal/web"
+	"github.com/treepeck/justchess/internal/api"
+	"github.com/treepeck/justchess/pkg/auth"
+	"github.com/treepeck/justchess/pkg/db"
+	// "github.com/treepeck/justchess/internal/game"
+	"github.com/treepeck/justchess/internal/web"
 )
 
 func main() {
@@ -33,12 +33,9 @@ func main() {
 	pr := db.NewSQLPlayerRepo(pool)
 	gr := db.NewSQLGameRepo(pool)
 
-	gs := game.NewStorage(gr)
-	go gs.Listen()
-
 	log.Print("Initializing services...")
 	authService := auth.NewService(cookieKey, ar)
-	if err = authService.ParseEmails("./internal/auth/templates/"); err != nil {
+	if err = authService.ParseEmails("./pkg/auth/templates/"); err != nil {
 		log.Panic(err)
 	}
 
@@ -49,13 +46,10 @@ func main() {
 		log.Panic(err)
 	}
 
-	wsService := ws.InitService()
-
 	// Register routes.
 	mux := http.NewServeMux()
 	authService.RegisterRoutes(mux)
 	apiService.RegisterRoutes(authService, mux)
-	wsService.RegisterRoutes(authService, mux)
 	webService.RegisterRoutes(authService, mux)
 
 	log.Print("Starting server.")

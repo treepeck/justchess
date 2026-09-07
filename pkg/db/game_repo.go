@@ -2,7 +2,7 @@ package db
 
 import (
 	"database/sql"
-	"justchess/internal/comp"
+	"github.com/treepeck/justchess/internal/comp"
 	"time"
 )
 

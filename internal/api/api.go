@@ -3,9 +3,9 @@ package api
 
 import (
 	"encoding/json"
-	"justchess/internal/auth"
-	"justchess/internal/db"
-	"justchess/internal/randgen"
+	"github.com/treepeck/justchess/internal/randgen"
+	"github.com/treepeck/justchess/pkg/auth"
+	"github.com/treepeck/justchess/pkg/db"
 	"log"
 	"math/rand/v2"
 	"net/http"

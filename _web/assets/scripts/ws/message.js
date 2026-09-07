@@ -11,5 +11,5 @@
  * @enum {number}
  */
 export const messageKind = {
-    kindPing: 0,
+	kindPing: 0,
 }

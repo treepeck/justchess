@@ -2,7 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
-	"justchess/internal/randgen"
+	"github.com/treepeck/justchess/internal/randgen"
 	"os"
 	"testing"
 )

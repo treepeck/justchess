@@ -11,8 +11,8 @@ import (
 	"os"
 	"regexp"
 
-	"justchess/internal/db"
-	"justchess/internal/randgen"
+	"github.com/treepeck/justchess/internal/randgen"
+	"github.com/treepeck/justchess/pkg/db"
 
 	"golang.org/x/crypto/bcrypt"
 )

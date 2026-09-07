@@ -2,7 +2,7 @@ package auth
 
 import (
 	"errors"
-	"justchess/internal/db"
+	"github.com/treepeck/justchess/internal/db"
 	"net/http"
 	"net/http/httptest"
 	"net/url"

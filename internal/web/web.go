@@ -3,8 +3,8 @@
 package web
 
 import (
-	"justchess/internal/auth"
-	"justchess/internal/db"
+	"github.com/treepeck/justchess/pkg/auth"
+	"github.com/treepeck/justchess/pkg/db"
 	"log"
 	"net/http"
 	"os"

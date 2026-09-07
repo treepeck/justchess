@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/treepeck/justchess/pkg/db"
 	"html/template"
-	"justchess/internal/db"
 	"strings"
 )
 

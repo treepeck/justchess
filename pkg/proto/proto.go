@@ -19,8 +19,6 @@ package proto
 // Story - game id, fen[], san[].
 //
 
-Client <-JSON-> WS <-GOB-> GAME
-
 // Status is sent by the game server to notify the clients about active
 type Status struct {
 	WhiteId    string `json:""`
