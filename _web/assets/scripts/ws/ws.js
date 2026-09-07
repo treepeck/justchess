@@ -1,3 +1,5 @@
+import { messageKind } from "/assets/scripts/ws/message.js"
+
 const wsUri = "ws://localhost:3502/handshake"
 const pingTick = 3000 // In milliseconds.
 
@@ -63,7 +65,7 @@ export class Client {
 			if (this.isPingAnswered) {
 				this.conn.send(
 					JSON.stringify({
-						k: 0,
+						k: messageKind.kindPing,
 						p: this.latency,
 					}),
 				)
@@ -87,13 +89,9 @@ export class Client {
 				this.pong()
 				return
 			}
-/*
 			const msg = JSON.parse(e.data)
 
-			switch (msg.k) {
-
-			}
-*/
+			console.log("message recieved:", msg)
 		} catch (err) {
 			console.log(err)
 			window.alert("Invalid message recieved from server")
