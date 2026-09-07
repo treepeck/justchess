@@ -2,7 +2,7 @@ package auth
 
 import (
 	"errors"
-	"github.com/treepeck/justchess/internal/db"
+	"github.com/treepeck/justchess/pkg/db"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -110,10 +110,10 @@ func TestSignup(t *testing.T) {
 		expectedCode int
 	}{
 		{"valid", "valid@valid.com", "valid", http.StatusOK},
-		{"missingEmail", "", "valid", http.StatusNotAcceptable},
-		{"x", "small@name.com", "valid", http.StatusNotAcceptable},
-		{"TOOOOOLONGNAMESFIDFNDSIFNODSNFSODNFDONFSDIONasdASDASDASDdDdDD", "valid@valid.com", "valid", http.StatusNotAcceptable},
-		{"missingPassword", "valid@valid.com", "", http.StatusNotAcceptable},
+		{"missingEmail", "", "valid", http.StatusBadRequest},
+		{"x", "small@name.com", "valid", http.StatusBadRequest},
+		{"TOOOOOLONGNAMESFIDFNDSIFNODSNFSODNFDONFSDIONasdASDASDASDdDdDD", "valid@valid.com", "valid", http.StatusBadRequest},
+		{"missingPassword", "valid@valid.com", "", http.StatusBadRequest},
 		{"valid", "not@unique.com", "valid", http.StatusConflict},
 	}
 

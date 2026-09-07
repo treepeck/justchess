@@ -340,7 +340,7 @@ func (s Service) MustAuthorize(next http.HandlerFunc) http.HandlerFunc {
 func (s Service) setSecureCookie(rw http.ResponseWriter, id string, isGuest bool) {
 	val, err := genSecureCookie(Session{Id: id, IsGuest: isGuest}, s.cookieKey)
 	if err != nil {
-		log.Println("cannot generate secure cookie: %v\n", err)
+		log.Printf("cannot generate secure cookie: %v\n", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
