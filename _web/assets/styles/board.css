@@ -239,10 +239,10 @@ different ranks.
 /* TODO: better naming? */
 @keyframes board-anim {
   0% {
-    transform: rotateX(40deg) rotateY(240deg);
+    transform: rotateX(40deg) rotateY(240deg) scale(0);
   }
 
   100% {
-    transform: rotateX(15deg) rotateY(0deg);
+    transform: rotateX(15deg) rotateY(0deg) scale(1);
   }
 }

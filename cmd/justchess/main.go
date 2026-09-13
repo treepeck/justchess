@@ -6,10 +6,10 @@ import (
 	"os"
 
 	"github.com/treepeck/justchess/internal/api"
+	"github.com/treepeck/justchess/internal/game"
+	"github.com/treepeck/justchess/internal/web"
 	"github.com/treepeck/justchess/pkg/auth"
 	"github.com/treepeck/justchess/pkg/db"
-	// "github.com/treepeck/justchess/internal/game"
-	"github.com/treepeck/justchess/internal/web"
 )
 
 func main() {
@@ -45,6 +45,13 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	game.InitService()
+	/*
+	if err != nil {
+			log.Panic(err)
+		}
+	*/
 
 	// Register routes.
 	mux := http.NewServeMux()
