@@ -9,6 +9,10 @@ const classNames = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
  * animations, etc. However, it doesn't know anything about chess logic. The 3D
  * effect is achieved by using CSS 3D transforms. That is every part of the board
  * scene is a 2D flat positioned in document's 3D space.
+ * TODO: enable piece drag&drop by drawing an arrow from the clicked piece to the
+ * currently hovered square. And if the player releases the mouse and it is a valid
+ * destination, perform the move. Also, if the player hovers on invalid destination
+ * the cross arrow should be rendered to display it.
  */
 export class Board {
 	/**
@@ -22,9 +26,19 @@ export class Board {
 	 */
 	front
 	/**
+	 * Container of all arrow elements.
+	 * @type {SVGElement}
+	 */
+	arrowBox
+	/**
 	 * @type {import("/assets/scripts/chess/types.js").Position}
 	 */
 	position
+	/**
+	 * Determines whether a piece is being dragged.
+	 * @type {boolean}
+	 */
+	isDragging
 	/**
 	 * Determines the player perspective.
 	 * @type {import("/assets/scripts/chess/types.js").Color}
@@ -37,8 +51,10 @@ export class Board {
 	constructor(color) {
 		this.boardBox = document.getElementById("boardBox")
 		this.front = document.getElementById("front")
+		this.arrowBox = document.getElementById("arrowBox")
 
 		this.color = color
+		this.isDragging = false
 
 		this.appendSquares()
 
@@ -53,27 +69,23 @@ export class Board {
 	 * @param {PointerEvent} e
 	 */
 	onClick(e) {
-		if (e.buttons === 2) return // Ignore right clicks.
+		if (e.target === this.front || e.buttons === 2) return // Ignore right clicks.
 
 		// If some piece is already selected.
 		// NOTE: do it before reseting the selection.
-		const selectedPieceDiv = this.boardBox.querySelector(
-			".board-piece.selected",
-		)
+		const spd = this.boardBox.querySelector(".board-piece.selected")
 
 		this.unselect()
 
 		// Get index of clicked square.
-		const squareDiv = e.target.closest(".board-square")
-		const square = parseInt(squareDiv.style.getPropertyValue("--square"))
-
-		if (selectedPieceDiv) {
+		const square = parseInt(e.target.style.getPropertyValue("--square"))
+		if (spd) {
 			// Perform the move.
 			// TODO: validate the move.
 			const from = parseInt(
-				selectedPieceDiv.style.getPropertyValue("--square"),
+				spd.style.getPropertyValue("--square"),
 			)
-			this.makeMove(selectedPieceDiv, {
+			this.makeMove(spd, {
 				to: square,
 				from: from,
 			})
@@ -85,8 +97,74 @@ export class Board {
 		if (piece === undefined || piece % 2 !== this.color) return
 
 		const pieceDiv = this.findPieceDivOnSquare(square)
-		squareDiv.classList.add("selected")
+		e.target.classList.add("selected")
 		pieceDiv.classList.add("selected")
+		this.isDragging = true
+	}
+
+	/**
+	 * @param {PointerEvent} e
+	 */
+	onDrag(e) {
+		if (e.target === this.front || e.buttons === 2 || !this.isDragging) return
+
+		const size = this.front.clientWidth
+		const squareSize = size / 8
+
+		// TODO: maybe validate the piece and throw an error if it is missing?
+		const spd = this.boardBox.querySelector(
+			".board-piece.selected",
+		)
+		const x1 = parseInt(spd.style.getPropertyValue("--x")) + squareSize / 2
+		const y1 = parseInt(spd.style.getPropertyValue("--y")) + squareSize / 2
+
+		const squareDiv = e.target
+		const x2 = parseInt(squareDiv.style.getPropertyValue("--x")) + squareSize / 2
+		const y2 = parseInt(squareDiv.style.getPropertyValue("--y")) + squareSize / 2
+
+		// Dragging occurs above the selected square itself.
+		if (x1 === x2 && y1 === y2) {
+			return
+		}
+
+		if (!x1 || !x2 || !y1 || !y2) {
+			debugger
+		}
+
+		this.renderArrow(x1, y1, x2, y2)
+	}
+
+	/**
+	 * @param {PointerEvent} e
+	 */
+	onDrop(e) {
+		if (e.buttons === 2 || !this.isDragging) return // Ignore right clicks.
+
+		this.isDragging = false
+
+		const arrow = this.arrowBox.querySelector(".board-arrow")
+		this.arrowBox.removeChild(arrow)
+
+		// TODO: code repetition and smell. Quick and dirty prorotype.
+		const spd = this.boardBox.querySelector(".board-piece.selected")
+
+		this.unselect()
+
+		// Get index of hovered square.
+		const square = parseInt(e.target.style.getPropertyValue("--square"))
+		if (spd) {
+			// Perform the move.
+			const from = parseInt(
+				spd.style.getPropertyValue("--square"),
+			)
+			this.makeMove(spd, {
+				to: square,
+				from: from,
+			})
+			return
+		} else {
+			window.alert("what is going on")
+		}
 	}
 
 	/**
@@ -128,6 +206,32 @@ export class Board {
 		}
 		if (element.classList.contains("board-piece")) {
 			element.classList.add(`rank-${rank}`)
+		}
+	}
+
+	/**
+	 * @param {number} x1
+	 * @param {number} y1
+	 * @param {number} x2
+	 * @param {number} y2
+	 */
+	renderArrow(x1, y1, x2, y2) {
+		const line = this.arrowBox.querySelector("line")
+		if (!line) {
+			const html = `<line
+					stroke="#000000" stroke-width="2" stroke-linecap="round"
+					opacity="1" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+					 marker-end="url(#arrow-head)"
+				/>`
+			const tmpl = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+			tmpl.innerHTML = html
+			tmpl.classList.add("board-arrow")
+			this.arrowBox.appendChild(tmpl)
+		} else {
+			line.setAttribute("x1", `${x1}`)
+			line.setAttribute("y1", `${y1}`)
+			line.setAttribute("x2", `${x2}`)
+			line.setAttribute("y2", `${y2}`)
 		}
 	}
 
@@ -273,6 +377,12 @@ export class Board {
 	registerEventHandlers() {
 		this.front.addEventListener("pointerdown", (e) => {
 			this.onClick(e)
+		})
+		this.front.addEventListener("pointermove", (e) => {
+			this.onDrag(e)
+		})
+		this.front.addEventListener("pointerup", (e) => {
+			this.onDrop(e)
 		})
 		this.front.addEventListener("contextmenu", (e) => {
 			this.onRightClick(e)
