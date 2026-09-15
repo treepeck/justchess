@@ -84,9 +84,7 @@ export class Board {
 		// Get index of clicked square.
 		const square = parseInt(e.target.style.getPropertyValue("--square"))
 		if (selected) {
-			const from = parseInt(
-				selected.style.getPropertyValue("--square"),
-			)
+			const from = parseInt(selected.style.getPropertyValue("--square"))
 
 			// TODO: validate the move.
 
@@ -113,9 +111,7 @@ export class Board {
 	 * @param {PointerEvent} e
 	 */
 	onDrag(e) {
-		const selected = this.boardBox.querySelector(
-			".board-piece.selected",
-		)
+		const selected = this.boardBox.querySelector(".board-piece.selected")
 
 		// Drag event must not be handled if there is no piece selected.
 		if (e.target === this.front || e.buttons === 2 || !selected) {
@@ -138,7 +134,9 @@ export class Board {
 
 		// Something went wrong, log for debug.
 		if (!x1 || !x2 || !y1 || !y2) {
-			console.error(`x1: ${x1}, x2: ${x2}, y1: ${y1}, y2: ${y2}, selected: ${selected}, square: ${e.target}`)
+			console.error(
+				`x1: ${x1}, x2: ${x2}, y1: ${y1}, y2: ${y2}, selected: ${selected}, square: ${e.target}`,
+			)
 		}
 
 		this.renderArrow(x1, y1, x2, y2)
@@ -160,10 +158,8 @@ export class Board {
 
 		// If there was a valid selected square.
 		if (selected) {
-			const from = parseInt(
-				selected.style.getPropertyValue("--square"),
-			)
-			if (from != square) {
+			const from = parseInt(selected.style.getPropertyValue("--square"))
+			if (from !== square) {
 				// TODO: validate the move.
 
 				// Perform move and reset selection.
@@ -236,7 +232,10 @@ export class Board {
 					opacity="1" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
 					 marker-end="url(#arrow-head)"
 				/>`
-			const tmpl = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+			const tmpl = document.createElementNS(
+				"http://www.w3.org/2000/svg",
+				"svg",
+			)
 			tmpl.innerHTML = html
 			tmpl.classList.add("board-arrow")
 			this.arrowBox.appendChild(tmpl)
@@ -273,7 +272,9 @@ export class Board {
 		// Remove the rendered arrow element it does exist.
 		const arrow = this.arrowBox.querySelector(".board-arrow")
 		if (!arrow) {
-			console.warning("arrow element is missing after performing the move")
+			console.warning(
+				"arrow element is missing after performing the move",
+			)
 		} else {
 			this.arrowBox.removeChild(arrow)
 		}
@@ -390,10 +391,6 @@ export class Board {
 					piece.style.getPropertyValue("--square"),
 				)
 				this.translate(piece, square)
-			}
-			// Reposition arrows.
-			for (const arrow of this.arrowBox.querySelectorAll(".board-arrow")) {
-				// Delete an arrow, since it cannot be easilly repositioned.
 			}
 		})
 		observer.observe(this.front)
