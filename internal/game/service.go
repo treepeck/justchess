@@ -1,13 +1,13 @@
 package game
 
 import (
+	"encoding/gob"
 	"errors"
+	"github.com/treepeck/justchess/pkg/proto"
 	"log"
 	"net"
 	"os"
 	"strconv"
-	"encoding/gob"
-	"github.com/treepeck/justchess/pkg/proto"
 	"sync/atomic"
 )
 
@@ -30,8 +30,8 @@ type Service struct {
 	out         chan *socket
 	isListening *atomic.Bool
 	// Set of active TCP sockets.
-	sockets     map[*socket]struct{}
-	games       map[string]struct{}
+	sockets map[*socket]struct{}
+	games   map[string]struct{}
 }
 
 // InitService initializes the [Service] and listens the TCP network.
@@ -42,7 +42,7 @@ func InitService() (Service, error) {
 		in:          make(chan *net.TCPConn),
 		out:         make(chan *socket),
 		isListening: &atomic.Bool{},
-		sockets:       make(map[*socket]struct{}, proto.MaxConns),
+		sockets:     make(map[*socket]struct{}, proto.MaxConns),
 		games:       make(map[string]struct{}, maxGames),
 	}
 	s.isListening.Store(true)
