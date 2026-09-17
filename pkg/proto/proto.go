@@ -1,22 +1,14 @@
-// Package proto defines the protocol for interconnected game and
-// ws packages to communicate in a distributed manner.
+// Package proto defines the communication protocol for game and ws servers.
 package proto
 
-// Status is sent by the game server to notify the clients about active
-type Status struct {
-	WhiteId    string `json:""`
-	BlackId    string `json:""`
-	Spectators int    `json:""`
-}
+const (
+	// Limit of concurrent TCP connections between WS and Game servers.
+	MaxConns = 10
+)
 
-// Story is sent by the game server when a new client connects to the game so it
-// is able to recieve the active game state.
-type Story struct {
-	SANs       []string `json:""`
-	UCIs       []string `json:""`
-	InitialFEN string   `json:""`
-}
+// Ping is sent by WS server to maintain a TCP connection (keepalive) and measure
+// network latency.
+type Ping int
 
-type Event struct {
-	GameId, PlayerId string
-}
+// Ping is sent by Game server in response to [Ping].
+type Pong int
