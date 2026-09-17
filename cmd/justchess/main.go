@@ -48,9 +48,9 @@ func main() {
 
 	game.InitService()
 	/*
-	if err != nil {
-			log.Panic(err)
-		}
+		if err != nil {
+				log.Panic(err)
+			}
 	*/
 
 	// Register routes.

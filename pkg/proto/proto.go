@@ -6,6 +6,10 @@ const (
 	MaxConns = 10
 )
 
+type Message struct {
+	Payload any
+}
+
 // Ping is sent by WS server to maintain a TCP connection (keepalive) and measure
 // network latency.
 type Ping int
