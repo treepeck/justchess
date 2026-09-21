@@ -1,4 +1,4 @@
-package game
+package transport
 
 import (
 	"encoding/gob"
@@ -11,17 +11,11 @@ import (
 	"sync/atomic"
 )
 
-const maxGames = 100
+const maxTopics = 109 // 100 games and 9 queues.
 
-// Service stores all active games and communicates with WebSocket server via
-// a dynamic pool of TCP connections.
+// Service communicates with WebSocket server via a dynamic pool of TCP connections.
 //
-// TODO: this will not scale well. A single TCP connection will throttle
-// on load. To fix this, a pool of connections should be maintained. And
-// while sending messages, the least used one should be used.
 // TODO: reconnection.
-// TODO: heartbeat.
-// TODO: latency detection.
 // TODO: acknowledge.
 // TODO: The server should not run if it cannot connect to WS server.
 type Service struct {
@@ -31,7 +25,7 @@ type Service struct {
 	isListening *atomic.Bool
 	// Set of active TCP sockets.
 	sockets map[*socket]struct{}
-	games   map[string]struct{}
+	topics  map[string]topic
 }
 
 // InitService initializes the [Service] and listens the TCP network.
@@ -43,7 +37,7 @@ func InitService() (Service, error) {
 		out:         make(chan *socket),
 		isListening: &atomic.Bool{},
 		sockets:     make(map[*socket]struct{}, proto.MaxConns),
-		games:       make(map[string]struct{}, maxGames),
+		topics:      make(map[string]topic, maxTopics),
 	}
 	s.isListening.Store(true)
 

@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/treepeck/justchess/internal/api"
-	"github.com/treepeck/justchess/internal/game"
+	"github.com/treepeck/justchess/internal/transport"
 	"github.com/treepeck/justchess/internal/web"
 	"github.com/treepeck/justchess/pkg/auth"
 	"github.com/treepeck/justchess/pkg/db"
@@ -46,7 +46,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	game.InitService()
+	transport.InitService()
 	/*
 		if err != nil {
 				log.Panic(err)

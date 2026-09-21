@@ -6,8 +6,16 @@ const (
 	MaxConns = 10
 )
 
-type Message struct {
-	Payload any
+// InMessage is a message sent by WebSocket server.
+type InMessage struct {
+	PlayerId string
+	Payload  any
+}
+
+// OutMessage is a message sent by JustChess server.
+type OutMessage struct {
+	Recievers []string
+	Payload   any
 }
 
 // Ping is sent by WS server to maintain a TCP connection (keepalive) and measure

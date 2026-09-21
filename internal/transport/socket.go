@@ -1,4 +1,4 @@
-package game
+package transport
 
 import (
 	"bufio"
@@ -53,6 +53,8 @@ func (s *socket) listen() {
 			})
 			s.writer.Flush()
 			log.Printf("pong")
+		case proto.Move:
+
 		default:
 			log.Printf("message has invalid type: %v\n", t)
 		}
