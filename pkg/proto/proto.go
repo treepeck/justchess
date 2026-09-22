@@ -24,3 +24,9 @@ type Ping int
 
 // Ping is sent by Game server in response to [Ping].
 type Pong int
+
+// Join is sent by WS server to register the player in matchmaking pool.
+type Join string
+
+// Leave is sent by WS server to unregister the player from matchmaking pool.
+type Leave string

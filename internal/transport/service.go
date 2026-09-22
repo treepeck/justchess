@@ -20,12 +20,13 @@ const maxTopics = 109 // 100 games and 9 queues.
 // TODO: The server should not run if it cannot connect to WS server.
 type Service struct {
 	listener    *net.TCPListener
-	in          chan *net.TCPConn
-	out         chan *socket
+	open        chan *net.TCPConn
+	close       chan *socket
+	Read        chan proto.InMessage
+	Write       chan proto.OutMessage
 	isListening *atomic.Bool
 	// Set of active TCP sockets.
 	sockets map[*socket]struct{}
-	topics  map[string]topic
 }
 
 // InitService initializes the [Service] and listens the TCP network.
@@ -33,11 +34,12 @@ type Service struct {
 // guarded by the OS firewall.
 func InitService() (Service, error) {
 	s := Service{
-		in:          make(chan *net.TCPConn),
-		out:         make(chan *socket),
+		open:        make(chan *net.TCPConn),
+		close:       make(chan *socket),
+		Read:        make(chan proto.InMessage),
+		Write:       make(chan proto.OutMessage),
 		isListening: &atomic.Bool{},
 		sockets:     make(map[*socket]struct{}, proto.MaxConns),
-		topics:      make(map[string]topic, maxTopics),
 	}
 	s.isListening.Store(true)
 

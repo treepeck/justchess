@@ -39,7 +39,7 @@ func (s *socket) listen() {
 	defer s.cleanup()
 
 	for {
-		var msg proto.Message
+		var msg proto.InMessage
 		if err := s.decoder.Decode(&msg); err != nil {
 			log.Printf("decode error: %v\n", err)
 			break
@@ -48,12 +48,11 @@ func (s *socket) listen() {
 		switch t := msg.Payload.(type) {
 		case proto.Ping:
 			// Immediately respond with pong.
-			s.encoder.Encode(proto.Message{
+			s.encoder.Encode(proto.OutMessage{
 				Payload: proto.Pong(1),
 			})
 			s.writer.Flush()
 			log.Printf("pong")
-		case proto.Move:
 
 		default:
 			log.Printf("message has invalid type: %v\n", t)
