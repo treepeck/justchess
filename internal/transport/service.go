@@ -84,7 +84,7 @@ func (s Service) listen() {
 		if err != nil {
 			log.Printf("cannot accept connection: %v\n", err)
 		}
-		s.in <- c
+		s.open <- c
 	}
 }
 
@@ -93,9 +93,9 @@ func (s Service) eventBus() {
 
 	for {
 		select {
-		case conn := <-s.in:
+		case conn := <-s.open:
 			s.register(conn)
-		case sock := <-s.out:
+		case sock := <-s.close:
 			s.unregister(sock)
 		}
 	}
