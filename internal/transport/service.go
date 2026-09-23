@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"encoding/gob"
 	"errors"
 	"github.com/treepeck/justchess/pkg/proto"
 	"log"
@@ -13,17 +12,19 @@ import (
 
 const maxTopics = 109 // 100 games and 9 queues.
 
-// Service communicates with WebSocket server via a dynamic pool of TCP connections.
-//
-// TODO: reconnection.
-// TODO: acknowledge.
-// TODO: The server should not run if it cannot connect to WS server.
+// Ipc wraps all channels used for inter-process communication between [transport]
+// and [game] packages.
+type Ipc struct {
+	Write chan proto.OutMessage
+	Read  chan proto.InMessage
+}
+
+// Service manages the dynamic pool of TCP connections with the Coordinator server.
 type Service struct {
+	Ipc         Ipc
 	listener    *net.TCPListener
 	open        chan *net.TCPConn
 	close       chan *socket
-	Read        chan proto.InMessage
-	Write       chan proto.OutMessage
 	isListening *atomic.Bool
 	// Set of active TCP sockets.
 	sockets map[*socket]struct{}
@@ -34,18 +35,17 @@ type Service struct {
 // guarded by the OS firewall.
 func InitService() (Service, error) {
 	s := Service{
-		open:        make(chan *net.TCPConn),
-		close:       make(chan *socket),
-		Read:        make(chan proto.InMessage),
-		Write:       make(chan proto.OutMessage),
+		open:  make(chan *net.TCPConn),
+		close: make(chan *socket),
+		Ipc: Ipc{
+			Write: make(chan proto.OutMessage, 256),
+			Read:  make(chan proto.InMessage, 256),
+		},
 		isListening: &atomic.Bool{},
 		sockets:     make(map[*socket]struct{}, proto.MaxConns),
 	}
-	s.isListening.Store(true)
 
-	// TODO: maybe extract it to some other place.
-	gob.Register(proto.Ping(0))
-	gob.Register(proto.Pong(0))
+	proto.RegisterGOBTypes()
 
 	addr := net.ParseIP(os.Getenv("JUSTCHESS_TCP_ADDR"))
 	if addr == nil {
@@ -66,15 +66,17 @@ func InitService() (Service, error) {
 	}
 	s.listener = l
 
+	go s.accept()
 	go s.listen()
-	go s.eventBus()
 
 	return s, nil
 }
 
-// listen listens for TCP connections. Listen only works when the amount of active
+// accept listens for TCP connections. It should only run when the amount of active
 // connections doesn't reach [maxConns].
-func (s Service) listen() {
+func (s Service) accept() {
+	s.isListening.Store(true)
+
 	for {
 		if !s.isListening.Load() {
 			break
@@ -88,22 +90,22 @@ func (s Service) listen() {
 	}
 }
 
-func (s Service) eventBus() {
+func (s Service) listen() {
 	defer s.cleanup()
 
 	for {
 		select {
 		case conn := <-s.open:
-			s.register(conn)
+			s.openSocket(conn)
 		case sock := <-s.close:
-			s.unregister(sock)
+			s.closeSocket(sock)
 		}
 	}
 }
 
-func (s Service) register(conn *net.TCPConn) {
+func (s Service) openSocket(conn *net.TCPConn) {
 	if len(s.sockets) == proto.MaxConns {
-		log.Printf("limit of TCP connections was exceeded\n")
+		log.Print("TCP connection limit reached")
 		// Stop listening for TCP connections until the limit is statisfied.
 		s.isListening.Store(false)
 		// Close the incomming connection as it cannot be maintained.
@@ -113,21 +115,43 @@ func (s Service) register(conn *net.TCPConn) {
 
 	sock := initSocket(conn)
 	s.sockets[sock] = struct{}{}
-	log.Printf("open %v conn\n", conn)
+	log.Printf("opened new TCP socket %v\n", sock)
 }
 
-func (s Service) unregister(sock *socket) {
+// closeSocket closes a socket.
+func (s Service) closeSocket(sock *socket) {
 	if _, ok := s.sockets[sock]; !ok {
 		return
 	}
 
 	delete(s.sockets, sock)
+	sock.conn.Close() // TODO: might want to handle error.
 	if len(s.sockets) < proto.MaxConns && !s.isListening.Load() {
 		// Continue listening for TCP connections.
-		s.isListening.Store(true)
-		go s.listen()
+		go s.accept()
 	}
-	log.Printf("close %v conn\n", sock)
+	log.Printf("closed TCP socket %v\n", sock)
+}
+
+func (s Service) writeSocket(m proto.OutMessage) {
+	// TODO: proper load balancing between sockets.
+	// Right now simply send to random socket
+	var random *socket
+	for sock := range s.sockets {
+		random = sock
+		break
+	}
+	if random == nil {
+		log.Print("no opened TCP connections") // TODO: handle that.
+		return
+	}
+
+	random.send <- m
+
+	// If there are more than one message awaiting delivery, send them in batch.
+	for range len(s.Ipc.Write) {
+		random.send <- <-s.Ipc.Write
+	}
 }
 
 // cleanup is called only in case the server crushes. It is needed to gracefully

@@ -1,6 +1,10 @@
 // Package proto defines the communication protocol for game and ws servers.
 package proto
 
+import (
+	"encoding/gob"
+)
+
 const (
 	// Limit of concurrent TCP connections between WS and Game servers.
 	MaxConns = 10
@@ -39,3 +43,10 @@ type Create string
 
 // Remove is sent by JustChess to unregister a new queue or room.
 type Remove string
+
+func RegisterGOBTypes() {
+	gob.Register(Ping(0))
+	gob.Register(Pong(0))
+	gob.Register(Join(""))
+	gob.Register(Leave(""))
+}

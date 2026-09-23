@@ -13,6 +13,7 @@ type socket struct {
 	encoder *gob.Encoder
 	decoder *gob.Decoder
 	reader  *bufio.Reader
+	send    chan proto.OutMessage
 	writer  *bufio.Writer
 }
 
@@ -26,18 +27,18 @@ func initSocket(conn *net.TCPConn) *socket {
 		conn:    conn,
 		encoder: gob.NewEncoder(w),
 		decoder: gob.NewDecoder(r),
+		send:    make(chan proto.OutMessage, 256),
 		reader:  r,
 		writer:  w,
 	}
 
-	go s.listen()
+	go s.read()
+	go s.write()
 
 	return s
 }
 
-func (s *socket) listen() {
-	defer s.cleanup()
-
+func (s *socket) read() {
 	for {
 		var msg proto.InMessage
 		if err := s.decoder.Decode(&msg); err != nil {
@@ -48,15 +49,30 @@ func (s *socket) listen() {
 		switch t := msg.Payload.(type) {
 		case proto.Ping:
 			// Immediately respond with pong.
-			s.encoder.Encode(proto.OutMessage{
+			s.send <- proto.OutMessage{
 				Payload: proto.Pong(1),
-			})
-			s.writer.Flush()
-			log.Printf("pong")
-
+			}
+		// TODO: handle stuff.
+		case proto.Join:
+			log.Printf("player %s connects to %s\n", msg.PlayerId, msg.Payload)
+		case proto.Leave:
+			log.Printf("player %s disconnects from %s\n", msg.PlayerId, msg.Payload)
 		default:
-			log.Printf("message has invalid type: %v\n", t)
+			log.Printf("message has invalid type %v\n", t)
 		}
+	}
+
+	s.cleanup()
+}
+
+func (s *socket) write() {
+	for {
+		msg := <-s.send
+		if err := s.encoder.Encode(msg); err != nil {
+			log.Printf("cannot encode message: %v\n", err)
+			break
+		}
+		s.writer.Flush()
 	}
 }
 
