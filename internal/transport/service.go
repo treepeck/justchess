@@ -135,27 +135,6 @@ func (s Service) closeSocket(sock *socket) {
 	log.Printf("closed TCP socket %v\n", sock)
 }
 
-func (s Service) writeSocket(m proto.OutMessage) {
-	// TODO: proper load balancing between sockets.
-	// Right now simply send to random socket
-	var random *socket
-	for sock := range s.sockets {
-		random = sock
-		break
-	}
-	if random == nil {
-		log.Print("no opened TCP connections") // TODO: handle that.
-		return
-	}
-
-	random.send <- m
-
-	// If there are more than one message awaiting delivery, send them in batch.
-	for range len(s.Ipc.Write) {
-		random.send <- <-s.Ipc.Write
-	}
-}
-
 // cleanup is called only in case the server crushes. It is needed to gracefully
 // terminate TCP connections without losing packets.
 func (s Service) cleanup() {
