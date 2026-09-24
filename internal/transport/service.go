@@ -15,8 +15,9 @@ const maxTopics = 109 // 100 games and 9 queues.
 // Ipc wraps all channels used for inter-process communication between [transport]
 // and [game] packages.
 type Ipc struct {
-	Write chan proto.OutMessage
-	Read  chan proto.InMessage
+	Write     chan proto.OutMessage
+	ReadQueue chan proto.InMessage
+	ReadGame  chan proto.InMessage
 }
 
 // Service manages the dynamic pool of TCP connections with the Coordinator server.
@@ -38,8 +39,9 @@ func InitService() (Service, error) {
 		open:  make(chan *net.TCPConn),
 		close: make(chan *socket),
 		Ipc: Ipc{
-			Write: make(chan proto.OutMessage, 256),
-			Read:  make(chan proto.InMessage, 256),
+			Write:     make(chan proto.OutMessage, 256),
+			ReadQueue: make(chan proto.InMessage, 256),
+			ReadGame:  make(chan proto.InMessage, 256),
 		},
 		isListening: &atomic.Bool{},
 		sockets:     make(map[*socket]struct{}, proto.MaxConns),
@@ -113,7 +115,7 @@ func (s Service) openSocket(conn *net.TCPConn) {
 		return
 	}
 
-	sock := initSocket(conn)
+	sock := initSocket(s.Ipc, conn)
 	s.sockets[sock] = struct{}{}
 	log.Printf("opened new TCP socket %v\n", sock)
 }

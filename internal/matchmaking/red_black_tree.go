@@ -15,8 +15,8 @@ type redBlackTree struct {
 type node struct {
 	parent, left, right *node
 	id                  string
-	mmr                 float64
-	// Max allowed MMR gap. See package documentation for more details.
+	rating              float64
+	// Max allowed rating gap. See package documentation for more details.
 	maxGap float64
 	// isRed is used to maintain the Red-Black Tree properties.
 	isRed bool
@@ -31,7 +31,7 @@ func (t *redBlackTree) insert(z *node) {
 
 	for x != t.leaf {
 		y = x
-		if z.mmr < x.mmr {
+		if z.rating < x.rating {
 			x = x.left
 		} else {
 			x = x.right
@@ -41,7 +41,7 @@ func (t *redBlackTree) insert(z *node) {
 	z.parent = y
 	if y == t.leaf {
 		t.root = z
-	} else if z.mmr < y.mmr {
+	} else if z.rating < y.rating {
 		y.left = z
 	} else {
 		y.right = z
@@ -339,9 +339,9 @@ func (t *redBlackTree) transplant(u, v *node) {
 }
 
 // creates a new node with specified value and default fields.
-func (t *redBlackTree) spawn(mmr float64, id string) *node {
+func (t *redBlackTree) spawn(rating float64, id string) *node {
 	return &node{
-		mmr:    mmr,
+		rating: rating,
 		id:     id,
 		maxGap: DefaultMaxGap,
 		isRed:  true,
@@ -352,21 +352,21 @@ func (t *redBlackTree) spawn(mmr float64, id string) *node {
 }
 
 // search searches for the [node] in the subtree.
-func search(n *node, mmr float64, id string) *node {
+func search(n *node, rating float64, id string) *node {
 	// While n is not leaf.
 	for n.left != nil && n.right != nil {
-		if n.mmr > mmr {
+		if n.rating > rating {
 			n = n.left
-		} else if n.mmr < mmr {
+		} else if n.rating < rating {
 			n = n.right
 		} else if n.id == id {
 			return n
 		} else {
-			right := search(n.right, mmr, id)
+			right := search(n.right, rating, id)
 			if right != nil {
 				return right
 			}
-			left := search(n.left, mmr, id)
+			left := search(n.left, rating, id)
 			if left != nil {
 				return left
 			}

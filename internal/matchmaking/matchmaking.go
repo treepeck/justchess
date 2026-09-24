@@ -16,141 +16,123 @@
 package matchmaking
 
 import (
-	"fmt"
-	"iter"
-	"math"
+	"github.com/treepeck/justchess/internal/transport"
+	"github.com/treepeck/justchess/pkg/db"
+	"github.com/treepeck/justchess/pkg/proto"
+	// "math/rand/v2"
+	"log"
 	"time"
 )
 
-const (
-	Interval              = 5 * time.Second
-	DefaultMaxGap float64 = 500
-	GapLimit      float64 = 3000
-)
+const interval = 5 * time.Second
 
-// Profile is a player's matchmaking profile.
-type Profile struct {
-	Id  string
-	MMR float64
+type Service struct {
+	queues      [9]*queue
+	ipc         transport.Ipc
+	playerRepo  db.PlayerRepo
+	ticker      *time.Ticker
+	ratingCache map[string]float64
 }
 
-// Pool provides the implementation of the matchmaking algorithm.
-// WARN: it's the caller's responsibility to ensure thread-safetiness.
-type Pool struct {
-	nodes  *redBlackTree
-	Ticker *time.Ticker
-	// Number of players.
-	size int
+func InitService(pr db.PlayerRepo, ipc transport.Ipc) Service {
+	// Initialize the queues.
+	var queues [9]*queue
+	for i := range 9 {
+		queues[i] = newQueue()
+	}
+
+	s := Service{
+		playerRepo: pr,
+		ipc:        ipc,
+		queues:     queues,
+		ticker:     time.NewTicker(interval),
+	}
+	go s.listen()
+	return s
 }
 
-func NewPool() *Pool {
-	return &Pool{
-		nodes:  newRedBlackTree(),
-		Ticker: time.NewTicker(Interval),
+func (s Service) listen() {
+	for {
+		select {
+		case m := <-s.ipc.ReadQueue:
+			switch m.Payload.(type) {
+			case proto.Join:
+				s.register(m.PlayerId, m.Payload.(string))
+			case proto.Leave:
+				s.unregister(m.PlayerId, m.Payload.(string))
+			}
+		case <-s.ticker.C:
+			for i, q := range s.queues {
+				// TODO: do not overuse the plain string concatenation as it degrades the performance.
+				url := "/queue/" + string(i+'0')
+				for ids := range q.matchmaking() {
+					s.onMatch(ids, url)
+				}
+				q.expandRatingGaps()
+			}
+		}
 	}
 }
 
-// Insert inserts a new player to the [Pool] and returns it's size.
-func (p *Pool) Insert(mmr float64, id string) int {
-	p.nodes.insert(p.nodes.spawn(mmr, id))
-	p.size++
-	return p.size
-}
-
-// remove removes an existing player from the [Pool] and returns it's size.
-func (p *Pool) Remove(mmr float64, id string) int {
-	n := search(p.nodes.root, mmr, id)
-	if n == nil {
-		fmt.Printf("matchmaking: trying to remove non-existing player \"%s\"\n", id)
-		return p.size
-	}
-	p.nodes.remove(n)
-	p.size--
-	return p.size
-}
-
-func (p *Pool) Matchmaking() iter.Seq[[2]string] {
-	n := p.nodes.root
-
-	return func(yield func([2]string) bool) {
-		p.matchmaking(n, yield)
-	}
-}
-
-func (p *Pool) matchmaking(n *node, yield func([2]string) bool) {
-	if n == p.nodes.leaf {
+// register inserts player into named queue.
+// url should come in such format: '/queue/{id}'
+func (s Service) register(playerId, url string) {
+	ind := int(url[len(url)-1] - '0')
+	if ind >= len(s.queues) {
 		return
 	}
 
-	// Find possible matches.
-	matches := [4]*node{n.left, n.right, p.nodes.leaf, p.nodes.leaf}
-	if n.left != p.nodes.leaf {
-		matches[2] = p.nodes.findMax(n.left)
-	}
-	if n.right != p.nodes.leaf {
-		matches[3] = p.nodes.findMin(n.right)
-	}
-
-	// Find the match which has the lowest rating gap.
-	var best *node
-	bestGap := GapLimit
-	for _, match := range matches {
-		// Skip leaf nodes.
-		if match == p.nodes.leaf {
-			continue
-		}
-
-		gap := math.Abs(n.mmr - match.mmr)
-		if gap < bestGap {
-			bestGap = gap
-			best = match
-		}
-	}
-
-	// Check does the best gap exceeds the allowed rating gap.
-	if best != nil && bestGap <= n.maxGap && bestGap <= best.maxGap {
-		if !yield([2]string{n.id, best.id}) {
-			return
-		}
-
-		// Remove matched nodes from nodes.
-		p.nodes.remove(n)
-		p.nodes.remove(best)
-
-		// Call function recursively.
-		p.matchmaking(p.nodes.root, yield)
+	p, err := s.playerRepo.SelectProfile(playerId)
+	if err != nil {
+		log.Printf("player cannot be found %s: %v\n", err)
 		return
 	}
 
-	// Call function recursively on left and right subnodess.
-	if n.left != p.nodes.leaf {
-		p.matchmaking(n.left, yield)
-	}
+	s.ratingCache[playerId] = p.Rating
 
-	if n.right != p.nodes.leaf {
-		p.matchmaking(n.right, yield)
+	s.queues[ind].insert(p.Rating, playerId)
+	// Broadcast current players counter.
+	s.ipc.Write <- proto.OutMessage{
+		Recievers: []string{url}, // Pass url so that coordinator can broadcast to all connected clients.
+		Payload:   proto.Counter(s.queues[ind].size),
 	}
 }
 
-// ExpandRatingGaps expands the allowed MMR gap of each player so that players
-// with larger rating gaps can eventually be paired together.
-func (p *Pool) ExpandMMRGaps() {
-	if p.size < 1 {
+// unregister removes player from named queue.
+func (s Service) unregister(playerId, url string) {
+	ind := int(url[len(url)-1] - '0')
+	if ind >= len(s.queues) {
 		return
 	}
-	p.expandMMRGaps(p.nodes.root)
+
+	rating, ok := s.ratingCache[playerId]
+	if !ok {
+		log.Printf("rating of the player %s cannot be found in cache\n", playerId)
+		return
+	}
+
+	s.queues[ind].remove(rating, playerId)
+	// Broadcast current players counter.
+	s.ipc.Write <- proto.OutMessage{
+		Recievers: []string{url}, // Pass url so that coordinator can broadcast to all connected clients.
+		Payload:   proto.Counter(s.queues[ind].size),
+	}
 }
 
-func (p *Pool) expandMMRGaps(n *node) {
-	if n.maxGap < GapLimit {
-		n.maxGap += DefaultMaxGap
-	}
+func (s Service) onMatch(ids [2]string, url string) {
+	// Randomly select players' sides.
+	/*
+		whiteId, blackId := ids[0], ids[1]
+		if rand.IntN(2) == 1 {
+			whiteId = ids[1]
+			blackId = ids[0]
+		}
+	*/
 
-	if n.left != p.nodes.leaf {
-		p.expandMMRGaps(n.left)
-	}
-
-	if n.right != p.nodes.leaf {
-		p.expandMMRGaps(n.right)
+	// TODO: create a game in game service.
+	// TODO: send back redirect to the players.
+	s.ipc.Write <- proto.OutMessage{
+		Recievers: ids[:],
+		Payload:   proto.Redirect(url),
 	}
 }

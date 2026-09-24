@@ -25,28 +25,29 @@ type OutMessage struct {
 	Payload   any
 }
 
-// Ping is sent by WS server to maintain a TCP connection (keepalive) and measure
-// network latency.
+// Ping [InMesage] used to maintain a TCP connection (keepalive) and measure network latency.
 type Ping int
 
-// Ping is sent by Game server in response to [Ping].
+// Pong is [OutMessage] sent in response to [Ping].
 type Pong int
 
-// Join is sent by WS server to register the player in matchmaking pool.
+// Join [InMessage] used to register a player in matchmaking pool.
 type Join string
 
-// Leave is sent by WS server to unregister the player from matchmaking pool.
+// Leave is [InMessage] used to unregister a player from matchmaking pool.
 type Leave string
 
-// Create is sent by JustChess to register a new queue or room.
-type Create string
+// Counter is [OutMessage] used to notify a player about number of other players in matchmaking.
+type Counter int
 
-// Remove is sent by JustChess to unregister a new queue or room.
-type Remove string
+// Redirect is [OutMessage] used to redirect a player to named URL.
+type Redirect string
 
 func RegisterGOBTypes() {
 	gob.Register(Ping(0))
 	gob.Register(Pong(0))
 	gob.Register(Join(""))
 	gob.Register(Leave(""))
+	gob.Register(Counter(0))
+	gob.Register(Redirect(""))
 }

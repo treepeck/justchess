@@ -9,6 +9,7 @@ import (
 )
 
 type socket struct {
+	ipc     Ipc
 	conn    *net.TCPConn
 	encoder *gob.Encoder
 	decoder *gob.Decoder
@@ -17,13 +18,14 @@ type socket struct {
 	writer  *bufio.Writer
 }
 
-func initSocket(conn *net.TCPConn) *socket {
+func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
 	// Wrap connection with buffer to reduce the amount of syscalls.
 	// TODO: adjust the buffer size for peformance.
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
 
 	s := &socket{
+		ipc:     ipc,
 		conn:    conn,
 		encoder: gob.NewEncoder(w),
 		decoder: gob.NewDecoder(r),
@@ -52,11 +54,9 @@ func (s *socket) read() {
 			s.send <- proto.OutMessage{
 				Payload: proto.Pong(1),
 			}
-		// TODO: handle stuff.
-		case proto.Join:
-			log.Printf("player %s connects to %s\n", msg.PlayerId, msg.Payload)
-		case proto.Leave:
-			log.Printf("player %s disconnects from %s\n", msg.PlayerId, msg.Payload)
+		// TODO: Route messages sent to game room into ipc.ReadGame.
+		case proto.Join, proto.Leave:
+			s.ipc.ReadQueue <- msg
 		default:
 			log.Printf("message has invalid type %v\n", t)
 		}

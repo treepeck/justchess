@@ -1,4 +1,6 @@
 // Package auth implements authorization and authentication.
+// TODO: separate auth service from "cookie" server so that
+// parsing secure cookies does not require database access.
 package auth
 
 import (
