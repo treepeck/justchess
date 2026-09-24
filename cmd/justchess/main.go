@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/treepeck/justchess/internal/api"
-	"github.com/treepeck/justchess/internal/transport"
 	"github.com/treepeck/justchess/internal/matchmaking"
+	"github.com/treepeck/justchess/internal/transport"
 	"github.com/treepeck/justchess/internal/web"
 	"github.com/treepeck/justchess/pkg/auth"
 	"github.com/treepeck/justchess/pkg/db"
