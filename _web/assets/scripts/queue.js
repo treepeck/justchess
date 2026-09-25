@@ -1,3 +1,5 @@
+import { Client } from "/assets/scripts/ws/ws.js"
+
 /**
  * @param {string} id
  * @param {number} ms
@@ -73,3 +75,5 @@ const countUpHandler = () => {
 
 	setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
 }
+
+new Client("queue", "5")

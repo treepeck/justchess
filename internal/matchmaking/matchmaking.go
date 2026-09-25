@@ -46,6 +46,7 @@ func InitService(pr db.PlayerRepo, ipc transport.Ipc) Service {
 		ipc:        ipc,
 		queues:     queues,
 		ticker:     time.NewTicker(interval),
+		ratingCache: make(map[string]float64, 100),
 	}
 	go s.listen()
 	return s
@@ -57,9 +58,11 @@ func (s Service) listen() {
 		case m := <-s.ipc.ReadQueue:
 			switch m.Payload.(type) {
 			case proto.Join:
-				s.register(m.PlayerId, m.Payload.(string))
+				// TODO: get rid of this type assertion stuff. Do a research on how to do that properly without risk
+				// of panicking out.
+				s.register(m.PlayerId, m.Payload.(proto.Join))
 			case proto.Leave:
-				s.unregister(m.PlayerId, m.Payload.(string))
+				s.unregister(m.PlayerId, m.Payload.(proto.Leave))
 			}
 		case <-s.ticker.C:
 			for i, q := range s.queues {
@@ -76,7 +79,7 @@ func (s Service) listen() {
 
 // register inserts player into named queue.
 // url should come in such format: '/queue/{id}'
-func (s Service) register(playerId, url string) {
+func (s Service) register(playerId string, url proto.Join) {
 	ind := int(url[len(url)-1] - '0')
 	if ind >= len(s.queues) {
 		return
@@ -93,13 +96,15 @@ func (s Service) register(playerId, url string) {
 	s.queues[ind].insert(p.Rating, playerId)
 	// Broadcast current players counter.
 	s.ipc.Write <- proto.OutMessage{
-		Recievers: []string{url}, // Pass url so that coordinator can broadcast to all connected clients.
+		Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
 		Payload:   proto.Counter(s.queues[ind].size),
 	}
+
+	log.Printf("player %s joins %s\n", playerId, url)
 }
 
 // unregister removes player from named queue.
-func (s Service) unregister(playerId, url string) {
+func (s Service) unregister(playerId string, url proto.Leave) {
 	ind := int(url[len(url)-1] - '0')
 	if ind >= len(s.queues) {
 		return
@@ -114,9 +119,11 @@ func (s Service) unregister(playerId, url string) {
 	s.queues[ind].remove(rating, playerId)
 	// Broadcast current players counter.
 	s.ipc.Write <- proto.OutMessage{
-		Recievers: []string{url}, // Pass url so that coordinator can broadcast to all connected clients.
+		Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
 		Payload:   proto.Counter(s.queues[ind].size),
 	}
+
+	log.Printf("player %s leaves %s\n", playerId, url)
 }
 
 func (s Service) onMatch(ids [2]string, url string) {

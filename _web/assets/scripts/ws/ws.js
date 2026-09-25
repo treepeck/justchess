@@ -30,13 +30,18 @@ export class Client {
 	 */
 	isPingAnswered
 
-	constructor() {
+	/**
+	 * Opens the WebSocket connection with the server.
+	 * @parameter {string} kind - Kind of endpoint. Can be either 'game' or 'queue'.
+	 * @parameter {string} id - Id of the endpoint.
+	 */
+	constructor(kind, id) {
 		this.pingInterval = 0
 		this.latency = 0
 		this.pingTimestamp = 0
 		this.isPingAnswered = true
 
-		this.conn = new WebSocket(wsUri)
+		this.conn = new WebSocket(wsUri + `/${kind}/${id}`)
 
 		this.conn.onopen = () => {
 			this.ping()
