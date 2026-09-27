@@ -15,9 +15,8 @@ const maxTopics = 109 // 100 games and 9 queues.
 // Ipc wraps all channels used for inter-process communication between [transport]
 // and [game] packages.
 type Ipc struct {
-	Write     chan proto.OutMessage
-	ReadQueue chan proto.InMessage
-	ReadGame  chan proto.InMessage
+	Write chan []byte
+	Read  chan []byte
 }
 
 // Service manages the dynamic pool of TCP connections with the Coordinator server.
@@ -39,15 +38,12 @@ func InitService() (Service, error) {
 		open:  make(chan *net.TCPConn),
 		close: make(chan *socket),
 		Ipc: Ipc{
-			Write:     make(chan proto.OutMessage, 256),
-			ReadQueue: make(chan proto.InMessage, 256),
-			ReadGame:  make(chan proto.InMessage, 256),
+			Write: make(chan []byte, 256),
+			Read:  make(chan []byte, 256),
 		},
 		isListening: &atomic.Bool{},
 		sockets:     make(map[*socket]struct{}, proto.MaxConns),
 	}
-
-	proto.RegisterGOBTypes()
 
 	addr := net.ParseIP(os.Getenv("JUSTCHESS_TCP_ADDR"))
 	if addr == nil {
@@ -139,7 +135,7 @@ func (s Service) closeSocket(sock *socket) {
 }
 
 // TODO: get rid of that.
-func (s Service) writeSocket(msg proto.OutMessage) {
+func (s Service) writeSocket(msg []byte) {
 	// Get first random socket and write to it.
 	var sock *socket
 	for random := range s.sockets {

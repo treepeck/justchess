@@ -2,8 +2,7 @@ package transport
 
 import (
 	"bufio"
-	"encoding/gob"
-	"github.com/treepeck/justchess/pkg/proto"
+	// "github.com/treepeck/justchess/pkg/proto"
 	"log"
 	"net"
 )
@@ -11,11 +10,9 @@ import (
 type socket struct {
 	ipc     Ipc
 	conn    *net.TCPConn
-	encoder *gob.Encoder
-	decoder *gob.Decoder
 	reader  *bufio.Reader
-	send    chan proto.OutMessage
 	writer  *bufio.Writer
+	send    chan []byte
 }
 
 func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
@@ -27,9 +24,7 @@ func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
 	s := &socket{
 		ipc:     ipc,
 		conn:    conn,
-		encoder: gob.NewEncoder(w),
-		decoder: gob.NewDecoder(r),
-		send:    make(chan proto.OutMessage, 256),
+		send:    make(chan []byte, 256),
 		reader:  r,
 		writer:  w,
 	}
@@ -42,24 +37,13 @@ func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
 
 func (s *socket) read() {
 	for {
-		var msg proto.InMessage
-		if err := s.decoder.Decode(&msg); err != nil {
-			log.Printf("decode error: %v\n", err)
+		// TODO: custom decoder.
+		msg, err := s.reader.ReadBytes('\n')
+		if err != nil {
+			log.Printf("read error: %v\n", err)
 			break
 		}
-
-		switch t := msg.Payload.(type) {
-		case proto.Ping:
-			// Immediately respond with pong.
-			s.send <- proto.OutMessage{
-				Payload: proto.Pong(1),
-			}
-		// TODO: Route messages sent to game room into ipc.ReadGame.
-		case proto.Join, proto.Leave:
-			s.ipc.ReadQueue <- msg
-		default:
-			log.Printf("message has invalid type %v\n", t)
-		}
+		log.Printf("Got a message: %v\n", msg)
 	}
 
 	s.cleanup()
@@ -68,8 +52,8 @@ func (s *socket) read() {
 func (s *socket) write() {
 	for {
 		msg := <-s.send
-		if err := s.encoder.Encode(msg); err != nil {
-			log.Printf("cannot encode message: %v\n", err)
+		if _, err := s.writer.Write(msg); err != nil {
+			log.Printf("write error: %v\n", err)
 			break
 		}
 		s.writer.Flush()

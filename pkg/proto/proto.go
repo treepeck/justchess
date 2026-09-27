@@ -1,9 +1,7 @@
 // Package proto defines the communication protocol for game and ws servers.
 package proto
 
-import (
-	"encoding/gob"
-)
+import "encoding/json"
 
 const (
 	// Limit of concurrent TCP connections between WS and Game servers.
@@ -13,41 +11,26 @@ const (
 	ClientsPerConn = 500
 )
 
-// InMessage is a message sent by WebSocket server.
-type InMessage struct {
-	PlayerId string
-	Payload  any
-}
+type MessageKind int
 
-// OutMessage is a message sent by JustChess server.
-type OutMessage struct {
-	Recievers []string
-	Payload   any
-}
+const (
+	// Ping used to maintain a TCP connection (keepalive) and measure network latency.
+	// Payload is an integer that represents the latency in milliseconds.
+	KindPing MessageKind = iota
+	// Pong is sent in response to [Ping]. Payload is nil.
+	KindPong
+	// Join used to register a player in matchmaking pool. Payload is nil.
+	KindJoin
+	// Leave is used to unregister a player from matchmaking pool. Payload is nil.
+	KindLeave
+	// Counter is used to notify a player about number of players in matchmaking queue.
+	// Payload is an integer.
+	KindCounter
+	// Redirect is used to redirect a player to named URL.
+	KindRedirect
+)
 
-// Ping [InMesage] used to maintain a TCP connection (keepalive) and measure network latency.
-type Ping int
-
-// Pong is [OutMessage] sent in response to [Ping].
-type Pong int
-
-// Join [InMessage] used to register a player in matchmaking pool.
-type Join string
-
-// Leave is [InMessage] used to unregister a player from matchmaking pool.
-type Leave string
-
-// Counter is [OutMessage] used to notify a player about number of other players in matchmaking.
-type Counter int
-
-// Redirect is [OutMessage] used to redirect a player to named URL.
-type Redirect string
-
-func RegisterGOBTypes() {
-	gob.Register(Ping(0))
-	gob.Register(Pong(0))
-	gob.Register(Join(""))
-	gob.Register(Leave(""))
-	gob.Register(Counter(0))
-	gob.Register(Redirect(""))
+type Message struct {
+	Kind     MessageKind     `json:"k"`
+	Payload  json.RawMessage `json:"p"`
 }

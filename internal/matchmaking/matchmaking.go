@@ -18,7 +18,7 @@ package matchmaking
 import (
 	"github.com/treepeck/justchess/internal/transport"
 	"github.com/treepeck/justchess/pkg/db"
-	"github.com/treepeck/justchess/pkg/proto"
+	// "github.com/treepeck/justchess/pkg/proto"
 	// "math/rand/v2"
 	"log"
 	"time"
@@ -42,10 +42,10 @@ func InitService(pr db.PlayerRepo, ipc transport.Ipc) Service {
 	}
 
 	s := Service{
-		playerRepo: pr,
-		ipc:        ipc,
-		queues:     queues,
-		ticker:     time.NewTicker(interval),
+		playerRepo:  pr,
+		ipc:         ipc,
+		queues:      queues,
+		ticker:      time.NewTicker(interval),
 		ratingCache: make(map[string]float64, 100),
 	}
 	go s.listen()
@@ -55,15 +55,8 @@ func InitService(pr db.PlayerRepo, ipc transport.Ipc) Service {
 func (s Service) listen() {
 	for {
 		select {
-		case m := <-s.ipc.ReadQueue:
-			switch m.Payload.(type) {
-			case proto.Join:
-				// TODO: get rid of this type assertion stuff. Do a research on how to do that properly without risk
-				// of panicking out.
-				s.register(m.PlayerId, m.Payload.(proto.Join))
-			case proto.Leave:
-				s.unregister(m.PlayerId, m.Payload.(proto.Leave))
-			}
+		case msg := <-s.ipc.Read:
+			log.Printf("read message: %v\n", msg)
 		case <-s.ticker.C:
 			for i, q := range s.queues {
 				// TODO: do not overuse the plain string concatenation as it degrades the performance.
@@ -79,7 +72,7 @@ func (s Service) listen() {
 
 // register inserts player into named queue.
 // url should come in such format: '/queue/{id}'
-func (s Service) register(playerId string, url proto.Join) {
+func (s Service) register(playerId, url string) {
 	ind := int(url[len(url)-1] - '0')
 	if ind >= len(s.queues) {
 		return
@@ -95,16 +88,19 @@ func (s Service) register(playerId string, url proto.Join) {
 
 	s.queues[ind].insert(p.Rating, playerId)
 	// Broadcast current players counter.
-	s.ipc.Write <- proto.OutMessage{
+	/*
+s.ipc.Write <- proto.OutMessage{
 		Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
 		Payload:   proto.Counter(s.queues[ind].size),
 	}
+*/
+
 
 	log.Printf("player %s joins %s\n", playerId, url)
 }
 
 // unregister removes player from named queue.
-func (s Service) unregister(playerId string, url proto.Leave) {
+func (s Service) unregister(playerId, url string) {
 	ind := int(url[len(url)-1] - '0')
 	if ind >= len(s.queues) {
 		return
@@ -118,10 +114,13 @@ func (s Service) unregister(playerId string, url proto.Leave) {
 
 	s.queues[ind].remove(rating, playerId)
 	// Broadcast current players counter.
+/*
 	s.ipc.Write <- proto.OutMessage{
 		Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
 		Payload:   proto.Counter(s.queues[ind].size),
 	}
+
+*/
 
 	log.Printf("player %s leaves %s\n", playerId, url)
 }
@@ -138,8 +137,11 @@ func (s Service) onMatch(ids [2]string, url string) {
 
 	// TODO: create a game in game service.
 	// TODO: send back redirect to the players.
+/*
 	s.ipc.Write <- proto.OutMessage{
 		Recievers: ids[:],
 		Payload:   proto.Redirect(url),
 	}
+*/
+
 }
