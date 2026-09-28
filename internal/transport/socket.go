@@ -8,11 +8,11 @@ import (
 )
 
 type socket struct {
-	ipc     Ipc
-	conn    *net.TCPConn
-	reader  *bufio.Reader
-	writer  *bufio.Writer
-	send    chan []byte
+	ipc    Ipc
+	conn   *net.TCPConn
+	reader *bufio.Reader
+	writer *bufio.Writer
+	send   chan []byte
 }
 
 func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
@@ -22,11 +22,11 @@ func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
 	w := bufio.NewWriter(conn)
 
 	s := &socket{
-		ipc:     ipc,
-		conn:    conn,
-		send:    make(chan []byte, 256),
-		reader:  r,
-		writer:  w,
+		ipc:    ipc,
+		conn:   conn,
+		send:   make(chan []byte, 256),
+		reader: r,
+		writer: w,
 	}
 
 	go s.read()

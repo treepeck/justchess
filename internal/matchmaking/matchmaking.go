@@ -89,12 +89,11 @@ func (s Service) register(playerId, url string) {
 	s.queues[ind].insert(p.Rating, playerId)
 	// Broadcast current players counter.
 	/*
-s.ipc.Write <- proto.OutMessage{
-		Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
-		Payload:   proto.Counter(s.queues[ind].size),
-	}
-*/
-
+	s.ipc.Write <- proto.OutMessage{
+			Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
+			Payload:   proto.Counter(s.queues[ind].size),
+		}
+	*/
 
 	log.Printf("player %s joins %s\n", playerId, url)
 }
@@ -114,13 +113,13 @@ func (s Service) unregister(playerId, url string) {
 
 	s.queues[ind].remove(rating, playerId)
 	// Broadcast current players counter.
-/*
-	s.ipc.Write <- proto.OutMessage{
-		Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
-		Payload:   proto.Counter(s.queues[ind].size),
-	}
+	/*
+		s.ipc.Write <- proto.OutMessage{
+			Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
+			Payload:   proto.Counter(s.queues[ind].size),
+		}
 
-*/
+	*/
 
 	log.Printf("player %s leaves %s\n", playerId, url)
 }
@@ -137,11 +136,11 @@ func (s Service) onMatch(ids [2]string, url string) {
 
 	// TODO: create a game in game service.
 	// TODO: send back redirect to the players.
-/*
-	s.ipc.Write <- proto.OutMessage{
-		Recievers: ids[:],
-		Payload:   proto.Redirect(url),
-	}
-*/
+	/*
+		s.ipc.Write <- proto.OutMessage{
+			Recievers: ids[:],
+			Payload:   proto.Redirect(url),
+		}
+	*/
 
 }

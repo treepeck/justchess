@@ -1,8 +1,6 @@
 // Package proto defines the communication protocol for game and ws servers.
 package proto
 
-import "encoding/json"
-
 const (
 	// Limit of concurrent TCP connections between WS and Game servers.
 	MaxConns = 10
@@ -29,8 +27,3 @@ const (
 	// Redirect is used to redirect a player to named URL.
 	KindRedirect
 )
-
-type Message struct {
-	Kind     MessageKind     `json:"k"`
-	Payload  json.RawMessage `json:"p"`
-}
