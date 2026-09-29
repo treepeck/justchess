@@ -3,6 +3,7 @@ package proto
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 )
 
@@ -34,19 +35,20 @@ const (
 )
 
 const (
+	MessageSeparator     byte = '\n'
 	messagePartSeparator byte = ' '
 	// TODO: maybe payload will need another number of bytes.
 	// Encode and Decode functions should use and allocate 0 bytes of memory
 	// while dealing with real data. So benchmark that.
-	maxMessageLength = 12 + 1 + 100 // playerId + messageKind + payload.
+	MaxMessageLength = 12 + 1 + 1 + 1 + 100 + 1 // playerId + sep + messageKind + sep + payload + msgSep.
 )
 
 var errNotValid = errors.New("proto: message is not valid")
 
 type Message struct {
-	Payload []byte
-	Id      string
-	Kind    MessageKind
+	Payload json.RawMessage `json:"p"`
+	Id      string          `json:"-"`
+	Kind    MessageKind     `json:"k"`
 }
 
 // Encoder wraps a bytes.Buffer and implements the encoding part of the protocol.
@@ -56,7 +58,7 @@ type Encoder struct {
 
 func NewEncoder() *Encoder {
 	var b bytes.Buffer
-	b.Grow(maxMessageLength)
+	b.Grow(MaxMessageLength)
 
 	return &Encoder{
 		buff: b,
@@ -72,13 +74,24 @@ func (e *Encoder) Encode(m Message) []byte {
 	e.buff.WriteByte(byte(m.Kind))
 	e.buff.WriteByte(messagePartSeparator)
 	e.buff.Write(m.Payload)
+	e.buff.WriteByte(MessageSeparator)
 	return e.buff.Bytes()
+}
+
+func PreallocateDecodeBuff() [][]byte {
+	parts := make([][]byte, 3)
+	parts[0] = make([]byte, 12)  // Enough to store the ID.
+	parts[1] = make([]byte, 1)   // Enough to store the MessageKind.
+	parts[2] = make([]byte, 100) // Enough to store every possible Payload.
+	return parts
 }
 
 func Decode(parts [][]byte, encoded []byte) (Message, error) {
 	curr := 0
 	j := 0
-	for i := range encoded {
+	// Ignore the last byte since it is a [MessageSeparator].
+	for i := range len(encoded) - 1 {
+		// Process a single message at a time.
 		if encoded[i] == messagePartSeparator {
 			curr++
 			j = 0

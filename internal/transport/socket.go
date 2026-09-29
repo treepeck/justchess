@@ -2,7 +2,7 @@ package transport
 
 import (
 	"bufio"
-	// "github.com/treepeck/justchess/pkg/proto"
+	"github.com/treepeck/justchess/pkg/proto"
 	"log"
 	"net"
 )
@@ -36,14 +36,21 @@ func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
 }
 
 func (s *socket) read() {
+	parts := proto.PreallocateDecodeBuff()
+
+	// TODO: might be a race condition. Need to test that.
+	encoded := make([]byte, proto.MaxMessageLength)
+	var err error
+	var m proto.Message
 	for {
 		// TODO: custom decoder.
-		msg, err := s.reader.ReadBytes('\n')
+		encoded, err = s.reader.ReadBytes(proto.MessageSeparator)
+		m, err = proto.Decode(parts, encoded)
 		if err != nil {
 			log.Printf("read error: %v\n", err)
 			break
 		}
-		log.Printf("Got a message: %v\n", msg)
+		log.Printf("Got a message: %v\n", m)
 	}
 
 	s.cleanup()

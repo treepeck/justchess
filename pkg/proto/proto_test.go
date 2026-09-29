@@ -5,12 +5,9 @@ import (
 	"testing"
 )
 
-func TestDecoder(t *testing.T) {
-	raw := []byte{116, 101, 115, 116, 116, 101, 115, 116, 116, 101, 115, 116, 32, 0, 32, 116, 101, 115, 116, 112, 97, 121, 108, 111, 97, 100}
-	parts := make([][]byte, 3)
-	parts[0] = make([]byte, 12)  // Enough to store the ID.
-	parts[1] = make([]byte, 1)   // Enough to store the MessageKind.
-	parts[2] = make([]byte, 100) // Enough to store every possible Payload.
+func TestDecode(t *testing.T) {
+	raw := []byte{116, 101, 115, 116, 116, 101, 115, 116, 116, 101, 115, 116, 32, 0, 32, 116, 101, 115, 116, 112, 97, 121, 108, 111, 97, 100, 10}
+	parts := PreallocateDecodeBuff()
 	m, err := Decode(parts, raw)
 	if err != nil {
 		t.Fatal(err)
@@ -27,11 +24,8 @@ func BenchmarkEncode(b *testing.B) {
 }
 
 func BenchmarkDecode(b *testing.B) {
-	raw := []byte{116, 101, 115, 116, 116, 101, 115, 116, 116, 101, 115, 116, 32, 0, 32, 116, 101, 115, 116, 112, 97, 121, 108, 111, 97, 100}
-	parts := make([][]byte, 3)
-	parts[0] = make([]byte, 12)  // Enough to store the ID.
-	parts[1] = make([]byte, 1)   // Enough to store the MessageKind.
-	parts[2] = make([]byte, 100) // Enough to store every possible Payload.
+	raw := []byte{116, 101, 115, 116, 116, 101, 115, 116, 116, 101, 115, 116, 32, 0, 32, 116, 101, 115, 116, 112, 97, 121, 108, 111, 97, 100, 10}
+	parts := PreallocateDecodeBuff()
 
 	for b.Loop() {
 		Decode(parts, raw)
