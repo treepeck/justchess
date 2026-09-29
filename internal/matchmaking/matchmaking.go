@@ -89,10 +89,10 @@ func (s Service) register(playerId, url string) {
 	s.queues[ind].insert(p.Rating, playerId)
 	// Broadcast current players counter.
 	/*
-	s.ipc.Write <- proto.OutMessage{
-			Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
-			Payload:   proto.Counter(s.queues[ind].size),
-		}
+		s.ipc.Write <- proto.OutMessage{
+				Recievers: []string{string(url)}, // Pass url so that coordinator can broadcast to all connected clients.
+				Payload:   proto.Counter(s.queues[ind].size),
+			}
 	*/
 
 	log.Printf("player %s joins %s\n", playerId, url)
