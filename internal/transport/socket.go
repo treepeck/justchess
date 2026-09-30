@@ -7,6 +7,8 @@ import (
 	"net"
 )
 
+var encodedPong = []byte{byte(proto.KindPong), byte(proto.MessageSeparator)}
+
 type socket struct {
 	ipc    Ipc
 	conn   *net.TCPConn
@@ -48,8 +50,13 @@ func (s *socket) read() {
 			log.Printf("read error: %v\n", err)
 			break
 		}
-		m = proto.Decode(parts, encoded, proto.MessageKind(encoded[0]))
-		log.Printf("Got a message: %v\n", m)
+		// Immediately handle ping messages.
+		if proto.MessageKind(encoded[0]) == proto.KindPing {
+			s.send <- encodedPong
+		} else {
+			m = proto.Decode(parts, encoded, proto.MessageKind(encoded[0]))
+			log.Printf("Got a message: %v\n", m)
+		}
 	}
 
 	s.cleanup()
@@ -57,8 +64,8 @@ func (s *socket) read() {
 
 func (s *socket) write() {
 	for {
-		msg := <-s.send
-		if _, err := s.writer.Write(msg); err != nil {
+		encoded := <-s.send
+		if _, err := s.writer.Write(encoded); err != nil {
 			log.Printf("write error: %v\n", err)
 			break
 		}
