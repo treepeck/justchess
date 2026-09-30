@@ -40,16 +40,15 @@ func (s *socket) read() {
 
 	// TODO: might be a race condition. Need to test that.
 	encoded := make([]byte, proto.MaxMessageLength)
-	var err error
 	var m proto.Message
+	var err error
 	for {
-		// TODO: custom decoder.
 		encoded, err = s.reader.ReadBytes(proto.MessageSeparator)
-		m, err = proto.Decode(parts, encoded)
 		if err != nil {
 			log.Printf("read error: %v\n", err)
 			break
 		}
+		m = proto.Decode(parts, encoded, proto.MessageKind(encoded[0]))
 		log.Printf("Got a message: %v\n", m)
 	}
 

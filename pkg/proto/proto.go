@@ -4,7 +4,6 @@ package proto
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 )
 
 const (
@@ -36,14 +35,12 @@ const (
 
 const (
 	MessageSeparator     byte = '\n'
-	messagePartSeparator byte = ' '
+	messagePartSeparator byte = 1
 	// TODO: maybe payload will need another number of bytes.
 	// Encode and Decode functions should use and allocate 0 bytes of memory
 	// while dealing with real data. So benchmark that.
-	MaxMessageLength = 12 + 1 + 1 + 1 + 100 + 1 // playerId + sep + messageKind + sep + payload + msgSep.
+	MaxMessageLength = 1 + 12 + 1 + 1 + 1 + 100 + 1 // sysMsgFlag + playerId + sep + messageKind + sep + payload + msgSep.
 )
-
-var errNotValid = errors.New("proto: message is not valid")
 
 type Message struct {
 	Payload json.RawMessage `json:"p"`
@@ -65,50 +62,62 @@ func NewEncoder() *Encoder {
 	}
 }
 
-func (e *Encoder) Encode(m Message) []byte {
+// Encode encodes [Message] to the binary format.
+// Latency is used only for [KindPing] message.
+func (e *Encoder) Encode(m Message, latency uint) []byte {
 	e.buff.Reset()
 	// We do not need to check errors returned by Buffer methods, because they are
 	// always nil.
-	e.buff.WriteString(m.Id)
-	e.buff.WriteByte(messagePartSeparator)
 	e.buff.WriteByte(byte(m.Kind))
-	e.buff.WriteByte(messagePartSeparator)
-	e.buff.Write(m.Payload)
+
+	switch m.Kind {
+	case KindPing:
+		// Split integer into the byte sequence and write it to the buffer.
+		for ; latency != 0; latency >>= 8 {
+			// Don't handle error since WriteByte always returns nil.
+			e.buff.WriteByte(byte(latency & 0xFF))
+		}
+	case KindPong: // NOTE: Do nothing.
+	default:
+		e.buff.Write(m.Payload)
+		e.buff.WriteByte(messagePartSeparator)
+		e.buff.WriteString(m.Id)
+	}
 	e.buff.WriteByte(MessageSeparator)
 	return e.buff.Bytes()
 }
 
 func PreallocateDecodeBuff() [][]byte {
-	parts := make([][]byte, 3)
-	parts[0] = make([]byte, 12)  // Enough to store the ID.
-	parts[1] = make([]byte, 1)   // Enough to store the MessageKind.
-	parts[2] = make([]byte, 100) // Enough to store every possible Payload.
+	parts := make([][]byte, 2)
+	parts[0] = make([]byte, 100) // Enough to store every possible Payload.
+	parts[1] = make([]byte, 12)  // Enough to store the ID.
 	return parts
 }
 
-func Decode(parts [][]byte, encoded []byte) (Message, error) {
+// Decode decodes the message into the preallocated buffers. It accepts the message kind
+// to trick the compiler into inlining this function. That way zero memory allocation
+// happens during decoding.
+func Decode(parts [][]byte, encoded []byte, k MessageKind) Message {
 	curr := 0
 	j := 0
+	payloadLen := 0
 	// Ignore the last byte since it is a [MessageSeparator].
-	for i := range len(encoded) - 1 {
-		// Process a single message at a time.
+	for i := 1; i < len(encoded)-1; i++ {
 		if encoded[i] == messagePartSeparator {
 			curr++
 			j = 0
 		} else {
 			parts[curr][j] = encoded[i]
 			j++
+			if curr == 0 {
+				payloadLen++
+			}
 		}
 	}
 
-	// Validate the message.
-	if len(parts[0]) != /* ID len */ 12 || len(parts[1]) != 1 {
-		return Message{}, errNotValid
-	}
-
 	return Message{
-		Id:      string(parts[0]),
-		Kind:    MessageKind(parts[1][0]),
-		Payload: parts[2],
-	}, nil
+		Kind:    k,
+		Payload: parts[0][:payloadLen],
+		Id:      string(parts[1]),
+	}
 }
