@@ -63,21 +63,17 @@ func NewEncoder() *Encoder {
 }
 
 // Encode encodes [Message] to the binary format.
-// Latency is used only for [KindPing] message.
-func (e *Encoder) Encode(m Message, latency uint) []byte {
+// NOTE: [KindPing] and [KindPong] messages will not be encoded.
+func (e *Encoder) Encode(m Message) []byte {
 	e.buff.Reset()
 	// We do not need to check errors returned by Buffer methods, because they are
 	// always nil.
 	e.buff.WriteByte(byte(m.Kind))
 
 	switch m.Kind {
-	case KindPing:
-		// Split integer into the byte sequence and write it to the buffer.
-		for ; latency != 0; latency >>= 8 {
-			// Don't handle error since WriteByte always returns nil.
-			e.buff.WriteByte(byte(latency & 0xFF))
-		}
-	case KindPong: // NOTE: Do nothing.
+	case KindPing, KindPong:
+		// NOTE: Skip heartbeat messages.
+		return nil
 	default:
 		e.buff.Write(m.Payload)
 		e.buff.WriteByte(messagePartSeparator)

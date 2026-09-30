@@ -10,15 +10,14 @@ func TestEncode(t *testing.T) {
 	e := NewEncoder()
 
 	// Heartbeat message.
-	got := e.Encode(Message{Kind: KindPing}, 2588)
-	expected := []byte{0, 0x1C, 0xA, MessageSeparator}
-	if slices.Compare(got, expected) != 0 {
-		t.Fatalf("expected: %v, got: %v\n", expected, got)
+	got := e.Encode(Message{Kind: KindPing})
+	if got != nil {
+		t.Fatalf("expected: %v, got: %v\n", nil, got)
 	}
 
 	// General message.
-	got = e.Encode(Message{Kind: KindJoin, Id: "testiddddddd", Payload: json.RawMessage("asdasdas")}, 0)
-	expected = []byte{2, 97, 115, 100, 97, 115, 100, 97, 115, 1, 116, 101, 115, 116, 105, 100, 100, 100, 100, 100, 100, 100, 10}
+	got = e.Encode(Message{Kind: KindJoin, Id: "testiddddddd", Payload: json.RawMessage("asdasdas")})
+	expected := []byte{2, 97, 115, 100, 97, 115, 100, 97, 115, 1, 116, 101, 115, 116, 105, 100, 100, 100, 100, 100, 100, 100, 10}
 	if slices.Compare(got, expected) != 0 {
 		t.Fatalf("expected: %v, got: %v\n", expected, got)
 	}
@@ -40,7 +39,7 @@ func BenchmarkEncode(b *testing.B) {
 	e := NewEncoder()
 
 	for b.Loop() {
-		e.Encode(Message{Id: "testtesttest", Kind: KindPing, Payload: json.RawMessage("testpayload")}, 0)
+		e.Encode(Message{Id: "testtesttest", Kind: KindPing, Payload: json.RawMessage("testpayload")})
 	}
 }
 
