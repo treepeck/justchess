@@ -70,7 +70,7 @@ export class Client {
 			if (this.isPingAnswered) {
 				this.conn.send(
 					JSON.stringify({
-						k: messageKind.kindPing,
+						k: MessageKind.KindPing,
 						p: this.latency,
 					}),
 				)

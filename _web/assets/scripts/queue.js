@@ -82,3 +82,5 @@ if (path.length < 2) throw new Error("Invalid pathname.")
 const id = path[path.length - 1]
 
 new Client("queue", id)
+
+showHint([])
