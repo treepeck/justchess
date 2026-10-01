@@ -1,4 +1,4 @@
-import { messageKind } from "/assets/scripts/ws/message.js"
+import { MessageKind } from "/assets/scripts/ws/proto.js"
 
 const wsUri = "ws://localhost:8888/handshake"
 const pingTick = 3000 // In milliseconds.
@@ -101,6 +101,14 @@ export class Client {
 			console.log(err)
 			window.alert("Invalid message recieved from server")
 		}
+	}
+
+	/**
+	 * @param {import("/assets/scripts/ws/proto.js").Message} msg
+	 */
+	send(msg) {
+		this.conn.send(JSON.stringify(msg))
+		console.log("message sent:", msg)
 	}
 
 	cleanup() {

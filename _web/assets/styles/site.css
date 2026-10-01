@@ -113,11 +113,15 @@ button {
   border-radius: 15px;
   background-color: var(--wrap-background);
 }
-button:hover,
-button:focus {
+button:hover {
   color: var(--wrap-background);
   outline: none;
   background-color: var(--wrap-foreground);
+}
+button:focus {
+  color: var(--wrap-foreground);
+  outline: none;
+  background-color: green;
 }
 
 /*

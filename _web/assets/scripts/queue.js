@@ -76,4 +76,9 @@ const countUpHandler = () => {
 	setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
 }
 
-new Client("queue", "5")
+const path = window.location.pathname.split("/")
+if (path.length < 2) throw new Error("Invalid pathname.")
+
+const id = path[path.length - 1]
+
+new Client("queue", id)
