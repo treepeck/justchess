@@ -97,9 +97,6 @@ func (s Service) listen() {
 			s.openSocket(conn)
 		case sock := <-s.close:
 			s.closeSocket(sock)
-		// TODO: bottleneck.
-		case msg := <-s.Ipc.Write:
-			s.writeSocket(msg)
 		}
 	}
 }
@@ -132,20 +129,6 @@ func (s Service) closeSocket(sock *socket) {
 		go s.accept()
 	}
 	log.Printf("closed TCP socket %v\n", sock)
-}
-
-// TODO: get rid of that.
-func (s Service) writeSocket(msg []byte) {
-	// Get first random socket and write to it.
-	var sock *socket
-	for random := range s.sockets {
-		sock = random
-		break
-	}
-	if sock == nil {
-		return
-	}
-	sock.send <- msg
 }
 
 // cleanup is called only in case the server crushes. It is needed to gracefully

@@ -14,7 +14,7 @@ type socket struct {
 	conn   *net.TCPConn
 	reader *bufio.Reader
 	writer *bufio.Writer
-	send   chan []byte
+	pong   chan struct{} // Channel to handle ping messages.
 }
 
 func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
@@ -26,7 +26,7 @@ func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
 	s := &socket{
 		ipc:    ipc,
 		conn:   conn,
-		send:   make(chan []byte, 256),
+		pong:   make(chan struct{}, 5),
 		reader: r,
 		writer: w,
 	}
@@ -52,10 +52,11 @@ func (s *socket) read() {
 		}
 		// Immediately handle ping messages.
 		if proto.MessageKind(encoded[0]) == proto.KindPing {
-			s.send <- encodedPong
+			s.pong <- struct{}{}
 		} else {
 			m = proto.Decode(parts, encoded, proto.MessageKind(encoded[0]))
-			log.Printf("Got a message: %v\n", m)
+			// TODO: actually pass the message to queue or room for it to be handled.
+			log.Printf("read message: %v\n", m)
 		}
 	}
 
@@ -64,10 +65,17 @@ func (s *socket) read() {
 
 func (s *socket) write() {
 	for {
-		encoded := <-s.send
-		if _, err := s.writer.Write(encoded); err != nil {
-			log.Printf("write error: %v\n", err)
-			break
+		select {
+		case encoded := <-s.ipc.Write:
+			if _, err := s.writer.Write(encoded); err != nil {
+				log.Printf("write error: %v\n", err)
+				break
+			}
+		case <-s.pong:
+			if _, err := s.writer.Write(encodedPong); err != nil {
+				log.Printf("write error: %v\b", err)
+				break
+			}
 		}
 		s.writer.Flush()
 	}

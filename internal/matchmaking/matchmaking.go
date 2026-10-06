@@ -59,7 +59,6 @@ func (s Service) listen() {
 			log.Printf("read message: %v\n", msg)
 		case <-s.ticker.C:
 			for i, q := range s.queues {
-				// TODO: do not overuse the plain string concatenation as it degrades the performance.
 				url := "/queue/" + string(i+'0')
 				for ids := range q.matchmaking() {
 					s.onMatch(ids, url)

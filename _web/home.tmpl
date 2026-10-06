@@ -7,8 +7,38 @@
 
 {{ define "content" }}
 <h1 class="content-header">Welcome back, {{ .Player.Name }}!</h1>
-<button commandfor="ratedConfig" command="show-modal">Play vs Human</button>
-<button commandfor="engineConfig" command="show-modal">Play vs Engine</button>
+
+<div class="home-panels">
+	<div class="updates-panel">
+		<div class="panel-header">Updates</div>
+		<div class="panel-content">
+			<div class="panel-content-row">
+				<div class="update-date">
+				</div>
+				<div class="update-version">
+				</div>
+				<div class="update-describtion">
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="play-panel">
+		<div class="panel-header">Play Chess</div>
+		<div class="panel-content">
+		</div>
+	</div>
+</div>
+
+<button>Play Chess</button>
+
+<aside id="playSidebar" class="wrap">
+	<ul class="">
+		<li></li>
+		<li></li>
+		<li></li>
+		<li></li>
+	</ul>
+</aside>
 
 <dialog id="ratedConfig" class="wrap">
 	<h2 class="dialog-header">Choose a time control</h2>

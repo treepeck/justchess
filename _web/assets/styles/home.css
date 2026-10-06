@@ -7,3 +7,17 @@
   grid-template-rows: repeat(3, 1fr);
   grid-template-columns: repeat(3, 1fr);
 }
+
+.updates {
+  width: 95%;
+  max-width: var(--wrap-max-width);
+  flex-direction: column;
+}
+
+.updates-list {
+
+}
+
+.updates-list-row {
+
+}

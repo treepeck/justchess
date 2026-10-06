@@ -83,7 +83,7 @@ func (q *queue) _matchmaking(n *node, yield func([2]string) bool) {
 		}
 	}
 
-	// Check does the best gap exceeds the allowed rating gaq.
+	// Check does the best gap exceeds the allowed rating gap.
 	if best != nil && bestGap <= n.maxGap && bestGap <= best.maxGap {
 		if !yield([2]string{n.id, best.id}) {
 			return
@@ -98,7 +98,7 @@ func (q *queue) _matchmaking(n *node, yield func([2]string) bool) {
 		return
 	}
 
-	// Call function recursively on left and right subnodess.
+	// Call function recursively on left and right subnodes.
 	if n.left != q.nodes.leaf {
 		q._matchmaking(n.left, yield)
 	}
