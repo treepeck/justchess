@@ -1,0 +1,20 @@
+<!--{
+	"title": "Play vs Human",
+	"script": "human.js"
+}-->
+
+{{ define "content" }}
+<div class="menu">
+	<h2 class="menu-header">Choose a time control</h2>
+
+	<input class="slider" type="range" min="0" max="8" value="4" autofocus />
+	<div id="sliderDemo">Bullet</div>
+
+	<div class="menu-buttons">
+		<button class="menu-back" onclick="window.history.back()">Back</button>
+		<button class="menu-next" onclick="window.location.href='/game'">Play</button>
+	</div>
+</div>
+
+<div class="animated-chessboard"></div>
+{{ end }}

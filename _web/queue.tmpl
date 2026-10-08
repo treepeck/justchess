@@ -6,11 +6,9 @@
 }-->
 
 {{ define "content" }}
-<h1 class="content-header">Finding match...</h1>
-
-<div id="ping">Latency: ? ms</div>
-
 <div class="queue wrap flex">
+	<h1 class="content-header">Finding match...</h1>
+
 	<div>Control: {{ .Data.Control }}m + {{ .Data.Bonus }}s</div>
 	<div id="playersNumber">Players in queue: ?</div>
 	<div id="hintBox"></div>

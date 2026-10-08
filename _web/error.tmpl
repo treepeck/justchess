@@ -3,6 +3,14 @@
 }-->
 
 {{ define "content" }}
-<h1><b>There is an error</b></h1>
-<p>{{ .Data }}</p>
+<div class="menu">
+	<h2 class="menu-header">Stalemate!</h2>
+	<h2 class="menu-header">{{ .Data }}</h2>
+
+	<div class="menu-buttons">
+		<button autofocus class="menu-back" onclick="window.history.back()">Back</button>
+		<button class="menu-home" onclick="window.location.href='/'">Home</button>
+	</div>
+</div>
+<div class="animated-chessboard"></div>
 {{ end }}

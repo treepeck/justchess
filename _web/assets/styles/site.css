@@ -1,12 +1,7 @@
 /*
-site.css contains declarations of variables, and classes shared
-between pages.
+site.css contains declarations of variables, and classes shared between pages.
 All elements are sized for mobile phones by default. Other sizes are applied
 via media queries.
-*/
-
-/*
-Declare custom fonts.
 */
 @font-face {
   font-family: "Ubuntu";
@@ -21,27 +16,18 @@ Declare custom fonts.
   font-family: "ChessClock";
   src: url("/assets/fonts/JustChessClock-Regular.woff2") format("woff2");
 }
-
-/*
-CSS variables.
-*/
 :root {
-  --site-header-height: 50px;
-  --site-footer-height: 150px;
-  /* Maximum amount of pixels that site content can occupy. */
-  --site-max-width: 1200px;
-
+  --max-content-width: 1200px;
+  --max-menu-width: 400px;
   --site-background: #e2d3c4;
   --site-foreground: #34211d;
-  /*
-  Wraps use slighly transparent background.
-  */
-  --wrap-background: rgb(37, 22, 22, 85%);
-  --wrap-foreground: #b5936e;
-
- --wrap-max-width: 700px;
+  /* --button-background: #afa397; */
+  /* --button-foreground: #; */
+  --menu-background: rgb(37, 22, 22, 85%);
+  --menu-foreground: #b5936e;
+  --widget-roundness: 5px;
+  --widget-border-color: black;
 }
-
 /*
 Remove default margin and padding from the document. Also use more
 intuitive box-sizing model, which tells the browser to take margin
@@ -56,9 +42,6 @@ element. Style all scrollbars on the page as well.
   box-sizing: border-box;
   scrollbar-color: var(--wrap-foreground) var(--wrap-background);
 }
-/*
-body element takes all available space.
-*/
 body {
   width: 100%;
   height: 100vh;
@@ -67,318 +50,102 @@ body {
   background: var(--site-background);
   font-family: "Ubuntu";
 }
-
-/*
-All elements that wrap some other elements are styled similarly.
-*/
-.wrap {
-  color: var(--wrap-foreground);
-  padding: 10px;
-  background: var(--wrap-background);
-}
-
-/*
-Arbitrary flex container with centered content.
-WARN: It's the caller's responsibility to specify flex-direction.
-*/
-.flex {
-  gap: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/*
-Style URL elements.
-*/
-a {
-  color: inherit;
-}
-a:hover {
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-/*
-Style button elements.
-*/
-button {
-  color: var(--wrap-foreground);
-  border: none;
-  cursor: pointer;
-  padding: 10px;
-  font-size: large;
-  transition:
-    background-color 0.75s ease-in-out,
-    color 0.75s ease-in-out;
-  line-height: 2;
-  font-weight: bold;
-  border-radius: 15px;
-  background-color: var(--wrap-background);
-}
-button:hover {
-  color: var(--wrap-background);
-  outline: none;
-  background-color: var(--wrap-foreground);
-}
-button:focus {
-  color: var(--wrap-foreground);
-  outline: none;
-  background-color: green;
-}
-
-/*
-Site navigation menu. Can be displayed in both header and
-sidebar thus two different styles.
-*/
-.site-header .site-nav-menu {
-  height: var(--site-header-height);
-  display: none; /* By default hidden on smaller screens. */
-  flex-direction: row;
-  list-style-type: none;
-}
-.site-header a {
-  text-decoration: none;
-}
-.site-header .flex {
-  gap: 20px;
-}
-.site-header .site-nav-menu-item {
-  margin: auto 0 auto;
-}
-#siteSidebar .site-nav-menu {
-  width: 100%;
-  flex-direction: column;
-}
-#siteSidebar .site-nav-menu-item {
-  margin: 15px auto 0px 15px;
-  font-size: larger;
-  font-weight: bold;
-}
-
-/*
-Site header.
-*/
-.site-header {
-  width: 100%;
-  height: var(--site-header-height);
-}
-/*
-Site header nav is used to prevent header items to take all
-page space on wider screens.
-*/
-.site-header-nav {
-  width: 100%;
-  max-width: var(--site-header-max-width);
-}
-.site-header-logo {
-  font-size: x-large;
-  font-weight: bold;
-}
-.site-header-menu {
-  font-size: large;
-  margin-right: auto;
-  flex-direction: row;
-}
-#toggleSidebar {
-  width: 30px;
-  height: 30px;
-  border: none;
-  display: block;
-  transition: background-image 100ms ease-in-out;
-  background-size: contain;
-  background-color: transparent;
-  background-image: url("/assets/images/show-sidebar.svg");
-}
-.site-header-profile {
-  font-size: large;
-  font-weight: bold;
-}
-.site-header-signup {
-  text-decoration: underline;
-}
-
-/*
-Site sidebar. Hidden by default.
-*/
-#siteSidebar {
-  top: 0;
-  right: 0;
-  width: 100%;
-  height: calc(100%);
-  padding: 15px;
-  z-index: 20;
-  position: fixed;
-  transform: translateY(110%);
-  border-top: 2px solid var(--wrap-foreground);
-  transition: transform 100ms ease-in-out;
-  border-radius: 0;
-}
-#siteSidebar.active {
-  transform: translateY(var(--site-header-height));
-}
-#siteSitebar.active .toogleSidebar {
-  background-image: url("/assets/images/hide-sidebar.svg");
-}
-.site-sidebar-menu {
-  width: 100%;
-  height: 90%;
-  padding: 20px;
-}
-.site-sidebar-menu-item {
-  margin: 10px 0;
-  font-size: larger;
-  line-height: 2.5;
-  font-weight: bold;
-}
-
-/*
-Main container.
-*/
 .site-content {
   width: 100%;
-  margin: 0 auto 0 auto;
-  padding: 15px;
-  max-width: var(--site-max-width);
-  min-height: calc(
-    100vh - var(--site-header-height) - var(--site-footer-height)
-  );
-  flex-direction: column;
-}
-
-/*
-Header of the page content.
-*/
-.content-header {
-  margin: 15px 0 0 0;
-  font-weight: bold;
-}
-
-.content-section-header {
-  margin: 20px 0 0 0;
-  font-size: larger;
-  font-weight: bold;
-}
-
-/*
-Site footer.
-*/
-.site-footer {
-  width: 100%;
-  height: var(--site-footer-height);
-}
-.site-footer-col {
-  flex: 1;
-  flex-direction: column;
-}
-.site-footer-col-header {
-  font-size: larger;
-  font-weight: bold;
-}
-
-/*
-Modal dialog.
-*/
-dialog {
-  width: 95%;
-  margin: auto;
-  padding: 20px;
-  max-width: 500px;
-  border-radius: 15px;
-}
-dialog::backdrop {
-  backdrop-filter: blur(5px);
-}
-dialog h2 {
-  text-align: center;
-  margin-bottom: 15px;
-}
-dialog p {
-  font-size: larger;
-  text-align: center;
-  width: 100%;
-}
-dialog .dialog-buttons {
+  max-width: var(--max-content-width);
+  height: 100%;
   display: flex;
-  margin: 15px auto 5px auto;
-  width: 100%;
+  margin: 0 auto 0 auto;
 }
-dialog .dialog-buttons button {
+.menu {
+  width: 90%;
+  max-width: var(--max-menu-width);
   margin: auto;
-  line-height: 1;
-  flex: 1;
+  padding: 5px;
+  color: var(--menu-foreground);
+  background-color: var(--menu-background);
+  border-radius: var(--widget-roundness);
 }
-
-/*
-Slider for engine configuration dialog.
-*/
-#difficultySlider {
-  /* Default thumb image. */
-  --bg: url("/assets/images/medium.svg");
-
-  -webkit-appearance: none;
-  margin: 50px auto 50px auto;
-  background-color: #5a5a5a;
+.menu-header {
+  width: 100%;
+  margin: 30px auto 30px auto;
+  text-align: center;
+}
+.menu-frame {
+  border: 5px solid var(--widget-border-color);
+}
+.menu-frame li {
+  width: 100%;
+  list-style: none;
+}
+.menu button {
+  height: 60px;
+}
+.menu-frame button {
   width: 100%;
 }
-#difficultySlider::-moz-range-thumb {
+.menu-buttons {
+  width: 100%;
+  padding: 5px;
+  display: flex;
+  gap: 10px;
+}
+.menu-back {
+  width: 20%;
+  color: red;
+}
+.menu-home {
+  width: 20%;
+  color: green;
+}
+.menu-next {
+  flex: 80%;
+  color: green;
+}
+.slider {
+  width: 90%;
+  -webkit-appearance: none;
+  margin: 10px auto 10px auto;
+  border: 2px solid var(--widget-border-color);
+  border-radius: var(--widget-roundness);
+  background-color: #5a5a5a;
+}
+.slider::-moz-range-thumb {
   width: 64px;
   height: 64px;
   cursor: pointer;
   border: none;
   background-size: contain;
   background-color: transparent;
-  background-image: var(--bg);
+  background-image: var(--slider-thumb-image);
 }
-#difficultySlider::-moz-range-progress {
+.slider::-moz-range-progress {
   width: 100%;
   height: 100%;
   background: #b5936e;
   border: none;
   border-radius: 3px;
 }
-#difficultySlider::-webkit-slider-thumb {
+.slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 64px;
   height: 64px;
-  cursor: pointer;
   border: none;
   background-size: contain;
   background-color: transparent;
-  background-image: var(--bg);
+  background-image: var(--slider-thumb-image);
 }
 #sliderDemo {
   width: 100%;
   text-align: center;
   font-size: xx-large;
+}
+button {
+  cursor: pointer;
   font-weight: bold;
+  font-size: larger;
 }
-
-/*
-Text that activates help dialog.
-*/
-.helper-button {
-  width: 100%;
-  color: inherit;
-  cursor: help;
-  padding: 0;
-  font-size: inherit;
-  background: transparent;
-  line-height: inherit;
-  font-weight: inherit;
-  border-radius: 0;
-  text-decoration: underline;
-}
-.helper-button:hover,
-.helper-button:focus {
-  color: inherit;
-  background: transparent;
-}
-
-/*
-Animated background applied on home and queue pages.
-*/
-.floating-chessboard {
+.animated-chessboard {
   width: 200%;
   height: 200%;
   top: -50%;
@@ -390,18 +157,6 @@ Animated background applied on home and queue pages.
   z-index: -1;
   animation: float 200s infinite;
 }
-
-/* Large devices (laptops/desktops, 992px and up) */
-@media only screen and (min-width: 992px) {
-  .site-header .site-nav-menu {
-    display: flex;
-    text-decoration: none;
-  }
-  .site-header #toggleSidebar {
-    display: none;
-  }
-}
-
 @keyframes float {
   0% {
     background-position-x: 0;
@@ -415,6 +170,6 @@ Animated background applied on home and queue pages.
 
   100% {
     background-position-x: 100vw;
-    background-position-y: -100vh;
+    background-position-y: 100vh;
   }
 }

@@ -1,11 +1,3 @@
-{{ define "menu" }}
-<ul class="site-nav-menu flex">
-  <li class="site-nav-menu-item"><a href="/leaderboard">Leaderboard</a></li>
-  <li class="site-nav-menu-item"><a href="/releases">Releases</a></li>
-  <li class="site-nav-menu-item"><a href="/about">About</a></li>
-</ul>
-{{ end }}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,8 +6,6 @@
     <title>{{ .Title }} &ndash; JustChess.org</title>
     <link rel="icon" href="/assets/images/favicon.png" type="image/png">
     <link rel="stylesheet" href="/assets/styles/site.css">
-
-    <script src="/assets/scripts/widget/header.js" type="module"></script>
 
     {{ if ne .Script "" }}
       <script src="/assets/scripts/{{ .Script }}" type="module"></script>
@@ -29,37 +19,6 @@
  </head>
 
 <body>
-  <header class="site-header wrap flex">
-    <nav class="site-header-nav flex">
-      <a class="site-header-logo" href="/">JustChess</a>
-      <div class="site-header-menu flex">
-        {{ template "menu" . }}
-        <button id="toggleSidebar"></button>
-      </div>
-      <div class="site-header-profile flex">
-        {{/* If player is signed in, display the link to their profile. Otherwise display links to sign in and sign up pages. */}}
-        {{ if len .Player.Id | eq 12 }}
-          <a class="site-header-name" href="/player/{{ .Player.Id }}">{{ .Player.Name }}</a>
-        {{ else }}
-          <a class="site-header-signup" href="/signup">Sign up</a>
-          <a href="/signin">Sign in</a>
-        {{ end }}
-      </div>
-    </nav>
-  </header>
-
-  <aside id="siteSidebar" class="wrap">{{ template "menu" . }}</aside>
-
-  <main id="main" class="site-content flex">{{ template "content" . }}</main>
-
-  <footer class="site-footer wrap flex">
-	  <div class="site-footer-col flex">
-	    <div class="site-footer-col-header">Connect</div>
-	    <a href="https://github.com/treepeck/justchess">GitHub</a>
-	    <a href="https://www.youtube.com/@treepeck">YouTube</a>
-	    <a href="mailto:support@justchess.org">Support</a>
-	  </div>
-  </footer>
-
+  <main class="site-content">{{ template "content" . }}</main>
 </body>
 </html>
