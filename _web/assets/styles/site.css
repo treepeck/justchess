@@ -66,7 +66,7 @@ body {
   width: 90%;
   max-width: var(--max-widget-width);
   margin: auto;
-  padding: 5px;
+  padding: 15px;
   color: var(--widget-foreground);
   background-color: var(--widget-background);
   border-radius: var(--widget-roundness);
@@ -79,7 +79,7 @@ body {
 }
 .widget-header {
   width: 100%;
-  margin: 30px auto 30px auto;
+  margin: 15px auto 30px auto;
   text-align: center;
 }
 .widget-text {
@@ -217,7 +217,17 @@ dialog .dialog-buttons button {
   height: 60px;
   flex: 1;
 }
-
+.paragraph-header {
+  font-size: larger;
+  font-weight: bold;
+  margin: 20px;
+  line-height: 2;
+}
+.paragraph-text {
+  font-size: large;
+  margin: 20px;
+  line-height: 1.5;
+}
 @keyframes float {
   0% {
     background-position-x: 0;

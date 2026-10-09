@@ -1,0 +1,35 @@
+.leaderboard {
+  width: 100%;
+  color: var(--wrap-foreground);
+  height: 100%;
+  padding: 15px;
+  max-width: 650px;
+  line-height: 2;
+  border-radius: 15px;
+  background-color: var(--wrap-background);
+}
+.leaderboard-header {
+  width: 100%;
+  display: flex;
+  font-weight: bold;
+}
+.leaderboard-header div,
+.leaderboard-row div {
+  flex: 1;
+  overflow: hidden;
+  font-size: large;
+  text-align: center;
+}
+.leaderboard-row {
+  width: 100%;
+  color: var(--wrap-foreground);
+  display: flex;
+  border-top: 2px solid var(--wrap-foreground);
+  border-left: 2px solid var(--wrap-foreground);
+  border-right: 2px solid var(--wrap-foreground);
+  border-radius: 15px;
+  text-decoration: none;
+}
+.leaderboard-row.owner {
+  color: magenta;
+}
