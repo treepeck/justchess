@@ -3,13 +3,13 @@
 }-->
 
 {{ define "content" }}
-<div class="menu">
-	<h2 class="menu-header">Stalemate!</h2>
-	<h2 class="menu-header">{{ .Data }}</h2>
+<div class="widget">
+	<h2 class="widget-header">Stalemate!</h2>
+	<h2 class="widget-header">{{ .Data }}</h2>
 
-	<div class="menu-buttons">
-		<button autofocus class="menu-back" onclick="window.history.back()">Back</button>
-		<button class="menu-home" onclick="window.location.href='/'">Home</button>
+	<div class="widget-buttons">
+		<button autofocus class="widget-back" onclick="window.history.back()">Back</button>
+		<button class="widget-home" onclick="window.location.href='/'">Home</button>
 	</div>
 </div>
 <div class="animated-chessboard"></div>

@@ -5,16 +5,11 @@ import {
 } from "/assets/scripts/widget/form.js"
 
 async function submitForm() {
-	// Close the confirmation dialog.
-	const dialog = document.getElementById("confirmDialog")
-	dialog.close()
-
 	// Clear previous error message.
 	const resp = document.getElementById("serverResponse")
 	resp.textContent = ""
 
 	const form = document.getElementById("form")
-
 	const data = new FormData(form)
 
 	const name = data.get("username")
@@ -23,8 +18,8 @@ async function submitForm() {
 
 	if (validateInput(name, email, password)) {
 		// Disable the submit button.
-		submit.disabled = true
-		submit.textContent = "Processing..."
+		confirm.disabled = true
+		confirm.textContent = "Processing..."
 
 		const resMessage = document.getElementById("serverResponse")
 
@@ -37,18 +32,18 @@ async function submitForm() {
 		})
 
 		if (!res.ok) {
-			resMessage.textContent = "Sign up failed: " + (await res.text())
+			resMessage.textContent = "Sign up failed: " + res.statusText
 			resMessage.style.color = "red"
-			// Reenable the submit button.
-			submit.disabled = false
-			submit.textContent = "Confirm via email"
+			// Reenable the confirm button.
+			confirm.disabled = false
+			confirm.textContent = "Confirm"
 			return
 		}
 
 		resMessage.textContent =
 			"Please, check your email to confirm the registration. It may take several minutes for the email to be delivered and it may end up in spam."
 		resMessage.style.color = "green"
-		submit.style.display = "none"
+		confirm.style.display = "none"
 	}
 }
 
@@ -95,13 +90,38 @@ function validateInput(name, email, password) {
 	return isValid
 }
 
-const submit = document.getElementById("submit")
+const confirmDialog = document.getElementById("formConfirmation")
 
-const confirm = document.getElementById("formConfirm")
-confirm.onclick = submitForm
+const confirm = document.getElementById("confirm")
+confirm.onclick = (e) => {
+	e.preventDefault()
+	e.stopPropagation()
+
+	const form = document.getElementById("form")
+	const data = new FormData(form)
+	const name = data.get("username")
+	const email = data.get("email")
+	const password = data.get("password")
+
+	// Do not show the confimation dialog if input is invalid.
+	if (!validateInput(name, email, password)) return
+
+	confirmDialog.showModal()
+
+	document.getElementById("dialogClose").onclick = () => {
+		confirmDialog.close()
+	}
+	document.getElementById("dialogOK").onclick = async () => {
+		confirmDialog.close()
+		await submitForm()
+	}
+}
 
 const toggle = document.getElementById("formPasswordToggle")
-toggle.onclick = () => {
+toggle.onclick = (e) => {
+	e.preventDefault()
+	e.stopPropagation()
+
 	const input = document.getElementById("passwordInput")
 
 	const curr = input.getAttribute("type")

@@ -2,8 +2,7 @@
 
 #form {
   --input-background: #b5936e69;
-  --input-placeholder: rgba(73, 72, 72, 0.564);
-
+  display: flex;
   gap: 20px;
   width: 100%;
   padding: 10px;
@@ -11,7 +10,8 @@
   flex-direction: column;
 }
 .form-field {
-  gap: 5px;
+  display: flex;
+  gap: 10px;
   width: 100%;
   flex-direction: column;
 }
@@ -27,6 +27,7 @@
   padding: 5px;
   border: none;
   border-radius: 15px;
+  color: var(--widget-foreground);
   background: var(--input-background);
 }
 .form-field-password-wrap {
@@ -52,7 +53,7 @@
   background-image: url("/assets/images/show.svg");
 }
 .form-field input::placeholder {
-  color: var(--input-placeholder);
+  color: var(--widget-foreground);
 }
 .form-field input:hover,
 .form-field input:focus {
@@ -60,8 +61,14 @@
 }
 .form-error {
   color: #d40000;
+  width: 100%;
+  text-align: center;
+}
+.form-footer {
+  margin-bottom: 10px;
 }
 #serverResponse {
-  width: 350px;
+  width: 100%;
   font-size: large;
+  text-align: center;
 }

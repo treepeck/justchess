@@ -3,10 +3,10 @@
 }-->
 
 {{ define "content" }}
-<div class="menu">
-	<h2 class="menu-header">Choose your opponent</h2>
+<div class="widget">
+	<h2 class="widget-header">Choose your opponent</h2>
 
-	<ul class="menu-frame">
+	<ul class="widget-frame">
 		{{ if eq .Player.Name "Guest" }}
 			<li><button autofocus class="disabled" onclick="window.alert('Authorization is needed to play with other people.')">Human</button></li>
 		{{ else }}
@@ -15,8 +15,8 @@
 		<li><button onclick="window.location.href='/engine'">Engine</button></li>
 	</ul>
 
-	<div class="menu-buttons">
-		<button class="menu-back" onclick="window.history.back()">Back</button>
+	<div class="widget-buttons">
+		<button class="widget-back" onclick="window.history.back()">Back</button>
 	</div>
 </div>
 

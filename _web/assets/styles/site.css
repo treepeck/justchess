@@ -18,16 +18,16 @@ via media queries.
 }
 :root {
   --max-content-width: 1200px;
-  --max-menu-width: 400px;
+  --max-widget-width: 400px;
   --site-background: #e2d3c4;
   --site-foreground: #34211d;
   /* --button-background: #afa397; */
   --disabled-button-background: #6a5e5c;
   /* --button-foreground: #; */
-  --menu-back-color: red;
-  --menu-next-color: green;
-  --menu-background: rgb(37, 22, 22, 85%);
-  --menu-foreground: #b5936e;
+  --widget-back-color: red;
+  --widget-next-color: green;
+  --widget-background: rgb(37, 22, 22, 85%);
+  --widget-foreground: #b5936e;
   --widget-roundness: 5px;
   --widget-border-color: black;
   --link-foreground: orange;
@@ -62,56 +62,56 @@ body {
   display: flex;
   margin: 0 auto 0 auto;
 }
-.menu {
+.widget {
   width: 90%;
-  max-width: var(--max-menu-width);
+  max-width: var(--max-widget-width);
   margin: auto;
   padding: 5px;
-  color: var(--menu-foreground);
-  background-color: var(--menu-background);
+  color: var(--widget-foreground);
+  background-color: var(--widget-background);
   border-radius: var(--widget-roundness);
 }
-.menu.large {
+.widget.large {
   max-width: 800px;
 }
-.menu-header {
+.widget-header {
   width: 100%;
   margin: 30px auto 30px auto;
   text-align: center;
 }
-.menu-text {
+.widget-text {
   width: 100%;
   font-size: large;
   margin: 0 auto 0 auto;
   text-align: center;
   line-height: 1.5;
 }
-.menu-frame li {
+.widget-frame li {
   width: 100%;
   list-style: none;
 }
-.menu button {
+.widget button {
   height: 60px;
 }
-.menu-frame button {
+.widget-frame button {
   width: 100%;
 }
-.menu-buttons {
+.widget-buttons {
   width: 100%;
   padding: 5px;
   margin: 30px 0 0 0;
   display: flex;
   gap: 10px;
 }
-.menu-back {
+.widget-back {
   width: 20%;
-  color: var(--menu-back-color);
+  color: var(--widget-back-color);
 }
-.menu-home {
+.widget-home {
   width: 20%;
-  color: var(--menu-next-color);
+  color: var(--widget-next-color);
 }
-.menu-next {
+.widget-next {
   flex: 80%;
   color: green;
 }
@@ -161,7 +161,7 @@ button.disabled {
 }
 button.disabled::after {
   content: "Sign up!";
-  color: var(--menu-back-color);
+  color: var(--widget-back-color);
   font-size: medium;
   position: absolute;
   top: 10px;
@@ -184,6 +184,35 @@ button.disabled::after {
 a {
   color: var(--link-foreground);
 }
+dialog {
+  margin: auto;
+  padding: 20px;
+  max-width: 500px;
+  border-radius: 15px;
+}
+dialog::backdrop {
+  backdrop-filter: blur(5px);
+}
+dialog h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+dialog p {
+  font-size: larger;
+  text-align: center;
+  width: 100%;
+}
+dialog .dialog-buttons {
+  display: flex;
+  margin: 15px auto 5px auto;
+  width: 100%;
+}
+dialog .dialog-buttons button {
+  margin: auto;
+  line-height: 1;
+  flex: 1;
+}
+
 @keyframes float {
   0% {
     background-position-x: 0;

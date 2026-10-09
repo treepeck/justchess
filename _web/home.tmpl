@@ -3,8 +3,8 @@
 }-->
 
 {{ define "content" }}
-<div class="menu">
-	<h2 class="menu-header">
+<div class="widget">
+	<h2 class="widget-header">
 		{{ if eq .Player.Name "Guest" }}
 			Greetings!
 		{{ else }}
@@ -12,7 +12,7 @@
 		{{ end }}
 	</h2>
 
-	<ul class="menu-frame">
+	<ul class="widget-frame">
 		<li><button autofocus onclick="window.location.href='/play'">Play Chess</button></li>
 		{{ if eq .Player.Name "Guest" }}
 			<li><button onclick="window.location.href='/signup'">Authorize</button></li>
