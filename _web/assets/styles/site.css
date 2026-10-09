@@ -22,11 +22,15 @@ via media queries.
   --site-background: #e2d3c4;
   --site-foreground: #34211d;
   /* --button-background: #afa397; */
+  --disabled-button-background: #6a5e5c;
   /* --button-foreground: #; */
+  --menu-back-color: red;
+  --menu-next-color: green;
   --menu-background: rgb(37, 22, 22, 85%);
   --menu-foreground: #b5936e;
   --widget-roundness: 5px;
   --widget-border-color: black;
+  --link-foreground: orange;
 }
 /*
 Remove default margin and padding from the document. Also use more
@@ -52,6 +56,7 @@ body {
 }
 .site-content {
   width: 100%;
+  padding: 15px;
   max-width: var(--max-content-width);
   height: 100%;
   display: flex;
@@ -66,13 +71,20 @@ body {
   background-color: var(--menu-background);
   border-radius: var(--widget-roundness);
 }
+.menu.large {
+  max-width: 800px;
+}
 .menu-header {
   width: 100%;
   margin: 30px auto 30px auto;
   text-align: center;
 }
-.menu-frame {
-  border: 5px solid var(--widget-border-color);
+.menu-text {
+  width: 100%;
+  font-size: large;
+  margin: 0 auto 0 auto;
+  text-align: center;
+  line-height: 1.5;
 }
 .menu-frame li {
   width: 100%;
@@ -87,16 +99,17 @@ body {
 .menu-buttons {
   width: 100%;
   padding: 5px;
+  margin: 30px 0 0 0;
   display: flex;
   gap: 10px;
 }
 .menu-back {
   width: 20%;
-  color: red;
+  color: var(--menu-back-color);
 }
 .menu-home {
   width: 20%;
-  color: green;
+  color: var(--menu-next-color);
 }
 .menu-next {
   flex: 80%;
@@ -105,45 +118,56 @@ body {
 .slider {
   width: 90%;
   -webkit-appearance: none;
-  margin: 10px auto 10px auto;
+  margin: 10px auto 15px auto;
   border: 2px solid var(--widget-border-color);
   border-radius: var(--widget-roundness);
   background-color: #5a5a5a;
 }
-.slider::-moz-range-thumb {
+.slider::-moz-range-thumb,
+.slider::-webkit-slider-thumb {
   width: 64px;
   height: 64px;
   cursor: pointer;
   border: none;
+  -webkit-appearance: none;
   background-size: contain;
   background-color: transparent;
   background-image: var(--slider-thumb-image);
 }
-.slider::-moz-range-progress {
+.slider::-moz-range-progress,
+.slider::-webkit-slider-progress {
   width: 100%;
   height: 100%;
   background: #b5936e;
   border: none;
   border-radius: 3px;
 }
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 64px;
-  height: 64px;
-  border: none;
-  background-size: contain;
-  background-color: transparent;
-  background-image: var(--slider-thumb-image);
-}
 #sliderDemo {
   width: 100%;
   text-align: center;
   font-size: xx-large;
+  margin-bottom: 10px;
 }
 button {
   cursor: pointer;
   font-weight: bold;
   font-size: larger;
+  border: 1px solid var(--widget-border-color);
+}
+button.disabled {
+  position: relative;
+  cursor: help;
+  background-color: var(--disabled-button-background);
+}
+button.disabled::after {
+  content: "Sign up!";
+  color: var(--menu-back-color);
+  font-size: medium;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  animation: rotation 5s infinite linear;
+  transform: rotateX(15deg) rotateY(360deg);
 }
 .animated-chessboard {
   width: 200%;
@@ -156,6 +180,9 @@ button {
   filter: blur(2px) grayscale(10%) brightness(85%);
   z-index: -1;
   animation: float 200s infinite;
+}
+a {
+  color: var(--link-foreground);
 }
 @keyframes float {
   0% {
@@ -171,5 +198,13 @@ button {
   100% {
     background-position-x: 100vw;
     background-position-y: 100vh;
+  }
+}
+@keyframes rotation {
+  0% {
+    transform: rotateX(15deg) rotateY(15deg);
+  }
+  100% {
+    transform: rotateX(15deg) rotateY(360deg);
   }
 }

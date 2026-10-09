@@ -1,0 +1,11 @@
+.question {
+  font-size: larger;
+  font-weight: bold;
+  margin: 20px;
+  line-height: 2;
+}
+.answer {
+  font-size: large;
+  margin: 20px;
+  line-height: 1.5;
+}

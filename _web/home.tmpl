@@ -14,9 +14,14 @@
 
 	<ul class="menu-frame">
 		<li><button autofocus onclick="window.location.href='/play'">Play Chess</button></li>
-		<li><button onclick="window.location.href='/player/{{ .Player.Id }}'">Profile</button></li>
+		{{ if eq .Player.Name "Guest" }}
+			<li><button onclick="window.location.href='/signup'">Authorize</button></li>
+		{{ else }}
+			<li><button onclick="window.location.href='/player/{{ .Player.Id }}'">Profile</button></li>
+		{{ end }}
 		<li><button onclick="window.location.href='/updates'">Updates</button></li>
 		<li><button onclick="window.location.href='/leaderboard'">Leaderboard</button></li>
+		<li><button onclick="window.location.href='/faq'">General information</button></li>
 	</ul>
 </div>
 

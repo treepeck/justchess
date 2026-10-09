@@ -1,0 +1,40 @@
+<!--{
+	"title": "Privacy",
+	"style": "faq.css"
+}-->
+
+{{ define "content" }}
+<div class="menu large">
+	<h2 class="menu-header">FAQ</h2>
+
+	<div class="question">Why do I need to enter my email address?</div>
+	<div class="answer">
+		To securely reset your password in case you forget it.
+		Note that emails are securely stored and never used for other purposes.
+	</div>
+
+	<div class="question">What can I do on this website?</div>
+	<div class="answer">Here you can play chess with other players or with chess engine.</div>
+
+	<div class="question">Other information</div>
+	<div class="answer">
+		JustChess.org is developed by <a href="https://github.com/treepeck">Artem Bielikov</a>.
+		<br/>
+		See <a>YouTube broadcasts</a> if you are interested in the development process.
+	</div>
+
+	<div class="question">License</div>
+	<ul class="answer">
+		<li>Source code is licensed under <a href="http://mozilla.org/MPL/2.0/">MPL 2.0</a></li>
+		<li><a href="https://stockfishchess.org/">Stockfish</a> chess engine used under <a href="https://github.com/official-stockfish/Stockfish?tab=readme-ov-file#terms-of-use">GNU GPL v3</a></li>
+		<li><a href="https://github.com/canonical/Ubuntu-Sans-fonts">Ubuntu fonts</a> used under <a href="https://canonical.com/legal/font-licence">UBUNTU FONT LICENCE Version 1.0</a></li>
+		<li><a href="https://github.com/treepeck/justchess/tree/main/_web/assets/fonts">JustChess fonts</a>, <a href="https://github.com/treepeck/justchess/tree/main/_web/assets/images">images</a>, and <a href="https://github.com/treepeck/justchess/tree/main/_web/assets/sounds">sounds</a> are licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en">CC BY-NC-ND 4.0</a></li>
+	</ul>
+
+	<div class="menu-buttons">
+		<button autofocus class="menu-back" onclick="window.history.back()">Back</button>
+		<button class="menu-home" onclick="window.location.href='/'">Home</button>
+	</div>
+</div>
+<div class="animated-chessboard"></div>
+{{ end }}

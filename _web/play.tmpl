@@ -7,7 +7,11 @@
 	<h2 class="menu-header">Choose your opponent</h2>
 
 	<ul class="menu-frame">
-		<li><button autofocus onclick="window.location.href='/human'">Human</button></li>
+		{{ if eq .Player.Name "Guest" }}
+			<li><button autofocus class="disabled" onclick="window.alert('Authorization is needed to play with other people.')">Human</button></li>
+		{{ else }}
+			<li><button autofocus onclick="window.location.href='/human'">Human</button></li>
+		{{ end }}
 		<li><button onclick="window.location.href='/engine'">Engine</button></li>
 	</ul>
 
