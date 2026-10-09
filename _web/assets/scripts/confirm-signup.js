@@ -1,5 +1,3 @@
-import { popup } from "/assets/scripts/widget/popup.js"
-
 async function confirmSignup() {
 	const params = new URLSearchParams(document.location.search)
 	const token = params.get("token")
@@ -9,7 +7,7 @@ async function confirmSignup() {
 		credentials: "include",
 	})
 	if (!res.ok) {
-		popup("Token not found")
+		errorDialog.showModal()
 		return
 	}
 	// Redirect player to home page after successful confirmation.
@@ -18,3 +16,9 @@ async function confirmSignup() {
 
 const confirm = document.getElementById("confirm")
 confirm.onclick = confirmSignup
+
+const errorDialog = document.getElementById("error")
+
+const close = document.getElementById("dialogClose").onclick = (e) => {
+	errorDialog.close()
+}

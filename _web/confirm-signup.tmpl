@@ -1,0 +1,27 @@
+<!--{
+	"title": "Confirm Registration",
+	"script": "confirm-signup.js"
+}-->
+
+{{ define "content" }}
+<div class="widget medium">
+	<h2 class="widget-header">Almost done!</h2>
+	<h2 class="widget-header">Press the button below to confirm the registration.</h2>
+
+	<div class="widget-buttons">
+		<button autofocus class="widget-back" onclick="window.history.back()">Back</button>
+		<button id="confirm" class="widget-next">Confirm</button>
+	</div>
+</div>
+
+<dialog id="error">
+	<h2 class="dialog-header">Error:</h2>
+	<h2 class="dialog-header">The registration token wasn't found!</h2>
+
+	<div class="dialog-buttons">
+		<button autofocus id="dialogClose">Close</button>
+	</div>
+</dialog>
+
+<div class="animated-chessboard"></div>
+{{ end }}

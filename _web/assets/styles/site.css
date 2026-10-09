@@ -74,6 +74,9 @@ body {
 .widget.large {
   max-width: 800px;
 }
+.widget.medium {
+  max-width: 560px;
+}
 .widget-header {
   width: 100%;
   margin: 30px auto 30px auto;
@@ -189,6 +192,8 @@ dialog {
   padding: 20px;
   max-width: 500px;
   border-radius: 15px;
+  background-color: var(--widget-background);
+  color: var(--widget-foreground);
 }
 dialog::backdrop {
   backdrop-filter: blur(5px);
@@ -209,7 +214,7 @@ dialog .dialog-buttons {
 }
 dialog .dialog-buttons button {
   margin: auto;
-  line-height: 1;
+  height: 60px;
   flex: 1;
 }
 
