@@ -1,6 +1,7 @@
 <!--{
 	"title": "Play vs Human",
-	"script": "human.js"
+	"script": "human.js",
+	"style": "human.css"
 }-->
 
 {{ define "content" }}
@@ -14,9 +15,26 @@
 
 	<div class="widget-buttons">
 		<button class="widget-back" onclick="window.history.back()">Back</button>
-		<button class="widget-next" onclick="window.location.href='/game'">Play</button>
+		<button id="joinMatchmaking" class="widget-next">Play</button>
 	</div>
 </div>
+
+<dialog id="matchmaking" class="matchmaking">
+	<h2 class="dialog-header">Finding match...</h2>
+
+	<h2 id="gameMode" class="dialog-header"></h2>
+
+	<p id="playersNumber">Players in queue: ?</p>
+	<p id="hintBox"></p>
+	<p id="countUpTimer">00:00</p>
+
+	<p id="ping">Latency: ? ms</p>
+
+	<div class="dialog-buttons">
+		<button id="dialogClose">Leave</button>
+	</div>
+	</div>
+</dialog>
 
 <div class="animated-chessboard"></div>
 {{ end }}

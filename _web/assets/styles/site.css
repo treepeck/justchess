@@ -200,6 +200,7 @@ a {
 dialog {
   margin: auto;
   padding: 20px;
+  width: 100%;
   max-width: 500px;
   border-radius: 15px;
   background-color: var(--widget-background);
