@@ -94,6 +94,7 @@ body {
 }
 .widget button {
   height: 60px;
+  min-width: 80px;
 }
 .widget-frame button {
   width: 100%;
@@ -206,6 +207,9 @@ button.disabled::after {
 a {
   color: var(--link-foreground);
 }
+a:focus {
+  outline: 2px solid green;
+}
 dialog {
   margin: auto;
   padding: 20px;
@@ -236,6 +240,9 @@ dialog .dialog-buttons button {
   margin: auto;
   height: 60px;
   flex: 1;
+}
+.timestamp {
+  display: inline;
 }
 .paragraph-header {
   font-size: larger;

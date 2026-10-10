@@ -3,13 +3,13 @@
 }
 .leaderboard {
   min-width: 400px;
-  border-collapse: collapse;
 }
 .leaderboard-header {
   width: 100%;
   display: flex;
   font-weight: bold;
-  width: 550px;
+  width: 100%;
+  min-width: 550px;
 }
 .leaderboard-header div,
 .leaderboard-row div {
@@ -20,7 +20,8 @@
   line-height: 3.5;
 }
 .leaderboard-row {
-  width: 550px;
+  width: 100%;
+  min-width: 550px;
   display: flex;
   border: 2px solid var(--widget-foreground);
   border: 2px solid var(--widget-foreground);

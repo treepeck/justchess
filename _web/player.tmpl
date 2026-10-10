@@ -5,30 +5,40 @@
 
 {{ define "content" }}
 <div class="widget large">
-	<h2 class="widget-header">{{ .Data.Name }}</h2>
-	<div class="widget-text">Rating: {{ .Data.Rating }}</div>
-	<div class="widget-text">Registered at: <div class="timestamp">{{ .Data.CreatedAt }}</div></div>
+	<h2 class="widget-header">Profile of the <div class="highlight">{{ .Data.Name }}</div></h2>
 
 	<div class="panel-tab-links">
 		<button autofocus id="tabLink1">Human</button>
 		<button id="tabLink2">Engine</button>
 	</div>
-	<div id="humanPane" class="tab-pane active">
-		<div class="tab-pane-header">
-			<div class="tab-pane-col">Result</div>
-			<div class="tab-pane-col">Players</div>
-			<div class="tab-pane-col">Time control</div>
-			<div class="tab-pane-col">Total moves</div>
-			<div class="tab-pane-col">Date</div>
+
+	<div class="table-wrap">
+		<div class="table">
+			<div id="humanPane" class="tab-pane active">
+				<div class="tab-pane-header">
+					<div class="tab-pane-col">Result</div>
+					<div class="tab-pane-col">Players</div>
+					<div class="tab-pane-col">Time control</div>
+					<div class="tab-pane-col">Total moves</div>
+					<div class="tab-pane-col">Date</div>
+				</div>
+			</div>
+			<div id="enginePane" class="tab-pane">
+				<div class="tab-pane-header">
+					<div class="tab-pane-col">Result</div>
+					<div class="tab-pane-col">Total moves</div>
+					<div class="tab-pane-col">Difficulty</div>
+					<div class="tab-pane-col">Date</div>
+				</div>
+			</div>
 		</div>
 	</div>
-	<div id="enginePane" class="tab-pane">
-		<div class="tab-pane-header">
-			<div class="tab-pane-col">Result</div>
-			<div class="tab-pane-col">Total moves</div>
-			<div class="tab-pane-col">Difficulty</div>
-			<div class="tab-pane-col">Date</div>
-		</div>
+
+	<div class="player-info">Rating: {{ .Data.Rating }}</div>
+	<div class="player-info">Registered at: <div class="timestamp">{{ .Data.CreatedAt }}</div></div>
+
+	<div class="widget-buttons">
+		<button autofocus class="widget-back" onclick="window.history.back()">Back</button>
 	</div>
 </div>
 
