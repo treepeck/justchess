@@ -1,0 +1,32 @@
+.panel-tab-links {
+  display: flex;
+  width: 100%;
+  height: 60px;
+  font-size: larger;
+  font-weight: 700;
+}
+.panel-tab-links button {
+  flex: 1;
+}
+.tab-pane {
+  display: none;
+  margin: 15px 0 15px 0;
+  border: 2px solid var(--widget-foreground);
+  border-radius: var(--widget-roundness);
+  padding: 15px;
+}
+.tab-pane.active {
+  display: block;
+}
+.tab-pane-header {
+  width: 100%;
+  display: flex;
+  text-align: center;
+}
+.tab-pane-header .tab-pane-col {
+  font-size: larger;
+  font-weight: bold;
+}
+.tab-pane-col {
+  flex: 1;
+}

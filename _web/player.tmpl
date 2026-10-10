@@ -1,40 +1,36 @@
+<!--{
+	"style": "player.css",
+	"script": "player.js"
+}-->
+
 {{ define "content" }}
-<div class="player-card">
-	<div class="player-card-col"><b>{{ .Data.Name }}</b></div>
-	<div class="player-card-col">{{ .Data.Rating }} MMR</div>
-	<div class="player-card-col">
-		<p>Member since</p>
-		<p>{{ .Data.CreatedAt }}</p>
+<div class="widget large">
+	<h2 class="widget-header">{{ .Data.Name }}</h2>
+	<div class="widget-text">Rating: {{ .Data.Rating }}</div>
+	<div class="widget-text">Registered at: {{ .Data.CreatedAt }}</div>
+
+	<div class="panel-tab-links">
+		<button autofocus id="tabLink1">Human</button>
+		<button id="tabLink2">Engine</button>
+	</div>
+	<div id="humanPane" class="tab-pane active">
+		<div class="tab-pane-header">
+			<div class="tab-pane-col">Result</div>
+			<div class="tab-pane-col">Players</div>
+			<div class="tab-pane-col">Time control</div>
+			<div class="tab-pane-col">Total moves</div>
+			<div class="tab-pane-col">Date</div>
+		</div>
+	</div>
+	<div id="enginePane" class="tab-pane">
+		<div class="tab-pane-header">
+			<div class="tab-pane-col">Result</div>
+			<div class="tab-pane-col">Total moves</div>
+			<div class="tab-pane-col">Difficulty</div>
+			<div class="tab-pane-col">Date</div>
+		</div>
 	</div>
 </div>
 
-<table class="player-table">
-	<tr>
-		<th><b>Rated</b></th>
-		<th><b>Engine</b></th>
-	</tr>
-
-	<tr>
-		<table id="ratedGamesTable" class="player-table">
-			<tr>
-				<th><b>Result</b></th>
-				<th><b>Players</b></th>
-				<th><b>Time control</b></th>
-				<th><b>Total moves</b></th>
-				<th><b>Date</b></th>
-			</tr>
-		</table>
-	</tr>
-
-	<tr>
-		<table id="engineGamesTable" class="player-table">
-			<tr>
-				<th><b>Result</b></th>
-				<th><b>Total moves</b></th>
-				<th><b>Difficulty</b></th>
-				<th><b>Date</b></th>
-			</tr>
-		</table>
-	</tr>
-</table>
+<div class="animated-chessboard"></div>
 {{ end }}

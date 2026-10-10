@@ -21,9 +21,8 @@ via media queries.
   --max-widget-width: 400px;
   --site-background: #e2d3c4;
   --site-foreground: #34211d;
-  /* --button-background: #afa397; */
+  --button-background: #765943;
   --disabled-button-background: #6a5e5c;
-  /* --button-foreground: #; */
   --widget-back-color: red;
   --widget-next-color: green;
   --widget-background: rgb(37, 22, 22, 85%);
@@ -133,7 +132,7 @@ body {
   background-color: #5a5a5a;
 }
 .slider:focus {
-   outline-offset: 20px;
+  outline-offset: 20px;
 }
 .slider::-moz-range-thumb,
 .slider::-webkit-slider-thumb {
@@ -166,6 +165,16 @@ button {
   font-weight: bold;
   font-size: larger;
   border: 1px solid var(--widget-border-color);
+  color: var(--wrap-foreground);
+  background-color: var(--button-background);
+  border-radius: var(--widget-roundness);
+}
+button:focus {
+  outline: none;
+  border: 2px solid orange;
+}
+button:hover {
+  background-color: #884e23;
 }
 button.disabled {
   position: relative;

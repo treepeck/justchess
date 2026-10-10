@@ -19,6 +19,6 @@ confirm.onclick = confirmSignup
 
 const errorDialog = document.getElementById("error")
 
-const close = document.getElementById("dialogClose").onclick = (e) => {
+const close = (document.getElementById("dialogClose").onclick = (e) => {
 	errorDialog.close()
-}
+})

@@ -1,7 +1,4 @@
-import {
-	validateEmail,
-	validatePassword,
-} from "/assets/scripts/widget/form.js"
+import { validateEmail, validatePassword } from "/assets/scripts/widget/form.js"
 
 async function submitForm(e) {
 	e.preventDefault()

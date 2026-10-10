@@ -31,12 +31,12 @@ export const MaxMessageLength = 117
  * @enum {number}
  */
 export const MessageKind = {
-    KindPing: 0,
-    KindPong: 1,
-    KindRedirect: 5,
-    KindCounter: 4,
-    KindJoin: 2,
-    KindLeave: 3,
+	KindPing: 0,
+	KindPong: 1,
+	KindRedirect: 5,
+	KindCounter: 4,
+	KindJoin: 2,
+	KindLeave: 3,
 }
 
 /**
