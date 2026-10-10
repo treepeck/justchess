@@ -1,34 +1,33 @@
+.leaderboard-wrap {
+  overflow-x: scroll;
+}
 .leaderboard {
-  width: 100%;
-  color: var(--wrap-foreground);
-  height: 100%;
-  padding: 15px;
-  max-width: 650px;
-  line-height: 2;
-  border-radius: 15px;
-  background-color: var(--wrap-background);
+  min-width: 400px;
+  border-collapse: collapse;
 }
 .leaderboard-header {
   width: 100%;
   display: flex;
   font-weight: bold;
+  width: 550px;
 }
 .leaderboard-header div,
 .leaderboard-row div {
-  flex: 1;
   overflow: hidden;
-  font-size: large;
+  font-size: larger;
   text-align: center;
+  flex: 1;
+  line-height: 3.5;
 }
 .leaderboard-row {
-  width: 100%;
-  color: var(--wrap-foreground);
+  width: 550px;
   display: flex;
-  border-top: 2px solid var(--wrap-foreground);
-  border-left: 2px solid var(--wrap-foreground);
-  border-right: 2px solid var(--wrap-foreground);
-  border-radius: 15px;
+  border: 2px solid var(--widget-foreground);
+  border: 2px solid var(--widget-foreground);
+  border: 2px solid var(--widget-foreground);
+  border-radius: var(--widget-roundness);
   text-decoration: none;
+  font-size: large;
 }
 .leaderboard-row.owner {
   color: magenta;

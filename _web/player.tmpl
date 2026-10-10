@@ -7,7 +7,7 @@
 <div class="widget large">
 	<h2 class="widget-header">{{ .Data.Name }}</h2>
 	<div class="widget-text">Rating: {{ .Data.Rating }}</div>
-	<div class="widget-text">Registered at: {{ .Data.CreatedAt }}</div>
+	<div class="widget-text">Registered at: <div class="timestamp">{{ .Data.CreatedAt }}</div></div>
 
 	<div class="panel-tab-links">
 		<button autofocus id="tabLink1">Human</button>

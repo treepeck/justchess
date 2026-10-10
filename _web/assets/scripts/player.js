@@ -1,3 +1,5 @@
+import "/assets/scripts/time/format.js"
+
 const humanPane = document.getElementById("humanPane")
 const enginePane = document.getElementById("enginePane")
 

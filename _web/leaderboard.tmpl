@@ -1,28 +1,32 @@
 <!--{
 	"title": "Leaderboard",
 	"style": "leaderboard.css",
-	"script": "leaderboard.js"
+	"script": "time/format.js"
 }-->
 
 {{ define "content" }}
 <div class="widget large">
 	<h2 class="widget-header">Leaderboard</h2>
 
-	<div class="leaderboard-header">
-		<div>Name</div>
-		<div>Games</div>
-		<div>Rating</div>
-		<div>Member since</div>
-	</div>
+	<div class="leaderboard-wrap">
+		<div class="leaderboard">
+			<div class="leaderboard-header">
+				<div>Name</div>
+				<div>Games</div>
+				<div>Rating</div>
+				<div>Registered</div>
+			</div>
 
-	{{ range $v := .Data }}
-		<a class="leaderboard-row {{ if eq $v.Id $.Player.Id }}owner{{ end }}" href="/player/{{ $v.Id }}">
-			<div>{{ $v.Name }}</div>
-			<div>{{ $v.Games }}</div>
-			<div>{{ $v.Rating }}</div>
-			<div class="leaderboard-row-time">{{ $v.CreatedAt }}</div>
-		</a>
-	{{ end }}
+			{{ range $v := .Data }}
+				<a class="leaderboard-row {{ if eq $v.Id $.Player.Id }}owner{{ end }}" href="/player/{{ $v.Id }}">
+					<div>{{ $v.Name }}</div>
+					<div>{{ $v.Games }}</div>
+					<div>{{ $v.Rating }}</div>
+					<div class="leaderboard-row-time timestamp">{{ $v.CreatedAt }}</div>
+				</a>
+			{{ end }}
+		</div>
+	</div>
 </div>
 
 <div class="animated-chessboard"></div>
