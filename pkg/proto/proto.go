@@ -1,9 +1,7 @@
 // Package proto defines the communication protocol for game and ws servers.
 package proto
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 const (
 	// Limit of concurrent TCP connections between WS and Game servers.
@@ -28,8 +26,9 @@ const (
 	// Counter is used to notify a player about number of players in matchmaking queue.
 	// Payload is an integer.
 	KindCounter
-	// Redirect is used to redirect a player to named URL.
-	KindRedirect
+	// Match is used emmited when a new game is being created. The coordinator needs
+	// to redirect players and create a new game.
+	KindMatch
 )
 
 const (
@@ -49,7 +48,7 @@ type Message struct {
 
 // Encode encodes [Message] to the binary format.
 // NOTE: [KindPing] and [KindPong] messages will not be encoded.
-func Encode(m Message) ([MaxMessageLength]byte, int) {
+func Encode(m Message) []byte {
 	var encoded [MaxMessageLength]byte
 
 	encoded[0] = byte(m.Kind)
@@ -58,7 +57,7 @@ func Encode(m Message) ([MaxMessageLength]byte, int) {
 	switch m.Kind {
 	case KindPing, KindPong:
 		// NOTE: Skip heartbeat messages.
-		return encoded, 0
+		return nil
 	default:
 		for i := range m.Payload {
 			encoded[cnt] = m.Payload[i]
@@ -70,9 +69,8 @@ func Encode(m Message) ([MaxMessageLength]byte, int) {
 			encoded[cnt] = m.Id[i]
 		}
 	}
-	cnt++
-	encoded[cnt] = MessageSeparator
-	return encoded, cnt + 1
+	encoded[cnt+1] = MessageSeparator
+	return encoded[:cnt+2]
 }
 
 func PreallocateDecodeBuff() [][]byte {

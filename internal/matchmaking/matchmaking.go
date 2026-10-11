@@ -2,6 +2,7 @@
 package matchmaking
 
 import (
+	"github.com/treepeck/justchess/internal/randgen"
 	"github.com/treepeck/justchess/pkg/proto"
 	"iter"
 	"log"
@@ -19,16 +20,18 @@ const (
 type Queue struct {
 	id     string
 	In     chan proto.Message
+	out    chan []byte
 	ticker *time.Ticker
 	nodes  *redBlackTree
 	// Number of players.
 	size int
 }
 
-func SpawnQueue(id string) chan proto.Message {
+func SpawnQueue(id string, out chan []byte) chan proto.Message {
 	q := &Queue{
 		id:     id,
 		In:     make(chan proto.Message, 32),
+		out:    out,
 		ticker: time.NewTicker(interval),
 		nodes:  newRedBlackTree(),
 	}
@@ -51,8 +54,20 @@ func (q *Queue) Listen() {
 				log.Printf("queue %s recieved invalid message from %s\n", q.id, m.Id)
 			}
 		case <-q.ticker.C:
-			q.matchmaking()
+			hasMatches := false
+			for ids := range q.matchmaking() {
+				hasMatches = true
+				q.createMatch(ids)
+			}
+			if !hasMatches { // Do not send counter if no matches were found.
+				continue
+			}
 		}
+		q.out <- proto.Encode(proto.Message{
+			Id:      q.id,
+			Kind:    proto.KindCounter,
+			Payload: []byte{byte(q.size)}, // TODO: byte might not be enough.
+		})
 	}
 }
 
@@ -72,14 +87,26 @@ func (q *Queue) remove(id string) int {
 	rating := 1500.0 // TODO: get actual rating from memory cache.
 	n := search(q.nodes.root, rating, id)
 	if n == nil {
-		log.Printf("matchmaking: trying to remove non-existing player \"%s\"\n", id)
+		log.Printf("matchmaking: trying to remove non-existing player %s\n", id)
 		return q.size
 	}
 	q.nodes.remove(n)
 	q.size--
-
 	log.Printf("player %s leaves queue %s\n", id, q.id)
 	return q.size
+}
+
+func (q *Queue) createMatch(playerIDs [2]string) {
+	var payload [36]byte
+	copy(payload[:12], playerIDs[0])
+	copy(payload[12:24], playerIDs[1])
+	copy(payload[24:], randgen.GenId(randgen.IdLen)) // Game id.
+
+	q.out <- proto.Encode(proto.Message{
+		Id:      q.id,
+		Kind:    proto.KindMatch,
+		Payload: payload[:],
+	})
 }
 
 func (q *Queue) matchmaking() iter.Seq[[2]string] {

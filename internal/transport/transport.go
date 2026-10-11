@@ -54,7 +54,7 @@ func InitService() (Service, error) {
 	// Manually add a handler for each matchmaking queue.
 	for i := range 9 {
 		id := string(i + '0')
-		s.handlers[id] = matchmaking.SpawnQueue(id)
+		s.handlers[id] = matchmaking.SpawnQueue(id, s.Ipc.Write)
 	}
 
 	addr := net.ParseIP(os.Getenv("JUSTCHESS_TCP_ADDR"))
