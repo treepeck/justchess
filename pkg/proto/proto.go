@@ -2,7 +2,6 @@
 package proto
 
 import (
-	"bytes"
 	"encoding/json"
 )
 
@@ -48,39 +47,31 @@ type Message struct {
 	Kind    MessageKind     `json:"k"`
 }
 
-// Encoder wraps a bytes.Buffer and implements the encoding part of the protocol.
-type Encoder struct {
-	buff bytes.Buffer
-}
-
-func NewEncoder() *Encoder {
-	var b bytes.Buffer
-	b.Grow(MaxMessageLength)
-
-	return &Encoder{
-		buff: b,
-	}
-}
-
 // Encode encodes [Message] to the binary format.
 // NOTE: [KindPing] and [KindPong] messages will not be encoded.
-func (e *Encoder) Encode(m Message) []byte {
-	e.buff.Reset()
-	// We do not need to check errors returned by Buffer methods, because they are
-	// always nil.
-	e.buff.WriteByte(byte(m.Kind))
+func Encode(m Message) [MaxMessageLength]byte {
+	var encoded [MaxMessageLength]byte
 
+	encoded[0] = byte(m.Kind)
+
+	cnt := 1
 	switch m.Kind {
 	case KindPing, KindPong:
 		// NOTE: Skip heartbeat messages.
-		return nil
+		return encoded
 	default:
-		e.buff.Write(m.Payload)
-		e.buff.WriteByte(messagePartSeparator)
-		e.buff.WriteString(m.Id)
+		for i := range m.Payload {
+			encoded[cnt] = m.Payload[i]
+			cnt++
+		}
+		encoded[cnt] = messagePartSeparator
+		for i := range m.Id {
+			cnt++
+			encoded[cnt] = m.Id[i]
+		}
 	}
-	e.buff.WriteByte(MessageSeparator)
-	return e.buff.Bytes()
+	encoded[cnt+1] = MessageSeparator
+	return encoded
 }
 
 func PreallocateDecodeBuff() [][]byte {
