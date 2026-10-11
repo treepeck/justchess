@@ -38,9 +38,6 @@ func initSocket(ipc Ipc, conn *net.TCPConn) *socket {
 }
 
 func (s *socket) read() {
-	parts := proto.PreallocateDecodeBuff()
-
-	// TODO: might be a race condition. Need to test that.
 	for {
 		encoded, err := s.reader.ReadBytes(proto.MessageSeparator)
 		if err != nil {
@@ -51,7 +48,7 @@ func (s *socket) read() {
 		if proto.MessageKind(encoded[0]) == proto.KindPing {
 			s.pong <- struct{}{}
 		} else {
-			m := proto.Decode(parts, encoded, proto.MessageKind(encoded[0]))
+			m := proto.Decode(encoded)
 			// TODO: actually pass the message to queue or room for it to be handled.
 			s.ipc.Read <- m
 		}
