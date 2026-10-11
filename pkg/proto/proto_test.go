@@ -7,7 +7,7 @@ import (
 )
 
 func TestEncode(t *testing.T) {
-	got := Encode(Message{Kind: KindJoin, Id: "testiddddddd", Payload: json.RawMessage("asdasdas")})
+	got, size := Encode(Message{Kind: KindJoin, Id: "testiddddddd", Payload: json.RawMessage("asdasdas")})
 	expected := []byte{2, 97, 115, 100, 97, 115, 100, 97, 115, 1, 116, 101, 115, 116, 105, 100, 100, 100, 100, 100, 100, 100, 10}
 
 	for i := range expected {
@@ -15,8 +15,8 @@ func TestEncode(t *testing.T) {
 			t.Fatalf("expected[%d] == %d\tgot[%d] == %d\n", i, expected[i], i, got[i])
 		}
 	}
-	if got[len(expected)] != 0 {
-		t.Fatalf("expected: %v, got: %v\n", expected, got)
+	if size != len(expected) {
+		t.Fatalf("expected: %d, got: %d\n", size, len(expected))
 	}
 }
 

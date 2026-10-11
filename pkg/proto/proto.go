@@ -49,7 +49,7 @@ type Message struct {
 
 // Encode encodes [Message] to the binary format.
 // NOTE: [KindPing] and [KindPong] messages will not be encoded.
-func Encode(m Message) [MaxMessageLength]byte {
+func Encode(m Message) ([MaxMessageLength]byte, int) {
 	var encoded [MaxMessageLength]byte
 
 	encoded[0] = byte(m.Kind)
@@ -58,7 +58,7 @@ func Encode(m Message) [MaxMessageLength]byte {
 	switch m.Kind {
 	case KindPing, KindPong:
 		// NOTE: Skip heartbeat messages.
-		return encoded
+		return encoded, 0
 	default:
 		for i := range m.Payload {
 			encoded[cnt] = m.Payload[i]
@@ -70,8 +70,9 @@ func Encode(m Message) [MaxMessageLength]byte {
 			encoded[cnt] = m.Id[i]
 		}
 	}
-	encoded[cnt+1] = MessageSeparator
-	return encoded
+	cnt++
+	encoded[cnt] = MessageSeparator
+	return encoded, cnt + 1
 }
 
 func PreallocateDecodeBuff() [][]byte {
