@@ -3,8 +3,8 @@ package matchmaking
 
 import (
 	"github.com/treepeck/justchess/internal/randgen"
-	"github.com/treepeck/justchess/pkg/proto"
 	"github.com/treepeck/justchess/internal/transport"
+	"github.com/treepeck/justchess/pkg/proto"
 	"iter"
 	"log"
 	"math"

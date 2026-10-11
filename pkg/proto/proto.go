@@ -40,7 +40,7 @@ const (
 )
 
 const (
-	MessageSeparator byte = 0
+	MessageSeparator byte = 255
 	// TODO: maybe payload will need another number of bytes.
 	// Encode and Decode functions should use and allocate 0 bytes of memory
 	// while dealing with real data. So benchmark that.
@@ -68,7 +68,7 @@ func Encode(m Message) []byte {
 		copy(encoded[1:randgen.IdLen+1], m.Id)
 		copy(encoded[randgen.IdLen+1:], m.Payload)
 	}
-	end := randgen.IdLen+len(m.Payload)+1
+	end := randgen.IdLen + len(m.Payload) + 1
 	encoded[end] = MessageSeparator
 	return encoded[:end+1]
 }
