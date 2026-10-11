@@ -4,6 +4,7 @@ package matchmaking
 import (
 	"github.com/treepeck/justchess/internal/randgen"
 	"github.com/treepeck/justchess/pkg/proto"
+	"github.com/treepeck/justchess/internal/transport"
 	"iter"
 	"log"
 	"math"
@@ -16,10 +17,10 @@ const (
 	interval              = 3 * time.Second
 )
 
-// Queue provides the implementation of the matchmaking algorithm.
-type Queue struct {
+// queue provides the implementation of the matchmaking algorithm.
+type queue struct {
 	id     string
-	In     chan proto.Message
+	in     chan proto.Message
 	out    chan []byte
 	ticker *time.Ticker
 	nodes  *redBlackTree
@@ -27,24 +28,28 @@ type Queue struct {
 	size int
 }
 
-func SpawnQueue(id string, out chan []byte) chan proto.Message {
-	q := &Queue{
-		id:     id,
-		In:     make(chan proto.Message, 32),
-		out:    out,
-		ticker: time.NewTicker(interval),
-		nodes:  newRedBlackTree(),
+// SpawnQueues spawns 9 queues and notifies transport package about it.
+func SpawnQueues(ipc transport.Ipc) {
+	for range 9 {
+		q := &queue{
+			id:     randgen.GenId(randgen.SeedLen),
+			in:     make(chan proto.Message, 32),
+			out:    ipc.Write,
+			ticker: time.NewTicker(interval),
+			nodes:  newRedBlackTree(),
+		}
+		go q.Listen()
+		ipc.Add <- transport.Topic{
+			Id: q.id,
+			In: q.in,
+		}
 	}
-
-	go q.Listen()
-
-	return q.In
 }
 
-func (q *Queue) Listen() {
+func (q *queue) Listen() {
 	for {
 		select {
-		case m := <-q.In:
+		case m := <-q.in:
 			switch m.Kind {
 			case proto.KindJoin:
 				q.insert(m.Id)
@@ -71,8 +76,8 @@ func (q *Queue) Listen() {
 	}
 }
 
-// insert inserts a new player to the [Queue] and returns it's size.
-func (q *Queue) insert(id string) int {
+// insert inserts a new player to the [queue] and returns it's size.
+func (q *queue) insert(id string) int {
 	rating := 1500.0 // TODO: get actual rating from database and cache it.
 
 	log.Printf("player %s joins queue %s\n", id, q.id)
@@ -82,8 +87,8 @@ func (q *Queue) insert(id string) int {
 	return q.size
 }
 
-// remove removes an existing player from the [Queue] and returns it's size.
-func (q *Queue) remove(id string) int {
+// remove removes an existing player from the [queue] and returns it's size.
+func (q *queue) remove(id string) int {
 	rating := 1500.0 // TODO: get actual rating from memory cache.
 	n := search(q.nodes.root, rating, id)
 	if n == nil {
@@ -96,11 +101,11 @@ func (q *Queue) remove(id string) int {
 	return q.size
 }
 
-func (q *Queue) createMatch(playerIDs [2]string) {
-	var payload [36]byte
-	copy(payload[:12], playerIDs[0])
-	copy(payload[12:24], playerIDs[1])
-	copy(payload[24:], randgen.GenId(randgen.IdLen)) // Game id.
+func (q *queue) createMatch(playerIDs [2]string) {
+	var payload [randgen.IdLen * 3]byte
+	copy(payload[:randgen.IdLen], playerIDs[0])
+	copy(payload[randgen.IdLen:2*randgen.IdLen], playerIDs[1])
+	copy(payload[2*randgen.IdLen:], randgen.GenId(randgen.SeedLen)) // Game id.
 
 	q.out <- proto.Encode(proto.Message{
 		Id:      q.id,
@@ -109,7 +114,7 @@ func (q *Queue) createMatch(playerIDs [2]string) {
 	})
 }
 
-func (q *Queue) matchmaking() iter.Seq[[2]string] {
+func (q *queue) matchmaking() iter.Seq[[2]string] {
 	n := q.nodes.root
 
 	return func(yield func([2]string) bool) {
@@ -117,7 +122,7 @@ func (q *Queue) matchmaking() iter.Seq[[2]string] {
 	}
 }
 
-func (q *Queue) _matchmaking(n *node, yield func([2]string) bool) {
+func (q *queue) _matchmaking(n *node, yield func([2]string) bool) {
 	if n == q.nodes.leaf {
 		return
 	}
@@ -174,14 +179,14 @@ func (q *Queue) _matchmaking(n *node, yield func([2]string) bool) {
 
 // expandRatingGaps expands the allowed rating gap of each player so that players
 // with larger rating gaps can eventually be paired together.
-func (q *Queue) expandRatingGaps() {
+func (q *queue) expandRatingGaps() {
 	if q.size < 1 {
 		return
 	}
 	q._expandRatingGaps(q.nodes.root)
 }
 
-func (q *Queue) _expandRatingGaps(n *node) {
+func (q *queue) _expandRatingGaps(n *node) {
 	if n.maxGap < GapLimit {
 		n.maxGap += DefaultMaxGap
 	}

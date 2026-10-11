@@ -3,7 +3,6 @@ package transport
 import (
 	"errors"
 	// "github.com/treepeck/justchess/internal/game"
-	"github.com/treepeck/justchess/internal/matchmaking"
 	"github.com/treepeck/justchess/pkg/proto"
 	"log"
 	"net"
@@ -12,13 +11,20 @@ import (
 	"sync/atomic"
 )
 
-const maxHandlers = 109 // 100 games and 9 queues.
+const maxTopics = 109 // 100 games and 9 queues.
 
 // Ipc wraps all channels used for inter-process communication between [transport]
 // and [game] packages.
 type Ipc struct {
-	Write chan []byte
-	Read  chan proto.Message
+	Write  chan []byte
+	Read   chan proto.Message
+	Add    chan Topic
+	Remove chan string // To remove [Topic] by ID.
+}
+
+type Topic struct {
+	Id string
+	In chan proto.Message
 }
 
 // Service manages the dynamic pool of TCP connections with the Coordinator server.
@@ -30,9 +36,9 @@ type Service struct {
 	isListening *atomic.Bool
 	// Set of active TCP sockets.
 	sockets map[*socket]struct{}
-	// handlers maps the handler ID to the handlers's channel.
+	// topics maps the handler ID to the topics's channel.
 	// A handler is a game or matchmaking queue.
-	handlers map[string]chan proto.Message
+	topics map[string]chan proto.Message
 }
 
 // InitService initializes the [Service] and listens the TCP network.
@@ -43,18 +49,14 @@ func InitService() (Service, error) {
 		open:  make(chan *net.TCPConn),
 		close: make(chan *socket),
 		Ipc: Ipc{
-			Write: make(chan []byte, 256),
-			Read:  make(chan proto.Message, 256),
+			Write:  make(chan []byte, 256),
+			Read:   make(chan proto.Message, 256),
+			Add:    make(chan Topic, 32),
+			Remove: make(chan string, 32),
 		},
 		isListening: &atomic.Bool{},
-		handlers:    make(map[string]chan proto.Message, maxHandlers),
+		topics:      make(map[string]chan proto.Message, maxTopics),
 		sockets:     make(map[*socket]struct{}, proto.MaxConns),
-	}
-
-	// Manually add a handler for each matchmaking queue.
-	for i := range 9 {
-		id := string(i + '0')
-		s.handlers[id] = matchmaking.SpawnQueue(id, s.Ipc.Write)
 	}
 
 	addr := net.ParseIP(os.Getenv("JUSTCHESS_TCP_ADDR"))
@@ -109,6 +111,10 @@ func (s Service) listen() {
 			s.openSocket(conn)
 		case sock := <-s.close:
 			s.closeSocket(sock)
+		case t := <-s.Ipc.Add:
+			s.addTopic(t)
+		case topicId := <-s.Ipc.Remove:
+			s.removeTopic(topicId)
 		case m := <-s.Ipc.Read:
 			s.route(m)
 		}
@@ -127,7 +133,7 @@ func (s Service) openSocket(conn *net.TCPConn) {
 
 	sock := initSocket(s.Ipc, conn)
 	s.sockets[sock] = struct{}{}
-	log.Printf("opened new TCP socket %v\n", sock)
+	log.Printf("opened new TCP socket %p\n", sock)
 }
 
 // closeSocket closes a socket.
@@ -142,7 +148,31 @@ func (s Service) closeSocket(sock *socket) {
 		// Continue listening for TCP connections.
 		go s.accept()
 	}
-	log.Printf("closed TCP socket %v\n", sock)
+	log.Printf("closed TCP socket %p\n", sock)
+}
+
+func (s Service) addTopic(t Topic) {
+	s.topics[t.Id] = t.In
+	// Notify Coordinator about created topic.
+	s.Ipc.Write <- proto.Encode(proto.Message{
+		Kind: proto.KindAdd,
+		Id:   t.Id,
+	})
+	log.Printf("add topic %s\n", t.Id)
+}
+
+func (s Service) removeTopic(topicId string) {
+	if _, ok := s.topics[topicId]; !ok {
+		log.Printf("topic %s does not exist\n", topicId)
+		return
+	}
+	delete(s.topics, topicId)
+	// Notify Coordinator about removed topic.
+	s.Ipc.Write <- proto.Encode(proto.Message{
+		Kind: proto.KindRemove,
+		Id:   topicId,
+	})
+	log.Printf("remove topic %s\n", topicId)
 }
 
 func (s Service) route(m proto.Message) {
@@ -150,7 +180,7 @@ func (s Service) route(m proto.Message) {
 	// For those messages, the payload contains the handler URL.
 	// So the message must be simply forwarded to the named handler.
 	case proto.KindJoin, proto.KindLeave:
-		in, ok := s.handlers[string(m.Payload)]
+		in, ok := s.topics[string(m.Payload)]
 		if !ok {
 			log.Printf("player %s sends message to non-existing handler %s\n", m.Id, m.Payload)
 			return

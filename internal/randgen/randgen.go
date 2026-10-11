@@ -8,7 +8,8 @@ import (
 // Final encoded player/game id will have length 12, secure id - 32.
 // See https://en.wikipedia.org/wiki/Base64
 const (
-	IdLen       int = 9 // Player or game id.
+	SeedLen     int = 9 // To seed a random player or game id.
+	IdLen       int = 12
 	SecureIdLen int = 24
 )
 

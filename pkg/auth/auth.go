@@ -258,7 +258,7 @@ func (s Service) confirmSignup(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
-	id := randgen.GenId(randgen.IdLen)
+	id := randgen.GenId(randgen.SeedLen)
 	if err = s.repo.InsertPlayer(id, data); err != nil {
 		rw.WriteHeader(http.StatusConflict)
 		return
@@ -304,12 +304,12 @@ const SessionKey contextKey = 0
 // are expected to handle the guest traffic.
 func (s Service) Authorize(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		session := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: true}
+		session := Session{Id: randgen.GenId(randgen.SeedLen), IsGuest: true}
 		c, err := r.Cookie("Auth")
 		if err == nil {
 			session, err = validateSecureCookie([]byte(c.Value), s.cookieKey)
 			if err != nil {
-				session.Id = randgen.GenId(randgen.IdLen)
+				session.Id = randgen.GenId(randgen.SeedLen)
 			}
 		}
 		ctx := context.WithValue(r.Context(), SessionKey, session)

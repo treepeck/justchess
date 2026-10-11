@@ -7,6 +7,7 @@ import (
 
 	"github.com/treepeck/justchess/internal/api"
 	"github.com/treepeck/justchess/internal/transport"
+	"github.com/treepeck/justchess/internal/matchmaking"
 	"github.com/treepeck/justchess/internal/web"
 	"github.com/treepeck/justchess/pkg/auth"
 	"github.com/treepeck/justchess/pkg/db"
@@ -48,13 +49,17 @@ func main() {
 		log.Panic(err)
 	}
 
-	_, err = transport.InitService()
+	transportService, err := transport.InitService()
 	if err != nil {
 		log.Panic(err)
 	}
 
 	apiService := api.NewService(gr, pr)
 	log.Print("Successfully initialized services.")
+
+	log.Print("Spawning matchmaking queues.")
+	matchmaking.SpawnQueues(transportService.Ipc)
+	log.Print("Successfully spawned matchmaking queues.")
 
 	// Register routes.
 	log.Print("Registering HTTP endpoints...")

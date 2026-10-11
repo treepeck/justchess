@@ -19,7 +19,7 @@ func BenchmarkGenSecureCookie(b *testing.B) {
 	key := make([]byte, 64)
 	rand.Read(key)
 
-	s := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: false}
+	s := Session{Id: randgen.GenId(randgen.SeedLen), IsGuest: false}
 	for b.Loop() {
 		if _, err := genSecureCookie(s, key); err != nil {
 			b.Fatal(err)
@@ -31,7 +31,7 @@ func BenchmarkValidateSecureCookie(b *testing.B) {
 	key := make([]byte, 64)
 	rand.Read(key)
 
-	s := Session{Id: randgen.GenId(randgen.IdLen), IsGuest: false}
+	s := Session{Id: randgen.GenId(randgen.SeedLen), IsGuest: false}
 	raw, err := genSecureCookie(s, key)
 	if err != nil {
 		b.Fatal(err)

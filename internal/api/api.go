@@ -68,7 +68,7 @@ func (s Service) createEngineGame(rw http.ResponseWriter, r *http.Request) {
 		whiteId = stockfishId
 	}
 
-	gameId := randgen.GenId(randgen.IdLen)
+	gameId := randgen.GenId(randgen.SeedLen)
 	if err := s.gameRepo.Insert(db.Game{
 		Id: gameId,
 		White: db.Player{

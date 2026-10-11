@@ -1,7 +1,10 @@
 // Package proto defines the communication protocol for game and ws servers.
 package proto
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/treepeck/justchess/internal/randgen"
+)
 
 const (
 	// Limit of concurrent TCP connections between WS and Game servers.
@@ -14,20 +17,25 @@ const (
 type MessageKind int
 
 const (
-	// Ping used to maintain a TCP connection (keepalive) and measure network latency.
-	// Payload is an integer that represents the latency in milliseconds.
+	// KindPing used to maintain a TCP connection (keepalive) and measure network latency.
+	// Payload is a byte sequence (1 or more bytes) that represents the latency in milliseconds.
 	KindPing MessageKind = iota
-	// Pong is sent in response to [Ping]. Payload is nil.
+	// KindPong is sent in response to [Ping]. Payload is nil.
 	KindPong
-	// Join used to register a player in matchmaking pool. Payload is nil.
+	// KindJoin used to register a player in matchmaking pool. Payload is nil.
 	KindJoin
-	// Leave is used to unregister a player from matchmaking pool. Payload is nil.
+	// KindLeave is used to unregister a player from matchmaking pool. Payload is nil.
 	KindLeave
-	// Counter is used to notify a player about number of players in matchmaking queue.
-	// Payload is an integer.
+	// KindCounter is used to notify a player about number of players in matchmaking queue.
+	// Payload is an integer encoded in a byte sequence.
 	KindCounter
-	// Match is used emmited when a new game is being created. The coordinator needs
-	// to redirect players and create a new game.
+	// KindAdd is used to notify Coordinator about new topic. Payload is nil.
+	KindAdd
+	// KindRemove is used to notify Coordinator about removed topic. Payload is nil.
+	KindRemove
+	// KindMatch is emmited when a new game is being created.
+	// Payload is [Player1ID_Player2ID_GameId]. Note that '_' is used only for readability
+	// and is ommited in real message.
 	KindMatch
 )
 
@@ -36,7 +44,7 @@ const (
 	// TODO: maybe payload will need another number of bytes.
 	// Encode and Decode functions should use and allocate 0 bytes of memory
 	// while dealing with real data. So benchmark that.
-	MaxMessageLength = 1 + 12 + 1 + 1 + 1 + 100 + 1 // sysMsgFlag + playerId + sep + messageKind + sep + payload + msgSep.
+	MaxMessageLength = 1 + 12 + 100 + 1 // MessageKind + Id + payload + MessageSeparator.
 )
 
 type Message struct {
@@ -45,35 +53,31 @@ type Message struct {
 	Kind    MessageKind     `json:"k"`
 }
 
-// Encode encodes [Message] to the binary format.
+// Encode encodes [Message] to the binary format. It's the caller's responsibility
+// to encode a payload since it might be a JSON or an arbitrary array of bytes. For
+// definition of payloads see the documentation of specific [MessageKind]'s.
 // NOTE: [KindPing] and [KindPong] messages will not be encoded.
 func Encode(m Message) []byte {
 	var encoded [MaxMessageLength]byte
-	cnt := 1
 	encoded[0] = byte(m.Kind)
 	switch m.Kind {
 	case KindPing, KindPong:
 		// NOTE: Skip heartbeat messages.
 		return nil
 	default:
-		for i := range m.Id {
-			encoded[cnt] = m.Id[i]
-			cnt++
-		}
-		for i := range m.Payload {
-			encoded[cnt] = m.Payload[i]
-			cnt++
-		}
+		copy(encoded[1:randgen.IdLen+1], m.Id)
+		copy(encoded[randgen.IdLen+1:], m.Payload)
 	}
-	encoded[cnt] = MessageSeparator
-	return encoded[:cnt+1]
+	end := randgen.IdLen+len(m.Payload)+1
+	encoded[end] = MessageSeparator
+	return encoded[:end+1]
 }
 
 // Decode decodes the [Message].
 func Decode(encoded []byte) Message {
 	return Message{
 		Kind:    MessageKind(encoded[0]),
-		Payload: encoded[13 : len(encoded)-1],
-		Id:      string(encoded[1:13]),
+		Payload: encoded[randgen.IdLen+1 : len(encoded)-1],
+		Id:      string(encoded[1 : randgen.IdLen+1]),
 	}
 }
