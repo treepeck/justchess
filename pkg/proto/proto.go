@@ -32,8 +32,7 @@ const (
 )
 
 const (
-	MessageSeparator     byte = '\n'
-	messagePartSeparator byte = 1
+	MessageSeparator byte = 0
 	// TODO: maybe payload will need another number of bytes.
 	// Encode and Decode functions should use and allocate 0 bytes of memory
 	// while dealing with real data. So benchmark that.
@@ -50,60 +49,31 @@ type Message struct {
 // NOTE: [KindPing] and [KindPong] messages will not be encoded.
 func Encode(m Message) []byte {
 	var encoded [MaxMessageLength]byte
-
-	encoded[0] = byte(m.Kind)
-
 	cnt := 1
+	encoded[0] = byte(m.Kind)
 	switch m.Kind {
 	case KindPing, KindPong:
 		// NOTE: Skip heartbeat messages.
 		return nil
 	default:
+		for i := range m.Id {
+			encoded[cnt] = m.Id[i]
+			cnt++
+		}
 		for i := range m.Payload {
 			encoded[cnt] = m.Payload[i]
 			cnt++
 		}
-		encoded[cnt] = messagePartSeparator
-		for i := range m.Id {
-			cnt++
-			encoded[cnt] = m.Id[i]
-		}
 	}
-	encoded[cnt+1] = MessageSeparator
-	return encoded[:cnt+2]
+	encoded[cnt] = MessageSeparator
+	return encoded[:cnt+1]
 }
 
-func PreallocateDecodeBuff() [][]byte {
-	parts := make([][]byte, 2)
-	parts[0] = make([]byte, 100) // Enough to store every possible Payload.
-	parts[1] = make([]byte, 12)  // Enough to store the ID.
-	return parts
-}
-
-// Decode decodes the message into the preallocated buffers. It accepts the message kind
-// to trick the compiler into inlining this function. That way zero memory allocation
-// happens during decoding.
-func Decode(parts [][]byte, encoded []byte, k MessageKind) Message {
-	curr := 0
-	j := 0
-	payloadLen := 0
-	// Ignore the last byte since it is a [MessageSeparator].
-	for i := 1; i < len(encoded)-1; i++ {
-		if encoded[i] == messagePartSeparator {
-			curr++
-			j = 0
-		} else {
-			parts[curr][j] = encoded[i]
-			j++
-			if curr == 0 {
-				payloadLen++
-			}
-		}
-	}
-
+// Decode decodes the [Message].
+func Decode(encoded []byte) Message {
 	return Message{
-		Kind:    k,
-		Payload: parts[0][:payloadLen],
-		Id:      string(parts[1]),
+		Kind:    MessageKind(encoded[0]),
+		Payload: encoded[13 : len(encoded)-1],
+		Id:      string(encoded[1:13]),
 	}
 }
