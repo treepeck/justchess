@@ -21,7 +21,7 @@ via media queries.
   --max-widget-width: 400px;
   --site-background: #e2d3c4;
   --site-foreground: #34211d;
-  --button-background: #765943;
+  --button-background: #684d26;
   --disabled-button-background: #6a5e5c;
   --widget-back-color: red;
   --widget-next-color: green;
@@ -94,7 +94,6 @@ body {
 }
 .widget button {
   height: 60px;
-  min-width: 80px;
 }
 .widget-frame button {
   width: 100%;
@@ -164,6 +163,7 @@ body {
 button {
   cursor: pointer;
   font-weight: bold;
+  min-width: 80px;
   font-size: larger;
   border: 1px solid var(--widget-border-color);
   color: var(--wrap-foreground);
@@ -172,10 +172,10 @@ button {
 }
 button:focus {
   outline: none;
-  border: 2px solid orange;
+  border: 4px solid #89553c;
 }
 button:hover {
-  background-color: #884e23;
+  background-color: #89553c;
 }
 button.disabled {
   position: relative;

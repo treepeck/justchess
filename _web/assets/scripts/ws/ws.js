@@ -3,7 +3,9 @@ import { MessageKind } from "/assets/scripts/ws/proto.js"
 const wsUri = "ws://localhost:8888/handshake"
 const pingTick = 3000 // In milliseconds.
 
-export class Client {
+const ping = document.getElementById("ping")
+
+export class Conn {
 	/**
 	 * @type {WebSocket}
 	 */
@@ -32,16 +34,15 @@ export class Client {
 
 	/**
 	 * Opens the WebSocket connection with the server.
-	 * @parameter {string} kind - Kind of endpoint. Can be either 'game' or 'queue'.
 	 * @parameter {string} id - Id of the endpoint.
 	 */
-	constructor(kind, id) {
+	constructor(id) {
 		this.pingInterval = 0
 		this.latency = 0
 		this.pingTimestamp = 0
 		this.isPingAnswered = true
 
-		this.conn = new WebSocket(wsUri + `/${kind}/${id}`)
+		this.conn = new WebSocket(`${wsUri}/${id}`)
 
 		this.conn.onopen = () => {
 			this.ping()
@@ -56,7 +57,7 @@ export class Client {
 		}
 
 		this.conn.onerror = (e) => {
-			console.log(e)
+			window.assert(e)
 		}
 
 		// Close the connection when the client leaves.
@@ -83,6 +84,7 @@ export class Client {
 	pong() {
 		this.latency = Math.floor((Date.now() - this.pingTimestamp) / 2)
 		this.isPingAnswered = true
+		ping.textContent = `Latency: ${this.latency} ms`
 	}
 
 	/**
@@ -115,5 +117,6 @@ export class Client {
 		if (this.pingInterval) {
 			clearInterval(this.pingInterval)
 		}
+		this.conn.close()
 	}
 }

@@ -1,17 +1,4 @@
-// import { Client } from "/assets/scripts/ws/ws.js"
-
-/**
- * @param {string} id
- * @param {number} ms
- */
-function formatTime(id, ms) {
-	const minutes = Math.trunc(ms / 1000 / 60)
-	const seconds = Math.trunc(ms / 1000) % 60
-
-	const mins = `${minutes > 9 ? minutes : "0" + minutes.toString()}`
-	const secs = `${seconds > 9 ? seconds : "0" + seconds.toString()}`
-	document.getElementById(id).textContent = `${mins}:${secs}`
-}
+import { Conn } from "/assets/scripts/ws/ws.js"
 
 const hints = [
 	"Keep your king safe and connect your rooks",
@@ -28,135 +15,221 @@ const hints = [
 	"If the board position is not in your favor, try to put pressure on your opponent's time",
 ]
 
-/**
- * Displays random hint every 5 seconds.
- * @param {number[]} prev - To prevent repetitions.
- */
-function showHint(prev) {
-	const i = Math.round(Math.random() * (hints.length - 1))
-	for (const ind of prev) {
-		if (i === ind) {
-			showHint(prev)
-			return
+class State {
+	/**
+	 * @type {number}
+	 */
+	timerTimeout
+	/**
+	 * @type {number}
+	 */
+	hintTimeout
+	/**
+	 * @type {HTMLDivElement}
+	 */
+	timer
+	/**
+	 * @type {Conn}
+	 */
+	conn
+	/**
+	 * @type {string[]}
+	 */
+	hintsStack
+	/**
+	 * @type {HTMLDivElement}
+	 */
+	hintBox
+
+	constructor() {
+		this.timerTimeout = -1
+		this.hintTimeout = -1
+		this.timer = document.getElementById("countUpTimer")
+		this.hintBox = document.getElementById("hintBox")
+		this.hintsStack = []
+	}
+
+	set() {
+		this.displayHint()
+		this.displayTime()
+		this.conn = new Conn(`${slider.value}`)
+	}
+
+	reset() {
+		clearTimeout(this.timerTimeout)
+		clearTimeout(this.hintTimeout)
+		this.timer.textContent = "00:00"
+
+		this.conn.cleanup()
+		this.conn = null
+	}
+
+	displayTime() {
+		// Self-adjusting countup timer.
+		const interval = 1000 // Milliseconds.
+		const initial = Date.now()
+		let expected = initial + interval
+		this.timerTimeout = setTimeout(() => countUpHandler(), interval)
+
+		const countUpHandler = () => {
+			const current = Date.now()
+			const delta = current - expected
+			if (delta > interval) {
+				// Skip missing steps.
+				expected += delta
+			}
+			expected += interval
+
+			const ms = Math.floor(current - initial)
+			const minutes = Math.trunc(ms / 1000 / 60)
+			const seconds = Math.trunc(ms / 1000) % 60
+
+			const mins = `${minutes > 9 ? minutes : "0" + minutes.toString()}`
+			const secs = `${seconds > 9 ? seconds : "0" + seconds.toString()}`
+			this.timer.textContent = `${mins}:${secs}`
+
+			this.timerTimeout = setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
 		}
 	}
 
-	prev.push(i)
-	if (prev.length === 12) {
-		prev.splice(0, 1)
+	/**
+	 * Displays random hint every 5 seconds.
+	 */
+	displayHint() {
+		const i = Math.round(Math.random() * (hints.length - 1))
+		for (const ind of this.hintsStack) {
+			if (i === ind) {
+				this.displayHint()
+				return
+			}
+		}
+
+		this.hintsStack.push(i)
+		if (this.hintsStack.length === 12) {
+			this.hintsStack.splice(0, 1)
+		}
+
+		// Toggle animation to apply smooth text change.
+		this.hintBox.classList.add("hide")
+		this.hintTimeout = setTimeout(() => {
+			this.hintBox.textContent = hints[i]
+			this.hintBox.classList.remove("hide")
+		}, 750)
+		this.hintTimeout = setTimeout(() => this.displayHint(), 5000)
 	}
 
-	// Toggle animation to apply smooth text change.
-	const hintBox = document.getElementById("hintBox")
-	hintBox.classList.add("hide")
-	setTimeout(() => {
-		hintBox.textContent = hints[i]
-		hintBox.classList.remove("hide")
-	}, 750)
-
-	setTimeout(() => showHint(prev), 5000)
 }
 
 const slider = document.getElementById("slider")
-const demo = document.getElementById("sliderDemo")
+// Set default slider thumb image.
+const sliderDemo = document.getElementById("sliderDemo")
+sliderDemo.textContent = "Fast Blitz with Increment"
 slider.addEventListener("input", (e) => {
 	switch (e.target.value) {
 		case "0":
-			demo.textContent = "Ultra bullet"
-			slider.style.setProperty(
+			sliderDemo.textContent = "Ultra bullet"
+			/*
+slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/ultra-bullet.svg")`,
 			)
+*/
+
 			break
 		case "1":
-			demo.textContent = "Bullet"
-			slider.style.setProperty(
+			sliderDemo.textContent = "Bullet"
+			/*
+slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/bullet.svg")`,
 			)
+*/
+
 			break
 		case "2":
-			demo.textContent = "Fast Blitz"
+			sliderDemo.textContent = "Fast Blitz"
+/*
 			slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/fast-blitz.svg")`,
 			)
+*/
+
 			break
 		case "3":
-			demo.textContent = "Fast Blitz with Increment"
+			sliderDemo.textContent = "Fast Blitz with Increment"
+/*
 			slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/fast-blitz-with-increment.svg")`,
 			)
+*/
+
 			break
 		case "4":
-			demo.textContent = "Blitz"
+			sliderDemo.textContent = "Blitz"
+/*
 			slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/blitz.svg")`,
 			)
+*/
+
 			break
 		case "5":
-			demo.textContent = "Blitz with Increment"
+			sliderDemo.textContent = "Blitz with Increment"
+/*
 			slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/blitz-with-increment.svg")`,
 			)
+*/
+
 			break
 		case "6":
-			demo.textContent = "Rapid"
+			sliderDemo.textContent = "Rapid"
+/*
 			slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/rapid.svg")`,
 			)
+*/
+
 			break
 		case "7":
-			demo.textContent = "Rapid with Increment"
+			sliderDemo.textContent = "Rapid with Increment"
+/*
 			slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/rapid-with-increment.svg")`,
 			)
+*/
+
 			break
 		case "8":
-			demo.textContent = "Time to think"
+			sliderDemo.textContent = "Time to think"
+/*
 			slider.style.setProperty(
 				"--slider-thumb-image",
 				`url("/assets/images/time-to-think.svg")`,
 			)
+*/
+
 			break
 	}
 })
-// Set default slider thumb image.
-demo.textContent = "Fast Blitz with Increment"
-slider.style.setProperty(
-	"--slider-thumb-image",
-	`url("/assets/images/fast-blitz-with-increment.svg")`,
-)
 
-const matchmakingDialog = document.getElementById("matchmaking")
+const dialog = document.getElementById("matchmaking")
+const state = new State()
 
-const joinBtn = document.getElementById("joinMatchmaking")
-joinBtn.onclick = () => {
-	matchmakingDialog.showModal()
+document.getElementById("joinMatchmaking").onclick = () => {
+	dialog.showModal()
+	state.set()
+}
+document.getElementById("dialogClose").onclick = () => {
+	dialog.close()
 
-	// Self-adjusting countup timer.
-	const interval = 1000 // Milliseconds.
-	const initial = Date.now()
-	let expected = initial + interval
-	setTimeout(() => countUpHandler(), interval)
-
-	const countUpHandler = () => {
-		const current = Date.now()
-		const delta = current - expected
-		if (delta > interval) {
-			// Skip missing steps.
-			expected += delta
-		}
-		expected += interval
-		formatTime("countUpTimer", Math.floor(current - initial))
-
-		setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
-	}
-
-	showHint([])
+}
+dialog.onclose = () => {
+	state.reset()
 }

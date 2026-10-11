@@ -2,6 +2,8 @@ package transport
 
 import (
 	"errors"
+	// "github.com/treepeck/justchess/internal/game"
+	"github.com/treepeck/justchess/internal/matchmaking"
 	"github.com/treepeck/justchess/pkg/proto"
 	"log"
 	"net"
@@ -10,13 +12,13 @@ import (
 	"sync/atomic"
 )
 
-const maxTopics = 109 // 100 games and 9 queues.
+const maxHandlers = 109 // 100 games and 9 queues.
 
 // Ipc wraps all channels used for inter-process communication between [transport]
 // and [game] packages.
 type Ipc struct {
 	Write chan []byte
-	Read  chan []byte
+	Read  chan proto.Message
 }
 
 // Service manages the dynamic pool of TCP connections with the Coordinator server.
@@ -28,6 +30,9 @@ type Service struct {
 	isListening *atomic.Bool
 	// Set of active TCP sockets.
 	sockets map[*socket]struct{}
+	// handlers maps the handler ID to the handlers's channel.
+	// A handler is a game or matchmaking queue.
+	handlers map[string]chan proto.Message
 }
 
 // InitService initializes the [Service] and listens the TCP network.
@@ -39,10 +44,17 @@ func InitService() (Service, error) {
 		close: make(chan *socket),
 		Ipc: Ipc{
 			Write: make(chan []byte, 256),
-			Read:  make(chan []byte, 256),
+			Read:  make(chan proto.Message, 256),
 		},
 		isListening: &atomic.Bool{},
+		handlers:    make(map[string]chan proto.Message, maxHandlers),
 		sockets:     make(map[*socket]struct{}, proto.MaxConns),
+	}
+
+	// Manually add a handler for each matchmaking queue.
+	for i := range 9 {
+		id := string(i + '0')
+		s.handlers[id] = matchmaking.SpawnQueue(id)
 	}
 
 	addr := net.ParseIP(os.Getenv("JUSTCHESS_TCP_ADDR"))
@@ -97,6 +109,8 @@ func (s Service) listen() {
 			s.openSocket(conn)
 		case sock := <-s.close:
 			s.closeSocket(sock)
+		case m := <-s.Ipc.Read:
+			s.route(m)
 		}
 	}
 }
@@ -129,6 +143,20 @@ func (s Service) closeSocket(sock *socket) {
 		go s.accept()
 	}
 	log.Printf("closed TCP socket %v\n", sock)
+}
+
+func (s Service) route(m proto.Message) {
+	switch m.Kind {
+	// For those messages, the payload contains the handler URL.
+	// So the message must be simply forwarded to the named handler.
+	case proto.KindJoin, proto.KindLeave:
+		in, ok := s.handlers[string(m.Payload)]
+		if !ok {
+			log.Printf("player %s sends message to non-existing handler %s\n", m.Id, m.Payload)
+			return
+		}
+		in <- m
+	}
 }
 
 // cleanup is called only in case the server crushes. It is needed to gracefully

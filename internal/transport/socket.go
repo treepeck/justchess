@@ -41,11 +41,8 @@ func (s *socket) read() {
 	parts := proto.PreallocateDecodeBuff()
 
 	// TODO: might be a race condition. Need to test that.
-	encoded := make([]byte, proto.MaxMessageLength)
-	var m proto.Message
-	var err error
 	for {
-		encoded, err = s.reader.ReadBytes(proto.MessageSeparator)
+		encoded, err := s.reader.ReadBytes(proto.MessageSeparator)
 		if err != nil {
 			log.Printf("read error: %v\n", err)
 			break
@@ -54,9 +51,9 @@ func (s *socket) read() {
 		if proto.MessageKind(encoded[0]) == proto.KindPing {
 			s.pong <- struct{}{}
 		} else {
-			m = proto.Decode(parts, encoded, proto.MessageKind(encoded[0]))
+			m := proto.Decode(parts, encoded, proto.MessageKind(encoded[0]))
 			// TODO: actually pass the message to queue or room for it to be handled.
-			log.Printf("read message: %v\n", m)
+			s.ipc.Read <- m
 		}
 	}
 
