@@ -61,11 +61,20 @@ type Message struct {
 func Encode(m Message) []byte {
 	// Array of bytes on stack.
 	var encoded [MaxMessageLength]byte
+	size := 1
 	encoded[0] = m.Kind
-	copy(encoded[1:randgen.IdLen+1], m.Id)
-	copy(encoded[randgen.IdLen+1:], m.Payload)
-	encoded[randgen.IdLen+1+len(m.Payload)] = MessageSeparator
-	return encoded[:randgen.IdLen+1+len(m.Payload)+1]
+
+	// Encode ID only if it is set in the message.
+	if len(m.Id) > 0 {
+		copy(encoded[1:randgen.IdLen+1], m.Id)
+		size += randgen.IdLen
+	}
+	if len(m.Payload) > 0 {
+		copy(encoded[size:], m.Payload)
+		size += len(m.Payload)
+	}
+	encoded[size] = MessageSeparator
+	return encoded[:size+1]
 }
 
 // EncodeInt splits integer into the byte sequence and returns it.
@@ -98,13 +107,4 @@ func DecodeInt(encoded []byte) uint16 {
 		coeff += 6
 	}
 	return x
-}
-
-// Decode decodes the [Message].
-func Decode(encoded []byte) Message {
-	return Message{
-		Kind:    MessageKind(encoded[0]),
-		Payload: encoded[randgen.IdLen+1 : len(encoded)-1],
-		Id:      string(encoded[1 : randgen.IdLen+1]),
-	}
 }

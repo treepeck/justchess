@@ -46,9 +46,10 @@ func (s *socket) read() {
 		if proto.MessageKind(encoded[0]) == proto.KindPing {
 			s.pong <- struct{}{}
 		} else {
-			m := proto.Decode(encoded)
+			log.Printf("read message: %b\n", encoded)
+			// m := proto.Decode(encoded)
 			// TODO: actually pass the message to queue or room for it to be handled.
-			s.ipc.Read <- m
+			// s.ipc.Read <- m
 		}
 	}
 
@@ -56,6 +57,10 @@ func (s *socket) read() {
 }
 
 func (s *socket) write() {
+	encodedPong := proto.Encode(proto.Message{
+		Kind: proto.KindPong,
+	})
+
 	for {
 		select {
 		case encoded := <-s.ipc.Write:
