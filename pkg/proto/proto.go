@@ -2,7 +2,6 @@
 package proto
 
 import (
-	"encoding/json"
 	"github.com/treepeck/justchess/internal/randgen"
 )
 
@@ -14,7 +13,7 @@ const (
 	ClientsPerConn = 500
 )
 
-type MessageKind int
+type MessageKind = byte
 
 const (
 	// KindPing used to maintain a TCP connection (keepalive) and measure network latency.
@@ -47,30 +46,58 @@ const (
 	MaxMessageLength = 1 + 12 + 100 + 1 // MessageKind + Id + payload + MessageSeparator.
 )
 
+// 0: [MessageKind];
+// 1-12: Player or topic ID;
+// 13-MessageSeparator: Optional payload.
 type Message struct {
-	Payload json.RawMessage `json:"p"`
-	Id      string          `json:"-"`
-	Kind    MessageKind     `json:"k"`
+	Payload []byte // Arbitrary encoded payload which concrete type depends on message kind.
+	Id      string
+	Kind    MessageKind
 }
 
-// Encode encodes [Message] to the binary format. It's the caller's responsibility
-// to encode a payload since it might be a JSON or an arbitrary array of bytes. For
-// definition of payloads see the documentation of specific [MessageKind]'s.
-// NOTE: [KindPing] and [KindPong] messages will not be encoded.
+// Encode does NOT encode the payload of the [Message]. It's the caller's responsibility
+// to pass the encoded payload. The goal of Encode function is to be inlined and therefore
+// callers must call additional functions which are also inlined to encode the full message.
 func Encode(m Message) []byte {
+	// Array of bytes on stack.
 	var encoded [MaxMessageLength]byte
-	encoded[0] = byte(m.Kind)
-	switch m.Kind {
-	case KindPing, KindPong:
-		// NOTE: Skip heartbeat messages.
-		return nil
-	default:
-		copy(encoded[1:randgen.IdLen+1], m.Id)
-		copy(encoded[randgen.IdLen+1:], m.Payload)
+	encoded[0] = m.Kind
+	copy(encoded[1:randgen.IdLen+1], m.Id)
+	copy(encoded[randgen.IdLen+1:], m.Payload)
+	encoded[randgen.IdLen+1+len(m.Payload)] = MessageSeparator
+	return encoded[:randgen.IdLen+1+len(m.Payload)+1]
+}
+
+// EncodeInt splits integer into the byte sequence and returns it.
+// NOTE: The resulting sequence will never have [MessageSeparator] byte in it.
+// Each byte of the x should be encoded with a continuation bit because a single
+// payload may contain more than one number.
+func EncodeInt(x uint16) []byte {
+	var seq [3]byte
+	// Write 6 bits at a time.
+	i := 0
+	for ; ; i++ {
+		chunk := byte(x & 0x3F)
+		seq[i] = chunk
+		x >>= 6
+		if x == 0 {
+			break
+		}
+		seq[i] |= 0x40 // Set continuation bit.
 	}
-	end := randgen.IdLen + len(m.Payload) + 1
-	encoded[end] = MessageSeparator
-	return encoded[:end+1]
+	return seq[:i+1]
+}
+
+// DecodeInt restores the interger from the encoded byte sequence.
+// The key in decoding is to understand that each byte in the sequence
+// must be smaller than previous one. Otherwise it belongs to the next number.
+func DecodeInt(encoded []byte) uint16 {
+	var x, coeff uint16
+	for i := range encoded {
+		x |= uint16(encoded[i]&0x3F) << coeff
+		coeff += 6
+	}
+	return x
 }
 
 // Decode decodes the [Message].

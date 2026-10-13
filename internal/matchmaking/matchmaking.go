@@ -30,9 +30,12 @@ type queue struct {
 
 // SpawnQueues spawns 9 queues and notifies transport package about it.
 func SpawnQueues(ipc transport.Ipc) {
-	for range 9 {
+	// TODO: This is temporary code. It is needed to route the player from selected time
+	// control to the queue because the matchmaking algorithm itself is kinda bad and it
+	// requires a separate queue for every game mode.
+	for _, id := range [9]string{"_b5DNjhhatG5", "8HoMa0GJMgvJ", "dVXdHdrQ-SBB", "56_e8-q4wDys", "RYwIsvOZNTDG", "77G2ZTJww_QK", "qq824814u_zm", "G_2xmQDExksB", "KNnUpq3G8hu4"} {
 		q := &queue{
-			id:     randgen.GenId(randgen.SeedLen),
+			id:     id,
 			in:     make(chan proto.Message, 32),
 			out:    ipc.Write,
 			ticker: time.NewTicker(interval),
@@ -68,11 +71,16 @@ func (q *queue) Listen() {
 				continue
 			}
 		}
-		q.out <- proto.Encode(proto.Message{
+
+		log.Printf("%d\n", q.size)
+
+		m := proto.Message{
 			Id:      q.id,
 			Kind:    proto.KindCounter,
 			Payload: []byte{byte(q.size)}, // TODO: byte might not be enough.
-		})
+		}
+		log.Printf("kind: %d, id: %s, payload: %b\n", m.Kind, m.Id, m.Payload)
+		q.out <- proto.Encode(m)
 	}
 }
 

@@ -51,8 +51,8 @@ func InitService() (Service, error) {
 		Ipc: Ipc{
 			Write:  make(chan []byte, 256),
 			Read:   make(chan proto.Message, 256),
-			Add:    make(chan Topic, 32),
-			Remove: make(chan string, 32),
+			Add:    make(chan Topic),
+			Remove: make(chan string),
 		},
 		isListening: &atomic.Bool{},
 		topics:      make(map[string]chan proto.Message, maxTopics),

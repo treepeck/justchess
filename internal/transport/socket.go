@@ -7,8 +7,6 @@ import (
 	"net"
 )
 
-var encodedPong = []byte{byte(proto.KindPong), byte(proto.MessageSeparator)}
-
 type socket struct {
 	ipc    Ipc
 	conn   *net.TCPConn
@@ -44,7 +42,6 @@ func (s *socket) read() {
 			log.Printf("read error: %v\n", err)
 			break
 		}
-		log.Printf("%v\n", encoded)
 		// Immediately handle ping messages.
 		if proto.MessageKind(encoded[0]) == proto.KindPing {
 			s.pong <- struct{}{}
