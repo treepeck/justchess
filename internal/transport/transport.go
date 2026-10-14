@@ -3,6 +3,7 @@ package transport
 import (
 	"errors"
 	// "github.com/treepeck/justchess/internal/game"
+	"github.com/treepeck/justchess/internal/randgen"
 	"github.com/treepeck/justchess/pkg/proto"
 	"log"
 	"net"
@@ -17,7 +18,7 @@ const maxTopics = 109 // 100 games and 9 queues.
 // and [game] packages.
 type Ipc struct {
 	Write  chan []byte
-	Read   chan proto.Message
+	Read   chan []byte
 	Add    chan Topic
 	Remove chan string // To remove [Topic] by ID.
 }
@@ -50,7 +51,7 @@ func InitService() (Service, error) {
 		close: make(chan *socket),
 		Ipc: Ipc{
 			Write:  make(chan []byte, 256),
-			Read:   make(chan proto.Message, 256),
+			Read:   make(chan []byte, 256),
 			Add:    make(chan Topic),
 			Remove: make(chan string),
 		},
@@ -115,8 +116,8 @@ func (s Service) listen() {
 			s.addTopic(t)
 		case topicId := <-s.Ipc.Remove:
 			s.removeTopic(topicId)
-		case m := <-s.Ipc.Read:
-			s.route(m)
+		case encoded := <-s.Ipc.Read:
+			s.route(encoded)
 		}
 	}
 }
@@ -175,17 +176,24 @@ func (s Service) removeTopic(topicId string) {
 	log.Printf("remove topic %s\n", topicId)
 }
 
-func (s Service) route(m proto.Message) {
-	switch m.Kind {
+func (s Service) route(encoded []byte) {
+	// It is mandatory for every message to include an ID.
+	topicId := string(encoded[1 : randgen.IdLen+1])
+
+	switch encoded[0] { // MessageKind.
 	// For those messages, the payload contains the handler URL.
 	// So the message must be simply forwarded to the named handler.
 	case proto.KindJoin, proto.KindLeave:
-		in, ok := s.topics[string(m.Payload)]
+		// Payload of the message contains the player ID.
+		in, ok := s.topics[topicId]
 		if !ok {
-			log.Printf("player %s sends message to non-existing handler %s\n", m.Id, m.Payload)
+			log.Printf("message to non-existing handler %s\n", topicId)
 			return
 		}
-		in <- m
+		in <- proto.Message{
+			Id: string(encoded[randgen.IdLen+1:]), // Player id.
+			Kind: encoded[0],
+		}
 	}
 }
 

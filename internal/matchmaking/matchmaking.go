@@ -25,7 +25,7 @@ type queue struct {
 	ticker *time.Ticker
 	nodes  *redBlackTree
 	// Number of players.
-	size int
+	size uint16
 }
 
 // SpawnQueues spawns 9 queues and notifies transport package about it.
@@ -72,41 +72,37 @@ func (q *queue) Listen() {
 			}
 		}
 
-		log.Printf("%d\n", q.size)
-
 		m := proto.Message{
 			Id:      q.id,
 			Kind:    proto.KindCounter,
-			Payload: []byte{byte(q.size)}, // TODO: byte might not be enough.
+			Payload: proto.EncodeInt(q.size), // TODO: byte might not be enough.
 		}
-		log.Printf("kind: %d, id: %s, payload: %b\n", m.Kind, m.Id, m.Payload)
 		q.out <- proto.Encode(m)
 	}
 }
 
-// insert inserts a new player to the [queue] and returns it's size.
-func (q *queue) insert(id string) int {
+// insert inserts a new player to the [queue].
+func (q *queue) insert(id string) {
 	rating := 1500.0 // TODO: get actual rating from database and cache it.
 
 	log.Printf("player %s joins queue %s\n", id, q.id)
 
 	q.nodes.insert(q.nodes.spawn(rating, id))
+	log.Printf("%v\n", q.nodes)
 	q.size++
-	return q.size
 }
 
-// remove removes an existing player from the [queue] and returns it's size.
-func (q *queue) remove(id string) int {
+// remove removes an existing player from the [queue].
+func (q *queue) remove(id string) {
 	rating := 1500.0 // TODO: get actual rating from memory cache.
 	n := search(q.nodes.root, rating, id)
 	if n == nil {
 		log.Printf("matchmaking: trying to remove non-existing player %s\n", id)
-		return q.size
+		return
 	}
 	q.nodes.remove(n)
 	q.size--
 	log.Printf("player %s leaves queue %s\n", id, q.id)
-	return q.size
 }
 
 func (q *queue) createMatch(playerIDs [2]string) {

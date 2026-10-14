@@ -82,29 +82,29 @@ func Encode(m Message) []byte {
 // Each byte of the x should be encoded with a continuation bit because a single
 // payload may contain more than one number.
 func EncodeInt(x uint16) []byte {
-	var seq [3]byte
+	var encoded [3]byte
 	// Write 6 bits at a time.
 	i := 0
 	for ; ; i++ {
 		chunk := byte(x & 0x3F)
-		seq[i] = chunk
+		encoded[i] = chunk
 		x >>= 6
 		if x == 0 {
 			break
 		}
-		seq[i] |= 0x40 // Set continuation bit.
+		encoded[i] |= 0x40 // Set continuation bit.
 	}
-	return seq[:i+1]
+	return encoded[:i+1]
 }
 
 // DecodeInt restores the interger from the encoded byte sequence.
 // The key in decoding is to understand that each byte in the sequence
 // must be smaller than previous one. Otherwise it belongs to the next number.
 func DecodeInt(encoded []byte) uint16 {
-	var x, coeff uint16
+	var decoded, coeff uint16
 	for i := range encoded {
-		x |= uint16(encoded[i]&0x3F) << coeff
+		decoded |= uint16(encoded[i]&0x3F) << coeff
 		coeff += 6
 	}
-	return x
+	return decoded
 }

@@ -1,9 +1,14 @@
-import { MessageKind } from "/assets/scripts/ws/proto.js"
+import { MessageKind, encodeInt, MaxMessageLength  } from "/assets/scripts/ws/proto.js"
 
 const wsUri = "ws://localhost:8888/handshake"
 const pingTick = 3000 // In milliseconds.
 
 const ping = document.getElementById("ping")
+
+/**
+ * @typedef {MessageHandler}
+ * @parameter {Uint8Array} encoded
+ */
 
 export class Conn {
 	/**
@@ -31,6 +36,10 @@ export class Conn {
 	 * @type {boolean}
 	 */
 	isPingAnswered
+	/**
+	 * @type {Map<import("/assets/scripts/ws/proto.js").MessageKind, MessageHandler>}
+	 */
+	handles
 
 	/**
 	 * Opens the WebSocket connection with the server.
@@ -41,8 +50,11 @@ export class Conn {
 		this.latency = 0
 		this.pingTimestamp = 0
 		this.isPingAnswered = true
+		this.handlers = new Map()
 
 		this.conn = new WebSocket(`${wsUri}/${id}`)
+
+		this.conn.binaryType = "arraybuffer"
 
 		this.conn.onopen = () => {
 			this.ping()
@@ -69,12 +81,13 @@ export class Conn {
 	ping() {
 		this.pingInterval = setInterval(() => {
 			if (this.isPingAnswered) {
-				this.conn.send(
-					JSON.stringify({
-						k: MessageKind.KindPing,
-						p: this.latency,
-					}),
-				)
+				const lat = encodeInt(this.latency)
+				const encoded = new Uint8Array(1 + lat.length)
+				encoded[0] = MessageKind.KindPing
+				for (let i = 0; i < lat.length; i++) {
+					encoded[i + 1] = lat[i]
+				}
+				this.send(encoded)
 				this.pingTimestamp = Date.now()
 				this.isPingAnswered = false
 			}
@@ -92,13 +105,16 @@ export class Conn {
 	 */
 	recieve(e) {
 		try {
-			if (e.data.length === 0) {
+			if (e.data.byteLength === 0) {
 				this.pong()
 				return
 			}
-			const msg = JSON.parse(e.data)
-
-			console.log("message recieved:", msg)
+			// e.data includes the message separator (last byte) that needs to be ignored when
+			// decoding the payload.
+			const view = new Uint8Array(e.data)
+			// Pass encoded message to the handler EXCLUDING the MessageSeparator.
+			console.log(view)
+			this.handlers.get(view[0])(view.slice(1,view.length-1))
 		} catch (err) {
 			console.log(err)
 			window.alert("Invalid message recieved from server")
@@ -106,11 +122,11 @@ export class Conn {
 	}
 
 	/**
-	 * @param {import("/assets/scripts/ws/proto.js").Message} msg
+	 * @param {Uint8Array} encoded
 	 */
-	send(msg) {
-		this.conn.send(JSON.stringify(msg))
-		console.log("message sent:", msg)
+	send(encoded) {
+		this.conn.send(encoded)
+		console.log("message sent:", encoded)
 	}
 
 	cleanup() {

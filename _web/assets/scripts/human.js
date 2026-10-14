@@ -1,4 +1,5 @@
 import { Conn } from "/assets/scripts/ws/ws.js"
+import { MessageKind, decodeInt } from "/assets/scripts/ws/proto.js"
 
 const hints = [
 	"Keep your king safe and connect your rooks",
@@ -40,6 +41,10 @@ class State {
 	 * @type {HTMLDivElement}
 	 */
 	hintBox
+	/**
+	 * @type {HTMLDivElement}
+	 */
+	playersNumber
 
 	constructor() {
 		this.timerTimeout = -1
@@ -47,12 +52,17 @@ class State {
 		this.timer = document.getElementById("countUpTimer")
 		this.hintBox = document.getElementById("hintBox")
 		this.hintsStack = []
+		this.playersNumber = document.getElementById("playersNumber")
 	}
 
 	set() {
 		this.displayHint()
 		this.displayTime()
 		this.conn = new Conn(`${slider.value}`)
+		this.conn.handlers.set(MessageKind.KindCounter, (e) => { this.displayCounter(e) })
+		this.conn.handlers.set(MessageKind.KindMatch, (e) => {
+			window.location.href = `/game/${new TextDecoder().decode(e)}`
+		})
 	}
 
 	reset() {
@@ -89,6 +99,15 @@ class State {
 			this.timer.textContent = `${mins}:${secs}`
 
 			this.timerTimeout = setTimeout(() => countUpHandler(), Math.max(0, interval - delta))
+		}
+	}
+
+	displayCounter(encoded) {
+		const cnt = decodeInt(encoded)
+		this.playersNumber.textContent = `Players in queue: ${cnt}`
+
+		if (cnt === 1) {
+			window.alert("Queue is emty. Try selecting more time controls to find a game faster.")
 		}
 	}
 
