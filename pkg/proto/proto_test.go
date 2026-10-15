@@ -1,9 +1,9 @@
 package proto
 
 import (
+	"github.com/treepeck/justchess/internal/randgen"
 	"slices"
 	"testing"
-	"github.com/treepeck/justchess/internal/randgen"
 )
 
 func TestEncodeDecodeInt(t *testing.T) {

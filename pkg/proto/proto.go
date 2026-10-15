@@ -36,6 +36,9 @@ const (
 	// Payload is [Player1ID_Player2ID_GameId]. Note that '_' is used only for readability
 	// and is ommited in real message.
 	KindMatch
+	// KindError is used to notify player that something went wront in the server side.
+	// Payload is one or more IDs of players, that should be notified.
+	KindError
 )
 
 const (

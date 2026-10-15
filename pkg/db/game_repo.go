@@ -83,7 +83,7 @@ type Pagination struct {
 }
 
 type GameRepo interface {
-	Insert(g Game) error
+	Insert(gameId, whiteId, blackId string) error
 	// SelectById selects full [Game] information by named id.
 	SelectById(id string) (Game, error)
 	// SelectByPlayerId selects brief information about [Game]s in which the
@@ -99,15 +99,12 @@ func NewSQLGameRepo(p *sql.DB) SQLGameRepo {
 	return SQLGameRepo{pool: p}
 }
 
-func (r SQLGameRepo) Insert(g Game) error {
-	var wid, bid *string
-	if g.White.Id != "" {
-		wid = &g.White.Id
-	}
-	if g.Black.Id != "" {
-		wid = &g.Black.Id
-	}
-	_, err := r.pool.Exec(insertGame, g.Id, wid, bid, g.TimeControl, g.TimeBonus)
+// TODO: temporary code since only a single time control is currently supported.
+const tc = 400
+const tb = 3
+
+func (r SQLGameRepo) Insert(gameId, whiteId, blackId string) error {
+	_, err := r.pool.Exec(insertGame, gameId, whiteId, blackId, tc, tb)
 	return err
 }
 

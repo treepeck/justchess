@@ -57,9 +57,9 @@ func main() {
 	apiService := api.NewService(gr, pr)
 	log.Print("Successfully initialized services.")
 
-	log.Print("Spawning matchmaking queues.")
-	matchmaking.SpawnQueues(transportService.Ipc)
-	log.Print("Successfully spawned matchmaking queues.")
+	log.Print("Initializing matchmaking queue.")
+	matchmaking.InitQueue(gr, pr, transportService.Ipc)
+	log.Print("Successfully initialized matchmaking queue.")
 
 	// Register routes.
 	log.Print("Registering HTTP endpoints...")

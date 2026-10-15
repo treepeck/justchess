@@ -69,15 +69,7 @@ func (s Service) createEngineGame(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	gameId := randgen.GenId(randgen.SeedLen)
-	if err := s.gameRepo.Insert(db.Game{
-		Id: gameId,
-		White: db.Player{
-			Id: whiteId,
-		},
-		Black: db.Player{
-			Id: blackId,
-		},
-	}); err != nil {
+	if err := s.gameRepo.Insert(gameId, whiteId, blackId); err != nil {
 		log.Print(err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
