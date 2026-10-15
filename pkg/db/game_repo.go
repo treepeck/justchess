@@ -185,7 +185,7 @@ const (
 	insertGame = `INSERT INTO
 	GAME (ID, WHITE_ID, BLACK_ID, TIME_CONTROL, TIME_BONUS)
 VALUES
-	($1, $2, $3)`
+	($1, $2, $3, $4, $5)`
 
 	selectGameById = `SELECT
 	G.ID,

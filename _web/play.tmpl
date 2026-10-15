@@ -1,5 +1,7 @@
 <!--{
-	"title": "Play"
+	"title": "Play",
+	"script": "play.js",
+	"style": "human.css"
 }-->
 
 {{ define "content" }}
@@ -10,7 +12,7 @@
 		{{ if eq .Player.Name "Guest" }}
 			<li><button autofocus class="disabled" onclick="window.alert('Authorization is needed to play with other people.')">Human</button></li>
 		{{ else }}
-			<li><button autofocus onclick="window.location.href='/human'">Human</button></li>
+			<li><button autofocus id="joinMatchmaking">Human</button></li>
 		{{ end }}
 		<li><button onclick="window.location.href='/engine'">Engine</button></li>
 	</ul>
@@ -19,6 +21,22 @@
 		<button class="widget-back" onclick="window.history.back()">Back</button>
 	</div>
 </div>
+
+<dialog id="matchmaking" class="matchmaking">
+	<h2 class="dialog-header">Finding match...</h2>
+
+	<h2 id="gameMode" class="dialog-header"></h2>
+
+	<p id="playersNumber">Players in queue: ?</p>
+	<p id="hintBox"></p>
+	<p id="countUpTimer">00:00</p>
+
+	<p id="ping">Latency: ? ms</p>
+
+	<div class="dialog-buttons">
+		<button id="dialogClose">Leave</button>
+	</div>
+</dialog>
 
 <div class="animated-chessboard"></div>
 {{ end }}

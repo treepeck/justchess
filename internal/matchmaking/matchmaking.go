@@ -35,6 +35,7 @@ type Queue struct {
 	ipc        transport.Ipc
 	ticker     *time.Ticker
 	nodes      *redBlackTree
+	ratingCache map[string]float64
 	// Number of players.
 	size uint16
 }
@@ -47,6 +48,7 @@ func InitQueue(gr db.GameRepo, pr db.PlayerRepo, ipc transport.Ipc) *Queue {
 		ipc:        ipc,
 		ticker:     time.NewTicker(interval),
 		nodes:      newRedBlackTree(),
+		ratingCache: make(map[string]float64, 50),
 	}
 
 	// Add queue topic to the transport service.
@@ -83,6 +85,7 @@ func (q *Queue) listen() {
 				}
 				q.createMatch(whiteId, blackId)
 			}
+			q.expandRatingGaps()
 			if !hasMatches {
 				// Do not send counter if no matches were found.
 				continue
@@ -100,31 +103,41 @@ func (q *Queue) listen() {
 
 // insert inserts a new player to the [Queue].
 func (q *Queue) insert(id string) {
-	rating := 1500.0 // TODO: get actual rating from database and cache it.
-
+	// TODO: there might be a more performant way to get the player rating other than
+	// querying the DB here.
+	p, err := q.playerRepo.SelectById(id)
+	if err != nil {
+		log.Printf("player %s is not in database\n", id)
+		return
+	}
 	log.Printf("player %s joins Queue %s\n", id, QueueId)
 
-	q.nodes.insert(q.nodes.spawn(rating, id))
+	q.nodes.insert(q.nodes.spawn(p.Rating, id))
 	log.Printf("%v\n", q.nodes)
 	q.size++
+
+	// Cache the player's rating to be able to remove the player from the queue later.
+	q.ratingCache[id] = p.Rating
 }
 
 // remove removes an existing player from the [Queue].
 func (q *Queue) remove(id string) {
-	rating := 1500.0 // TODO: get actual rating from memory cache.
+	rating, ok := q.ratingCache[id]
+	if !ok {
+		return
+	}
 	n := search(q.nodes.root, rating, id)
 	if n == nil {
-		log.Printf("matchmaking: trying to remove non-existing player %s\n", id)
 		return
 	}
 	q.nodes.remove(n)
+	delete(q.ratingCache, id)
 	q.size--
 	log.Printf("player %s leaves Queue %s\n", id, QueueId)
 }
 
 func (q *Queue) createMatch(whiteId, blackId string) {
 	gameId := randgen.GenId(randgen.SeedLen)
-
 	// Encode the message payload.
 	// First ID is white player ID.
 	// Second ID is black player ID.
@@ -135,15 +148,15 @@ func (q *Queue) createMatch(whiteId, blackId string) {
 
 	err := q.gameRepo.Insert(gameId, whiteId, blackId)
 	if err != nil {
-		q.ipc.Write <- proto.Encode(proto.Message{
-			Id:      QueueId,
-			Kind:    proto.KindError,
-			Payload: payload[:2*randgen.IdLen],
-		})
 		return
 	}
 	// Add game id to payload.
 	copy(payload[2*randgen.IdLen:], gameId)
+
+	// Remove matched players from queue.
+	q.remove(whiteId)
+	q.remove(blackId)
+
 	q.ipc.Write <- proto.Encode(proto.Message{
 		Id:      QueueId,
 		Kind:    proto.KindMatch,
@@ -197,11 +210,6 @@ func (q *Queue) _matchmaking(n *node, yield func([2]string) bool) {
 		if !yield([2]string{n.id, best.id}) {
 			return
 		}
-
-		// Remove matched nodes from nodes.
-		q.nodes.remove(n)
-		q.nodes.remove(best)
-
 		// Call function recursively.
 		q._matchmaking(q.nodes.root, yield)
 		return
