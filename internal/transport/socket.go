@@ -47,8 +47,8 @@ func (s *socket) read() {
 			s.pong <- struct{}{}
 		} else {
 			log.Printf("read message: %b\n", encoded)
-			// TODO: actually pass the message to queue or room for it to be handled.
-			s.ipc.Read <- encoded[:len(encoded)-1] // Exclude the message separator byte.
+			// Exclude the message separator byte.
+			s.ipc.Read <- encoded[:len(encoded)-1]
 		}
 	}
 

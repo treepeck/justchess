@@ -53,13 +53,12 @@ func (q *queue) Listen() {
 	for {
 		select {
 		case m := <-q.in:
+			playerId := string(m.Payload)
 			switch m.Kind {
 			case proto.KindJoin:
-				q.insert(m.Id)
+				q.insert(playerId)
 			case proto.KindLeave:
-				q.remove(m.Id)
-			default:
-				log.Printf("queue %s recieved invalid message from %s\n", q.id, m.Id)
+				q.remove(playerId)
 			}
 		case <-q.ticker.C:
 			hasMatches := false
@@ -67,7 +66,8 @@ func (q *queue) Listen() {
 				hasMatches = true
 				q.createMatch(ids)
 			}
-			if !hasMatches { // Do not send counter if no matches were found.
+			if !hasMatches {
+				// Do not send counter if no matches were found.
 				continue
 			}
 		}
@@ -75,7 +75,7 @@ func (q *queue) Listen() {
 		m := proto.Message{
 			Id:      q.id,
 			Kind:    proto.KindCounter,
-			Payload: proto.EncodeInt(q.size), // TODO: byte might not be enough.
+			Payload: proto.EncodeInt(q.size),
 		}
 		q.out <- proto.Encode(m)
 	}
@@ -106,6 +106,10 @@ func (q *queue) remove(id string) {
 }
 
 func (q *queue) createMatch(playerIDs [2]string) {
+	// Encode the message payload.
+	// First ID is player1 ID.
+	// Second ID is player2 ID.
+	// Third ID is the id of newly created game.
 	var payload [randgen.IdLen * 3]byte
 	copy(payload[:randgen.IdLen], playerIDs[0])
 	copy(payload[randgen.IdLen:2*randgen.IdLen], playerIDs[1])
@@ -116,6 +120,8 @@ func (q *queue) createMatch(playerIDs [2]string) {
 		Kind:    proto.KindMatch,
 		Payload: payload[:],
 	})
+
+	// TODO: create game record in db.
 }
 
 func (q *queue) matchmaking() iter.Seq[[2]string] {

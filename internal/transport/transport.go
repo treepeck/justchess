@@ -176,25 +176,32 @@ func (s Service) removeTopic(topicId string) {
 	log.Printf("remove topic %s\n", topicId)
 }
 
+// WARN: It's the Coordinator's responsibility to validate messages that are comming
+// from players.
 func (s Service) route(encoded []byte) {
 	// It is mandatory for every message to include an ID.
 	topicId := string(encoded[1 : randgen.IdLen+1])
+	// Immediately discard the message if the topic doesn't exist.
+	in, ok := s.topics[topicId]
+	if !ok {
+		log.Printf("message to non-existing handler %s\n", topicId)
+		return
+	}
+
+	m := proto.Message{
+		Kind: encoded[0],
+	}
 
 	switch encoded[0] { // MessageKind.
 	// For those messages, the payload contains the handler URL.
 	// So the message must be simply forwarded to the named handler.
 	case proto.KindJoin, proto.KindLeave:
 		// Payload of the message contains the player ID.
-		in, ok := s.topics[topicId]
-		if !ok {
-			log.Printf("message to non-existing handler %s\n", topicId)
-			return
-		}
-		in <- proto.Message{
-			Id: string(encoded[randgen.IdLen+1:]), // Player id.
-			Kind: encoded[0],
-		}
+		m.Payload = encoded[randgen.IdLen+1:]
 	}
+
+	// Forward the message to topic.
+	in <- m
 }
 
 // cleanup is called only in case the server crushes. It is needed to gracefully
