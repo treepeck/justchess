@@ -3,6 +3,7 @@ package proto
 import (
 	"slices"
 	"testing"
+	"github.com/treepeck/justchess/internal/randgen"
 )
 
 func TestEncodeDecodeInt(t *testing.T) {
@@ -49,5 +50,19 @@ func BenchmarkEncode(b *testing.B) {
 			Id:      "123456789111",
 			Payload: EncodeInt(120),
 		})
+	}
+}
+
+func Y(x string) int {
+	cnt := 0
+	for range x {
+		cnt++
+	}
+	return cnt
+}
+
+func BenchmarkDecodeId(b *testing.B) {
+	for b.Loop() {
+		DecodeId([]byte("123456789111"))
 	}
 }

@@ -3,7 +3,6 @@ package transport
 import (
 	"errors"
 	// "github.com/treepeck/justchess/internal/game"
-	"github.com/treepeck/justchess/internal/randgen"
 	"github.com/treepeck/justchess/pkg/proto"
 	"log"
 	"net"
@@ -180,7 +179,7 @@ func (s Service) removeTopic(topicId string) {
 // from players.
 func (s Service) route(encoded []byte) {
 	// It is mandatory for every message to include an ID.
-	topicId := string(encoded[1 : randgen.IdLen+1])
+	topicId := proto.DecodeId(encoded[1:])
 	// Immediately discard the message if the topic doesn't exist.
 	in, ok := s.topics[topicId]
 	if !ok {
@@ -197,7 +196,7 @@ func (s Service) route(encoded []byte) {
 	// So the message must be simply forwarded to the named handler.
 	case proto.KindJoin, proto.KindLeave:
 		// Payload of the message contains the player ID.
-		m.Payload = encoded[randgen.IdLen+1:]
+		m.Payload = encoded[len(topicId)+1:]
 	}
 
 	// Forward the message to topic.

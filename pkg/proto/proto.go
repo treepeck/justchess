@@ -98,13 +98,19 @@ func EncodeInt(x uint16) []byte {
 }
 
 // DecodeInt restores the interger from the encoded byte sequence.
-// The key in decoding is to understand that each byte in the sequence
-// must be smaller than previous one. Otherwise it belongs to the next number.
 func DecodeInt(encoded []byte) uint16 {
 	var decoded, coeff uint16
 	for i := range encoded {
 		decoded |= uint16(encoded[i]&0x3F) << coeff
 		coeff += 6
+		// Exit the loop of the continuation bit is not set.
+		if encoded[i]&0x40 == 0 {
+			break
+		}
 	}
 	return decoded
+}
+
+func DecodeId(encoded []byte) string {
+	return string(encoded[:randgen.IdLen])
 }

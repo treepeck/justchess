@@ -41,7 +41,7 @@ func TestInsert(t *testing.T) {
 		}
 
 		for j, val := range tc.expectedBFS {
-			if val != got[j].mmr {
+			if val != got[j].rating {
 				t.Fatalf("case %d: expected: %v, got: %v", i, tc.expectedBFS, got)
 			}
 		}
@@ -118,7 +118,7 @@ func TestRemove(t *testing.T) {
 
 		if len(tc.expectedBFS) > 0 {
 			for j, val := range tc.expectedBFS {
-				if val != got[j].mmr {
+				if val != got[j].rating {
 					t.Fatalf("case %d: expected: %v, got: %v", i, tc.expectedBFS, got)
 				}
 			}

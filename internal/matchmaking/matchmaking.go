@@ -53,12 +53,11 @@ func (q *queue) Listen() {
 	for {
 		select {
 		case m := <-q.in:
-			playerId := string(m.Payload)
 			switch m.Kind {
 			case proto.KindJoin:
-				q.insert(playerId)
+				q.insert(string(m.Payload))
 			case proto.KindLeave:
-				q.remove(playerId)
+				q.remove(string(m.Payload))
 			}
 		case <-q.ticker.C:
 			hasMatches := false
