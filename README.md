@@ -1,8 +1,11 @@
-[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/@treepeck)
+# DEPRECATED - JustChess becomes closed source.
+
+### Future updates will not be published. The development itself will remain public and broadcasted on [YouTube](https://www.youtube.com/@treepeck).
+
+---
 
 > [!NOTE]
-> Please submit any bug reports, feature suggestions, and other feedback either
-> to [support@justchess.org](mailto:support@justchess.org) or via GitHub Issues.
+> Please submit any bug reports, feature suggestions, and other feedback to [support@justchess.org](mailto:support@justchess.org).
 > Such contributions are highly appreciated.
 
 JustChess.org is a multiplayer chess server.
